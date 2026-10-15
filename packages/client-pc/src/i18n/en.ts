@@ -163,12 +163,12 @@ const EN_BASE: Record<string, string> = {
   '삶은 문어를 만들었습니다 — 요리(U) 도마에 올려 다리를 분리하세요': 'Boiled octopus made — put it on the cutting board (U) to separate the legs',
   // ── 156차 요리 개체 상세 · 요리 도감 ──
   '주재료': 'Main ingredient',
-  '판매가': 'Sell price', '지방감': 'Fattiness', '비린 향': 'Fishy smell', '풍미': 'Flavour',
+  '판매가': 'Sell price', '지방감': 'Fattiness', '국물': 'Broth', '비린 향': 'Fishy smell', '풍미': 'Flavour',
   '조리 품질': 'Cooking quality', '종합 품질': 'Overall quality',
   '없음 — 탄 요리': 'None — burnt', '없음 — 품질이 낮습니다': 'None — quality too low', '탔다 — 가치 없음': 'Burnt — worthless',
   '발견한 변형': 'Discovered variants', '발견 기록': 'Discovery', '주재료 어종별 변형': 'Varies by main fish', '탕 · 국': 'Stew · soup',
   '다른 어종을 사용해 보세요': 'Try a different fish', '직접 조리': 'Cooked yourself', '??? 매운탕': '??? Maeuntang',
-  // 254차 — 요리 도감: 오징어볶음 · 장어구이 · 조개탕도 주재료로 갈라진다
+  // 255차 — 요리 도감: 오징어볶음 · 장어구이 · 조개탕도 주재료로 갈라진다
   '오징어 종류별 변형': 'Varies by squid', '장어 종류별 변형': 'Varies by eel', '조개 종류별 변형': 'Varies by shellfish',
   '다른 오징어를 사용해 보세요': 'Try a different squid', '다른 장어를 사용해 보세요': 'Try a different eel', '다른 조개를 사용해 보세요': 'Try a different shellfish',
   '조리 요령': 'Cooking tip', '재료 요령': 'Ingredient tip',
@@ -1018,7 +1018,7 @@ export const EN_RULES: Rule[] = [
   [/^([\d,]+)원 \/ 100 kcal$/, (m) => `${m[1]} won / 100 kcal`],
   [/^(고급|일반) · (모듬|단품) · (\d+)점 · (\d+)g$/, (m) => `${m[1] === '고급' ? 'Premium' : 'Standard'} · ${m[2] === '모듬' ? 'assorted' : 'single'} · ${m[3]} pcs · ${m[4]}g`],
   // ── 156차 요리 개체·도감 ──
-  // 254차 — 새 개체 이름은 런타임 사전(core `allDishVariantLines`)이 통째로 잡는다. 아래 둘은 옛 세이브 이름(「조피볼락(우럭) 서더리 매운탕」)용 —
+  // 255차 — 새 개체 이름은 런타임 사전(core `allDishVariantLines`)이 통째로 잡는다. 아래 둘은 옛 세이브 이름(「조피볼락(우럭) 서더리 매운탕」)용 —
   //   서더리를 먼저 떼야 뒤의 「(.+) 매운탕」이 「조피볼락(우럭) 서더리」를 어종 이름으로 찾다 실패하지 않는다
   [/^(탄 |일품 |싱싱한 |기름진 )?(.+) 서더리 매운탕$/, (m, tr) => `${m[1] ? tr(m[1].trim()) + ' ' : ''}${tr(m[2])} Fish-frame Maeuntang`],
   [/^(탄 |일품 |싱싱한 |기름진 )?(.+) 매운탕$/, (m, tr) => `${m[1] ? tr(m[1].trim()) + ' ' : ''}${tr(m[2])} Maeuntang`],

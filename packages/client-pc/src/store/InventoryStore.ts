@@ -527,6 +527,17 @@ function refreshTackleArt(i: InvItem): InvItem {
   return t === i.iconTexture ? i : { ...i, iconTexture: t, icon: '' };
 }
 
+/**
+ * 255차 — 사진이 없던 레시피로 만든 요리(구세이브)는 계열 16px 키(`px:it_dish_<계열>`)를 들고 있다.
+ * 레시피마다 사진이 생겼으므로 그 레시피 사진으로 바꾼다 — 계열 별칭(`ITEM_TEXTURE_ALIAS`)만으로는 조개탕이 지리 그림,
+ * 장어구이가 생선구이 그림이 된다. 정적 표시 정보라 덮는다 — 수량 · 칸 · 신선도 · 별점은 그대로.
+ */
+function refreshDishPhoto(i: InvItem): InvItem {
+  if (!i.dish || !i.iconTexture?.startsWith('px:it_dish_')) return i;
+  const photo = getFireRecipe(i.dish.recipeId)?.photoKey;
+  return photo ? { ...i, iconTexture: photo, icon: '' } : i;
+}
+
 export const CARD_RIG_INFO: Record<CardRigType, { label: string; hooks: number; gapM: number }> = {
   yeolgi:     { label: '열기 (7단)',   hooks: 7, gapM: 0.3 },
   godeungeo:  { label: '고등어 (5단)', hooks: 5, gapM: 0.5 },
@@ -1396,7 +1407,7 @@ class InventoryStoreManager {
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
       };
-    }).map((i) => refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i))))
+    }).map((i) => refreshDishPhoto(refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i)))))
       .map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));

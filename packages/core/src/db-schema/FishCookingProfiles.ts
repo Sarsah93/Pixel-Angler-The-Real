@@ -9,7 +9,7 @@
  * 1차 등재 3종(§39 Stage 2): 우럭(`black_rockfish`) · 광어(`flatfish`) · 감성돔(`black_seabream`).
  * 값은 조리 통념(우럭 = 시원한 국물·탄탄 / 광어 = 담백·부드러움·비린 향 매우 낮음 / 감성돔 = 진한 풍미·지방 중~높음).
  *
- * 254차(Stage 7 — 나머지 레시피 개체화): 지리 · 구이 · 조림 · 볶음 · 조개탕 · 장어구이의 주재료가 될 수 있는 것 전부.
+ * 255차(Stage 7 — 나머지 레시피 개체화): 지리 · 구이 · 조림 · 볶음 · 조개탕 · 장어구이의 주재료가 될 수 있는 것 전부.
  *  어류 46종 + 장어류 3 + 두족류 3(오징어볶음) + 조개류 3(조개탕 — 채집 생물 id). 값은 조리 통념:
  *  고등어 · 꽁치 · 방어 · 눈볼대 = 기름지고 진함(구이 · 조림) / 대구 · 복어 = 담백하고 국물이 맑음(지리) /
  *  돌돔 · 쥐치 · 쏨뱅이 = 살이 탄탄함 / 갈치 · 도루묵 · 병어 = 살이 부드러움 / 붕장어 = 기름짐 · 먹장어 = 쫄깃함 /
@@ -19,7 +19,7 @@
 import type { FishCookingProfile } from '../types/Cooking.js';
 
 /**
- * 같은 학명의 다른 엔트리를 요리에서는 하나로 센다 (254차) — 밤에 낚은 참돔(`night_seabream`)도 참돔이다.
+ * 같은 학명의 다른 엔트리를 요리에서는 하나로 센다 (255차) — 밤에 낚은 참돔(`night_seabream`)도 참돔이다.
  * 요리 도감 · 이름 · 프로필이 모두 이 정본 id를 쓴다(156차는 도감 후보에 야간 엔트리만 남아 낮에 낚은 참돔 요리가 세지지 않았다).
  */
 export const COOKING_SPECIES_ALIAS: Readonly<Record<string, string>> = { night_seabream: 'red_seabream' };
@@ -30,7 +30,7 @@ export function cookingSpeciesId(speciesId: string): string {
 }
 
 /**
- * 프로필 한 줄 (254차 추가분 전용 — 열 순서 고정):
+ * 프로필 한 줄 (255차 추가분 전용 — 열 순서 고정):
  * 지방감 · 살 식감(0 부드러움 ~ 1 탄탄) · 비린 향 · 풍미 · 국물 기여 · 구이 · 탕 · 맑은 국 · 튀김 · 촉촉함 · 살 수율 · 단맛
  */
 const P = (
@@ -58,7 +58,7 @@ export const FISH_COOKING_PROFILES: Record<string, FishCookingProfile> = {
     grillSuitability: 0.86, stewSuitability: 0.86, soupSuitability: 0.7, fryingSuitability: 0.55,
     moistureRetention: 0.7, fleshYield: 0.4, sweetness: 0.4,
   },
-  // ── 254차 — 어류 (지리 · 구이 · 조림 · 매운탕) ──
+  // ── 255차 — 어류 (지리 · 구이 · 조림 · 매운탕) ──
   //                         지방  식감  비린  풍미  국물  구이  탕    맑은  튀김  촉촉  수율  단맛
   largescale_blackfish: P(0.45, 0.70, 0.38, 0.60, 0.70, 0.75, 0.75, 0.68, 0.60, 0.60, 0.42, 0.35),   // 벵에돔 — 갯내가 조금
   longtail_blackfish: P(0.48, 0.72, 0.36, 0.62, 0.70, 0.75, 0.75, 0.68, 0.60, 0.60, 0.42, 0.36),     // 긴꼬리벵에돔
@@ -152,6 +152,10 @@ export function fishinessLabel(v: number, en = false): string {
 }
 export function flavorLabel(v: number, en = false): string {
   return band(v, [0.4, 0.7], ['은은함', '보통', '진한 편'], ['Subtle', 'Medium', 'Rich'], en);
+}
+/** 255차 — 국물 진하기(`brothContribution`). 조개탕 상세는 지방감 대신 이 줄을 보인다(조개는 지방감으로 말하지 않는다) */
+export function brothLabel(v: number, en = false): string {
+  return band(v, [0.4, 0.7], ['옅음', '보통', '진함'], ['Light', 'Medium', 'Deep'], en);
 }
 
 /** 중량 구간 (§23) — 회복·풍미·가격·버프 지속에 쓰는 밴드 */

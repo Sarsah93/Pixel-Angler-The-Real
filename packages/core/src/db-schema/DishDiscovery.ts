@@ -1,10 +1,10 @@
 /**
  * @file DishDiscovery.ts
- * @description 요리 도감 — 발견 id 규약과 변형 후보 (156차 — 확장 스펙 §19~§22 · §35~§36 · 254차 Stage 7)
+ * @description 요리 도감 — 발견 id 규약과 변형 후보 (156차 — 확장 스펙 §19~§22 · §35~§36 · 255차 Stage 7)
  *
  * ⚖ 도감 = **종류**(레시피 × 주재료), 인벤 음식 = 개체(`DishInstance`). 인스턴스마다 항목을 만들지 않는다.
  * ⚖ 발견 id = `discovery_<recipeId>_<speciesId>` · 주재료를 모르면 `generic`.
- * ⚖ 156차 = 매운탕 두 종류(서더리 · 통생선)만 갈라졌다. 254차 = 전복죽을 뺀 여덟 레시피가 갈라진다 —
+ * ⚖ 156차 = 매운탕 두 종류(서더리 · 통생선)만 갈라졌다. 255차 = 전복죽을 뺀 여덟 레시피가 갈라진다 —
  *   지리 · 생선구이 · 생선조림(어종) · 오징어볶음(두족류) · 조개탕(채집 조개 — 채집 생물 id) · 장어구이(장어류).
  * ⚖ 같은 학명의 야간 엔트리는 정본 id 하나로 센다(`cookingSpeciesId` — 밤 참돔 = 참돔).
  */
@@ -58,7 +58,7 @@ export function cookSpeciesNames(speciesId: string | null | undefined): { id: st
 const stripAlias = (s: string): string => s.replace(/\s*\([^)]*\)\s*$/, '').trim() || s;
 
 /**
- * 요리 이름에 들어가는 어종 이름 (254차) — 상에 오를 때 부르는 이름.
+ * 요리 이름에 들어가는 어종 이름 (255차) — 상에 오를 때 부르는 이름.
  * `DISH_SPECIES_NAME` 예외(조피볼락 → 우럭 · 태평양 대구 → 대구) → 정식 이름에서 괄호 별칭을 뗀 것.
  */
 export function dishSpeciesName(speciesId: string | null | undefined): { ko: string; en: string } | null {
@@ -142,7 +142,7 @@ export function dishDiscoveryIdsFor(recipeId: string, speciesId: string): string
 }
 
 /**
- * 영어 사전용 짝 (254차) — 변형 이름(수식어 0~1개) · 미발견 자리(`???구이`) · 변형 설명.
+ * 영어 사전용 짝 (255차) — 변형 이름(수식어 0~1개) · 미발견 자리(`???구이`) · 변형 설명.
  * 클라이언트 i18n이 런타임 사전에 붙인다(데이터가 곧 번역). 개체 `nameEn`과 같은 함수에서 나온다.
  */
 export function allDishVariantLines(): [string, string][] {

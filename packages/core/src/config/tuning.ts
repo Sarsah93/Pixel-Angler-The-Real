@@ -691,14 +691,14 @@ export interface TuningConfig {
     ingredientQuality: { freshnessWeight: number; fatnessWeight: number; brothWeight: number };
     /**
      * 156차 — 회복치·효과 산출: 중량 배율 (중량/기준)^지수 상하한 · 최종 상하한 · 효과가 붙는 최소 총점.
-     * 254차 — `effectMultMin/Max` = 어종별 효과 보정(크기 · 지속 배율)의 상하한.
+     * 255차 — `effectMultMin/Max` = 어종별 효과 보정(크기 · 지속 배율)의 상하한.
      */
     dishEffect: {
       refWeightG: number; weightExp: number; weightMultMin: number; weightMultMax: number; minMultiplier: number; maxMultiplier: number; effectMinOverall: number;
       effectMultMin: number; effectMultMax: number;
     };
     /**
-     * 254차 — 어종별 효과 보정 (확장 스펙 §3~11 · Stage 7 「나머지 레시피 개체화」). 레시피 id → 가중치 · 폭 · 중량 기준.
+     * 255차 — 어종별 효과 보정 (확장 스펙 §3~11 · Stage 7 「나머지 레시피 개체화」). 레시피 id → 가중치 · 폭 · 중량 기준.
      * 매운탕 2종은 156차 규칙(지방감 → 포만감 지속 0.8~1.2배)을 같은 틀로 옮긴 것이다. 여기 없는 레시피는 효과가 고정이다.
      */
     variantEffect: Record<string, DishVariantEffectTuning>;
@@ -1485,7 +1485,7 @@ export const TUNING: TuningConfig = {
       refWeightG: 800, weightExp: 0.5, weightMultMin: 0.7, weightMultMax: 1.4, minMultiplier: 0.35, maxMultiplier: 1.7, effectMinOverall: 60,
       effectMultMin: 0.5, effectMultMax: 1.5,
     },
-    // 254차 — 어종별 효과 보정 (mockup, 실플레이 조율 대기). s = 재료 점수 0~1 (0.5 = 레시피 기본값 그대로)
+    // 255차 — 어종별 효과 보정 (mockup, 실플레이 조율 대기). s = 재료 점수 0~1 (0.5 = 레시피 기본값 그대로)
     variantEffect: {
       // 매운탕 — 156차 그대로: 기름질수록 포만감이 오래 간다(지속 0.8~1.2배), 크기는 고정
       stew_red: { weights: { fatness: 1 }, magSpan: 0, durSpan: 0.4 },
@@ -1731,7 +1731,7 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'cook.dishEffect.weightExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '요리 중량 배율 지수' },
   { path: 'cook.pricing.qualityMultiplier', min: 0.3, max: 1.5, step: 0.05, category: 'balance', label: '요리 판매가 품질 계수' },
   { path: 'cook.naming.freshThreshold', min: 70, max: 100, step: 1, category: 'balance', label: '「싱싱한」 신선도 임계' },
-  // ── 어종별 요리 효과 (254차 — mockup) ──
+  // ── 어종별 요리 효과 (255차 — mockup) ──
   { path: 'cook.variantEffect.stew_clear.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '지리 효과 지속 폭 (비린 향 · 신선도)' },
   { path: 'cook.variantEffect.grill_fish.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '생선구이 효과 지속 폭 (지방 · 촉촉함)' },
   { path: 'cook.variantEffect.braise_fish.durSpan', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '생선조림 효과 지속 폭 (살 식감)' },

@@ -25,7 +25,7 @@ import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, ge
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
-  fatnessLabel, textureLabel, fishinessLabel, flavorLabel, FOOD_EFFECT_KIND_KO } from '@tra/core';
+  fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel, dishVariantKind, FOOD_EFFECT_KIND_KO } from '@tra/core';
 import { CookingStore } from '../store/CookingStore.js';
 import { CraftingStore } from '../store/CraftingStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -462,7 +462,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       if (inst.modifier === 'burnt') rows.push({ label: '상태', value: '탔다 — 가치 없음', color: '#ff5a4a' });
       rows.push({ label: '주재료', value: ip.primaryNameKo ? `${ip.primaryNameKo} · ${ip.weightG}g` : `${ip.weightG}g` });
       rows.push({ label: '재료 신선도', value: qualityStars(starsOf(q.freshness)), color: qColor(q.freshness) });
-      rows.push({ label: '지방감', value: fatnessLabel(ip.fatness) });
+      // 255차 — 조개탕은 지방감이 아니라 국물 진하기로 읽는다(효과도 국물 · 신선도를 본다 — `TUNING.cook.variantEffect.soup_clam`)
+      if (dishVariantKind(inst.recipeId) === 'shellfish') rows.push({ label: '국물', value: brothLabel(ip.brothContribution) });
+      else rows.push({ label: '지방감', value: fatnessLabel(ip.fatness) });
       rows.push({ label: '식감', value: textureLabel(ip.texture) });
       rows.push({ label: '비린 향', value: fishinessLabel(ip.fishiness) });
       rows.push({ label: '풍미', value: flavorLabel(ip.flavorStrength) });

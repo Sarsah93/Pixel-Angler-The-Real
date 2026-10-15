@@ -98,7 +98,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 24, hydrationRestore: 19, hpRestore: 28, fatigueRestore: 18, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
-    id: 'stew_clear', nameKo: '지리 (맑은탕)', nameEn: 'Clear fish soup (Jiri)', family: 'stew_clear',
+    id: 'stew_clear', nameKo: '지리 (맑은탕)', nameEn: 'Clear fish soup (Jiri)', family: 'stew_clear', photoKey: 'food_stew_clear',
     descKo: '무와 대파로 시원하게 끓인 백탕. 생선 맛이 그대로 난다.',
     descEn: 'A clear soup of fish with radish and green onion — the fish speaks for itself.',
     cookware: ['pot'],
@@ -121,7 +121,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 18, hydrationRestore: 21, hpRestore: 30, fatigueRestore: 20, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
-    id: 'grill_fish', nameKo: '생선구이', nameEn: 'Grilled fish', family: 'grill',
+    id: 'grill_fish', nameKo: '생선구이', nameEn: 'Grilled fish', family: 'grill', photoKey: 'food_grill_fish',
     descKo: '소금 뿌려 팬이나 석쇠에 굽는다. 겉은 바삭, 속은 촉촉이 전부다.',
     descEn: 'Salted and grilled on a pan or grate — crisp outside, moist inside.',
     cookware: ['pan', 'grate'],
@@ -137,7 +137,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 18, hydrationRestore: 2, hpRestore: 25, fatigueRestore: 12 },
   },
   {
-    id: 'braise_fish', nameKo: '생선조림', nameEn: 'Braised fish (Jorim)', family: 'braise',
+    id: 'braise_fish', nameKo: '생선조림', nameEn: 'Braised fish (Jorim)', family: 'braise', photoKey: 'food_braise_fish',
     descKo: '무를 깔고 간장·고춧가루 양념으로 국물을 졸여 낸다.',
     descEn: 'Fish braised over radish in a soy-chili sauce until the liquid reduces.',
     cookware: ['pot'],
@@ -160,7 +160,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 23, hydrationRestore: 6, hpRestore: 30, fatigueRestore: 15 },
   },
   {
-    id: 'stirfry_squid', nameKo: '오징어볶음', nameEn: 'Stir-fried squid', family: 'stirfry',
+    id: 'stirfry_squid', nameKo: '오징어볶음', nameEn: 'Stir-fried squid', family: 'stirfry', photoKey: 'food_stirfry_squid',
     descKo: '센 불에 재빨리 볶는다. 오래 두면 질겨진다.',
     descEn: 'Stir-fried fast on high heat — linger and it turns rubbery.',
     cookware: ['pan'],
@@ -184,7 +184,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 20, hydrationRestore: 3, hpRestore: 20, fatigueRestore: 10 },
   },
   {
-    id: 'soup_clam', nameKo: '조개탕', nameEn: 'Clam soup', family: 'stew_clear',
+    id: 'soup_clam', nameKo: '조개탕', nameEn: 'Clam soup', family: 'stew_clear', photoKey: 'food_soup_clam',
     descKo: '바지락·홍합·굴로 끓이는 맑은 국. 채집한 것을 먹는 가장 빠른 길.',
     descEn: 'A clear soup of clams, mussels or oysters — the quickest way to eat what you gathered.',
     cookware: ['pot'],
@@ -202,7 +202,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 13, hydrationRestore: 22, hpRestore: 25, fatigueRestore: 18, drainBuffMult: 0.9, drainBuffMin: 20 },
   },
   {
-    id: 'porridge_abalone', nameKo: '전복죽', nameEn: 'Abalone porridge', family: 'porridge',
+    id: 'porridge_abalone', nameKo: '전복죽', nameEn: 'Abalone porridge', family: 'porridge', photoKey: 'food_porridge_abalone',
     descKo: '참기름에 볶은 쌀과 전복을 약불로 오래 끓인다. 보양식.',
     descEn: 'Rice and abalone fried in sesame oil, then simmered long on low heat. Restorative.',
     cookware: ['pot'],
@@ -220,7 +220,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 19, hydrationRestore: 15, hpRestore: 40, fatigueRestore: 32, drainBuffMult: 0.75, drainBuffMin: 45 },
   },
   {
-    id: 'grill_eel', nameKo: '장어구이', nameEn: 'Grilled eel', family: 'grill',
+    id: 'grill_eel', nameKo: '장어구이', nameEn: 'Grilled eel', family: 'grill', photoKey: 'food_grill_eel',
     descKo: '간장·설탕·마늘 양념을 발라 굽는다. 피로가 풀린다.',
     descEn: 'Eel brushed with soy, sugar and garlic and grilled. Takes the tiredness off.',
     cookware: ['grate', 'pan'],

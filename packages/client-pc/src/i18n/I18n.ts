@@ -25,7 +25,7 @@ import {
   allChoiceLines, allNarrativeLines, allInquiryLines, allTalkLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN, allDishVariantLines,
-  fatnessLabel, textureLabel, fishinessLabel, flavorLabel,
+  fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
   CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW, carePlanSummaryKo, carePlanSummaryEn,
 } from '@tra/core';
@@ -138,13 +138,13 @@ function buildRuntimeDict(): void {
     if (l.ingredientTipKo && l.ingredientTipEn) put(l.ingredientTipKo, l.ingredientTipEn);
   }
   for (const bySp of Object.values(DISH_VARIANT_LORE)) for (const v of Object.values(bySp)) put(v.descKo, v.descEn);
-  // 254차 — 요리 개체 이름(「우럭 지리 (맑은탕)」 · 「싱싱한 고등어구이」 · 「바지락탕」 …) · 미발견 자리 · 변형 설명.
+  // 255차 — 요리 개체 이름(「우럭 지리 (맑은탕)」 · 「싱싱한 고등어구이」 · 「바지락탕」 …) · 미발견 자리 · 변형 설명.
   //   개체 `nameEn`과 같은 core 함수가 짝을 낸다(정확 일치 — 「(.+) 매운탕」 같은 규칙이 어종 이름을 못 찾는 일이 없다)
   for (const [ko, en] of allDishVariantLines()) put(ko, en);
   runtimeRules.length = 0;
   for (const e of Object.values(RECIPE_EFFECTS)) {
     put(e.nameKo, e.nameEn); put(e.descKo, e.descEn);
-    // ⚠ 실제 표시 문장은 지속 시간과 크기가 개체마다 다르다(`37분 동안 … -10%` — 254차 주재료 보정) — 정확 일치로는 안 잡힌다
+    // ⚠ 실제 표시 문장은 지속 시간과 크기가 개체마다 다르다(`37분 동안 … -10%` — 255차 주재료 보정) — 정확 일치로는 안 잡힌다
     const koRe = e.descKo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/^\d+분/, '(\\d+)분').replace(/\d+%$/, '(\\d+)%');
     runtimeRules.push([new RegExp(`^${koRe}$`), e.descEn.replace(/for \d+ min/, 'for $1 min').replace(/\d+%/, '$2%')]);
   }
@@ -155,7 +155,7 @@ function buildRuntimeDict(): void {
   for (const [k, ko] of Object.entries(FOOD_EFFECT_KIND_KO)) put(ko, EFFECT_KIND_EN[k] ?? k);
   for (const k of Object.keys(DISH_MODIFIER_KO) as (keyof typeof DISH_MODIFIER_KO)[]) put(DISH_MODIFIER_KO[k], DISH_MODIFIER_EN[k]);
   // 밴드 경계가 라벨마다 달라 대표값을 넉넉히 훑는다(비린 향은 4단계 — 0.1/0.5/0.9만으론 '약함'이 빠진다)
-  for (const v of [0.05, 0.25, 0.45, 0.5, 0.8, 0.95]) { put(fatnessLabel(v), fatnessLabel(v, true)); put(textureLabel(v), textureLabel(v, true)); put(fishinessLabel(v), fishinessLabel(v, true)); put(flavorLabel(v), flavorLabel(v, true)); }
+  for (const v of [0.05, 0.25, 0.45, 0.5, 0.8, 0.95]) { put(fatnessLabel(v), fatnessLabel(v, true)); put(textureLabel(v), textureLabel(v, true)); put(fishinessLabel(v), fishinessLabel(v, true)); put(flavorLabel(v), flavorLabel(v, true)); put(brothLabel(v), brothLabel(v, true)); }
   for (const r of REGION_DATABASE) put(r.description, r.descriptionEn);
   // 122차 — 출처 화면(데이터 제공기관·서비스·사용처·라이선스 라벨)
   for (const a of DATA_ATTRIBUTIONS) { put(a.provider, a.providerEn); put(a.service, a.serviceEn); put(a.usage, a.usageEn); }

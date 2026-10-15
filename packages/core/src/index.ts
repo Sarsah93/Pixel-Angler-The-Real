@@ -808,7 +808,7 @@ export type { SeafoodCookingProfile, FishCookingProfile, CephalopodCookingProfil
   DishEffectDriver, DishVariantEffectTuning } from './types/Cooking.js';
 export { FISH_COOKING_PROFILES, DEFAULT_FISH_COOKING_PROFILE, fishCookingProfileOf, hasFishCookingProfile,
   COOKING_SPECIES_ALIAS, cookingSpeciesId,
-  fatnessLabel, textureLabel, fishinessLabel, flavorLabel, cookingWeightBand, WEIGHT_BAND_KO, type CookingWeightBand } from './db-schema/FishCookingProfiles.js';
+  fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel, cookingWeightBand, WEIGHT_BAND_KO, type CookingWeightBand } from './db-schema/FishCookingProfiles.js';
 export { RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_BASE_NAME, DISH_MODIFIER_KO, DISH_MODIFIER_EN, dishBaseName, particleEuro, variantDescription, type RecipeLore,
   RECIPE_VARIANT_DESC, DISH_SPECIES_NAME, DISH_VARIANT_NAME } from './db-schema/RecipeLore.js';
 export { FOOD_EFFECT_KIND_KO, RECIPE_EFFECTS, recipeEffectOf } from './db-schema/FoodEffects.js';

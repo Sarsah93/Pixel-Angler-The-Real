@@ -175,6 +175,29 @@ const fishImgs = (id) => {
   return one ? [{ src: one, label: '' }] : [];
 };
 
+/**
+ * 255차 — 요리 이름 규칙(사용자 「어떤 생선이 들어갔느냐에 따라 이름과 효과가 달라져야 … 'OOO 지리(맑은탕)'처럼」).
+ *  변형 레시피는 주재료 이름 + 요리(예 넷) · 주재료 후보 수 · 효과를 움직이는 재료 특성. 전복죽은 이름이 고정이다.
+ */
+const NAME_EXAMPLE_SPECIES = ['black_rockfish', 'chub_mackerel', 'hairtail', 'flatfish', 'pacific_cod', 'black_seabream',
+  'swordtip_squid', 'cuttlefish', 'squid', 'conger_eel', 'hagfish'];
+const EFFECT_DRIVER_KO = { fatness: '지방감', texture: '살 식감', clean: '비린 향이 적은 정도', flavorStrength: '풍미',
+  brothContribution: '국물 맛', moistureRetention: '촉촉함', sweetness: '단맛', freshness: '신선도' };
+const VARIANT_KIND_KO = { fish: '생선', squid: '오징어류', eel: '장어류', shellfish: '조개' };
+const nameRuleOf = (r) => {
+  if (!core.isVariantRecipe?.(r.id)) return r.id === 'porridge_abalone' ? { fixed: true } : null;
+  const cands = core.dishVariantCandidates(r.id);
+  const pick = [...NAME_EXAMPLE_SPECIES.filter((s) => cands.includes(s)), ...cands].filter((s, i, a) => a.indexOf(s) === i).slice(0, 4);
+  const w = core.TUNING?.cook?.variantEffect?.[r.id]?.weights ?? (r.family === 'stew_red' ? { fatness: 1 } : {});
+  return {
+    fixed: false,
+    kind: VARIANT_KIND_KO[core.dishVariantKind?.(r.id)] ?? '주재료',
+    examples: pick.map((s) => core.dishDiscoveryName(core.dishDiscoveryId(r.id, s))),
+    candidates: cands.length,
+    drivers: Object.entries(w).sort((a, b) => b[1] - a[1]).map(([k]) => EFFECT_DRIVER_KO[k] ?? k),
+  };
+};
+
 const recipes = core.FIRE_RECIPES.map((r) => {
   const lore = core.RECIPE_LORE?.[r.id] ?? {};
   const eff = core.recipeEffectOf?.(r.id) ?? null;
@@ -200,6 +223,7 @@ const recipes = core.FIRE_RECIPES.map((r) => {
     stages: r.stages.map((s, i) => ({ no: i + 1, label: s.labelKo })),
     stars: starRows(r),
     variants: v.rows, variantCandidates: v.candidates,
+    nameRule: nameRuleOf(r),
     refWeightG: REF_WEIGHT_G,
   };
 });

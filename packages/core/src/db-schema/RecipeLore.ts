@@ -4,7 +4,7 @@
  *
  * ⚖ 레시피 정본은 154차 `FireRecipeDatabase.ts`다. 여기는 **말**만 둔다(설명·이름 규칙) — 조리 수치를 적지 않는다.
  * ⚖ 이름 규칙(§14~15): 기본 = `우럭 매운탕`. 수식어는 **최대 1개**, 우선순위 탄 → 일품 → 싱싱한 → 기름진 → 없음.
- * ⚖ 254차(Stage 7): 전복죽을 뺀 여덟 레시피가 주재료로 이름이 갈린다 — `우럭 지리 (맑은탕)` · `고등어구이` · `갈치조림` ·
+ * ⚖ 255차(Stage 7): 전복죽을 뺀 여덟 레시피가 주재료로 이름이 갈린다 — `우럭 지리 (맑은탕)` · `고등어구이` · `갈치조림` ·
  *   `한치볶음` · `바지락탕` · `붕장어구이`. 이름에 쓰는 어종 이름은 상에 오를 때 부르는 이름이다(`DISH_SPECIES_NAME` — 조피볼락 → 우럭).
  */
 
@@ -80,7 +80,7 @@ export const RECIPE_LORE: Record<string, RecipeLore> = {
   },
 };
 
-/** 어종별 변형 전용 설명 (§4 — 매운탕 3종 · 254차 대표 조합). 없으면 `variantDescription()`이 틀(`RECIPE_VARIANT_DESC`)로 문장을 만든다 */
+/** 어종별 변형 전용 설명 (§4 — 매운탕 3종 · 255차 대표 조합). 없으면 `variantDescription()`이 틀(`RECIPE_VARIANT_DESC`)로 문장을 만든다 */
 export const DISH_VARIANT_LORE: Record<string, Record<string, { descKo: string; descEn: string }>> = {
   stew_red: {
     black_rockfish: { descKo: '담백하면서도 시원한 국물과 탄탄한 살이 특징인 매운탕.', descEn: 'A maeuntang known for its clean, refreshing broth and firm flesh.' },
@@ -92,7 +92,7 @@ export const DISH_VARIANT_LORE: Record<string, Record<string, { descKo: string; 
     flatfish: { descKo: '광어 한 마리를 통째로 넣어 담백한 살과 칼칼한 국물을 살린 매운탕.', descEn: 'A whole flounder maeuntang with mild flesh and a spicy broth.' },
     black_seabream: { descKo: '감성돔 한 마리를 통째로 넣어 탄탄한 살과 깊은 풍미를 낸 매운탕.', descEn: 'A whole black seabream maeuntang with firm flesh and deep flavour.' },
   },
-  // ── 254차 — 이름난 조합만 따로 적는다(나머지는 틀 문장) ──
+  // ── 255차 — 이름난 조합만 따로 적는다(나머지는 틀 문장) ──
   stew_clear: {
     black_rockfish: { descKo: '우럭으로 끓인 맑은 탕. 탄탄한 살과 시원한 국물이 그대로 산다.', descEn: 'A clear soup of rockfish — firm flesh and a clean, refreshing broth.' },
     pacific_cod: { descKo: '대구 살이 부드럽게 풀어지는 맑은 탕. 지리 하면 먼저 떠오르는 시원한 맛이다.', descEn: 'A clear soup where tender cod flakes into the broth — the taste most people think of first.' },
@@ -117,7 +117,7 @@ export const DISH_VARIANT_LORE: Record<string, Record<string, { descKo: string; 
 };
 
 /**
- * 어종 변형 설명 틀 (254차) — 전용 로어가 없는 조합의 문장. `sp` = 상에 오르는 이름(`우럭` · `고등어`).
+ * 어종 변형 설명 틀 (255차) — 전용 로어가 없는 조합의 문장. `sp` = 상에 오르는 이름(`우럭` · `고등어`).
  * 156차 자동 문장(「고등어로 만든 생선의 머리와 뼈인 서더리로 …」)이 어색해 레시피마다 한 문장을 둔다.
  */
 export const RECIPE_VARIANT_DESC: Record<string, { ko: (sp: string) => string; en: (sp: string) => string }> = {
@@ -156,7 +156,7 @@ export const RECIPE_VARIANT_DESC: Record<string, { ko: (sp: string) => string; e
 };
 
 /**
- * 요리 이름에 쓰는 어종 이름 (254차) — 도감의 정식 이름과 상에 오르는 이름이 다른 것만.
+ * 요리 이름에 쓰는 어종 이름 (255차) — 도감의 정식 이름과 상에 오르는 이름이 다른 것만.
  * 나머지는 정식 이름에서 괄호 별칭을 뗀 것(`광어(넙치)` → `광어` · `홍합 (섭)` → `홍합` · `한치(창꼴뚜기)` → `한치`).
  */
 export const DISH_SPECIES_NAME: Record<string, { ko: string; en: string }> = {
@@ -165,14 +165,14 @@ export const DISH_SPECIES_NAME: Record<string, { ko: string; en: string }> = {
   pacific_cod: { ko: '대구', en: 'Cod' },             // 「태평양 대구구이」가 아니라 「대구구이」 · 「대구 지리」
 };
 
-/** 틀로 만든 이름이 어색한 조합만 통째로 (254차) — 굴은 「굴탕」보다 「굴국」이다 */
+/** 틀로 만든 이름이 어색한 조합만 통째로 (255차) — 굴은 「굴탕」보다 「굴국」이다 */
 export const DISH_VARIANT_NAME: Record<string, Record<string, { ko: string; en: string }>> = {
   soup_clam: { oyster_gigas: { ko: '굴국', en: 'Oyster Soup' } },
 };
 
 /**
  * 어종 이름이 앞에 붙는 레시피의 이름 틀 — `ko(어종)` / `en(Species)`.
- * 254차 — 지리는 게임의 레시피 이름 띄어쓰기(「지리 (맑은탕)」)를 그대로 잇는다 · 볶음 · 조개탕 추가.
+ * 255차 — 지리는 게임의 레시피 이름 띄어쓰기(「지리 (맑은탕)」)를 그대로 잇는다 · 볶음 · 조개탕 추가.
  */
 export const RECIPE_BASE_NAME: Record<string, { ko: (sp: string) => string; en: (sp: string) => string }> = {
   stew_red: { ko: (sp) => `${sp} 서더리 매운탕`, en: (sp) => `${sp} Fish-frame Maeuntang` },

@@ -34,7 +34,7 @@ import { ensureForageDotTextures, forageSpotTexKey, forageTexKey } from './field
 
 type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
 
-/** 254차 — 요리 도감: 변형 레시피의 주재료 갈래별 목록 부제 · 미발견 힌트 (조개탕에 「다른 어종을」은 틀린 말이다) */
+/** 255차 — 요리 도감: 변형 레시피의 주재료 갈래별 목록 부제 · 미발견 힌트 (조개탕에 「다른 어종을」은 틀린 말이다) */
 const DISH_KIND_SUB: Record<DishVariantKind, string> = {
   fish: '주재료 어종별 변형', squid: '오징어 종류별 변형', eel: '장어 종류별 변형', shellfish: '조개 종류별 변형',
 };
@@ -71,7 +71,7 @@ export class AnglerLogScene extends Phaser.Scene {
   private itemCatFilter: InvCategory = 'gear';
   /** 요리 도감 — 선택한 레시피 (156차) */
   private dishRecipeSel: string = 'stew_red';
-  /** 요리 도감 — 변형 목록 쪽 (254차 — 레시피 여덟이 각각 수십 종으로 갈라져 한 판에 다 못 담는다). 레시피를 바꾸면 0 */
+  /** 요리 도감 — 변형 목록 쪽 (255차 — 레시피 여덟이 각각 수십 종으로 갈라져 한 판에 다 못 담는다). 레시피를 바꾸면 0 */
   private dishPage = 0;
   /** 240차 — 아이템 위키 카드 클릭 상세(가방 [상세보기]와 같은 창) */
   private detailPanel?: ItemDetailPanel;
@@ -678,7 +678,7 @@ export class AnglerLogScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   /**
    * 레시피별 (발견 수 / 후보 수) — 변형 레시피는 주재료 후보, 전복죽은 1건.
-   * 254차 — 변형이 되기 전에 만든 요리(지리 · 구이 …)는 주재료 없이 `generic`으로 기록돼 있다 → 한 항목으로 살려 센다.
+   * 255차 — 변형이 되기 전에 만든 요리(지리 · 구이 …)는 주재료 없이 `generic`으로 기록돼 있다 → 한 항목으로 살려 센다.
    */
   private dishProgressOf(recipeId: string): { found: number; total: number } {
     const generic = DiscoveryStore.isDiscovered('dish', dishDiscoveryId(recipeId, null));
@@ -765,7 +765,7 @@ export class AnglerLogScene extends Phaser.Scene {
     const kind = dishVariantKind(r.id);
     if (isVariantRecipe(r.id)) {
       const base = dishBaseName(r.id, r.nameKo, r.nameEn, '???', '???');
-      // 254차 — 변형이 되기 전에 만든 기록(generic)은 레시피 이름 그대로 한 줄
+      // 255차 — 변형이 되기 전에 만든 기록(generic)은 레시피 이름 그대로 한 줄
       const genericId = dishDiscoveryId(r.id, null);
       if (DiscoveryStore.isDiscovered('dish', genericId)) entries.push({ name: r.nameKo, foot: this.discoveryLine('dish', genericId), found: true });
       for (const sp of dishVariantCandidates(r.id)) {
@@ -784,7 +784,7 @@ export class AnglerLogScene extends Phaser.Scene {
     }
     const colW = Math.floor((paneW - 32 - 12) / 2), eh = 40;
     const maxRows = Math.max(1, Math.floor((paneY + paneH - 12 - cy) / (eh + 6)));
-    // 254차 — 한 판에 못 담으면 쪽으로 넘긴다(◀ n / m ▶ — 머리줄 오른쪽 · 조용한 잘림 금지). 발견한 것이 앞쪽이다
+    // 255차 — 한 판에 못 담으면 쪽으로 넘긴다(◀ n / m ▶ — 머리줄 오른쪽 · 조용한 잘림 금지). 발견한 것이 앞쪽이다
     const perPage = maxRows * 2;
     const maxPage = Math.max(0, Math.ceil(entries.length / perPage) - 1);
     this.dishPage = Math.min(Math.max(0, this.dishPage), maxPage);
@@ -807,7 +807,7 @@ export class AnglerLogScene extends Phaser.Scene {
     });
   }
 
-  /** 254차 — 요리 도감 변형 목록 쪽 넘김 (◀ n / m ▶) — 오른쪽 끝 `right`에 맞춰 머리줄 높이 `cy`에 둔다 */
+  /** 255차 — 요리 도감 변형 목록 쪽 넘김 (◀ n / m ▶) — 오른쪽 끝 `right`에 맞춰 머리줄 높이 `cy`에 둔다 */
   private renderDishPager(right: number, cy: number, maxPage: number): void {
     const font = '"Noto Sans KR", sans-serif';
     const mk = (x: number, label: string, enabled: boolean, onClick: () => void): void => {

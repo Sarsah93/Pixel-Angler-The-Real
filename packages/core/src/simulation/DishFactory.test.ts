@@ -1,6 +1,6 @@
 /**
  * @file DishFactory.test.ts
- * @description 254차 — 나머지 레시피 개체화(확장 스펙 Stage 7) 시험: 주재료별 이름 · 효과 · 도감 후보 · 수식어 · 전복죽 고정.
+ * @description 255차 — 나머지 레시피 개체화(확장 스펙 Stage 7) 시험: 주재료별 이름 · 효과 · 도감 후보 · 수식어 · 전복죽 고정.
  */
 import { describe, expect, it } from 'vitest';
 import { createDishInstance, dishWeightMult, dishEffectScore, type PrimaryIngredientInfo } from './DishFactory.js';
@@ -39,7 +39,7 @@ function make(recipeId: string, speciesId: string | null, freshness01 = 0.65, op
   return createDishInstance(r, dish(recipeId, opts), primary(speciesId, freshness01, opts.weightG ?? 600), 7);
 }
 
-describe('254차 — 전복죽을 뺀 여덟 레시피가 주재료로 갈라진다', () => {
+describe('255차 — 전복죽을 뺀 여덟 레시피가 주재료로 갈라진다', () => {
   it('변형 레시피 = 여덟 · 전복죽은 고정', () => {
     for (const id of ['stew_red', 'stew_red_whole', 'stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'grill_eel']) {
       expect(isVariantRecipe(id)).toBe(true);
@@ -135,7 +135,7 @@ describe('254차 — 전복죽을 뺀 여덟 레시피가 주재료로 갈라진
   });
 });
 
-describe('254차 — 효과는 주재료에 따라 달라진다', () => {
+describe('255차 — 효과는 주재료에 따라 달라진다', () => {
   const eff = (i: DishInstance) => i.result.effects[0];
 
   it('지리 — 비린 향이 적은 우럭이 고등어보다 「맑은 속」이 세고 길다', () => {
@@ -234,7 +234,7 @@ describe('254차 — 효과는 주재료에 따라 달라진다', () => {
   });
 });
 
-describe('254차 — 요리 도감 후보', () => {
+describe('255차 — 요리 도감 후보', () => {
   it('레시피마다 맞는 주재료만 — 오징어 셋 · 장어 셋 · 채집 조개 셋 · 어종은 정본 id', () => {
     expect(new Set(dishVariantCandidates('stirfry_squid'))).toEqual(new Set(['squid', 'cuttlefish', 'swordtip_squid']));
     expect(new Set(dishVariantCandidates('grill_eel'))).toEqual(new Set(['conger_eel', 'hagfish', 'pike_conger']));

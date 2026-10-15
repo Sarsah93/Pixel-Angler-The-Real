@@ -1,12 +1,12 @@
 /**
  * @file DishFactory.ts
- * @description 완성 요리 개체 생성 (156차 — 확장 스펙 §12~§16 · §28 · 254차 Stage 7 나머지 레시피)
+ * @description 완성 요리 개체 생성 (156차 — 확장 스펙 §12~§16 · §28 · 255차 Stage 7 나머지 레시피)
  *
  * 154차 조리 엔진(`CookingSim`)이 낸 `DishData`(간·온도·식감·신선·완성도 원점수) 위에 **결과 생성 계층**을 얹는다:
  *   재료 프로필 × 중량 × 신선도 × 조리 품질 → 이름·설명·회복치·효과·판매가 = `DishInstance`.
  * ⚖ 엔진은 손대지 않는다(§43-5). 시간 감쇠(현재 별점)는 계속 `dishStarsAt(dish)`가 계산한다.
  * ⚖ 곱연산 결과는 상하한으로 묶는다(§13) — 수치는 전부 `TUNING.cook`.
- * ⚖ 254차 — 효과 크기 · 지속은 레시피마다 정한 재료 특성(`TUNING.cook.variantEffect`)이 움직인다:
+ * ⚖ 255차 — 효과 크기 · 지속은 레시피마다 정한 재료 특성(`TUNING.cook.variantEffect`)이 움직인다:
  *   지리 = 비린 향↓ · 신선도↑ / 구이 = 지방 · 촉촉함 / 조림 = 살 식감 / 볶음 = 식감 · 단맛 / 조개탕 = 국물 · 신선도 / 장어 = 지방.
  */
 
@@ -31,7 +31,7 @@ export interface PrimaryIngredientInfo {
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
-/** 중량 배율 — (중량 / 기준)^지수, 상하한. 기준은 레시피마다(1인분 구이 · 볶음은 가볍다 — 254차), 없으면 공통 기준 */
+/** 중량 배율 — (중량 / 기준)^지수, 상하한. 기준은 레시피마다(1인분 구이 · 볶음은 가볍다 — 255차), 없으면 공통 기준 */
 export function dishWeightMult(weightG: number, recipeId?: string): number {
   const t = TUNING.cook.dishEffect;
   if (!(weightG > 0)) return 1;
@@ -141,7 +141,7 @@ export function createDishInstance(recipe: FireRecipeDef, dish: DishData, primar
   const hungerRestore = Math.round(clamp(baseH * weightMult * hungerIng * freshMult * cookMult, baseH * t.minMultiplier, baseH * t.maxMultiplier));
   const hydrationRestore = Math.round(clamp(baseW * weightMult * hydrationIng * freshMult * cookMult, baseW * t.minMultiplier, baseW * t.maxMultiplier));
 
-  // 효과 — 버프 1개. 탄 것·품질 미달은 없다. 크기 · 지속은 주재료 특성이 정한다(254차 — 매운탕은 156차대로 지방감 → 지속)
+  // 효과 — 버프 1개. 탄 것·품질 미달은 없다. 크기 · 지속은 주재료 특성이 정한다(255차 — 매운탕은 156차대로 지방감 → 지속)
   const effects: FoodEffectDef[] = [];
   const eff = recipeEffectOf(recipe.id);
   if (eff && !dish.burnt && quality.overall >= t.effectMinOverall) {
