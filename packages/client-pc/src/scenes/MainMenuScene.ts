@@ -25,6 +25,7 @@ import { showLoadingThen } from '../ui/LoadingOverlay.js';
 import { ensureTitleLogo } from '../ui/TitleLogo.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { playUiClick } from '../audio/Sfx.js';
+import { worldLabelStyle } from '../ui/WorldLabel.js';
 
 type MenuView = 'main' | 'mode' | 'start' | 'slots';
 type SlotMode = 'new' | 'load';
@@ -678,8 +679,7 @@ export class MainMenuScene extends Phaser.Scene {
         GameState.isDirty
           ? '저장되지 않은 진행이 있습니다 — 집 침대에서 저장할 수 있습니다.\n창을 닫아 게임을 종료하세요.'
           : '창을 닫아 게임을 종료하세요.', {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#8faabf',
-          align: 'center', lineSpacing: 6, backgroundColor: '#081422cc', padding: { x: 18, y: 12 },
+          ...worldLabelStyle(16, { align: 'center' }), lineSpacing: 6,   // 257차 — 바탕 상자 없이 흰 테 글자
         }).setOrigin(0.5).setDepth(200);
       this.cameras.main.fadeIn(200, 0, 0, 0);
       this.time.delayedCall(2600, () => { msg.destroy(); this.isTransitioning = false; });

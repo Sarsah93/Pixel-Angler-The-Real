@@ -660,6 +660,9 @@ export {
   npcShopTerms, npcAffinityCap, npcEndingRole, allTalkLines, validateTalks, validateEndings, TALK_AFFINITY_MAX,
   type TalkCtx,
 } from './rules/StoryTalk.js';
+// 257차 — 대사를 문장마다 가르고 쉬는 자리를 돌려준다(대화창 · 혼잣말 · 컷씬 공통)
+export type { PacedText, PaceOptions } from './rules/DialoguePacing.js';
+export { paceSentences, SENTENCE_PAUSE_MS } from './rules/DialoguePacing.js';
 // ── 지형 전이 규칙 — 172차 ──
 export type { TerrainClass, TerrainDef, SeamKind, SeamRule, BreakwaterClass } from './rules/TerrainTransition.js';
 export {

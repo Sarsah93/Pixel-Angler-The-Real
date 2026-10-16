@@ -7,6 +7,7 @@
  *  - 좌→우 타이핑 · 넘치면 앞 줄이 위로 밀린다 · 단락 끝에 흰 역삼각형(▼)
  *  - **한 창에 다 넣지 않는다**(사용자 지시) — 단락을 끊어 한 번에 하나씩 읽힌다
  *  - 아무 데나 클릭 / Enter / Space = 다음. 마지막 단락 뒤에 닫는다.
+ *  - 257차 — 한 문장이 끝나면 줄을 바꾸고(빈 줄) 잠깐 쉬었다가 다음 문장을 찍는다(`paceSentences` — 사용자 지시).
  */
 
 import Phaser from 'phaser';
@@ -18,7 +19,7 @@ import { ensureFacePortrait } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc, voiceOfPlayer } from '@tra/core';
+import { voiceOfNpc, voiceOfPlayer, paceSentences, SENTENCE_PAUSE_MS } from '@tra/core';
 import { VoiceTyper } from '../audio/Voice.js';
 
 const W = 1040;
@@ -44,6 +45,9 @@ export class MonologuePanel extends DraggablePanel {
   private logDone = '';
   private typingPara = '';
   private typed = 0;
+  /** 257차 — 이만큼 찍은 뒤 쉬어 간다(문장 끝) · 남은 쉼(타이머 횟수) */
+  private pauses = new Set<number>();
+  private holdTicks = 0;
   private queue: string[];
   private typeTimer?: Phaser.Time.TimerEvent;
   private logText?: Phaser.GameObjects.Text;
@@ -218,19 +222,24 @@ export class MonologuePanel extends DraggablePanel {
     this.typeTimer?.remove(); this.typeTimer = undefined;
     const next = this.queue.shift();
     if (next === undefined) { this.afterPara(); return; }
-    this.typingPara = next; this.typed = 0;
+    const paced = paceSentences(next);   // 257차 — 문장마다 줄을 바꾸고 쉬어 간다
+    this.typingPara = paced.text; this.typed = 0;
+    this.pauses = new Set(paced.pauses); this.holdTicks = 0;
     this.paintLog();
     this.typeTimer = this.scene.time.addEvent({
       delay: TYPE_MS, loop: true,
       callback: () => {
         if (!this.scene) return;   // 이미 닫힌 창
+        if (this.holdTicks > 0) { this.holdTicks--; return; }   // 257차 — 문장 사이에서 쉰다
         this.typed = Math.min(this.typingPara.length, this.typed + 1);
         this.blips.say(this.typingPara.charAt(this.typed - 1));
         this.paintLog();
         if (this.typed >= this.typingPara.length) {
           this.typeTimer?.remove(); this.typeTimer = undefined;
           this.afterPara();
+          return;
         }
+        if (this.pauses.has(this.typed)) this.holdTicks = Math.round(SENTENCE_PAUSE_MS / TYPE_MS);
       },
     });
   }
@@ -267,8 +276,8 @@ export class MonologuePanel extends DraggablePanel {
  * 한 창에 몰지 않는다(사용자 지시) — 단락을 끊어 한 번에 한 생각씩 지나간다.
  */
 export const OPENING_MONOLOGUE: string[] = [
-  '눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잔 게 몇 해 만인지 세어 보다가 그만뒀다.',
-  '아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.',
+  '……눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잤던 게 몇 해 만인지 세어 보다 그만뒀다.',
+  '이 방은 아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.',
   '책상 위에 가족사진이 엎어져 있었다. 뒤집어 보니 뒤에 연필로 글자 두 개가 눌러 적혀 있다.\n영금정.',
   '아버지 글씨다. 언제 적은 건지, 왜 적었는지는 모르겠다. 물어볼 사람도 이제 없다.',
   '배낭 하나, 아버지가 쓰던 릴대 하나. 세어 보니 가진 게 그게 전부다.',

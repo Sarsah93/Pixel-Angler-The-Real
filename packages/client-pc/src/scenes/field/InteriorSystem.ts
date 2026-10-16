@@ -480,10 +480,8 @@ export class InteriorSystem {
     const h = this.greetOverride ? this.people[0] : this.people.find((x) => x.p.greetKo);
     const msg = this.greetOverride ?? h?.p.greetKo;
     if (!h || !msg) return;
-    const t = this.scene.add.text(h.img.x, h.img.y - h.img.displayHeight - 4, msg, {
-      fontFamily: FONT, fontSize: '12px', color: '#1a2a3a', backgroundColor: '#f4f0e4', padding: { x: 7, y: 4 },
-      wordWrap: { width: 260 }, align: 'center',
-    }).setOrigin(0.5, 1);
+    // 257차 — 머리 위 인사도 바탕 상자 없이 흰 테 글자(R14)
+    const t = this.scene.add.text(h.img.x, h.img.y - h.img.displayHeight - 4, msg, worldLabelStyle(12, { align: 'center', wrap: 260 })).setOrigin(0.5, 1);
     // 방 밖으로 나가지 않게
     const fr = this.frameRect();
     t.setX(Phaser.Math.Clamp(t.x, fr.x + t.width / 2 + 4, fr.right - t.width / 2 - 4));

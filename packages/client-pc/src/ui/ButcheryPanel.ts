@@ -44,6 +44,7 @@ import {
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
 import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
 
 /**
  * 어류 트리 전용 뷰 좁히기 — 이 패널의 어류 경로는 항상 어류 5종 뷰(OrientationState)만 낸다.
@@ -4146,11 +4147,9 @@ export class ButcheryPanel extends DraggablePanel {
     this.flashMsg?.destroy();
     // 세로 생선 하단(≈449)과 F9 편집 박스(+84) **사이**에 배치 — 양쪽 어디와도 겹치지 않게.
     // 고정 도마 rect 기준 (+66 = 466 · 텍스트 상단 ≈455).
-    this.flashMsg = this.scene.add.text(this.boardX + this.boardW / 2, this.boardY + this.boardH + 66, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px',
-      color: good ? '#7fe6b0' : '#ff9a6a', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 8, y: 3 },
-    }).setOrigin(0.5);
+    // 257차 — 바탕 상자 없이 흰 테 글자 · 실패는 짙은 빨강(R14)
+    this.flashMsg = this.scene.add.text(this.boardX + this.boardW / 2, this.boardY + this.boardH + 66, msg,
+      worldLabelStyle(11, { ink: good ? undefined : WORLD_LABEL_WARN })).setOrigin(0.5);
     this.add(this.flashMsg);
     this.applyFix();
   }
@@ -4313,10 +4312,7 @@ export class ButcheryPanel extends DraggablePanel {
     // 레벨업 배너 (강조 — 레벨업 시에만)
     if (lv.leveledUp) {
       const banner = this.scene.add.text(BX + BW / 2, BY + 54,
-        `★ 손질 스킬 레벨업! Lv.${lv.level} ★`, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffd257', fontStyle: 'bold',
-          backgroundColor: '#3a2e0acc', padding: { x: 10, y: 3 },
-        }).setOrigin(0.5);
+        `★ 손질 스킬 레벨업! Lv.${lv.level} ★`, worldLabelStyle(14)).setOrigin(0.5);   // 257차 — 흰 테 글자
       c.add(banner);
       this.scene.tweens.add({ targets: banner, scale: { from: 0.8, to: 1.08 }, yoyo: true, repeat: 2, duration: 220 });
     }

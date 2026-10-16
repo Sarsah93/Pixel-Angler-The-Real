@@ -25,6 +25,7 @@ import {
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { restoreHandCursor } from './DraggablePanel.js';
 import { fieldReserved, columnGap, assertClear } from './ScreenReserve.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
 
 const FONT = '"Noto Sans KR", sans-serif';
 const TRAY_W = 300;
@@ -104,14 +105,9 @@ export class HomeDecorMode {
     this.cellG = scene.add.graphics().setDepth(57.5);   // 들고 있는 가구 그림 위 — 칸 색이 가려지지 않게
     this.ghostArt = scene.add.graphics();
     this.ghostC = scene.add.container(0, 0, [this.ghostArt]).setDepth(57).setAlpha(0.85).setVisible(false);
-    this.reasonText = scene.add.text(0, 0, '', {
-      fontFamily: FONT, fontSize: '12px', color: '#ffd0c8', fontStyle: 'bold',
-      backgroundColor: '#3a0e0ecc', padding: { x: 6, y: 3 },
-    }).setOrigin(0.5, 0).setDepth(59).setVisible(false);
-    this.nameText = scene.add.text(0, 0, '', {
-      fontFamily: FONT, fontSize: '12px', color: '#ffe9b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 6, y: 3 },
-    }).setOrigin(0.5, 1).setDepth(59).setVisible(false);
+    // 257차 — 바탕 상자 없이 흰 테 글자 · 놓을 수 없는 이유는 짙은 빨강
+    this.reasonText = scene.add.text(0, 0, '', worldLabelStyle(12, { ink: WORLD_LABEL_WARN })).setOrigin(0.5, 0).setDepth(59).setVisible(false);
+    this.nameText = scene.add.text(0, 0, '', worldLabelStyle(12)).setOrigin(0.5, 1).setDepth(59).setVisible(false);
 
     // 방 전체 입력 판 — 가이드 방패(더 높은 depth)가 덮으면 그쪽이 입력을 먹는다
     this.roomZone = scene.add.rectangle(ox, oy + FLOOR_TOP * IT, ROOM_W * IT, (ROOM_H - FLOOR_TOP) * IT, 0xffffff, 0.001)

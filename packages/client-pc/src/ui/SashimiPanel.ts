@@ -27,6 +27,7 @@ import { SASHIMI_FILLET_PROFILES, SASHIMI_FILLET_TEX, SashimiFilletFamily } from
 import { butcherFamilyOf } from './PixelButcherFish.js';
 import { canvasContextOf, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -915,10 +916,8 @@ export class SashimiPanel extends DraggablePanel {
 
   private flashToast(msg: string): void {
     this.toast?.destroy();
-    const t = this.scene.add.text(this.fr.x + this.fr.w / 2, this.fr.y - 26, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ff9a8a', fontStyle: 'bold',
-      backgroundColor: '#0a1628ee', padding: { x: 12, y: 6 },
-    }).setOrigin(0.5);
+    // 257차 — 바탕 상자 없이 흰 테 글자(경고 — 짙은 빨강)
+    const t = this.scene.add.text(this.fr.x + this.fr.w / 2, this.fr.y - 26, msg, worldLabelStyle(13, { ink: WORLD_LABEL_WARN })).setOrigin(0.5);
     this.add(t);
     this.toast = t;
     this.scene.time.delayedCall(1600, () => {

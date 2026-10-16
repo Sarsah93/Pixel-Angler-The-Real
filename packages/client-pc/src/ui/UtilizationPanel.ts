@@ -58,6 +58,7 @@ import { TitleStore } from '../store/TitleStore.js';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
 
 /** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
 const BAIT_KEY_KO: Record<string, string> = {
@@ -1295,11 +1296,9 @@ export class UtilizationPanel extends DraggablePanel {
     if (bad) playSfx('deny');
     this.boardToast?.destroy();
     const b = this.cookBoardRect;
-    const t = this.scene.add.text(b.x + b.w / 2, b.y + b.h / 2, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffce9a', fontStyle: 'bold',
-      backgroundColor: '#0a1628ee', padding: { x: 14, y: 10 }, align: 'center',
-      wordWrap: { width: b.w - 40 },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
+    // 257차 — 바탕 상자 없이 흰 테 글자 · 막힘은 짙은 빨강
+    const t = this.scene.add.text(b.x + b.w / 2, b.y + b.h / 2, msg,
+      worldLabelStyle(13, { align: 'center', wrap: b.w - 40, ink: bad ? WORLD_LABEL_WARN : undefined })).setOrigin(0.5).setScrollFactor(0).setDepth(60);
     this.bodyContainer.add(t);
     this.boardToast = t;
     this.scene.time.delayedCall(1800, () => {
@@ -2347,10 +2346,7 @@ export class UtilizationPanel extends DraggablePanel {
     this.chumDragItem = item;
     const ghost = this.scene.add.container(p.x, p.y).setDepth(this.depth + 20).setScrollFactor(0);
     ghost.add(createItemIcon(this.scene, 0, 0, item, 44));
-    const lbl = this.scene.add.text(0, 32, item.name, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 6, y: 2 },
-    }).setOrigin(0.5);
+    const lbl = this.scene.add.text(0, 32, item.name, worldLabelStyle(10)).setOrigin(0.5);   // 257차 — 흰 테 글자
     ghost.add(lbl);
     ghost.iterate((c: Phaser.GameObjects.GameObject) => {
       (c as unknown as { setScrollFactor?: (v: number) => void }).setScrollFactor?.(0);
@@ -2361,10 +2357,7 @@ export class UtilizationPanel extends DraggablePanel {
   /** 229차 — 밑밥 통 위에 잠깐 뜨는 한 줄(언 크릴 · 상한 재료) */
   private chumNotice(msg: string): void {
     const { x: bx, y: by, w: bw } = UtilizationPanel.CHUM_BOX;
-    const t = this.scene.add.text(bx + bw / 2, by - 6, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffb0a4', fontStyle: 'bold',
-      backgroundColor: '#1a0b0bdd', padding: { x: 6, y: 3 },
-    }).setOrigin(0.5, 1);
+    const t = this.scene.add.text(bx + bw / 2, by - 6, msg, worldLabelStyle(12, { ink: WORLD_LABEL_WARN })).setOrigin(0.5, 1);   // 257차 — 흰 테 글자
     this.add(t);
     this.applyFix();
     this.scene.tweens.add({ targets: t, alpha: 0, delay: 1600, duration: 400, onComplete: () => t.destroy() });

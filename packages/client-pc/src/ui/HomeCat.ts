@@ -19,6 +19,7 @@ import Phaser from 'phaser';
 import { IT, ROOM_W, ROOM_H, FLOOR_TOP } from '../data/HomeFurniture.js';
 import { HomeStore } from '../store/HomeStore.js';
 import { playSfx, type SfxName } from '../audio/SfxBank.js';
+import { worldLabelStyle } from './WorldLabel.js';
 
 type CatPose = 'side0' | 'side1' | 'eat' | 'front' | 'back' | 'sit' | 'sleep';
 type CatDir = 'down' | 'up' | 'left' | 'right';
@@ -352,10 +353,7 @@ export class HomeCat {
   private say(text: string): void {
     this.bubbleAt = this.scene.time.now;
     this.bubble?.destroy();
-    const b = this.scene.add.text(this.x, this.y - TEX_H - 2, text, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2414', fontStyle: 'bold',
-      backgroundColor: '#fff4dccc', padding: { x: 5, y: 2 },
-    }).setOrigin(0.5, 1).setDepth(31);
+    const b = this.scene.add.text(this.x, this.y - TEX_H - 2, text, worldLabelStyle(11)).setOrigin(0.5, 1)   // 257차 — 흰 테 글자.setDepth(31);
     this.bubble = b;
     this.scene.time.delayedCall(1800, () => { if (this.bubble === b) { b.destroy(); this.bubble = undefined; } });
   }

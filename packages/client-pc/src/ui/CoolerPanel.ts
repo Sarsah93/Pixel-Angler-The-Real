@@ -32,6 +32,7 @@ import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { clampTextWidth } from './TextFit.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { playRelease } from '../audio/Sfx.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
 
 const CELL = 96;
 const GAP = 10;
@@ -118,10 +119,8 @@ export class CoolerPanel extends DraggablePanel {
     this.add(this.warnText);
 
     // 비활성 버튼 호버 툴팁 (버튼 행 위)
-    this.tooltipText = scene.add.text(PANEL_W / 2, 0, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffce9a', fontStyle: 'bold',
-      backgroundColor: '#2a1410ee', padding: { x: 8, y: 4 },
-    }).setOrigin(0.5).setVisible(false);
+    // 257차 — 바탕 상자 없이 흰 테 글자(경고 — 짙은 빨강)
+    this.tooltipText = scene.add.text(PANEL_W / 2, 0, '', worldLabelStyle(11, { ink: WORLD_LABEL_WARN })).setOrigin(0.5).setVisible(false);
 
     // 하단 상태 메시지 (이송 실패 등)
     this.statusText = scene.add.text(PANEL_W / 2, PANEL_H - 16, '', {

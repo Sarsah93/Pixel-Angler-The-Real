@@ -82,6 +82,7 @@ import {
   markPrologue, syncPrologue, prologueKeyAllowed, prologueRunning, prologueStepDone, PROLOGUE_PHOTO_ID,
 } from '../store/Prologue.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { worldLabelStyle } from '../ui/WorldLabel.js';
 
 /**
  * 방 가로 위치 — 화면 가운데에서 12px 오른쪽(198차). 가운데 그대로면 방 액자 왼쪽(328)이 필드 HUD 상태 창
@@ -136,8 +137,8 @@ const LOOK_TEXT: Record<string, string> = {
 
 /** 188차 — 프롤로그 기상 혼잣말 (새 캐릭터가 침대 옆에서 눈을 뜬다) */
 const WAKE_MONOLOGUE: string[] = [
-  '눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잔 게 몇 해 만인지 세어 보다가 그만뒀다.',
-  '아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.',
+  '……눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잤던 게 몇 해 만인지 세어 보다 그만뒀다.',
+  '이 방은 아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.',
   '침대 발치에 아버지의 낚시 상자가 그대로 놓여 있다.',
   '속초행 막차는 밤에 한 대뿐이라고 했다. 떠나기 전에 챙길 것부터 챙기자.',
 ];
@@ -366,10 +367,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.events.on('inventory-changed', onInv);
     this.events.once('shutdown', () => this.events.off('inventory-changed', onInv));
 
-    this.hintText = this.add.text(this.px, this.py - 40, '', {
-      fontFamily: FONT, fontSize: '11px', color: '#ffe9b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628cc', padding: { x: 6, y: 2 },
-    }).setOrigin(0.5, 1).setDepth(30).setVisible(false);
+    // 257차 — 바탕 상자 없이 검은 글자 + 흰 테(R14 — 필드와 같은 한 벌)
+    this.hintText = this.add.text(this.px, this.py - 40, '', worldLabelStyle(11)).setOrigin(0.5, 1).setDepth(30).setVisible(false);
 
     // 186차 — 구 상단 문구(`집 (Tier 0 원룸) — 침대에서 저장 · 문으로 나가기`)는 개발 메모였다(§8-9).
     //   안내는 첫 입장 혼잣말과 가구 앞 [F] 힌트가 맡는다.
@@ -1903,10 +1902,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   private flash(msg: string): void {
     this.flashMsg?.destroy();
     // 198차 — 방 아래 바깥(구 y = 방 밑변 + 26)은 필드 HUD 퀵슬롯 띠 윗변을 덮었다 → 방 안 바닥 아래쪽(현관 위)
-    this.flashMsg = this.add.text(OX + (ROOM_W * IT) / 2, OY + ROOM_H * IT - 44, msg, {
-      fontFamily: FONT, fontSize: '13px', color: '#7fe6b0', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 10, y: 5 }, align: 'center',
-    }).setOrigin(0.5).setDepth(120);
+    // 257차 — 「슬롯 1에 저장했다」 같은 알림도 바탕 상자 없이 흰 테 글자(사용자 지시 · 상점 실내 `InteriorSystem.flash`와 같은 모양)
+    this.flashMsg = this.add.text(OX + (ROOM_W * IT) / 2, OY + ROOM_H * IT - 44, msg, worldLabelStyle(13, { align: 'center' })).setOrigin(0.5).setDepth(120);
     const mine = this.flashMsg;
     this.time.delayedCall(2600, () => { if (this.flashMsg === mine) { mine.destroy(); this.flashMsg = undefined; } });
   }

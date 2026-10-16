@@ -4297,10 +4297,7 @@ export class RegionFieldScene extends Phaser.Scene {
       sbT.setColor('#ffffff');
     });
 
-    this.promptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 96, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#ffe28a', fontStyle: 'bold',
-      backgroundColor: '#0a1628cc', padding: { x: 10, y: 5 },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(100).setVisible(false);
+    this.promptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 96, '', worldLabelStyle(13)).setOrigin(0.5)   // 257차.setScrollFactor(0).setDepth(100).setVisible(false);
   }
 
   /** 237차 — 떠 있는 안내(같은 순간에 여럿 뜨면 위로 쌓는다 — 한 자리에 겹쳐 그려지던 것) */
@@ -5401,10 +5398,7 @@ export class RegionFieldScene extends Phaser.Scene {
         actor = { spr, walking: false };
       }
       const label = this.add.text(x, actor ? y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP : y - 43,
-        def.actor ? def.actor.nameKo : def.labelKo, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: def.actor ? '9px' : '8px', color: def.actor ? '#ffe9a0' : '#f5e3a3',
-          backgroundColor: def.actor ? '#0a1628cc' : '#07131dcc', padding: { x: 3, y: def.actor ? 1 : 2 },
-        }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.002);
+        def.actor ? def.actor.nameKo : def.labelKo, worldLabelStyle(10)).setOrigin(0.5, 1)   // 257차 — R14에서 빠졌던 이름표.setDepth(20 + y * 0.001 + 0.002);
       this.storyTriggers.push({ def, x, y, mark, label, actor });
       mark.setVisible(false); label.setVisible(false); actor?.spr.image.setVisible(false);
     }
@@ -5415,10 +5409,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const ring = this.add.graphics().setDepth(19 + y * 0.001);
       ring.lineStyle(2, 0x79d7e8, 0.9).strokeRect(x - 22, y - 16, 44, 32);
       ring.lineStyle(1, 0x79d7e8, 0.35).strokeRect(x - 28, y - 22, 56, 44);
-      const label = this.add.text(x, y - 28, '얼음 하역 위치', {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#b9f2ff',
-        backgroundColor: '#07131dcc', padding: { x: 3, y: 2 },
-      }).setOrigin(0.5, 1).setDepth(19 + y * 0.001 + 0.001);
+      const label = this.add.text(x, y - 28, '얼음 하역 위치', worldLabelStyle(10)).setOrigin(0.5, 1)   // 257차 — R14에서 빠졌던 꼬리표.setDepth(19 + y * 0.001 + 0.001);
       this.iceDropMarker = this.add.container(0, 0, [ring, label]);
       this.iceDropMarker.setVisible(false);
     }

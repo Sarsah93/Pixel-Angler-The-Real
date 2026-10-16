@@ -105,6 +105,7 @@ import { loadSettings } from './SettingsScene.js';
 import { fadeOutThen } from './SceneFade.js';
 import { t } from '../i18n/I18n.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from '../ui/WorldLabel.js';
 
 export interface FirstPersonFishingInit {
   /** 착수 지점 바닥 수심 Z_max (m) */
@@ -1000,11 +1001,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     //   y 148 자리가 패턴 경고(104~136) · 슬랙 경고(142~) 와 포개졌다(실캡처).
     if (this.fpState === 'fighting') return;
     const msg = isRip ? `${label} 진입 — 입질 확률 급상승!` : `${label} 진입 — 채비 정렬 불가, 릴링으로 회수하세요`;
-    const t = this.add.text(GAME_WIDTH / 2, 148, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
-      color: isRip ? '#7fe6b0' : '#ffab54', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 14, y: 6 },
-    }).setOrigin(0.5).setDepth(96).setAlpha(0);
+    // 257차 — 바탕 상자 없이 흰 테 글자 · 회수해야 하는 쪽은 짙은 빨강
+    const t = this.add.text(GAME_WIDTH / 2, 148, msg, worldLabelStyle(14, { ink: isRip ? undefined : WORLD_LABEL_WARN })).setOrigin(0.5).setDepth(96).setAlpha(0);
     this.tweens.add({ targets: t, alpha: 1, duration: 200 });
     this.tweens.add({ targets: t, alpha: 0, delay: 2400, duration: 400, onComplete: () => t.destroy() });
   }
@@ -1673,24 +1671,16 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       backgroundColor: '#0a1628cc', padding: { x: 12, y: 5 },
     }).setOrigin(0.5, 0).setDepth(90);
 
-    this.responseText = this.add.text(GAME_WIDTH / 2, 96, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#4af2a1', fontStyle: 'bold',
-      backgroundColor: '#0a1628cc', padding: { x: 8, y: 3 },
-    }).setOrigin(0.5).setDepth(105).setVisible(false);
-    this.slackWarnText = this.add.text(GAME_WIDTH / 2, 112, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffb26b', fontStyle: 'bold',
-      backgroundColor: '#0a1628cc', padding: { x: 8, y: 3 },
-    }).setOrigin(0.5, 0).setDepth(105).setVisible(false);
+    // 257차 — 떠오르는 안내는 바탕 상자 없이 흰 테 글자(R14)
+    this.responseText = this.add.text(GAME_WIDTH / 2, 96, '', worldLabelStyle(13)).setOrigin(0.5).setDepth(105).setVisible(false);
+    this.slackWarnText = this.add.text(GAME_WIDTH / 2, 112, '', worldLabelStyle(12, { ink: WORLD_LABEL_WARN })).setOrigin(0.5, 0).setDepth(105).setVisible(false);
     // 끌어오기 방향 안내 — 물고기 위에 큰 화살표 (좌하단 수평뷰가 안 보인다는 피드백 116차 ①)
     this.dragPromptText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
       // 132차 — 34px는 화면 한가운데를 덮어 채비·물고기를 가렸다(실캡처). 안내는 작게.
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#ffe28a', fontStyle: 'bold',
       stroke: '#0a1628', strokeThickness: 5,
     }).setOrigin(0.5).setDepth(112).setVisible(false);
-    this.patternText = this.add.text(GAME_WIDTH / 2, 120, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '17px', color: '#ff6a5a', fontStyle: 'bold',
-      backgroundColor: '#0a1628dd', padding: { x: 14, y: 7 },
-    }).setOrigin(0.5).setDepth(90).setVisible(false);
+    this.patternText = this.add.text(GAME_WIDTH / 2, 120, '', worldLabelStyle(17, { ink: WORLD_LABEL_WARN })).setOrigin(0.5).setDepth(90).setVisible(false);
 
     this.probText = this.add.text(20, 96, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#9fd0e4', lineSpacing: 5,
@@ -2122,11 +2112,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       ? `\n\n[장비] ${faults.join(' · ')}`
       : '\n\n탑다운 뷰로 돌아갑니다 — 다시 조준해 캐스팅하세요.';
     this.stateText.setText(msg);
-    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${msg}${tail}`, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#aee8ff', fontStyle: 'bold',
-      align: 'center', lineSpacing: 6,
-      backgroundColor: '#0a1628ee', padding: { x: 20, y: 14 },
-    }).setOrigin(0.5).setDepth(120);
+    // 257차 — 결과 띠도 바탕 상자 없이 흰 테 글자
+    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${msg}${tail}`, { ...worldLabelStyle(14, { align: 'center' }), lineSpacing: 6 }).setOrigin(0.5).setDepth(120);
     this.tweens.add({ targets: banner, alpha: 0.9, duration: 150 });
 
     this.registry.set('fp_exit_msg', msg);
@@ -2926,10 +2913,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 평면 판(수평뷰) 바로 위에 한 줄 — 칩 하나 = 거치대 하나(번호 · 초릿대 그림 · 상태 색) */
   private buildParkChips(): void {
     this.parkChipsC = this.add.container(PLAN_X, PLAN_Y - 8 - PARK_CHIP_H).setDepth(40);
-    this.parkToast = this.add.text(PLAN_X, PLAN_Y - 8 - PARK_CHIP_H - 6, '', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe9a0',
-      backgroundColor: '#0a1628cc', padding: { x: 6, y: 3 }, wordWrap: { width: PLAN_W - 12 },
-    }).setOrigin(0, 1).setDepth(40).setVisible(false);
+    this.parkToast = this.add.text(PLAN_X, PLAN_Y - 8 - PARK_CHIP_H - 6, '', worldLabelStyle(12, { wrap: PLAN_W - 12 })).setOrigin(0, 1)   // 257차.setDepth(40).setVisible(false);
     this.renderParkChips();
   }
 
@@ -3473,11 +3457,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.uiG.clear();
 
     this.stateText.setText(title);
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${title}\n\n${body}`, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffce9a', fontStyle: 'bold',
-      align: 'center', lineSpacing: 6,
-      backgroundColor: '#0a1628ee', padding: { x: 22, y: 16 },
-    }).setOrigin(0.5).setDepth(120);
+    // 257차 — 결과 띠도 바탕 상자 없이 흰 테 글자
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60, `${title}\n\n${body}`, { ...worldLabelStyle(14, { align: 'center' }), lineSpacing: 6 }).setOrigin(0.5).setDepth(120);
 
     this.registry.set('fp_exit_msg', title);
     this.time.delayedCall(2000, () => this.exitToField());

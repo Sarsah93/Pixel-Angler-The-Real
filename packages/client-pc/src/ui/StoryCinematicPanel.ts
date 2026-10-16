@@ -19,7 +19,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '../PhaserConfig.js';
 import { paintHudPanel } from './HudPanelStyle.js';
-import { voiceOfNpc, voiceOfPlayer } from '@tra/core';
+import { voiceOfNpc, voiceOfPlayer, paceSentences, SENTENCE_PAUSE_MS } from '@tra/core';
 import { VoiceTyper } from '../audio/Voice.js';
 import { GameState } from '../store/GameState.js';
 import { getLocale, t } from '../i18n/I18n.js';
@@ -104,6 +104,8 @@ const BUBBLE_MAX_W = 250;
 const TYPE_MS = 18;
 /** 다 찍힌 뒤 최소한으로 머무는 시간 */
 const SAY_MIN_HOLD_MS = 450;
+/** 대사 첫 줄 높이 — 세 줄이면 6px 올리고 줄 간격을 좁혀 띠(아래 끝 GAME_HEIGHT − 12) 안에 든다(257차) */
+const BODY_Y = GAME_HEIGHT - BAR_BOTTOM + 8 + 32;
 
 export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private readonly cfg: StoryCinematicConfig;
@@ -133,6 +135,9 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
   private sayFull = '';
   private sayTyped = 0;
   private sayHoldMs = 0;
+  /** 257차 — 이만큼 찍은 뒤 쉬어 간다(문장 끝) · 남은 쉼(타이머 횟수) */
+  private sayPauses = new Set<number>();
+  private holdTicks = 0;
   private typeTimer?: Phaser.Time.TimerEvent;
   private caret?: Phaser.GameObjects.Text;
 
@@ -170,7 +175,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.speakerText = scene.add.text(40, boxY + 4, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#ffe9a0', fontStyle: 'bold',
     });
-    this.bodyText = scene.add.text(40, boxY + 32, '', {
+    this.bodyText = scene.add.text(40, BODY_Y, '', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '20px', color: '#f2f8fd',
       wordWrap: { width: GAME_WIDTH - 108 }, lineSpacing: 4,
     });
@@ -273,16 +278,23 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
    */
   private startTyping(text: string, holdMs: number): void {
     this.typeTimer?.remove(); this.typeTimer = undefined;
-    this.sayFull = text; this.sayTyped = 0; this.sayHoldMs = holdMs;
+    // 257차 — 문장마다 줄을 바꾸고 쉬어 간다. 하단 띠는 세 줄까지라 빈 줄 없이 · 넘치면 짧은 이웃끼리 한 줄로
+    const paced = paceSentences(text, { sep: '\n', maxLines: 3 });
+    this.sayFull = paced.text; this.sayTyped = 0; this.sayHoldMs = holdMs;
+    this.sayPauses = new Set(paced.pauses); this.holdTicks = 0;
+    const rows = this.bodyText.getWrappedText(paced.text).length;
+    this.bodyText.setLineSpacing(rows >= 3 ? 1 : 4).setY(rows >= 3 ? BODY_Y - 6 : BODY_Y);
     this.caret?.setVisible(false);
     this.bodyText.setText('');
     this.typeTimer = this.scene.time.addEvent({
       delay: TYPE_MS, loop: true,
       callback: () => {
+        if (this.holdTicks > 0) { this.holdTicks--; return; }   // 257차 — 문장 사이에서 쉰다
         this.sayTyped = Math.min(this.sayFull.length, this.sayTyped + 1);
         this.voice.say(this.sayFull.charAt(this.sayTyped - 1));
         this.bodyText.setText(this.sayFull.slice(0, this.sayTyped));
-        if (this.sayTyped >= this.sayFull.length) this.finishTyping();
+        if (this.sayTyped >= this.sayFull.length) { this.finishTyping(); return; }
+        if (this.sayPauses.has(this.sayTyped)) this.holdTicks = Math.round(SENTENCE_PAUSE_MS / TYPE_MS);
       },
     });
   }
@@ -293,7 +305,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
     this.bodyText.setText(this.sayFull);
     this.sayTyped = this.sayFull.length;
     this.caret?.setVisible(true);
-    const typedMs = this.sayFull.length * TYPE_MS;
+    const typedMs = this.sayFull.length * TYPE_MS + this.sayPauses.size * SENTENCE_PAUSE_MS;   // 257차 — 쉰 시간도 읽은 시간
     this.after(Math.max(SAY_MIN_HOLD_MS, this.sayHoldMs - typedMs));
   }
 

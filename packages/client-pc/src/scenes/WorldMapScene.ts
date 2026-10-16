@@ -34,6 +34,7 @@ import {
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { worldLabelStyle, WORLD_LABEL_WARN } from '../ui/WorldLabel.js';
 
 // ── 뷰 상태 머신 ────────────────────────────────────────
 // region    : 전국 지도 + 지역 핀/리스트 선택
@@ -743,11 +744,7 @@ export class WorldMapScene extends Phaser.Scene {
       .filter((n: FishingSpotNode) => isRegionUnlocked(n.regionDatabaseId))
       .map((n: FishingSpotNode) => n.name);
     const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56,
-      `${regionName} 은(는) 아직 준비중입니다. 입장 가능: ${unlocked.join(' · ')}`, {
-        fontFamily: '"Noto Sans KR", sans-serif',
-        fontSize: '12px', color: '#ffce54',
-        backgroundColor: '#050f1ecc', padding: { x: 12, y: 6 }, fontStyle: 'bold',
-      }).setOrigin(0.5).setDepth(400);
+      `${regionName} 은(는) 아직 준비중입니다. 입장 가능: ${unlocked.join(' · ')}`, worldLabelStyle(12)).setOrigin(0.5)   // 257차 — 흰 테 글자.setDepth(400);
     this.time.delayedCall(2600, () => alertTxt.destroy());
   }
 
@@ -1219,10 +1216,7 @@ export class WorldMapScene extends Phaser.Scene {
   private fareAlertText?: Phaser.GameObjects.Text;
   private showFareAlert(msg: string): void {
     this.fareAlertText?.destroy();
-    this.fareAlertText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 90, msg, {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ff9a6a', fontStyle: 'bold',
-      backgroundColor: '#0a1628ee', padding: { x: 14, y: 8 },
-    }).setOrigin(0.5).setDepth(300);
+    this.fareAlertText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 90, msg, worldLabelStyle(14, { ink: WORLD_LABEL_WARN })).setOrigin(0.5)   // 257차 — 흰 테 글자.setDepth(300);
     this.time.delayedCall(2600, () => { this.fareAlertText?.destroy(); this.fareAlertText = undefined; });
   }
 

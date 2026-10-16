@@ -45,7 +45,7 @@ import { applyScreenFixed } from './DraggablePanel.js';
 import { t } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc } from '@tra/core';
+import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS } from '@tra/core';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
 import { GuideTour, maybeStartTour } from './GuideTour.js';
@@ -132,6 +132,9 @@ export class DialoguePanel extends DraggablePanel {
   private typingPara = '';
   /** 그 단락에서 찍은 글자 수 */
   private typed = 0;
+  /** 257차 — 이만큼 찍은 뒤 쉬어 간다(문장 끝) · 남은 쉼(타이머 횟수) */
+  private pauses = new Set<number>();
+  private holdTicks = 0;
   /** 아직 안 찍은 단락들 */
   private queue: string[] = [];
   private typeTimer?: Phaser.Time.TimerEvent;
@@ -442,12 +445,16 @@ export class DialoguePanel extends DraggablePanel {
     if (next === undefined) { this.typingPara = ''; this.typed = 0; this.paintLog(); this.afterPara(); return; }
     // 187차 — 찍기 **전에** 번역한다. 부분 문자열은 사전에 없어서, 영어 설정에서 한국어가 한 글자씩
     //   찍히다가 끝에서야 영어로 바뀌었다(따옴표로 감싼 대사는 끝까지 한국어였다 — I18n 인용부호 규칙).
-    this.typingPara = t(next);
+    // 257차 — 번역한 **뒤에** 문장마다 줄을 바꾸고(빈 줄) 문장 끝에서 쉬어 간다(사용자 「실제로 말할 때 저렇게 빠르게 말하지 않으니까」)
+    const paced = paceSentences(t(next));
+    this.typingPara = paced.text;
     this.typed = 0;
+    this.pauses = new Set(paced.pauses); this.holdTicks = 0;
     this.paintLog();
     this.typeTimer = this.scene.time.addEvent({
       delay: TYPE_MS, loop: true,
       callback: () => {
+        if (this.holdTicks > 0) { this.holdTicks--; return; }   // 257차 — 문장 사이에서 쉰다
         const from = this.typed;
         this.typed = Math.min(this.typingPara.length, this.typed + CHARS_PER_TICK);
         for (let i = from; i < this.typed; i++) this.voice.say(this.typingPara.charAt(i));
@@ -455,6 +462,10 @@ export class DialoguePanel extends DraggablePanel {
         if (this.typed >= this.typingPara.length) {
           this.typeTimer?.remove(); this.typeTimer = undefined;
           this.afterPara();
+          return;
+        }
+        for (let i = from + 1; i <= this.typed; i++) {
+          if (this.pauses.has(i)) { this.holdTicks = Math.round(SENTENCE_PAUSE_MS / TYPE_MS); break; }
         }
       },
     });

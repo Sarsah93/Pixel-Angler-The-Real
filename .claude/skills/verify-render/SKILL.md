@@ -88,6 +88,9 @@ const { chromium } = resolvePlaywright();
 - **대화창은 단락이 여럿이면 `▼`에서 멈춘다**(167차) — 선택지 행(`panel.rows`)이 뜰 때까지 `panel.advance()`를 반복 호출한다.
   컷씬은 `cinematicActive`가 풀릴 때까지 폴링하되, 헤드리스는 fps 13·delta 16.7 고정이라 **벽시계로 약 4배** 걸린다(43초 각본 = 실 3분).
   퀘스트 상태는 `globalThis.__STORY`(dev 전용 — `devActivateQuest`·`devActivateAction`·`devSetActionStep`).
+- **타이핑 · 쉼은 타이머 콜백을 손으로 돌려 잰다**(257차) — `p.typeTimer.callback.call(p.typeTimer.callbackScope)`를 반복 호출하며
+  찍은 글자 수(`typed` · 컷씬 `sayTyped`)가 멈춘 자리와 횟수를 센다(혼잣말 20틱 · 대화 · 컷씬 25틱). 헤드리스 rAF를 기다리지 않는다.
+  하네스 = scratchpad `r257.cjs`(혼잣말 · 저장 알림 · N24 대화 · 컷씬 띠). 혼잣말 창이 둘 열려 있으면 캡처가 가려진다 — `MonologuePanel` 자식을 먼저 닫는다.
 - **헤드리스 rAF는 프레임 간격이 300ms를 넘는다**(149·155차) — 시간 누적으로 도는 갱신(퀘스트 화살표 `updateQuestGuide` 400ms 등)은
   `waitForTimeout`으로 기다리지 말고 **씬 메서드를 직접 호출**(`s.updateQuestGuide(500)`). 2.5초를 기다려도 null이 나온다.
 - **`update()`가 매 프레임 `nearWater`를 다시 계산한다**(155차) — 캐스팅 게이트를 하네스로 두드릴 때는 `s.nearWater = true`를

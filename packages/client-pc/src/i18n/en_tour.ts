@@ -16,10 +16,10 @@ export const EN_TOUR: Record<string, string> = {
     'Stand in front of furniture and [F] appears above your head. Go to the sofa and press [F] to look at it.',
   '침대 발치에 아버지의 낚시 상자가 있다. 상자 앞에서 [F]로 열어 보자.':
     "Your father's tackle box sits at the foot of the bed. Stand in front of it and press [F] to open it.",
-  '눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잔 게 몇 해 만인지 세어 보다가 그만뒀다.':
-    'I open my eyes. The pattern on the ceiling looks strange. I start counting how many years it has been since I slept in this house, then give up.',
-  '아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.':
-    "This was my father's room. I haven't set foot in it since the funeral, but now there's nowhere else to go.",
+  '……눈을 떴다. 천장 무늬가 낯설다. 이 집에서 잤던 게 몇 해 만인지 세어 보다 그만뒀다.':
+    '…I open my eyes. The pattern on the ceiling looks strange. I start counting how many years it has been since I last slept in this house, then give up.',
+  '이 방은 아버지가 쓰던 방이다. 장례를 치르고는 한 번도 들어오지 않았는데, 이제 갈 데가 여기밖에 없다.':
+    "This room was my father's. I haven't set foot in it since the funeral, but now there's nowhere else to go.",
   '침대 발치에 아버지의 낚시 상자가 그대로 놓여 있다.': "My father's tackle box is still sitting at the foot of the bed.",
   '속초행 막차는 밤에 한 대뿐이라고 했다. 떠나기 전에 챙길 것부터 챙기자.':
     "They said there's only one last bus to Sokcho, late at night. Before I go, I'll pack what I need.",

@@ -34,6 +34,7 @@ import { ensurePixelIcon } from './PixelIcon.js';
 import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture } from './CanvasTextureGuard.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { getLocale } from '../i18n/I18n.js';
+import { worldLabelStyle } from './WorldLabel.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -496,10 +497,7 @@ export class SkillTreePanel extends DraggablePanel {
   /** 시너지 해금 배너 — 3초 뒤 사라진다 */
   private flashUnlock(msg: string): void {
     this.unlockBanner?.destroy();
-    const t = this.scene.add.text(CONTENT_X + CONTENT_W / 2, this.contentTop + 4, msg, {
-      fontFamily: FONT, fontSize: '13px', color: '#0b1620', fontStyle: 'bold',
-      backgroundColor: '#b49ae8', padding: { x: 10, y: 3 },
-    }).setOrigin(0.5, 0);
+    const t = this.scene.add.text(CONTENT_X + CONTENT_W / 2, this.contentTop + 4, msg, worldLabelStyle(13)).setOrigin(0.5, 0);   // 257차 — 흰 테 글자
     clampTextWidth(t, CONTENT_W - this.pointsRect().w * 2 - 40);
     this.unlockBanner = t;
     this.add(t);

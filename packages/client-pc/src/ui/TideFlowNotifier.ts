@@ -16,6 +16,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH } from '../PhaserConfig.js';
 import { TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, tideFlowStateAt, type TideFlowPhase } from '@tra/core';
 import { GameState } from '../store/GameState.js';
+import { worldLabelStyle } from './WorldLabel.js';
 
 const POLL_MS = 5000;
 const WARN_MIN = 10;
@@ -39,11 +40,8 @@ function channelLog(scene: Phaser.Scene, line: string): void {
 
 /** 필드가 아닌 씬 — 화면 위 가운데에 잠깐 */
 function toast(scene: Phaser.Scene, line: string, y: number): void {
-  const t = scene.add.text(GAME_WIDTH / 2, y, line, {
-    fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#9fe8ff', fontStyle: 'bold',
-    backgroundColor: '#0a1628e0', padding: { x: 12, y: 5 }, align: 'center',
-    wordWrap: { width: Math.min(640, GAME_WIDTH - 80) },
-  }).setOrigin(0.5, 0).setDepth(1170).setScrollFactor(0).setAlpha(0);
+  // 257차 — 바탕 상자 없이 흰 테 글자(R14)
+  const t = scene.add.text(GAME_WIDTH / 2, y, line, worldLabelStyle(13, { align: 'center', wrap: Math.min(640, GAME_WIDTH - 80) })).setOrigin(0.5, 0).setDepth(1170).setScrollFactor(0).setAlpha(0);
   scene.tweens.add({ targets: t, alpha: 1, duration: 220 });
   scene.tweens.add({ targets: t, alpha: 0, delay: 4200, duration: 400, onComplete: () => t.destroy() });
 }
