@@ -200,14 +200,17 @@ export class InteriorSystem {
     return new Phaser.Geom.Rectangle(b.x - 4, b.y - 4, b.width + 8, b.height + 8);
   }
 
-  /** 216차 — 집 주인 머리 위 의뢰 표시(필드 `npcMarkerIcon`과 같은 키 · null = 지움) */
+  /**
+   * 216차 — 집 주인 머리 위 의뢰 표시(필드 `npcMarkerIcon`과 같은 키 · null = 지움).
+   * 258차 — 몸 오른쪽(어깨 높이)에 두면 인물 그림에 겹쳤다(사용자 지적) → 머리 위로. 방 안에는 이름표가 없어 그 자리다.
+   */
   setMark(npcId: string, key: string | null): void {
     const h = this.people.find((x) => x.p.npcId === npcId);
     if (!h) return;
     h.mark?.destroy();
     h.mark = undefined;
     if (!key) return;
-    const img = addPixelIcon(this.scene, key, h.img.x + 14, h.img.y - h.img.displayHeight * 0.55, 16);
+    const img = addPixelIcon(this.scene, key, h.img.x, h.img.y - h.img.displayHeight - 6, 16);
     if (!img) return;
     img.setScrollFactor(0).setDepth(D_OBJ + h.img.y * 0.001 + 0.0009);
     this.objs.push(img);

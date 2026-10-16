@@ -21,7 +21,7 @@ import {
   speciesStandardWeightG, SASHIMI_PLATE_SPECS, type SashimiPlateMeta, type SashimiKnifeTier,
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
-  newRigTree, setRigValue, dropMissingItems, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy,
+  newRigTree, setRigValue, dropMissingItems, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy, migrateRigTree,
   type RigTreeState, type RigValue, type RigSummary, type RigPartKind, type RigSlotKind, type RigItemView,
   FLASHER_TARGET_SPECIES,
 } from '@tra/core';
@@ -1267,7 +1267,8 @@ class InventoryStoreManager {
       if (item.tool === 'rod') rodId = item.id;
       if (item.subCategory === '릴') reelId = item.id;
     }
-    this._tree = { nodes: g.tree.nodes.map((n) => ({ ...n })) };
+    // 258차 — 옛 세이브의 거치대 낚싯대는 옛 문법 트리일 수 있다
+    this._tree = migrateRigTree({ nodes: g.tree.nodes.map((n) => ({ ...n })) }, this.rigView);
     this.syncTreeWithItems();
     if (rodId) this.equipHand(rodId, 'R');
     if (reelId) this.equipItem(reelId);
@@ -1514,6 +1515,8 @@ class InventoryStoreManager {
     // 256차 — 채비 칸이 가리키는 옛 id도 정본으로(안 그러면 아래 sync가 「없는 아이템」으로 보고 칸을 비운다)
     if (s.rigTree?.nodes?.length) {
       this._tree = { nodes: s.rigTree.nodes.map((n) => (n.itemId ? { ...n, itemId: idRemap.get(n.itemId) ?? canonicalItemId(n.itemId) } : { ...n })) };
+      // 258차 — 옛 문법(목줄 → 목줄 끝 → 좁쌀봉돌 · 바늘)이면 지금 문법(목줄 → 목줄 중간 · 목줄 끝 → 바늘)으로 다시 세운다
+      this._tree = migrateRigTree(this._tree, this.rigView);
     } else {
       this._tree = treeFromLegacy({
         ...this._rig, hasFloatStop: this.hasFloatStop, lure: this._lure, jigHead: this._jigHead,
@@ -2559,6 +2562,18 @@ class InventoryStoreManager {
   }
 
   /**
+   * 258차 — 주 봉돌(`rig.sinker`) 말고 더 단 봉돌 — 원줄 유동 봉돌과 목줄 중간 봉돌을 함께 달았을 때.
+   * 평면 소켓(`rig`)에는 봉돌 자리가 하나라 무게 합산(채비 제원 · 1인칭 침강 · 과부하)이 이것을 따로 더한다.
+   */
+  rigExtraSinkerIds(): string[] {
+    const s = this.rigSummary();
+    const out = [...s.sinkerIds];
+    const i = s.sinkerId ? out.indexOf(s.sinkerId) : -1;
+    if (i >= 0) out.splice(i, 1);
+    return out;
+  }
+
+  /**
    * 채비 총중량 (g) — 편대 자체 + 봉돌 + 다단 바늘/미끼 합산.
    * ROD_CAPACITY_G 초과 시 과부하 (U창 가이드 표시용).
    */
@@ -2576,6 +2591,11 @@ class InventoryStoreManager {
       else if (item.subCategory === '바늘/훅') w += 0.5;
       else if (isBaitItem(item)) w += 1.2;
     });
+    // 258차 — 봉돌이 둘이면(원줄 유동 봉돌 + 목줄 중간 봉돌) 주 봉돌 말고 나머지도 더한다
+    for (const id of this.rigExtraSinkerIds()) {
+      const item = this.find(id);
+      if (item) w += item.sinkerWeightG ?? (item.name.includes('봉돌') ? 3.2 : 0);
+    }
     const sp = this.spreader;
     if (sp.kind !== 'NONE') {
       w += sp.kind === 'T_BAR' ? 5 : sp.kind === 'CARD_RIG' ? 4 + sp.hookBaits.length * 0.5 : 6;
@@ -2726,10 +2746,10 @@ class InventoryStoreManager {
       if (step === 'hook') slots.push('hook');
       else if (step === 'bait') slots.push('bait');
       else if (step === 'leader') slots.push('leader');
-      else if (step === 'sinker') slots.push('split_shot', 'sliding_sinker', 'bundle_kit', 'tbar_sinker', 'tairaba_head');
+      else if (step === 'sinker') slots.push('split_shot', 'leader_sinker', 'sliding_sinker', 'bundle_kit', 'tbar_sinker', 'tairaba_head');
       else if (step === 'float') slots.push('float');
       else if (step === 'subFloat') slots.push('sub_float');
-      else if (step === 'swivel') slots.push('swivel', 'connector');
+      else if (step === 'swivel') slots.push('swivel', 'connector', 'end_swivel');
       else if (step === 'mainLine') slots.push('main_line');
     }
     if (slots.length) this.clearTreeSlots(slots);

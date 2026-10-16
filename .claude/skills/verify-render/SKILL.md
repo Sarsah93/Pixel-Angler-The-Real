@@ -192,3 +192,11 @@ const { chromium } = resolvePlaywright();
 - "Target crashed"가 **포인터 이동만으로** 나면 코드 문제(중첩 컨테이너 + GeometryMask + 인터랙티브 자식 — ui-panel 스킬)다.
   `git stash`로 이등분해 원인 파일을 좁힌다.
 - **순간이동 뒤 같은 프레임에 대화창을 열지 말 것**(167차) — `update()`가 `uiBlocked`면 스프라이트 동기화 전에 반환해 플레이어 그림이 옛 자리에 남는다. `s.updateSpriteAndShadow()` 직접 호출 + 수백 ms 대기 후 `openDialogue`.
+- **충돌 · 걷기는 물리를 손으로 한 틱씩 돌려 잰다**(258차) — 헤드리스 rAF로는 몇 초를 기다려도 몇 걸음 못 간다.
+  `sc.chunks.preloadAround(x, y)`(청크 몸체 생성) → `pb.body.reset(x, y)` → `for (…) { pb.body.setVelocity(0, -150); sc.physics.world.step(1 / 60); }`
+  → `world.postUpdate()` → `pb.setPosition(pb.body.center.x, pb.body.center.y)`(안 하면 그림이 옛 자리) → `sc.updateSpriteAndShadow()`.
+  판정은 몸 윗변(`pb.body.top`)과 벽 그림 바닥선 · 그리기 순서는 `20 + 몸 중심 y × 0.001` 대 건물 `20 + bottomY × 0.001`.
+- **가이드 단계는 점프해서 본다**(258차) — `const t = globalThis.__TOUR.active; t.go(t.opts.steps.findIndex((s) => /문장/.test(s.text)))` →
+  상황(모달 등)을 만든 뒤 `for (…) t.tick(16)`로 타이핑 · 자리 잡기를 돌리고 `t.bubble.getBounds()`를 잰다. 끝나면 `t.dismiss()`.
+  상점은 `sc.openShop(kind, branch)`(문 앞에 갈 필요 없음) · 팔 물건은 `(await import('/src/store/Prologue.ts')).prologueSquid()` 틀에서
+  `qty` · `slot`을 뺀 뒤 `__INV.addItem(t, 2)` · 상점 품목 표는 `SHOP_CATALOG[*].sells`(`items` 아님) · 수량 창은 `shop.askSellQty(item, cb)`.

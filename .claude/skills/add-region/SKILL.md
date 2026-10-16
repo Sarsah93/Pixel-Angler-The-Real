@@ -25,8 +25,12 @@ tools/regions_config.py 에 지역 bbox 등록 (17개 기등록 — 신규는 bb
   캐스팅 = 기존 물가 규칙(b/s 전용 아님) · POI 거래 매핑 범위 · worldX 금지.
 - 비주얼은 `SeamlessChunks.bakeChunk`(Kenney 지면 베이스 + 절차 전이) — 지역 추가 시 별도 작업 불필요.
   **도로 그림은 `roads.json` 벡터 밴드**(보도→연석→아스팔트 — 타일 `r`/`w`는 걷기·스폰 판정 전용) ·
-  차선·중앙선은 교차 정점에서 조각 인셋(축 정렬은 타일 중앙 스냅). 건물 = **2.5D**(하단 2줄 충돌 · Kenney
-  키트 지붕+벽 RenderTexture y-sort), 주행 차량 = `TrafficSystem`(모든 정점 노드 그래프 · 맵 안 도로만).
+  차선·중앙선은 교차 정점에서 조각 인셋(축 정렬은 타일 중앙 스냅). 건물 = **OSM 윤곽 + 2.5D 벽 + 지붕**(`BuildingArt` · 239차),
+  주행 차량 = `TrafficSystem`(모든 정점 노드 그래프 · 맵 안 도로만).
+- **건물 충돌 = 그림 윤곽 4px 띠**(258차 · `unitBodyRects`) — 윤곽이 덮은 '#' 칸에는 칸 몸체가 없다(옛 「하단 2줄 충돌」 아님).
+  걷기 칸 · 가게 문 자리는 몸(14px)이 서는 칸만(`SeamlessChunks.tileFitsBody`). 윤곽 둘이 맞붙은 1칸 틈은 막힌다.
+  새 지역 · 윤곽 갱신 뒤 `python3.13 -I tools/check_building_reach.py <데이터 폴더> <씨앗 x> <씨앗 y>`로
+  「옛 규칙에서 닿던 문 · 인물 자리가 새 규칙에서 안 닿는가」를 본다(속초 = 잃은 문 1 · 문 이동 24).
 - 프롭은 `PROP_DEFS` 한 줄 = 충돌·편집기 격자·겹침 판정까지 자동(`propFootprint`). 타일셋 크롭 추가는
   `_survey/*_zoom.png` 격자 라벨로 좌표를 확정한 뒤 `extract_tileset_assets.py`에 bbox로 넣는다.
 - **수동 손질은 dev 맵 편집기(F7)** — 지형/프롭/지붕 페인트 + **도로 벡터 툴**(도구 탭 — 정점 이동/삽입/

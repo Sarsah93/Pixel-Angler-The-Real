@@ -9,6 +9,7 @@ export const EN_RIG: Record<string, string> = {
   // ── 칸 라벨 (core RIG_SLOTS / RIG_PART_LABEL) ──
   '원줄 부속': 'Line add-on', '면사매듭': 'Stopper knot', '구슬': 'Bead', '부력찌': 'Float', '쿠션고무': 'Cushion', '수중찌': 'Sub-float',
   '유동 봉돌': 'Sliding sinker', '매듭': 'Knot', '도래': 'Swivel', '다음': 'Next', '목줄': 'Leader', '목줄 끝': 'Leader end',
+  '목줄 중간': 'Mid-leader',   // 258차 — 목줄 중간 봉돌 자리
   '연결 도래': 'Connector', '좁쌀봉돌': 'Split shot', '바늘': 'Hook', '미끼': 'Bait', '간편 채비': 'Ready rig', '묶음추': 'Bundle sinker',
   '헤드': 'Head', '스커트': 'Skirt', '넥타이': 'Necktie', '단수': 'Tiers', '봉돌': 'Sinker', '루어': 'Lure', '지그헤드': 'Jig head', '웜': 'Worm',
   '고정': 'Fixed', '스냅 도래': 'Snap swivel', '묶음추 채비': 'Bundle-sinker rig', '타이라바 헤드': 'Tairaba head',
@@ -21,7 +22,7 @@ export const EN_RIG: Record<string, string> = {
 
   // ── 갈래 선택지 ──
   '없음 (바로 매듭)': 'None (straight to the knot)', '찌 세트': 'Float set', '직결 매듭': 'Direct knot',
-  '도래·스냅': 'Swivel / snap', '간편 채비 직결': 'Ready rig, tied direct',
+  '스냅 · 간편 채비': 'Snap · ready rig', '간편 채비 직결': 'Ready rig, tied direct',
   '원줄에 아무것도 꿰지 않는다 — 구멍치기·루어·간편 채비.': 'Nothing threaded on the main line — hole fishing, lures, ready rigs.',
   '면사매듭 → 구슬 → 부력찌 → 쿠션 → 수중찌 순으로 꿴다.': 'Thread stopper knot → bead → float → cushion → sub-float.',
   '고리·구멍 봉돌을 원줄에 꿰는 원투 채비.': 'Surf rig with a ring or hole sinker sliding on the main line.',
@@ -29,9 +30,11 @@ export const EN_RIG: Record<string, string> = {
   '도래로 잇는다 — 꼬임이 적고 채비 교체가 쉽다.': 'Join with a swivel — less twist, easy rig swaps.',
   '도래 반대편에 목줄을 묶는다.': 'Tie a leader to the other eye of the swivel.',
   '묶음추·편대·루어처럼 완제품을 바로 건다.': 'Clip on a ready-made rig — bundle sinker, spreader, lure.',
-  '목줄 끝에 바늘을 묶는다 (좁쌀봉돌은 선택).': 'Tie a hook to the leader end (split shot optional).',
-  '목줄 끝에 핀도래·스냅을 달아 세트를 건다.': 'Add a pin swivel or snap at the leader end and hang a ready rig.',
-  '세트의 어시스트 라인·아이를 목줄에 바로 묶는다.': 'Tie the rig’s assist line or eye straight to the leader.',
+  // 258차 — 목줄 끝 갈래(직결 매듭 · 도래 · 스냅 · 간편 채비)
+  '목줄 끝에 바늘을 바로 묶는다.': 'Tie the hook straight to the leader end.',
+  '목줄 끝에 도래를 달고 그 아래에 바늘을 잇는다 — 꼬임이 적다.': 'Put a swivel on the leader end and hang the hook below it — less twist.',
+  '목줄 끝에 핀도래 · 스냅을 달아 묶음추 · 편대 · 루어 세트를 건다.': 'Add a pin swivel or snap at the leader end and clip on a bundle sinker, spreader or lure.',
+  '세트의 어시스트 라인 · 아이를 목줄에 바로 묶는다.': 'Tie the rig’s assist line or eye straight to the leader.',
   '전갱이 (3단)': 'Horse mackerel (3 tiers)', '고등어 (5단)': 'Mackerel (5 tiers)', '열기 (7단)': 'Rockfish (7 tiers)',
 
   // ── 세트 ──
@@ -109,10 +112,10 @@ export const EN_RIG: Record<string, string> = {
   '원줄 한 칸에서 시작': 'Start from the main line',
   'U → 채비하기 탭 — ① 추천 한 줄 ② 채비 체인(원줄부터 오른쪽으로 열린다) ③ 채비 제원 ④ 채비 고정 버튼':
     'U → Tackles tab — ① recommendation line ② rig chain (opens rightward from the main line) ③ rig specs ④ lock buttons',
-  '채비는 「원줄」 한 칸에서 시작합니다. 칸을 누르면 가방에서 그 자리에 맞는 부품만 보이고, 하나를 달면 오른쪽에 다음 칸이 열립니다. 원줄 → 원줄 부속(없음 · 찌 세트 · 유동 봉돌) → 매듭(직결 · 도래) → 목줄 또는 간편 채비 → 바늘 → 미끼 순으로 엮습니다.':
-    'A rig starts from a single Main line slot. Click a slot to see only the parts in your bag that fit it; add one and the next slot opens to the right. Order: main line → line add-on (none · float set · sliding sinker) → knot (direct · swivel) → leader or ready rig → hook → bait.',
-  '찌낚시: 원줄 부속을 「찌 세트」로 고르면 면사매듭 · 구슬 · 부력찌 · 쿠션고무 · 수중찌 칸이 열립니다(부력찌만 필수). 원투: 「유동 봉돌」에 고리 · 구멍 봉돌을 꿰거나, 도래에 묶음추 채비를 겁니다. 구멍치기: 부속 없이 직결 → 목줄 → 바늘(좁쌀봉돌은 선택)로 끝냅니다 — 부력찌는 필수가 아닙니다.':
-    'Float fishing: choose Float set as the line add-on to open stopper knot · bead · float · cushion · sub-float slots (only the float is required). Surf: slide a ring or hole sinker on via Sliding sinker, or clip a bundle-sinker rig to a swivel. Hole fishing: no add-on, direct knot → leader → hook (split shot optional) — a float is not required.',
+  '채비는 「원줄」 한 칸에서 시작합니다. 칸을 누르면 가방에서 그 자리에 맞는 부품만 보이고, 하나를 달면 오른쪽에 다음 칸이 열립니다. 원줄 → 원줄 부속(없음 · 찌 세트 · 유동 봉돌) → 매듭(직결 · 도래) → 목줄 → 목줄 중간(봉돌 · 선택) → 목줄 끝(직결 매듭 · 도래 · 스냅 · 간편 채비) → 바늘 → 미끼 순으로 엮습니다. 도래 뒤에서 바로 간편 채비를 걸 수도 있습니다.':
+    'Every rig starts from a single Main line slot. Click a slot and only the parts from your bag that fit there appear; attach one and the next slot opens to the right. Build it in this order: main line → line add-on (none · float set · sliding sinker) → knot (direct · swivel) → leader → mid-leader (sinker · optional) → leader end (direct knot · swivel · snap · ready rig) → hook → bait. You can also clip a ready rig straight onto the swivel.',
+  '찌낚시: 원줄 부속을 「찌 세트」로 고르면 면사매듭 · 구슬 · 부력찌 · 쿠션고무 · 수중찌 칸이 열립니다(부력찌만 필수). 원투: 「유동 봉돌」에 고리 · 구멍 봉돌을 꿰거나, 도래에 묶음추 채비를 겁니다. 구멍치기: 부속 없이 직결 → 목줄 → 목줄 끝(직결 매듭) → 바늘로 끝냅니다 — 부력찌는 필수가 아닙니다. 목줄 중간에는 좁쌀봉돌이나 고리 · 구멍 봉돌(일반 봉돌)을 달 수 있고, 그 아래 목줄 끝은 직결 매듭으로 바늘을 바로 묶거나 도래를 달아 바늘을 잇습니다.':
+    'Float fishing: choose Float set as the line add-on to open stopper knot · bead · float · cushion · sub-float slots (only the float is required). Surf: slide a ring or hole sinker on via Sliding sinker, or clip a bundle-sinker rig to a swivel. Hole fishing: no add-on, direct knot → leader → leader end (direct knot) → hook — a float is not required. The mid-leader slot takes a split shot or a ring/hole sinker (a regular sinker); below it, the leader end either ties the hook on directly or hangs it from a swivel.',
   '원줄과 목줄은 「직결 매듭」으로 바로 잇거나 「도래」로 잇습니다. 핀(스냅) 도래는 묶음추 · 타이라바 같은 완제품 세트를 걸고 빼기 쉽고, 바렐 도래는 꼬임을 줄입니다.':
     'Join main line and leader with a Direct knot or a Swivel. A pin (snap) swivel makes clipping ready rigs like bundle sinkers and tairaba on and off easy; a barrel swivel reduces twist.',
   '앞 칸을 바꾸면 그 뒤에 달렸던 것은 전부 풀립니다(원줄을 빼면 처음부터). 비어 있는 주황 테두리 칸이 지금 채워야 할 자리입니다. 금색 「추천」은 그 자리에 맞는 부품이 가방에 있다는 뜻입니다.':
@@ -127,8 +130,8 @@ export const EN_RIG: Record<string, string> = {
   '루어는 간편 채비의 한 갈래': 'Lures are one kind of ready rig',
   '루어 체인 — ① 원줄 → 직결 → 목줄 ② 목줄 끝 「간편 채비 직결」 ③ 하드 / 소프트 베이트 ④ 루어 · 지그헤드 칸 ⑤ 채비 제원':
     'Lure chain — ① main line → direct knot → leader ② "ready rig, tied direct" at the leader end ③ hard / soft bait ④ lure · jig head slots ⑤ rig specs',
-  '원줄 → 매듭 → 목줄까지 엮은 뒤 목줄 끝에서 「간편 채비 직결」(또는 스냅 도래 → 간편 채비)을 고르고 「하드 베이트」나 「소프트 베이트」를 고릅니다. 소프트 베이트는 지그헤드 칸과 웜 칸이 함께 열리고, 하드 베이트는 루어 한 칸으로 끝납니다. 미끼 칸은 열리지 않습니다.':
-    'Build main line → knot → leader, then at the leader end choose "ready rig, tied direct" (or snap swivel → ready rig) and pick Hard bait or Soft bait. Soft bait opens a jig-head slot and a worm slot together; hard bait ends with a single lure slot. No bait slot opens.',
+  '원줄 → 매듭 → 목줄까지 엮은 뒤 목줄 끝에서 「간편 채비 직결」(또는 「스냅 · 간편 채비」로 스냅 도래를 달고)을 고르고 「하드 베이트」나 「소프트 베이트」를 고릅니다. 소프트 베이트는 지그헤드 칸과 웜 칸이 함께 열리고, 하드 베이트는 루어 한 칸으로 끝납니다. 미끼 칸은 열리지 않습니다.':
+    'Build main line → knot → leader, then at the leader end choose "ready rig, tied direct" (or "snap · ready rig" with a snap swivel) and pick Hard bait or Soft bait. Soft bait opens a jig-head slot and a worm slot together; hard bait ends with a single lure slot. No bait slot opens.',
   '원줄 · 목줄 · 바늘 · 찌 · 봉돌 · 도래 · 미끼는 수산물 직판장에서 사서 활용(U) → 채비하기에서 원줄부터 차례로 엮습니다.':
     'buy main line · leader · hooks · floats · sinkers · swivels · bait at the fish market and build them up from the main line in Utilize (U) → Tackles.',
 };

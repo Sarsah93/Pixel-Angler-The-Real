@@ -1101,7 +1101,9 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private isWalkable(c: number, r: number): boolean {
     if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return false;
-    return !this.blocked[r][c];
+    if (this.blocked[r][c]) return false;
+    // 258차 — 건물 그림 윤곽이 거의 맞붙은 틈(몸이 들어가지 않는 칸)은 걷는 칸이 아니다(스폰 · 인물 자리 · 길찾기)
+    return !this.chunks || this.chunks.tileFitsBody(c, r);
   }
 
   // ═══════════════════════════════════════════════════
@@ -1808,7 +1810,9 @@ export class RegionFieldScene extends Phaser.Scene {
     const toWorld = (c: number, r: number): { x: number; y: number } =>
       ({ x: c * TR + TR / 2, y: r * TR + TR / 2 });
     if (poi.door) return toWorld(poi.door[0], poi.door[1]);
-    if (this.terrainAt(poi.tx, poi.ty) !== 'building') return toWorld(poi.tx, poi.ty);
+    // 258차 — 건물 그림 윤곽이 맞붙은 틈(몸이 들어가지 않는 칸)에는 문을 두지 않는다 — 윤곽대로 막으면 [F]가 닿지 않는다
+    const fits = (c: number, r: number): boolean => !this.chunks || this.chunks.tileFitsBody(c, r);
+    if (this.terrainAt(poi.tx, poi.ty) !== 'building' && fits(poi.tx, poi.ty)) return toWorld(poi.tx, poi.ty);
     // BFS ≤ 12타일 — 보도('sidewalk')/맨땅('land')을 우선. **차도는 최후 폴백**(101차 후속 4 —
     //  "도로 위에 횟집": 문 앞 상점 오브젝트가 차도를 침범하던 원인이 도로 우선 선택이었다)
     let anyWalkable: { c: number; r: number } | null = null;
@@ -1819,8 +1823,8 @@ export class RegionFieldScene extends Phaser.Scene {
       const [c, r, d] = queue.shift()!;
       if (d > 12) break;
       const t = this.terrainAt(c, r);
-      if ((t === 'sidewalk' || t === 'land' || t === 'grass') && this.terrainAt(c, r + 1) !== 'road') return toWorld(c, r);
-      if (!anyWalkable && t !== undefined && t !== 'water' && t !== 'building') {
+      if ((t === 'sidewalk' || t === 'land' || t === 'grass') && this.terrainAt(c, r + 1) !== 'road' && fits(c, r)) return toWorld(c, r);
+      if (!anyWalkable && t !== undefined && t !== 'water' && t !== 'building' && fits(c, r)) {
         anyWalkable = { c, r };
       }
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
@@ -5334,7 +5338,7 @@ export class RegionFieldScene extends Phaser.Scene {
     label: Phaser.GameObjects.Text;
     mark?: Phaser.GameObjects.Image;
     markKey?: string;
-    /** 마커의 x 오프셋(좌/우) — 인물이 걸으면 마커도 따라가야 한다(166차) */
+    /** 마커 쪽(부호 — 양수 = 이름표 오른쪽 · 음수 = 왼쪽 · 258차). 집에 있을 때는 문 위 x 오프셋. 걸으면 따라간다(166차) */
     markDx?: number;
     /** 166차 — 자유 행동(3x3 배회·낚시·좌판·순찰). 이미지는 `ai.image === actor` */
     ai?: StoryNpcActor;
@@ -5850,7 +5854,7 @@ export class RegionFieldScene extends Phaser.Scene {
       n.x = d.x; n.y = d.y;
       // 집 이름표는 띄우지 않는다 — 누구 집인지는 문 앞 [F] 안내가 말한다(공방처럼 문이 붙어 있으면 이름표끼리 겹친다)
       n.label.setVisible(false);
-      n.mark?.setPosition(n.x + (n.markDx ?? 14), n.y - TR - 18).setDepth(20 + n.y * 0.001 + 0.0008);
+      this.placeNpcMark(n);
       n.doorLight?.setVisible(true);
       this.refreshQuestMarkers(true);
     };
@@ -5884,6 +5888,7 @@ export class RegionFieldScene extends Phaser.Scene {
     n.x = n.ai?.x ?? n.door.x; n.y = n.ai?.y ?? n.door.y;
     n.label.setVisible(true).setAlpha(1).setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP);
     n.actor.setVisible(true).setAlpha(1);
+    this.placeNpcMark(n);
   }
 
   /**
@@ -5948,7 +5953,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (n.x === n.ai.x && n.y === n.ai.y) continue;
       n.x = n.ai.x; n.y = n.ai.y;
       n.label.setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP).setDepth(20 + n.y * 0.001 + 0.0007);
-      n.mark?.setPosition(n.x + (n.markDx ?? 14), n.y - 26).setDepth(20 + n.y * 0.001 + 0.0008);
+      this.placeNpcMark(n);
     }
   }
 
@@ -6007,6 +6012,20 @@ export class RegionFieldScene extends Phaser.Scene {
     return null;
   }
 
+  /**
+   * 258차 — 의뢰 표시(노란 물음표 · 빨간 느낌표)를 **이름표 옆**에 둔다. 이름 반폭 + 틈 3px + 표시 반폭 8px만큼 비켜
+   * 이름표와 같은 높이에 선다 — 인물 그림에 겹치지 않는다. 쪽은 `markDx` 부호(오른쪽이 붐비면 왼쪽).
+   * 집에 있어 이름표를 감춘 사람은 문 위에 둔다.
+   */
+  private placeNpcMark(n: (typeof this.storyNpcs)[number]): void {
+    if (!n.mark) return;
+    const depth = 20 + n.y * 0.001 + 0.0008;
+    if (n.atHome) { n.mark.setPosition(n.x + (n.markDx ?? 14), n.y - TR - 18).setDepth(depth); return; }
+    const lb = n.label;
+    const side = (n.markDx ?? 14) < 0 ? -1 : 1;
+    n.mark.setPosition(Math.round(lb.x + side * (lb.width / 2 + 3 + 8)), Math.round(lb.y - lb.height / 2)).setDepth(depth);
+  }
+
   /** 필드 NPC 머리 위 마커 + 미니맵 마커 갱신 (스토리 상태가 바뀔 때만 실제 교체) */
   private refreshQuestMarkers(force = false): void {
     // 일반 장소(정류장·터미널 등)는 설정을 켰을 때만 — 기본은 거래처·인물만 찍는다
@@ -6020,13 +6039,14 @@ export class RegionFieldScene extends Phaser.Scene {
         n.mark = undefined;
         n.markKey = key ?? undefined;
         if (key) {
-          // 몸통(y-34 ~ y-20) 우상단 — 머리(y-52~y-34)와 그 위 이름표를 피한 자리.
-          // 오른쪽에 여유가 없으면(맵 끝·옆 NPC) 좌상단으로 (사용자 지시 "여유 공간에 따라")
-          const crowdedRight = n.x + 30 > this.cols * TR
-            || this.storyNpcs.some((o) => o !== n && Math.abs(o.y - n.y) < 24 && o.x > n.x && o.x - n.x < 40);
+          // 258차 — 이름표 옆(사용자 「'정옥선'이라는 이름 왼쪽이나 오른쪽에」 — 구: 몸통 우상단이라 인물 그림에 겹쳤다).
+          // 오른쪽에 여유가 없으면(맵 끝 · 옆 사람 이름표) 왼쪽으로 (사용자 지시 "여유 공간에 따라")
+          const reach = n.label.width / 2 + 22;
+          const crowdedRight = n.x + reach + 8 > this.cols * TR
+            || this.storyNpcs.some((o) => o !== n && Math.abs(o.y - n.y) < 24 && o.x > n.x && o.x - o.label.width / 2 - (n.x + reach) < 4);
           n.markDx = crowdedRight ? -14 : 14;
           const img = addPixelIcon(this, key, n.x + n.markDx, n.y - 26, 16);
-          if (img) { img.setDepth(20 + n.y * 0.001 + 0.0008); n.mark = img; }
+          if (img) { n.mark = img; this.placeNpcMark(n); }
         }
         // 216차 — 그 사람 집 안이면 방 안 머리 위 표시도 같이 바꾼다
         if (this.interiorAt?.npcId === n.def.npcId) this.interior?.setMark(n.def.npcId, key);
@@ -6711,8 +6731,10 @@ export class RegionFieldScene extends Phaser.Scene {
     g.fillStyle(0x0a1628, 0.9); g.fillTriangle(tipX + ux, tipY + uy, bx + nx * 7, by + ny * 7, bx - nx * 7, by - ny * 7);
     g.fillStyle(color, 1); g.fillTriangle(tipX, tipY, bx + nx * 5.5, by + ny * 5.5, bx - nx * 5.5, by - ny * 5.5);
     const meters = Math.round(d * this.metersPerPx());
-    lbl.setText(`${t.label} · ${meters}m`).setPosition(px + ux * (radius + 24), py + uy * (radius + 24)).setVisible(true);
-    this.nudgeGuideLabel(lbl, nx, ny);
+    // 258차 — 목표가 코앞이면 거리 글이 목표 머리맡에 떨어져 그 사람 이름표 옆에 「정옥선 · 3m」가 붙었다(이름이 두 번 보였다) → 감춘다
+    const near = d < radius + 24 + 48;
+    lbl.setText(`${t.label} · ${meters}m`).setPosition(px + ux * (radius + 24), py + uy * (radius + 24)).setVisible(!near);
+    if (!near) this.nudgeGuideLabel(lbl, nx, ny);
   }
 
   /**

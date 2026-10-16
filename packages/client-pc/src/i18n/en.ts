@@ -755,10 +755,7 @@ const DOW_EN: Record<string, string> = {
 export const EN_RULES: Rule[] = [
   // ── 254차 이어지는 대화 · 결말 · 인물 가게 ──
   [/^나 — ([\s\S]+)$/, (m, tr) => `Me — ${tr(m[1])}`],
-  [/^이 말로 — ([\s\S]+)$/, (m, tr) => `What you said — ${tr(m[1])}`],
-  [/^이 답으로 — ([\s\S]+)$/, (m, tr) => `This answer — ${tr(m[1])}`],
   [/^받은 것 — ([\s\S]+)$/, (m, tr) => `Received — ${tr(m[1])}`],
-  [/^고르지 않은 답 — ([\s\S]+)$/, (m, tr) => `Answers not chosen — ${tr(m[1])}`],
   [/^결말 — 「(.+)」$/, (m, tr) => `Ending — "${tr(m[1])}"`],
   [/^\[이야기\] 결말 — 「(.+)」$/, (m, tr) => `[Story] Ending — "${tr(m[1])}"`],
   [/^(.+) 우호도 ([+-][\d.]+)$/, (m, tr) => `${tr(m[1])} affinity ${m[2]}`],

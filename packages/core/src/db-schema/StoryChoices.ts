@@ -8,7 +8,8 @@
  *    (친밀 전용) 청탁** 4종으로 보상 종류가 갈린다.
  *  - **141차**: 내용 기반 선택지는 전부 `StoryNarrative.ts`(186편)에 있다. 우선순위 = 나레이션 > 정의 > 표준.
  *    구 `STORY_CHOICE_OVERRIDES`(13편)는 나레이션으로 이관돼 비어 있다(호환용 export만 유지).
- *  - 보상은 **고르기 전에는 보이지 않는다**(대화창) — 응답 문장이 드러내고, 고르지 않은 답은 `???`.
+ *  - 보상은 **고르기 전에는 보이지 않는다**(대화창) — 응답 문장이 드러낸다. 258차부터 답의 효과 요약 · 고르지 않은 답은
+ *    게임 화면에 찍지 않는다(사용자 「위키로만 확인할 수 있도록」) — 답마다 효과는 위키(조행록)가 `describeOutcomeKo`로 보여 준다.
  *    `payMult`는 표준 품삯 배율이라 `choicesFor`가 coins로 환산해 돌려준다.
  *  - 발주 정책(`once`/`event`)인 퀘는 발주 선택지에 `decline: true` 답이 하나 있어야 한다 — 없으면 표준 거절 답을 붙인다.
  *  - 메인 제약(`validateStoryChoices`): xpMult·skillPoints·proficiencyLevelUp 금지 · items는 **귀속만** · |affinity| ≤ 0.1.

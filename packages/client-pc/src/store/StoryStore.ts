@@ -668,32 +668,34 @@ class StoryStoreManager {
   chosen(questId: string): { offer?: string; complete?: string } | undefined { return this.choices[questId]; }
 
   /** 선택지 결과 적용 — 전부 가산. 반환 = 사용자에게 보여줄 한 줄 요약 */
+  /**
+   * 고른 답의 결과를 적용하고 **받은 것**(눈에 보이는 몫 — 돈 · 물건 · 스킬 포인트 · 숙련도)만 줄로 돌려준다.
+   * 258차 — 우호도 · 항구 신뢰 · 바다 평판 같은 숨은 값과 「이 답으로 — …」 요약은 대화창에 찍지 않는다
+   *  (사용자 「인게임에서 유저에게 보여주는 내용이 아니어야 해 … 위키로만」). 낸 돈은 획득 알림(`onCoins`)이 알린다.
+   */
   private applyOutcome(q: StoryQuestDef, o: ChoiceOutcome): string[] {
-    const h = this.host; const out: string[] = [];
-    if (o.coins) { h?.addCoins(o.coins); out.push(`${o.coins > 0 ? '+' : ''}${o.coins.toLocaleString()}원`); this.onCoins?.(o.coins, q.titleKo); }
+    const h = this.host; const got: string[] = [];
+    if (o.coins) { h?.addCoins(o.coins); if (o.coins > 0) got.push(`${o.coins.toLocaleString()}원`); this.onCoins?.(o.coins, q.titleKo); }
     for (const it of o.items ?? []) {
       const ok = h?.giveItem(it.id, it.qty, it.bound) ?? false;   // 234차 — 귀속 표지도 싣는다
       // 188차 — 내부 id(`inv_rod_budget`) 대신 아이템 이름 (R1)
-      const name = h?.itemName(it.id) ?? it.id;
-      out.push(ok ? `${name} ×${it.qty}` : `${name} (인벤토리 공간 부족 — 미지급)`);
+      const name = h?.itemName(it.id) ?? '물건';
+      if (ok) got.push(`${name}${it.qty > 1 ? ` ×${it.qty}` : ''}${it.bound ? ' (귀속)' : ''}`);
+      else this.onNotify?.(`[할 일] 보상 ${name} — 인벤토리 공간이 부족해 받지 못했습니다`);
     }
-    if (o.skillPoints) { h?.addSkillPoints(o.skillPoints); out.push(`스킬 포인트 +${o.skillPoints}`); }
+    if (o.skillPoints) { h?.addSkillPoints(o.skillPoints); got.push(`스킬 포인트 +${o.skillPoints}`); }
     if (o.proficiency) {
-      const got = h?.grantProfXp({ skillId: o.proficiency.skillId, category: o.proficiency.category }, o.proficiency.xp) ?? [];
-      out.push(got.length ? `숙련도 +${o.proficiency.xp} (${got.length}개 기술)` : '숙련도 — 배운 기술이 없어 흘러갔습니다');
+      const n = h?.grantProfXp({ skillId: o.proficiency.skillId, category: o.proficiency.category }, o.proficiency.xp) ?? [];
+      if (n.length) got.push(`숙련도 +${o.proficiency.xp}`);
     }
-    if (o.proficiencyLevelUp) {
-      const ok = h?.grantProfLevelUp(o.proficiencyLevelUp) ?? false;
-      out.push(ok ? '숙련도 1레벨 상승' : '숙련도 레벨업 — 그 기술을 배우지 않아 무효');
-    }
+    if (o.proficiencyLevelUp && (h?.grantProfLevelUp(o.proficiencyLevelUp) ?? false)) got.push('숙련도 1레벨');
     // 155차 — 무발주(혼자 하는) 할 일은 우호도를 받을 상대가 없다. 구 코드는 빈 npc id('')에 쌓았다.
-    if (o.affinity && q.giver) { const v = this.addAffinity(q.giver, o.affinity); out.push(`우호도 ${o.affinity > 0 ? '+' : ''}${o.affinity} (${v.toFixed(2)})`); }
-    // 188차 — 'hyeonsu 우호도'처럼 NPC id가 그대로 나갔다(R1) → 이름
-    for (const a of o.affinityOther ?? []) { this.addAffinity(a.npcId, a.delta); out.push(`${getStoryNpc(a.npcId)?.nameKo ?? '이웃'} 우호도 ${a.delta > 0 ? '+' : ''}${a.delta}`); }
-    if (o.harborRep) { this.addHarborRep(q.region, o.harborRep); out.push(`항구 신뢰 +${o.harborRep}`); }
-    if (o.seaRep) { this.addSeaRep(o.seaRep); out.push(`바다 평판 +${o.seaRep}`); }
+    if (o.affinity && q.giver) this.addAffinity(q.giver, o.affinity);
+    for (const a of o.affinityOther ?? []) this.addAffinity(a.npcId, a.delta);
+    if (o.harborRep) this.addHarborRep(q.region, o.harborRep);
+    if (o.seaRep) this.addSeaRep(o.seaRep);
     if (o.flag) h?.setFlag(o.flag, true);
-    return out;
+    return got;
   }
 
   // ── 254차 이어지는 대화(갈래) · 결말 ──
@@ -1170,8 +1172,6 @@ class StoryStoreManager {
     for (const key of keys) this.emitAction(key, origin ?? source);
   }
 
-  /** 직전 완료의 결과 요약(선택지 몫) — 대화창이 한 번 읽고 지운다 */
-  lastOutcomeLines: string[] = [];
   /** 직전 완료의 고정 보상 요약(141차 — 경험치·재화·면허·귀속 장비·해금). 완료 뒤에만 보인다 */
   lastRewardLines: string[] = [];
   /** 직전 accept/complete가 무엇이었나 (대화창 응답 화면 분기) */
@@ -1187,11 +1187,6 @@ class StoryStoreManager {
     if (!items.length || !this.host?.roomFor) return null;
     const lack = this.host.roomFor(items);
     return lack ? `보상을 받을 가방 자리가 없습니다 — ${lack}를 비운 뒤 다시 말을 거세요` : null;   // lack은 늘 「…칸 N개」로 끝난다
-  }
-
-  /** 고르지 않은 답들 — 보상은 `???`로 감춘다(재도전 동기). 대화창 응답·일지 공용 */
-  otherChoices(q: StoryQuestDef, stage: 'offer' | 'complete', chosenId?: string): { label: string; reply?: string }[] {
-    return choicesFor(q)[stage].filter((c) => c.id !== chosenId).map((c) => ({ label: c.labelKo }));
   }
 
   /**
@@ -1238,10 +1233,9 @@ class StoryStoreManager {
     this.lastAction = 'completed';
     if (this.pinned.main === id) this.pinned.main = null;
     if (this.pinned.sub === id) this.pinned.sub = null;
-    const lines: string[] = [];
-    if (choice) { this.choices[id] = { ...this.choices[id], complete: choice.id }; lines.push(...this.applyOutcome(q, choice.outcome)); }
+    // 258차 — 답의 몫은 「받은 것」에 함께 싣는다. 숨은 값(우호도 · 신뢰 · 평판)과 「이 답으로 — …」 요약은 찍지 않는다(위키에만)
+    if (choice) { this.choices[id] = { ...this.choices[id], complete: choice.id }; this.lastRewardLines.push(...this.applyOutcome(q, choice.outcome)); }
     if (q.giver) this.addAffinity(q.giver, q.kind === 'sub' ? TUNING.affinity.onSubComplete : TUNING.affinity.onMainComplete);
-    this.lastOutcomeLines = lines;
     if (q.reputation?.sea) this.addSeaRep(q.reputation.sea);
     for (const [r, d] of Object.entries(q.reputation?.harbor ?? {})) this.addHarborRep(r, d);
     if (q.journalPage) this.pageCatch[String(q.journalPage)] = Math.max(this.pageCatch[String(q.journalPage)] ?? 0, 99);

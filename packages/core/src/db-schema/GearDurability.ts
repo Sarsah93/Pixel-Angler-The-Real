@@ -205,7 +205,7 @@ export function gearBiteMult(fault?: GearFaultId | null): number {
 export type SnagOutcome =
   | 'all_saved'        // 채비 완전 회수
   | 'bait_lost'        // 미끼만 손실
-  | 'hook_bait_lost'   // 바늘 + 미끼(+좁쌀봉돌) 손실
+  | 'hook_bait_lost'   // 바늘 + 미끼 손실(258차 — 목줄 중간 봉돌은 남는다)
   | 'below_swivel'     // 도래 아래 전부 손실 (찌·수중찌·도래는 생존)
   | 'all_lost';        // 채비 전량 손실
 

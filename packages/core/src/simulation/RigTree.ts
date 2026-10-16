@@ -10,6 +10,10 @@
  *    (타르코프에서 앞 파츠를 빼면 뒤에 달렸던 것이 다 풀리는 규칙). 같은 부모의 형제(세트 구성 칸)는 서로 영향이 없다.
  *  - 문법(어느 값이 어떤 칸을 여는가)은 `childrenOf` 한 곳에 있다. 새 채비 갈래는 여기와 `KIT_DEFS`에만 더한다.
  *  - 부품 ↔ 아이템 대응(`RigPartKind`)은 아이템 쪽이 `rigPart`로 들고, 없으면 client 분류기가 이름·필드로 추정한다.
+ *  - 258차 — **목줄 → 목줄 중간(봉돌 자리) → 목줄 끝(직결 매듭 · 도래 · 스냅 · 간편 채비) → 바늘 → 미끼**
+ *    (사용자 「'목줄' 다음에 '목줄 끝'이 바로 나올 게 아니라 '목줄 중간'이 … '좁쌀봉돌' 자리에 '봉돌'도 선택 가능하도록 …
+ *    봉돌 아래에 도래/직결매듭으로 바늘 이어 달고, 거기에 미끼를」). 옛 문법(목줄 끝 아래 좁쌀봉돌)으로 저장된 트리는
+ *    `migrateRigTree`가 다시 세운다.
  *
  * 순수 TS — Phaser/DOM 없음. 아이템 실체는 `RigItemView`(id·partKind·몇 가지 제원)로만 본다.
  */
@@ -75,7 +79,7 @@ export interface RigItemView {
 /** 칸 종류 */
 export type RigSlotKind =
   | 'main_line' | 'line_attach' | 'float_stop' | 'bead' | 'float' | 'cushion' | 'sub_float' | 'sliding_sinker'
-  | 'knot' | 'swivel' | 'after_swivel' | 'leader' | 'leader_end' | 'connector' | 'split_shot' | 'hook' | 'bait'
+  | 'knot' | 'swivel' | 'after_swivel' | 'leader' | 'leader_sinker' | 'leader_end' | 'end_swivel' | 'connector' | 'split_shot' | 'hook' | 'bait'
   | 'kit_kind' | 'bundle_kit' | 'tairaba_head' | 'tairaba_skirt' | 'tairaba_necktie' | 'card_type' | 'card_kit' | 'tbar_sinker'
   | 'lure_hard' | 'jig_head' | 'lure_soft' | 'fixed';
 
@@ -178,15 +182,21 @@ export const RIG_SLOTS: Record<RigSlotKind, RigSlotDef> = {
     ],
   },
   leader: { kind: 'leader', type: 'item', label: '목줄', accepts: ['leader_line'] },
+  // 258차 — 목줄 중간의 봉돌 자리: 좁쌀봉돌 또는 고리 · 구멍 봉돌(일반 봉돌). 비워 둬도 된다
+  leader_sinker: { kind: 'leader_sinker', type: 'item', label: '목줄 중간', accepts: ['split_shot', 'sliding_sinker'], optional: true },
   leader_end: {
     kind: 'leader_end', type: 'choice', label: '목줄 끝',
     options: [
-      { id: 'hook', label: '바늘', desc: '목줄 끝에 바늘을 묶는다 (좁쌀봉돌은 선택).' },
-      { id: 'connector', label: '도래·스냅', desc: '목줄 끝에 핀도래·스냅을 달아 세트를 건다.' },
-      { id: 'kit', label: '간편 채비 직결', desc: '세트의 어시스트 라인·아이를 목줄에 바로 묶는다.' },
+      { id: 'hook', label: '직결 매듭', desc: '목줄 끝에 바늘을 바로 묶는다.' },
+      { id: 'swivel_hook', label: '도래', desc: '목줄 끝에 도래를 달고 그 아래에 바늘을 잇는다 — 꼬임이 적다.' },
+      { id: 'connector', label: '스냅 · 간편 채비', desc: '목줄 끝에 핀도래 · 스냅을 달아 묶음추 · 편대 · 루어 세트를 건다.' },
+      { id: 'kit', label: '간편 채비 직결', desc: '세트의 어시스트 라인 · 아이를 목줄에 바로 묶는다.' },
     ],
   },
+  // 258차 — 목줄 끝 「도래」: 도래 아래에 바늘을 잇는다(세트를 거는 `connector`와 달리 다음 칸을 열지 않는다 — 바늘은 형제 칸)
+  end_swivel: { kind: 'end_swivel', type: 'item', label: '도래', accepts: ['swivel_plain', 'swivel_snap'] },
   connector: { kind: 'connector', type: 'item', label: '연결 도래', accepts: ['swivel_snap', 'swivel_plain'] },
+  // 258차부터 새 트리에는 열리지 않는다(목줄 중간 `leader_sinker`가 맡는다) — 옛 세이브 호환용 정의만 남긴다
   split_shot: { kind: 'split_shot', type: 'item', label: '좁쌀봉돌', accepts: ['split_shot'], optional: true },
   hook: { kind: 'hook', type: 'item', label: '바늘', accepts: ['hook'] },
   // 193차 — 미끼 칸은 하나하나는 선택이고, 채비 전체에 **최소 하나**가 있어야 완성이다(missingParts)
@@ -294,9 +304,12 @@ export function childrenOf(n: RigNode, idx: number, item: RigItemView | null): R
     case 'after_swivel':
       return n.choice === 'kit' ? [node('kit_kind', idx)] : [node('leader', idx)];
     case 'leader':
-      return [node('leader_end', idx)];
+      // 258차 — 목줄 중간(봉돌 자리 · 선택)과 목줄 끝은 형제다 — 봉돌을 바꿔도 목줄 끝 아래(바늘 · 미끼)는 풀리지 않는다
+      return [node('leader_sinker', idx), node('leader_end', idx)];
     case 'leader_end':
-      if (n.choice === 'hook') return [node('split_shot', idx), node('hook', idx, { hookNo: 1 })];
+      if (n.choice === 'hook') return [node('hook', idx, { hookNo: 1 })];
+      // 258차 — 도래 아래에 바늘을 잇는다(도래 · 바늘은 형제 — 도래를 바꿔도 바늘 · 미끼는 남는다)
+      if (n.choice === 'swivel_hook') return [node('end_swivel', idx), node('hook', idx, { hookNo: 1 })];
       if (n.choice === 'connector') return [node('connector', idx)];
       return [node('kit_kind', idx)];
     case 'connector':
@@ -528,8 +541,13 @@ export interface RigSummary {
   subFloatId: string | null;
   floatStop: boolean;
   swivelId: string | null;
-  /** 주 봉돌(유동·좁쌀·묶음추·T자 봉돌·타이라바 헤드) */
+  /**
+   * 주 봉돌(유동·좁쌀·묶음추·T자 봉돌·타이라바 헤드). 258차 — 봉돌이 둘이면(원줄 유동 봉돌 + 목줄 중간) **무게를 가진 봉돌**
+   * (고리 · 구멍 · 묶음추 · 헤드 · 카드 채비 — `sinkerWeightG`)이 먼저다 — 비거리(C_d) · 예신 피드백은 이 봉돌이 정한다.
+   */
   sinkerId: string | null;
+  /** 258차 — 채비에 단 봉돌 전부(칸 순서). 무게는 이것을 다 더한다 */
+  sinkerIds: string[];
   hookIds: string[];
   baitIds: (string | null)[];
   /** 고정 바늘(세트)이 있는가 */
@@ -562,7 +580,7 @@ export interface RigSummary {
 
 export function summarize(state: RigTreeState, view: (id: string) => RigItemView | null): RigSummary {
   const s: RigSummary = {
-    mainLineId: null, leaderId: null, floatId: null, subFloatId: null, floatStop: true, swivelId: null, sinkerId: null,
+    mainLineId: null, leaderId: null, floatId: null, subFloatId: null, floatStop: true, swivelId: null, sinkerId: null, sinkerIds: [],
     hookIds: [], baitIds: [], fixedHooks: 0, kit: null, cardType: null, cardHooks: 0, lureId: null, jigHeadId: null, usesBait: true,
     bottomRig: true, offRecommendedBait: false, speciesBias: {}, tairaba: null,
     baitDouble: [], flasher: false, flasherOnly: false, biteBonus: 0,
@@ -577,9 +595,9 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
       case 'float_stop': s.floatStop = n.on !== false; break;
       case 'float': s.floatId = n.itemId ?? null; break;
       case 'sub_float': s.subFloatId = n.itemId ?? null; break;
-      case 'swivel': case 'connector': if (n.itemId) s.swivelId = n.itemId; break;
-      case 'sliding_sinker': case 'split_shot': case 'bundle_kit': case 'tbar_sinker': case 'tairaba_head':
-        if (n.itemId) s.sinkerId = n.itemId; break;
+      case 'swivel': case 'connector': case 'end_swivel': if (n.itemId) s.swivelId = n.itemId; break;
+      case 'sliding_sinker': case 'split_shot': case 'leader_sinker': case 'bundle_kit': case 'tbar_sinker': case 'tairaba_head':
+        if (n.itemId) s.sinkerIds.push(n.itemId); break;
       case 'hook': if (n.itemId) s.hookIds.push(n.itemId); break;
       case 'fixed': if (n.hookNo) s.fixedHooks++; if (n.flasher) s.flasher = true; break;
       case 'bait': s.baitIds.push(n.itemId ?? null); s.baitDouble.push(!!n.itemId && !!n.double); break;
@@ -595,13 +613,15 @@ export function summarize(state: RigTreeState, view: (id: string) => RigItemView
           : (CARD_TYPES.find((c) => c.hooks >= hooks) ?? CARD_TYPES[CARD_TYPES.length - 1]).id;
         s.cardHooks = hooks;
         if (v?.cardTarget) cardTarget = v.cardTarget;
-        s.sinkerId = n.itemId;   // 카드 채비는 아래 봉돌까지 한 벌 — 아이템 자중(sinkerWeightG)이 채비 무게
+        s.sinkerIds.push(n.itemId);   // 카드 채비는 아래 봉돌까지 한 벌 — 아이템 자중(sinkerWeightG)이 채비 무게
       } break;
       case 'lure_hard': case 'lure_soft': if (n.itemId) s.lureId = n.itemId; break;
       case 'jig_head': if (n.itemId) s.jigHeadId = n.itemId; break;
       default: break;
     }
   }
+  // 258차 — 주 봉돌 = 무게를 가진 첫 봉돌(없으면 첫 봉돌 — 좁쌀봉돌만 단 찌 채비)
+  s.sinkerId = s.sinkerIds.find((id) => view(id)?.sinkerWeightG !== undefined) ?? s.sinkerIds[0] ?? null;
   if (s.kit === 'tairaba') {
     const find = (slot: RigSlotKind): string | null => state.nodes.find((n) => n.slot === slot)?.itemId ?? null;
     s.tairaba = { headId: find('tairaba_head'), skirtId: find('tairaba_skirt'), necktieId: find('tairaba_necktie') };
@@ -698,14 +718,79 @@ export function treeFromLegacy(l: LegacyRigSockets, view: (id: string) => RigIte
     if (l.bait) set('bait', { itemId: l.bait });
     return s;
   }
+  // 258차 — 좁쌀봉돌은 목줄 중간 칸으로(목줄 끝과 형제라 순서는 상관없다)
+  if (sinker?.partKind === 'split_shot') set('leader_sinker', { itemId: sinker.id });
   set('leader_end', { choice: 'hook' });
-  if (sinker?.partKind === 'split_shot') set('split_shot', { itemId: sinker.id });
   if (l.hook) {
     const hv = view(l.hook);
     if (hv?.partKind === 'hook') {
       set('hook', { itemId: l.hook });
       if (l.bait) set('bait', { itemId: l.bait });
     }
+  }
+  return s;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 258차 — 옛 문법 트리 → 지금 문법 (목줄 중간 · 목줄 끝 갈래)
+// ─────────────────────────────────────────────────────────────
+
+/** 옛 문법으로 저장된 트리인가 — 목줄 끝 아래 좁쌀봉돌 칸이 있거나, 목줄 아래에 목줄 중간 칸 없이 목줄 끝만 있다 */
+export function rigTreeIsStale(state: RigTreeState): boolean {
+  const ns = state.nodes;
+  return ns.some((n) => n.slot === 'split_shot'
+    || (n.slot === 'leader_end' && ns[n.parent]?.slot === 'leader' && !ns.some((m) => m.slot === 'leader_sinker' && m.parent === n.parent)));
+}
+
+/**
+ * 258차 — 옛 문법(목줄 → 목줄 끝 → 좁쌀봉돌 · 바늘)으로 저장된 트리를 지금 문법(목줄 → 목줄 중간 · 목줄 끝 → 바늘)으로
+ * 다시 세운다. 원줄부터 칸 순서대로 같은 값을 같은 자리에 다시 고른다 — 옛 좁쌀봉돌 칸의 봉돌은 목줄 중간 칸으로 간다.
+ * 지금 문법에 자리가 없는 값은 버린다(가방의 물건은 그대로다). 옛 트리가 아니면 받은 것을 그대로 돌려준다.
+ */
+export function migrateRigTree(state: RigTreeState, view: (id: string) => RigItemView | null): RigTreeState {
+  const old = state.nodes;
+  if (!old.length || old[0].slot !== 'main_line' || !rigTreeIsStale(state)) return state;
+  let s = newRigTree();
+  /** 옛 인덱스 → 새 인덱스 */
+  const map = new Map<number, number>([[0, 0]]);
+  const used = new Set<number>([0]);
+  const apply = (oi: number, ni: number): void => {
+    const o = old[oi];
+    const def = RIG_SLOTS[o.slot];
+    let v: RigValue | null = null;
+    if (def.type === 'item' && o.itemId) v = { itemId: o.itemId };
+    else if (def.type === 'choice' && o.choice) v = { choice: o.choice };
+    else if (def.type === 'toggle') v = { on: o.on !== false };
+    if (v) {
+      const before = s.nodes.length;
+      s = setRigValue(s, ni, v, 'itemId' in v && v.itemId ? view(v.itemId) : null);
+      // 값을 고르면 그 칸 바로 뒤에 자식이 끼어든다 — 뒤에 있던(이미 짝지은) 칸의 인덱스를 민다
+      const by = s.nodes.length - before;
+      if (by) {
+        for (const [k, x] of map) if (x > ni) map.set(k, x + by);
+        const moved = [...used].map((x) => (x > ni ? x + by : x));
+        used.clear(); moved.forEach((x) => used.add(x));
+      }
+    }
+    if (o.double && s.nodes[ni]) s.nodes[ni].double = true;
+  };
+  apply(0, 0);
+  for (let oi = 1; oi < old.length; oi++) {
+    const o = old[oi];
+    let slot: RigSlotKind = o.slot;
+    let parentOld = o.parent;
+    // 옛 좁쌀봉돌(목줄 끝의 자식) → 목줄 중간(목줄의 자식)
+    if (o.slot === 'split_shot' && old[parentOld]?.slot === 'leader_end') { slot = 'leader_sinker'; parentOld = old[parentOld].parent; }
+    const np = map.get(parentOld);
+    if (np === undefined) continue;
+    // 같은 부모 · 같은 칸 종류 중 바늘 번호 · 세트까지 같은 칸을 먼저, 없으면 첫 빈자리(옛 세이브는 번호가 비어 있을 수 있다)
+    const cands = s.nodes.map((m, j) => ({ m, j })).filter(({ m, j }) => !used.has(j) && m.parent === np && m.slot === slot);
+    const exact = cands.find(({ m }) => (m.hookNo ?? 0) === (o.hookNo ?? 0) && (m.kit ?? null) === (o.kit ?? null));
+    const ni = (exact ?? cands[0])?.j ?? -1;
+    if (ni < 0) continue;
+    map.set(oi, ni);
+    used.add(ni);
+    apply(oi, ni);
   }
   return s;
 }

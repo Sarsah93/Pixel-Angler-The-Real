@@ -21,8 +21,12 @@
  *  꼬리 질문이 이어진다. 조사 목표(`inquiryDrivesAction`)는 진행 중 화면의 「방식 고르기」 대신 그 편의 물음이 나온다.
  *
  * 254차 — **이어지는 대화(갈래)**. 받는 자리 · 진행 중(장면 목표 · 행동 단계) · 끝내는 자리에 대화가 있으면 표준 답 대신 그것이 돈다.
- *  상대 대사 → 내 말 → 상대의 반응이 이어지고, 고른 말은 여러 사람의 우호도를 움직인다(「이 말로 — 이름 우호도 ±x」 ·
- *  초상 아래 막대가 바로 바뀐다). 끝내는 자리 대화는 이야기의 결말을 고를 수 있다(「결말 — 「제목」」).
+ *  상대 대사 → 내 말 → 상대의 반응이 이어지고, 고른 말은 여러 사람의 우호도를 움직인다(초상 아래 막대가 바로 바뀐다).
+ *  끝내는 자리 대화는 이야기의 결말을 고를 수 있다(「결말 — 「제목」」).
+ *
+ * 258차 — **답의 효과 · 고르지 않은 답은 대화창에 찍지 않는다**(사용자 「이건 인게임에서 유저에게 보여주는 내용이 아니어야 해 …
+ *  위키로만 확인할 수 있도록」). 「이 답으로 — …」 · 「이 말로 — …」 · 「고르지 않은 답 — … → ???」 줄을 뺐다.
+ *  받은 돈 · 물건은 화면 오른쪽 획득 알림이, 마음은 초상 아래 막대가 알린다. 답마다 효과는 위키(조행록)에 있다.
  *
  * 모달(dim) · depth 940 — ConfirmDialog(950) 아래, 일반 팝업(800대) 위.
  */
@@ -123,7 +127,7 @@ export class DialoguePanel extends DraggablePanel {
   get currentView(): View { return this.view; }
 
   /** 응답 화면 (141차) — 보상은 고른 뒤에만 드러난다 */
-  private reply: { line: string; lines: string[]; rewards: string[]; others: string[]; epilogue?: string; declined?: boolean } | null = null;
+  private reply: { line: string; rewards: string[]; epilogue?: string; declined?: boolean } | null = null;
 
   // ── 타이핑 로그 ──────────────────────────────────
   /** 이미 다 찍힌 글(단락 사이 빈 줄 포함) */
@@ -741,9 +745,7 @@ export class DialoguePanel extends DraggablePanel {
         const done = stage === 'complete';
         this.reply = {
           line: ch.replyKo,
-          lines: done ? StoryStore.lastOutcomeLines : [],
           rewards: done ? StoryStore.lastRewardLines : [],
-          others: done ? StoryStore.otherChoices(q, 'complete', ch.id).map((o) => o.label) : [],
           epilogue: done ? narrativeOf(q.id)?.epilogue : undefined,
           declined: StoryStore.lastAction === 'declined',
         };
@@ -758,9 +760,8 @@ export class DialoguePanel extends DraggablePanel {
     // 253차 — 응답이 길어졌다: 빈 줄 단락마다 끊어 찍는다(▼)
     const paras = r.line.split('\n\n').map((p) => `"${p}"`);
     if (r.declined) paras.push('의뢰를 받지 않았습니다.');
+    // 258차 — 답의 효과(「이 답으로」) · 고르지 않은 답(「→ ???」)은 찍지 않는다 — 위키에서만 본다
     if (r.rewards.length) paras.push(`받은 것 — ${r.rewards.join(' · ')}`);
-    if (r.lines.length) paras.push(`이 답으로 — ${r.lines.join(' · ')}`);
-    if (r.others.length) paras.push(`고르지 않은 답 — ${r.others.map((o) => `"${o}" → ???`).join('   ')}`);
     if (r.epilogue) paras.push(r.epilogue);
     this.play(paras, [
       { label: '계속 이야기하기', action: () => { this.reply = null; this.enterMenu(false); } },
@@ -810,10 +811,8 @@ export class DialoguePanel extends DraggablePanel {
     if (!res) return;
     const said = c.labelKo.startsWith('(') ? c.labelKo : `나 — "${c.labelKo}"`;
     const head = [said];
-    if (res.moved.length) {
-      head.push(`이 말로 — ${res.moved.map((m) => `${getStoryNpc(m.npcId)?.nameKo ?? '이웃'} 우호도 ${m.delta > 0 ? '+' : ''}${m.delta.toFixed(2)}`).join(' · ')}`);
-      this.refreshPortrait();
-    }
+    // 258차 — 마음이 움직인 수치(「이 말로 — 이름 우호도 ±x」)는 찍지 않는다. 초상 아래 막대가 바뀌고, 말마다 효과는 위키에 있다
+    if (res.moved.length) this.refreshPortrait();
     if (res.next) { this.playTalkNode(talk, res.next, head); return; }
     this.talkEnded(talk, res, head);
   }
@@ -844,7 +843,6 @@ export class DialoguePanel extends DraggablePanel {
       if (steps[done]) paras.push(`[완료] ${steps[done]}`);
     } else if (talk.at === 'complete' && q) {
       if (StoryStore.lastRewardLines.length) paras.push(`받은 것 — ${StoryStore.lastRewardLines.join(' · ')}`);
-      if (StoryStore.lastOutcomeLines.length) paras.push(`이 답으로 — ${StoryStore.lastOutcomeLines.join(' · ')}`);
       if (res.ending) paras.push(`결말 — 「${res.ending.titleKo}」`, res.ending.summaryKo);
       const epi = narrativeOf(q.id)?.epilogue;
       if (epi) paras.push(epi);

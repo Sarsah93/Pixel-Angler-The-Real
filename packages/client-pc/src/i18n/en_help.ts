@@ -319,7 +319,7 @@ export const EN_HELP: Record<string, string> = {
   '선택창 — 끌어당기기 vs 끊기': 'The prompt — pull up or break off',
   '밑걸림 — ① 두 선택지의 결과 확률 ② [로드 위로 끌어당기기] / [로드 뒤로 당겨 끊기]': 'Snag — ① Odds for each option ② [Pull the rod up] / [Pull back and break off]',
   '① 로드 위로 끌어당기기 — 채비 완전 회수 10% / 미끼만 손실 10% / 바늘 + 미끼 손실 30% / 채비 완전 손실 50%.': '① Pull the rod up — rig fully recovered 10% / lose only the bait 10% / lose hook + bait 30% / lose the whole rig 50%.',
-  '② 로드 뒤로 당겨 끊기 — 채비는 반드시 잃습니다. 다만 50%는 구멍찌 · 수중찌 · 도래가 살아남고 그 아래(목줄 · 좁쌀봉돌 · 바늘 · 미끼)만 터집니다. 찌가 비쌀수록 ①이, 시간이 급하면 ②가 낫습니다.': '② Pull back and break off — you always lose the rig. But 50% of the time the hole float · sub-float · swivel survive and only what hangs below them (leader · split shot · hook · bait) goes. The pricier your floats, the better ①; if you are short on time, ② is better.',
+  '② 로드 뒤로 당겨 끊기 — 채비는 반드시 잃습니다. 다만 50%는 구멍찌 · 수중찌 · 도래가 살아남고 그 아래(목줄 · 목줄 중간 봉돌 · 바늘 · 미끼)만 터집니다. 찌가 비쌀수록 ①이, 시간이 급하면 ②가 낫습니다.': '② Pull back and break off — you always lose the rig. But 50% of the time the hole float · sub-float · swivel survive and only what hangs below them (leader · mid-leader sinker · hook · bait) goes. The pricier your floats, the better ①; if you are short on time, ② is better.',
   '너무 센 줄은 대를 부러뜨린다': 'Line that is too strong snaps the rod',
   '원줄 · 목줄 중 약한 쪽이 로드 등급(2.2kg + 로드 가격 60,000원당 1kg)의 1.5배를 넘을 때만 절지 파단 판정이 굴려집니다 — 끊기 15%, 끌어당기기 7.5%. 채비가 로드 등급 안이면 아무리 당겨도 부러지지 않습니다.': 'A snapped-section roll only happens when the weaker of main line and leader is rated above 1.5× the rod rating (2.2kg + 1kg per 60,000 won of rod price) — 15% when breaking off, 7.5% when pulling up. Keep the rig within the rod rating and no amount of pulling will snap it.',
   '루어는 회수 · 충돌 한 번마다 35% 확률로 부분 파손(입질 확률 ×0.72)이 붙습니다. 수리점에서 훅과 스플릿링을 갈면 복구됩니다.': 'Each recovery or impact gives a lure a 35% chance of damage (bite chance ×0.72). A repair shop restores it by replacing the hooks and split rings.',
@@ -883,8 +883,8 @@ export const EN_HELP: Record<string, string> = {
   '이어지는 대화 · 결말': 'Branching talks · endings',
   '어떤 할 일은 받을 때 · 하는 중에 · 끝낼 때 대화가 이어집니다. 상대가 말하면 내가 할 말을 고르고, 그 말에 상대가 다시 반응합니다. 고른 말에 따라 대화가 다른 길로 갈라집니다.':
     'Some tasks turn into a running conversation when you take them, while you work on them, or when you finish them. They speak, you pick what to say, and they react to it. The conversation branches depending on what you choose.',
-  '고른 말은 사람의 마음을 움직입니다. 대화창에 「이 말로 — 이름 우호도 +0.05」처럼 바로 알려 주고 초상 아래 막대도 바뀝니다. 그 자리에 없는 사람에게 전해지는 말도 있습니다 — 한쪽 편을 들면 다른 쪽이 듣습니다. 같은 말을 다시 골라도 마음은 한 번만 움직입니다.':
-    'What you say moves people. The dialogue window tells you right away, like "What you said — Name affinity +0.05", and the bar under the portrait changes too. Some words reach people who are not there — take one side and the other side hears of it. Choosing the same line again only moves them once.',
+  '고른 말은 사람의 마음을 움직입니다. 대화 상대의 마음은 초상 아래 막대가 바로 보여 줍니다. 그 자리에 없는 사람에게 전해지는 말도 있습니다 — 한쪽 편을 들면 다른 쪽이 듣고, 그 사람을 다시 만났을 때 알게 됩니다. 같은 말을 다시 골라도 마음은 한 번만 움직입니다.':
+    'What you say moves people. The bar under the portrait shows right away how the person you are talking to feels. Some words reach people who are not there — take one side and the other side hears of it, and you will notice when you meet them again. Choosing the same line again only moves them once.',
   '대화는 무엇을 골랐는지 기억합니다. 앞에서 한 말 때문에 뒤의 대화에 새 말이 열리거나 닫히고, 사이가 틀어진 사람은 끝내 털어놓지 않는 이야기도 있습니다. 대화 도중 창을 닫으면 다음에 그 자리부터 이어집니다.':
     'Conversations remember what you chose. What you said earlier opens or closes lines in later talks, and someone you have fallen out with may never tell you some things. If you close the window mid-conversation, it picks up from the same place next time.',
   '이야기에는 결말이 있습니다. 뒤의 이야기가 기대는 이야기는 결말이 하나로 모이고, 갈림길이 있는 이야기는 결말이 둘이나 셋입니다. 한쪽이 영영 무너지는 결말이면 그 사람과의 거래가 바뀝니다 — 값을 깎아 주지 않고, 귀한 물건을 들이지 않습니다. 다다른 결말은 일지의 그 할 일에 남습니다.':

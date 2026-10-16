@@ -12,7 +12,7 @@
  *
  * 규칙(원인 → 떨어져 나가는 범위):
  *  - `bait_lost` — 걸린 바늘(없으면 맨 아래 미끼 칸)의 미끼.
- *  - `hook_bait_lost` — 끝채비: 단품 바늘이면 바늘 + 그 미끼 + 좁쌀봉돌 / 타이라바는 바늘 전부 + 미끼 /
+ *  - `hook_bait_lost` — 끝채비: 단품 바늘이면 바늘 + 그 미끼(258차 — 목줄 중간 봉돌 · 목줄 끝 도래는 위에 남는다) / 타이라바는 바늘 전부 + 미끼 /
  *    묶음추·카드 채비는 **한 벌 전부**(바늘이 고정이라 가지 하나가 뜯기면 버린다) / 루어는 루어(+지그헤드).
  *  - `below_swivel` · `line_break_leader` · `cutter` — 도래(없으면 매듭) 아래 전부. 목줄은 묶는 길이만 잘린다.
  *  - `all_lost` · `line_break_main` — 원줄 부속(찌·수중찌·구슬·쿠션·유동 봉돌)부터 아래 전부 + 원줄 일부.
@@ -74,7 +74,8 @@ function terminalLoss(nodes: RigNode[], o: RigLossOpts): RigLossPlan {
   if (kitIdx >= 0 && (kit === 'bundle_sinker' || kit === 'card_rig')) {
     return planOf(nodes, descendantsOf(nodes, kitIdx), 'kit', o);
   }
-  // 바늘 칸(단품 · 타이라바 · T자 편대) — 바늘 전부 + 그 미끼 + 같은 목줄 끝의 좁쌀봉돌
+  // 바늘 칸(단품 · 타이라바 · T자 편대) — 바늘 전부 + 그 미끼. 258차 — 목줄 중간 봉돌 · 목줄 끝 도래는 바늘 위라 남는다
+  //   (옛 문법의 좁쌀봉돌 칸이 남아 있으면 예전처럼 함께 — `migrateRigTree`가 불러올 때 옮기므로 보통은 없다)
   const out: number[] = [];
   nodes.forEach((n, i) => {
     if (n.slot !== 'hook' || !n.itemId) return;

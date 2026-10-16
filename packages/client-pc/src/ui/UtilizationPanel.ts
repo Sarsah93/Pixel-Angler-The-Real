@@ -460,7 +460,7 @@ export class UtilizationPanel extends DraggablePanel {
       return RecommendationStore.isBaitRecommended(item, reco);
     }
     if (n.slot === 'float') return RecommendationStore.isFloatRecommended(item, reco);
-    if (n.slot === 'sliding_sinker' || n.slot === 'bundle_kit' || n.slot === 'tbar_sinker') return RecommendationStore.isSinkerRecommended(item, reco);
+    if (n.slot === 'sliding_sinker' || n.slot === 'leader_sinker' || n.slot === 'bundle_kit' || n.slot === 'tbar_sinker') return RecommendationStore.isSinkerRecommended(item, reco);
     return false;
   }
 
@@ -732,6 +732,8 @@ export class UtilizationPanel extends DraggablePanel {
       else if (item.name.includes('도래')) weightG += 0.3;
     };
     (Object.keys(rig) as RigStepKey[]).forEach((k) => partWeight(rig[k]));
+    // 258차 — 원줄 유동 봉돌 + 목줄 중간 봉돌처럼 봉돌이 둘이면 나머지도 더한다(평면 소켓은 봉돌 자리가 하나)
+    for (const id of InventoryStore.rigExtraSinkerIds()) partWeight(id);
 
     const net = weightG - buoyG;
     // 침강 속도 — 무게(net)에 비례 가속 (무거운 원투 싱커는 바닥까지 빠르게 낙하)

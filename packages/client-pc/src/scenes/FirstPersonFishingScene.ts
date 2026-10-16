@@ -1386,6 +1386,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       else if (item.name.includes('수중찌')) weightG += 8;
       else if (item.name.includes('구멍찌')) buoyG += 8;
     });
+    // 258차 — 원줄 유동 봉돌 + 목줄 중간 봉돌처럼 봉돌이 둘이면 나머지도 더한다(평면 소켓은 봉돌 자리가 하나)
+    for (const id of InventoryStore.rigExtraSinkerIds()) {
+      const item = InventoryStore.find(id);
+      if (item) weightG += item.sinkerWeightG ?? (item.name.includes('봉돌') ? 3.2 : 0);
+    }
     return { tackleWeightG: weightG + 8, floatBuoyancyG: buoyG * 0.55 };
   }
 

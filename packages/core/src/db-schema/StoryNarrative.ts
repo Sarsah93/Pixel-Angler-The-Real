@@ -11,7 +11,7 @@
  *  - `intro` = 1인칭 현재형. 누가·어디서·왜·무엇을 하려는지가 문장 안에 있다. 감각과 판단으로 쓰고 정의하지 않는다.
  *  - `offer`/`progress`/`done` = 발주 NPC의 **말**만(따옴표 없음). 화자는 대화창이 초상으로 보여 준다.
  *  - `complete` = 완료 선택지. **보상은 미리 보이지 않는다** — 응답(`reply`)이 보상을 자연스럽게 드러내고,
- *    고르지 않은 답은 `???`로 남는다(재도전 동기). `payMult`는 표준 품삯 배율(`choicesFor`가 환산).
+ *    258차부터 답의 효과 · 고르지 않은 답은 게임 화면에 보이지 않는다(위키에서만). `payMult`는 표준 품삯 배율(`choicesFor`가 환산).
  *  - `offerChoices` = 발주 선택지. `once`/`event` 정책 퀘는 `decline: true` 답이 반드시 하나 있다.
  *  - **영문은 짝 파일 `StoryNarrativeEn.ts`에 둔다**(151차). 여기서 합쳐 `introEn`·`offerEn`… 으로 얹고,
  *    클라이언트 i18n 사전이 `allNarrativeLines()`로 ko→en 쌍을 받아 간다(원문이 곧 키).

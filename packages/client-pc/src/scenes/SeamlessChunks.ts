@@ -18,7 +18,7 @@
 
 import Phaser from 'phaser';
 import type { RegionRoad, RegionProp, RegionTileTex, RegionLight, RegionStair, RegionArmor, TileEdge, LevelCell, RegionBuilding } from '@tra/core';
-import { planBuildingUnits, drawBuildingUnit, packUnits, pointInPoly, type BuildingUnit } from './field/BuildingArt.js';
+import { planBuildingUnits, drawBuildingUnit, packUnits, pointInPoly, unitBodyRects, type BuildingUnit } from './field/BuildingArt.js';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
 import {
   seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow, terrainDef, isRockTerrain,
@@ -464,6 +464,12 @@ export class SeamlessChunks {
   private comps: BuildingComp[] = [];
   /** 239차 — 건물 그림 단위(OSM 폴리곤 · 타일 윤곽) — 청크가 소유해 아틀라스에 그린다 */
   private units: BuildingUnit[] = [];
+  /** 258차 — 건물 그림 단위가 맡은 '#' 칸(1). 이 칸의 플레이어 충돌은 칸이 아니라 윤곽 사각형이 맡는다 */
+  private unitCover = new Uint8Array(0);
+  /** 258차 — 청크별 건물 그림 단위(그림 프레임이 걸친 청크마다) — 위치 판정용 */
+  private unitsByChunk = new Map<number, BuildingUnit[]>();
+  /** 258차 — 칸마다 「몸이 윤곽에 닿지 않고 서는가」 기억(0 모름 · 1 선다 · 2 못 선다) */
+  private fitsMemo = new Uint8Array(0);
   /** 청크 idx → 그 청크에 걸치는 차도 벡터 인덱스 (마킹 렌더 시 전수 순회 회피) */
   private roadsByChunk = new Map<number, number[]>();
   /** 청크 idx → 수동 프롭 */
@@ -3505,10 +3511,53 @@ export class SeamlessChunks {
    */
   private planUnits(): void {
     const { cols, rows } = this.cfg;
+    this.unitCover = new Uint8Array(cols * rows);
     this.units = planBuildingUnits({
       terrainRows: this.cfg.terrainRows, cols, rows, tr: this.cfg.tr, seed: this.cfg.seed,
       comps: this.comps, compOf: this.compOf, buildings: this.cfg.buildings ?? [], roofOverrides: this.cfg.roofOverrides,
-    });
+    }, this.unitCover);
+    // 258차 — 위치 판정 색인 · 칸 기억은 단위가 바뀔 때마다 다시
+    this.unitsByChunk.clear();
+    const px = this.chunkPx;
+    for (const u of this.units) {
+      for (let cy = Math.floor(u.y0 / px); cy <= Math.floor(u.y1 / px); cy++) {
+        for (let cx = Math.floor(u.x0 / px); cx <= Math.floor(u.x1 / px); cx++) {
+          const k = cy * this.chunkCols + cx;
+          const list = this.unitsByChunk.get(k);
+          if (list) list.push(u); else this.unitsByChunk.set(k, [u]);
+        }
+      }
+    }
+    this.fitsMemo = new Uint8Array(cols * rows);
+  }
+
+  /** 258차 — 점이 건물 그림 윤곽(바닥) 안인가 */
+  insideBuildingArt(x: number, y: number): boolean {
+    const k = Math.floor(y / this.chunkPx) * this.chunkCols + Math.floor(x / this.chunkPx);
+    for (const u of this.unitsByChunk.get(k) ?? []) {
+      if (x < u.x0 || x > u.x1 || y < u.y0 || y > u.y1) continue;
+      if (pointInPoly(x, y, u.poly)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * 258차 — 그 칸 안 어딘가(중심 · 상하좌우 8px)에 플레이어 몸(14px)이 건물 윤곽에 닿지 않고 서는가.
+   * 윤곽 두 개가 거의 맞붙은 1칸 틈은 칸 문자로는 길이지만 몸이 들어가지 않는다 — 가게 문 · 스폰 · 인물 자리에서 뺀다.
+   */
+  tileFitsBody(c: number, r: number): boolean {
+    const { cols, rows, tr } = this.cfg;
+    if (c < 0 || r < 0 || c >= cols || r >= rows) return false;
+    const k = r * cols + c;
+    if (this.fitsMemo[k]) return this.fitsMemo[k] === 1;
+    const x = c * tr + tr / 2, y = r * tr + tr / 2;
+    const clear = (cx: number, cy: number): boolean => {
+      for (const dx of [-7, 0, 7]) for (const dy of [-7, 0, 7]) if (this.insideBuildingArt(cx + dx, cy + dy)) return false;
+      return true;
+    };
+    const ok = [[0, 0], [8, 0], [-8, 0], [0, 8], [0, -8]].some(([dx, dy]) => clear(x + dx, y + dy));
+    this.fitsMemo[k] = ok ? 1 : 2;
+    return ok;
   }
 
   /** 프롭 텍스처 1회 베이킹 — 나무 2종 + 편집기 프롭 8종 (전부 절차 도트, 발밑 그림자 포함) */
@@ -3963,7 +4012,7 @@ export class SeamlessChunks {
     for (let r = r0; r < r1; r++) {
       let runStart = -1;
       for (let c = c0; c <= c1; c++) {
-        const blocked = c < c1 && this.isBlockedAt(c, r);
+        const blocked = c < c1 && this.isBodyBlockedAt(c, r);
         if (blocked && runStart < 0) {
           runStart = c;
         } else if (!blocked && runStart >= 0) {
@@ -3997,6 +4046,35 @@ export class SeamlessChunks {
     }
     // 183차 — 층 경계·계단 옆벽 (청크 경계의 서·북 변은 이웃 청크가 세우므로 c0−1·r0−1 열/행도 본다)
     this.buildLevelWalls(Math.max(0, c0 - 1), Math.max(0, r0 - 1), c1, r1, slot);
+    this.buildUnitBodies(cc, cr, slot);
+  }
+
+  /**
+   * 258차 — 플레이어 충돌용 칸 판정. 건물 그림 단위가 맡은 '#' 칸은 칸으로 막지 않는다 — 그림 윤곽 사각형(`buildUnitBodies`)이 막는다.
+   * 그 밖(물 · 절벽 · 그리지 않는 외딴 '#' 칸)은 `isBlockedAt` 그대로다. 걷기 · 층 판정(`levelCell`)은 `isBlockedAt`을 쓴다.
+   */
+  private isBodyBlockedAt(c: number, r: number): boolean {
+    if (this.tileAt(c, r) === '#' && this.unitCover[r * this.cfg.cols + c] === 1) return false;
+    return this.isBlockedAt(c, r);
+  }
+
+  /**
+   * 258차 — 건물 그림 윤곽을 따라가는 충돌(사용자 「캐릭터가 벽에 걸려서 더 앞으로 가지지 않아야 … 경계(Collision) 명확화」).
+   * 청크 사각형으로 자른 부분만 세우고, 청크가 내려가면 `slot.bodies`와 함께 사라진다.
+   * 몸체는 화면 목록에 올리지 않는다 — 그리지 않는 사각형이 프레임마다 그리기 목록을 돌지 않게.
+   */
+  private buildUnitBodies(cc: number, cr: number, slot: ChunkSlot): void {
+    const px = this.chunkPx;
+    const clip = { x0: cc * px, y0: cr * px, x1: (cc + 1) * px, y1: (cr + 1) * px };
+    for (const u of this.units) {
+      if (u.x1 < clip.x0 || u.x0 > clip.x1 || u.y1 < clip.y0 || u.y0 > clip.y1) continue;   // 그림 프레임으로 먼저 거른다
+      for (const r of unitBodyRects(u.poly, clip)) {
+        const rect = new Phaser.GameObjects.Rectangle(this.scene, r.x + r.w / 2, r.y + r.h / 2, r.w, r.h).setVisible(false);
+        this.scene.physics.add.existing(rect, true);
+        this.walls.add(rect);
+        slot.bodies.push(rect);
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════

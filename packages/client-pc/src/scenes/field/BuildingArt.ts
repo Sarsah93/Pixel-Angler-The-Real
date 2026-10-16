@@ -9,7 +9,10 @@
  *     '#' 성분 하나로 뭉쳐도 **채마다** 따로 선다. 폴리곤이 없는 '#' 성분(캡처 · 래스터)은 타일 윤곽을 따라 그리되
  *     1타일 계단을 직선으로 편다(Douglas–Peucker).
  *  2. **2.5D** — 윤곽을 층수만큼 위로 들어 지붕을 놓고, 남쪽(화면 아래)을 보는 변마다 벽을 세운다(창 · 1층 유리 · 문).
- *     그림자는 남동쪽으로. '#' 타일(걷기 · 충돌)은 그대로 — 그림만 바뀐다.
+ *     그림자는 남동쪽으로. '#' 타일은 NPC 걷기 · 길찾기에 그대로 쓴다.
+ *     258차 — **플레이어 충돌은 이 윤곽을 따른다**(`unitBodyRects` — 사용자 「캐릭터가 벽에 걸려서 더 앞으로 가지지 않아야 …
+ *     경계(Collision) 명확화」). '#' 타일은 칸 중심이 윤곽 안인 칸이라 윤곽이 반 칸까지 더 나가 있었고(동명활어센터 남쪽 0.49칸 ≈ 16px),
+ *     그 띠로 걸어 들어가 벽 그림 뒤에 숨었다.
  *  3. **종류별 지붕** — 주택 = 박공(용마루 · 밝은 면/어두운 면) · 아파트 = 콘크리트(엘리베이터 탑 · 물탱크 · 난간) · 상가 = 평지붕(실외기) ·
  *     공공 = 밝은 콘크리트(채광창) · 산업 = 패널 · 지붕만(roof) = 차양.
  * 좌표는 월드 px. 그리기는 청크 지붕 아틀라스(Graphics → RenderTexture)에 한 번.
@@ -99,6 +102,63 @@ function bounds(p: Pt[]): { x0: number; y0: number; x1: number; y1: number } {
 }
 
 /** 반평면 자르기(Sutherland–Hodgman) — a·x + b·y + c ≥ 0 쪽을 남긴다 */
+/** 수평선 y에서 윤곽이 덮는 x 구간들(짝수-홀수 규칙) */
+function scanSpans(p: Pt[], y: number): [number, number][] {
+  const xs: number[] = [];
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const [xi, yi] = p[i], [xj, yj] = p[j];
+    if ((yi > y) !== (yj > y)) xs.push(xi + ((y - yi) * (xj - xi)) / (yj - yi));
+  }
+  xs.sort((a, b) => a - b);
+  const out: [number, number][] = [];
+  for (let k = 0; k + 1 < xs.length; k += 2) out.push([xs[k], xs[k + 1]]);
+  return out;
+}
+
+/** 겹치거나 맞닿은 구간을 합친다 */
+function unionSpans(sp: [number, number][]): [number, number][] {
+  const s = [...sp].sort((a, b) => a[0] - b[0]);
+  const out: [number, number][] = [];
+  for (const [a, b] of s) {
+    const last = out[out.length - 1];
+    if (last && a <= last[1] + 0.5) last[1] = Math.max(last[1], b);
+    else out.push([a, b]);
+  }
+  return out;
+}
+
+export interface BodyRect { x: number; y: number; w: number; h: number }
+
+/**
+ * 258차 — 윤곽을 따라가는 플레이어 충돌 사각형들(월드 px). 바닥선(남쪽 끝)에서 위로 `band`px 띠마다
+ * 띠의 위 · 가운데 · 아래 세 줄에서 윤곽이 덮는 구간을 합쳐 사각형으로 만든다 — 비스듬한 벽에서도 안으로 새지 않는다
+ * (밖으로는 띠 높이 × 기울기만큼 넉넉하다). 바로 아래 띠와 구간이 같으면 하나로 잇는다(축에 맞는 건물은 사각형 하나).
+ * 바닥선에서 띠를 시작하므로 정면 벽(남쪽 변)은 그림과 같은 줄에서 막힌다. `clip`(청크 사각형) 밖은 자른다.
+ */
+export function unitBodyRects(poly: Pt[], clip: { x0: number; y0: number; x1: number; y1: number }, band = 4): BodyRect[] {
+  const b = bounds(poly);
+  const out: BodyRect[] = [];
+  let prev: BodyRect[] = [];
+  for (let yb = b.y1; yb > b.y0 + 0.01; yb -= band) {
+    const top = Math.max(b.y0, yb - band);
+    const t = Math.max(top, clip.y0), bt = Math.min(yb, clip.y1);
+    if (bt - t < 0.5) { prev = []; continue; }
+    const spans = unionSpans([...scanSpans(poly, t + 0.25), ...scanSpans(poly, (t + bt) / 2), ...scanSpans(poly, bt - 0.25)]);
+    const cur: BodyRect[] = [];
+    for (const [xa, xb] of spans) {
+      const x0 = Math.max(xa, clip.x0), x1 = Math.min(xb, clip.x1);
+      if (x1 - x0 < 1) continue;
+      const same = prev.find((r) => Math.abs(r.x - x0) < 0.5 && Math.abs(r.x + r.w - x1) < 0.5 && Math.abs(r.y - bt) < 0.01);
+      if (same) { same.h += same.y - t; same.y = t; cur.push(same); continue; }
+      const r = { x: x0, y: t, w: x1 - x0, h: bt - t };
+      out.push(r);
+      cur.push(r);
+    }
+    prev = cur;
+  }
+  return out;
+}
+
 export function clipHalfPlane(p: Pt[], a: number, b: number, c: number): Pt[] {
   const out: Pt[] = [];
   const n = p.length;
@@ -292,7 +352,11 @@ function roofOf(kind: BuildingKindArt, tiles: number): RoofStyle {
 }
 
 /** 건물 단위 — OSM 폴리곤 우선, 폴리곤이 덮지 않은 '#' 타일은 성분마다 타일 윤곽으로 */
-export function planBuildingUnits(inp: BuildingPlanInput): BuildingUnit[] {
+/**
+ * 건물 그림 단위 계획. `coverOut`(길이 cols×rows)을 주면 **그림 단위가 맡은 '#' 칸**에 1을 적는다(258차 —
+ * 이 칸들의 플레이어 충돌은 칸이 아니라 윤곽(`unitBodyRects`)이 맡는다). 그리지 않는 외딴 칸(스페클)은 0으로 남는다.
+ */
+export function planBuildingUnits(inp: BuildingPlanInput, coverOut?: Uint8Array): BuildingUnit[] {
   const { cols, rows, tr, seed, comps, compOf } = inp;
   const covered = new Int32Array(cols * rows).fill(-1);
   const units: BuildingUnit[] = [];
@@ -323,6 +387,7 @@ export function planBuildingUnits(inp: BuildingPlanInput): BuildingUnit[] {
     if (polyArea(poly) < 0) poly.reverse();
     const tb = bounds(b.pts);
     const hit = new Map<number, number>();
+    const mine: number[] = [];
     let tiles = 0;
     for (let r = Math.max(0, Math.floor(tb.y0)); r <= Math.min(rows - 1, Math.ceil(tb.y1)); r++) {
       for (let c = Math.max(0, Math.floor(tb.x0)); c <= Math.min(cols - 1, Math.ceil(tb.x1)); c++) {
@@ -330,6 +395,7 @@ export function planBuildingUnits(inp: BuildingPlanInput): BuildingUnit[] {
         const k = r * cols + c;
         if (covered[k] >= 0) continue;
         covered[k] = bi;
+        mine.push(k);
         tiles++;
         const comp = compOf[k];
         if (comp >= 0) hit.set(comp, (hit.get(comp) ?? 0) + 1);
@@ -337,6 +403,7 @@ export function planBuildingUnits(inp: BuildingPlanInput): BuildingUnit[] {
     }
     // '#' 타일을 하나도 못 덮은 폴리곤(너무 작거나 지형 패치로 지워진 것)은 그리지 않는다 — 걷기 정본과 어긋난다
     if (tiles === 0) return;
+    if (coverOut) for (const k of mine) coverOut[k] = 1;
     let compId = -1, best = 0;
     for (const [id, n] of hit) if (n > best) { best = n; compId = id; }
     units.push(mkUnit(b.id, b.kind, poly, tiles, compId, b.levels, b.name));
@@ -384,6 +451,7 @@ export function planBuildingUnits(inp: BuildingPlanInput): BuildingUnit[] {
       if (polyArea(poly) < 0) poly.reverse();
       const c0 = Math.min(...[...group].map((k) => k % cols)), r0 = Math.min(...[...group].map((k) => Math.floor(k / cols)));
       units.push(mkUnit(`t${compId}_${c0}_${r0}`, 'yes', poly, group.size, compId));
+      if (coverOut) for (const k of group) coverOut[k] = 1;
     }
   }
   return units;

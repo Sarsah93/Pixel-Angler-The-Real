@@ -4,9 +4,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  newRigTree, setRigValue, missingParts, summarize, treeFromLegacy, descendantsOf, KNOT_SWIVEL, KNOT_DIRECT,
+  newRigTree, setRigValue, missingParts, summarize, treeFromLegacy, descendantsOf, migrateRigTree, rigTreeIsStale, KNOT_SWIVEL, KNOT_DIRECT,
   type RigItemView, type RigTreeState, type RigSlotKind, type RigValue,
 } from './RigTree.js';
+import { planRigLoss } from './RigLoss.js';
 
 const ITEMS: Record<string, RigItemView> = {
   pe: { id: 'pe', name: '합사 원줄 1호', partKind: 'main_line', qty: 1 },
@@ -23,6 +24,9 @@ const ITEMS: Record<string, RigItemView> = {
   hook: { id: 'hook', name: '감성돔 바늘 3호', partKind: 'hook', qty: 10 },
   float: { id: 'float', name: '구멍찌 0.8호', partKind: 'float', qty: 1 },
   split: { id: 'split', name: '좁쌀봉돌 G2', partKind: 'split_shot', qty: 10 },
+  ring3: { id: 'ring3', name: '고리봉돌 3호 (11g)', partKind: 'sliding_sinker', qty: 5, sinkerWeightG: 11 },
+  hole20: { id: 'hole20', name: '구멍봉돌 20호 (75g)', partKind: 'sliding_sinker', qty: 5, sinkerWeightG: 75 },
+  barrel: { id: 'barrel', name: '바렐 도래 8호', partKind: 'swivel_plain', qty: 5 },
 };
 const view = (id: string): RigItemView | null => ITEMS[id] ?? null;
 
@@ -95,11 +99,61 @@ describe('RigTree — 확장', () => {
     s = put(s, 'knot', { choice: KNOT_DIRECT });
     s = put(s, 'leader', { itemId: 'carbon' });
     s = put(s, 'leader_end', { choice: 'hook' });
-    s = put(s, 'split_shot', { itemId: 'split' });
+    s = put(s, 'leader_sinker', { itemId: 'split' });
     s = put(s, 'hook', { itemId: 'hook' });
     s = put(s, 'bait', { itemId: 'worm' });
     expect(missingParts(s)).toEqual([]);
     expect(summarize(s, view).floatId).toBeNull();
+  });
+
+  it('258차 — 목줄 → 목줄 중간(봉돌 · 선택) → 목줄 끝(직결 매듭) → 바늘 → 미끼', () => {
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'knot', { choice: KNOT_DIRECT });
+    s = put(s, 'leader', { itemId: 'carbon' });
+    expect(slots(s)).toEqual(['main_line', 'line_attach', 'knot', 'leader', 'leader_sinker', 'leader_end']);
+    expect(missingParts(s)).toEqual(['목줄 끝']);   // 목줄 중간은 비워 둬도 된다
+    s = put(s, 'leader_end', { choice: 'hook' });
+    expect(slots(s).slice(4)).toEqual(['leader_sinker', 'leader_end', 'hook']);
+    s = put(s, 'hook', { itemId: 'hook' });
+    s = put(s, 'bait', { itemId: 'worm' });
+    expect(missingParts(s)).toEqual([]);
+    // 목줄 중간에 일반 봉돌(고리 봉돌)도 단다 — 봉돌을 바꿔도 목줄 끝 아래(바늘 · 미끼)는 그대로
+    s = put(s, 'leader_sinker', { itemId: 'ring3' });
+    expect(s.nodes.find((n) => n.slot === 'hook')?.itemId).toBe('hook');
+    expect(s.nodes.find((n) => n.slot === 'bait')?.itemId).toBe('worm');
+    const sum = summarize(s, view);
+    expect(sum.sinkerId).toBe('ring3');
+    expect(sum.sinkerIds).toEqual(['ring3']);
+  });
+
+  it('258차 — 목줄 끝 「도래」: 도래 칸 + 바늘 칸이 함께 열리고, 도래를 바꿔도 바늘 · 미끼는 남는다', () => {
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'knot', { choice: KNOT_DIRECT });
+    s = put(s, 'leader', { itemId: 'carbon' });
+    s = put(s, 'leader_sinker', { itemId: 'split' });
+    s = put(s, 'leader_end', { choice: 'swivel_hook' });
+    expect(slots(s).slice(4)).toEqual(['leader_sinker', 'leader_end', 'end_swivel', 'hook']);
+    expect(missingParts(s)).toEqual(['도래', '바늘']);
+    s = put(s, 'end_swivel', { itemId: 'barrel' });
+    s = put(s, 'hook', { itemId: 'hook' });
+    s = put(s, 'bait', { itemId: 'worm' });
+    expect(missingParts(s)).toEqual([]);
+    expect(slots(s).slice(4)).toEqual(['leader_sinker', 'leader_end', 'end_swivel', 'hook', 'bait']);   // 도래는 다음 칸을 열지 않는다
+    s = put(s, 'end_swivel', { itemId: 'pin' });
+    expect(s.nodes.find((n) => n.slot === 'bait')?.itemId).toBe('worm');
+    expect(summarize(s, view).swivelId).toBe('pin');
+  });
+
+  it('258차 — 원줄 유동 봉돌 + 목줄 중간 좁쌀봉돌: 주 봉돌은 무게를 가진 유동 봉돌 · 봉돌 목록은 둘 다', () => {
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'line_attach', { choice: 'sliding_sinker' });
+    s = put(s, 'sliding_sinker', { itemId: 'hole20' });
+    s = put(s, 'knot', { choice: KNOT_DIRECT });
+    s = put(s, 'leader', { itemId: 'carbon' });
+    s = put(s, 'leader_sinker', { itemId: 'split' });
+    const sum = summarize(s, view);
+    expect(sum.sinkerId).toBe('hole20');
+    expect(sum.sinkerIds).toEqual(['hole20', 'split']);
   });
 
   it('찌 세트: 원줄 부속을 찌 세트로 바꾸면 매듭이 해제되고 찌 칸이 열린다', () => {
@@ -157,6 +211,15 @@ describe('RigTree — 구세이브 이관', () => {
     expect(sum.hookIds).toEqual(['hook']);
     expect(sum.baitIds).toEqual(['worm']);
     expect(sum.bottomRig).toBe(false);
+  });
+
+  it('258차 — 구세이브 좁쌀봉돌은 목줄 중간 칸으로 옮겨진다', () => {
+    const s = treeFromLegacy({
+      mainLine: 'pe', float: null, subFloat: null, swivel: null, leader: 'carbon', sinker: 'split', hook: 'hook', bait: 'worm', hasFloatStop: true,
+    }, view);
+    expect(s.nodes.find((n) => n.slot === 'leader_sinker')?.itemId).toBe('split');
+    expect(s.nodes.some((n) => n.slot === 'split_shot')).toBe(false);
+    expect(missingParts(s)).toEqual([]);
   });
 
   it('원투 묶음추 세이브는 간편 채비로 옮겨진다', () => {
@@ -257,5 +320,78 @@ describe('RigTree — 196차 카드 채비 대상 어종 · 3~7단', () => {
     expect(sum.speciesBias.horse_mackerel).toBeCloseTo(0.3);
     expect(sum.cardType).toBe('jeongaengi');
     expect(sum.flasherOnly).toBe(true);
+  });
+});
+
+describe('RigTree — 258차 옛 문법 트리 다시 세우기', () => {
+  /** 257차까지의 문법으로 저장된 트리(목줄 → 목줄 끝(바늘) → 좁쌀봉돌 · 바늘 → 미끼) */
+  const oldHook = (): RigTreeState => ({ nodes: [
+    { slot: 'main_line', parent: -1, itemId: 'pe' },
+    { slot: 'line_attach', parent: 0, choice: 'none' },
+    { slot: 'knot', parent: 1, choice: KNOT_DIRECT },
+    { slot: 'leader', parent: 2, itemId: 'carbon' },
+    { slot: 'leader_end', parent: 3, choice: 'hook' },
+    { slot: 'split_shot', parent: 4, itemId: 'split' },
+    { slot: 'hook', parent: 4, hookNo: 1, itemId: 'hook' },
+    { slot: 'bait', parent: 6, itemId: 'worm', double: true },
+  ] });
+
+  it('좁쌀봉돌은 목줄 중간으로 · 바늘 · 미끼(두 미끼 표시까지) 그대로', () => {
+    const old = oldHook();
+    expect(rigTreeIsStale(old)).toBe(true);
+    const s = migrateRigTree(old, view);
+    expect(rigTreeIsStale(s)).toBe(false);
+    expect(slots(s)).toEqual(['main_line', 'line_attach', 'knot', 'leader', 'leader_sinker', 'leader_end', 'hook', 'bait']);
+    expect(s.nodes.find((n) => n.slot === 'leader_sinker')?.itemId).toBe('split');
+    expect(s.nodes.find((n) => n.slot === 'leader_end')?.choice).toBe('hook');
+    const bait = s.nodes.find((n) => n.slot === 'bait');
+    expect(bait?.itemId).toBe('worm');
+    expect(bait?.double).toBe(true);
+    expect(missingParts(s)).toEqual([]);
+    // 부모 인덱스가 새 자리를 가리킨다
+    s.nodes.forEach((n, i) => { if (i > 0) expect(n.parent).toBeLessThan(i); });
+  });
+
+  it('찌 세트 · 도래 · 타이라바 같은 다른 갈래도 값이 그대로 옮겨진다', () => {
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'line_attach', { choice: 'float_set' });
+    s = put(s, 'float', { itemId: 'float' });
+    s = put(s, 'knot', { choice: KNOT_SWIVEL });
+    s = put(s, 'swivel', { itemId: 'pin' });
+    s = put(s, 'after_swivel', { choice: 'leader' });
+    s = put(s, 'leader', { itemId: 'carbon' });
+    s = put(s, 'leader_end', { choice: 'kit' });
+    s = put(s, 'kit_kind', { choice: 'tairaba' });
+    s = put(s, 'tairaba_head', { itemId: 'head' });
+    s = put(s, 'hook', { itemId: 'hook' });
+    s = put(s, 'bait', { itemId: 'worm' });
+    // 옛 모양으로 되돌린다 — 목줄 중간 칸을 뺀다
+    const drop = s.nodes.findIndex((n) => n.slot === 'leader_sinker');
+    const old: RigTreeState = { nodes: s.nodes.filter((_, i) => i !== drop).map((n) => ({ ...n, parent: n.parent > drop ? n.parent - 1 : n.parent })) };
+    expect(rigTreeIsStale(old)).toBe(true);
+    const m = migrateRigTree(old, view);
+    expect(slots(m)).toEqual(slots(s));
+    expect(m.nodes.map((n) => n.itemId ?? n.choice ?? null)).toEqual(s.nodes.map((n) => n.itemId ?? n.choice ?? null));
+  });
+
+  it('지금 문법 트리는 손대지 않는다', () => {
+    const s = migrateRigTree(oldHook(), view);
+    expect(migrateRigTree(s, view)).toBe(s);
+  });
+
+  it('바늘을 잃으면 바늘 · 미끼만 — 목줄 중간 봉돌과 목줄 끝 도래는 남는다', () => {
+    let s = put(newRigTree(), 'main_line', { itemId: 'pe' });
+    s = put(s, 'knot', { choice: KNOT_DIRECT });
+    s = put(s, 'leader', { itemId: 'carbon' });
+    s = put(s, 'leader_sinker', { itemId: 'ring3' });
+    s = put(s, 'leader_end', { choice: 'swivel_hook' });
+    s = put(s, 'end_swivel', { itemId: 'barrel' });
+    s = put(s, 'hook', { itemId: 'hook' });
+    s = put(s, 'bait', { itemId: 'worm' });
+    const plan = planRigLoss(s, 'hook_bait_lost', { leaderCutM: 0.5, mainLineCutM: 5 });
+    expect(plan.items.map((x) => x.itemId).sort()).toEqual(['hook', 'worm']);
+    // 목줄이 터지면 목줄 중간 봉돌 · 도래 · 바늘 · 미끼까지 다 잃는다(목줄은 묶는 길이만)
+    const leader = planRigLoss(s, 'line_break_leader', { leaderCutM: 0.5, mainLineCutM: 5 });
+    expect(leader.items.map((x) => x.itemId).sort()).toEqual(['barrel', 'hook', 'ring3', 'worm']);
   });
 });

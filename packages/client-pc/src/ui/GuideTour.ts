@@ -235,6 +235,12 @@ export class GuideTour {
   private freshOcc: TourRect[] = [];
   /** 219차 — 그중 모달(확인 · 수량 창 — depth 900대) — 어둡게 덮지 않고 방패에 구멍을 낸다(가두지 않게) */
   private modalOcc: TourRect[] = [];
+  /**
+   * 258차 — 떠 있는 작은 모달 창(확인 · 수량 · 장바구니 — 화면 40% 미만) · 위에 뜬 것이 뒤. 말풍선은 이 창을 **절대 덮지 않고**
+   * 그 옆(오른쪽 → 왼쪽 → 아래 → 위)에 선다(사용자 「'수량 지정' 창을 가리지 않도록 … 우측에」).
+   * 이 가이드가 짚는 창(앵커)이어도 마찬가지다 — 구: 앵커가 된 창은 가리개 목록에서 빠져 말풍선이 그 위에 앉았다.
+   */
+  private dialogOcc: TourRect[] = [];
   private updateFn: (time: number, delta: number) => void;
   private keyFn: (ev: KeyboardEvent) => void;
   private shutdownFn: () => void;
@@ -311,15 +317,19 @@ export class GuideTour {
     const modal: TourRect[] = [];
     const fresh: TourRect[] = [];
     const opened: TourRect[] = [];   // 단계가 시작된 뒤에 열린 창(모달 포함)
+    const dialogs: { r: TourRect; depth: number }[] = [];
     for (const o of this.scene.children.list) {
       if (!(o instanceof DraggablePanel) || !o.active || !o.visible) continue;
       const b = o.panelBounds();
       list.push(b);
       if (!this.baseline.has(o)) opened.push(b);
-      if (o.depth >= 900) modal.push(b);
-      else if (!this.baseline.has(o)) fresh.push(b);
+      if (o.depth >= 900) {
+        modal.push(b);
+        if (b.width * b.height < GAME_WIDTH * GAME_HEIGHT * 0.4) dialogs.push({ r: b, depth: o.depth });   // 258차 — 손질 · 회썰기 같은 큰 모달은 뺀다
+      } else if (!this.baseline.has(o)) fresh.push(b);
     }
     this.modalOcc = modal;
+    this.dialogOcc = dialogs.sort((a, b) => a.depth - b.depth).map((d) => d.r);
     this.freshOcc = fresh;
     const extra = GuideTour.occluderFns.get(this.scene)?.() ?? [];
     for (const r of extra) if (r && r.width > 0 && r.height > 0) list.push(r);
@@ -524,7 +534,31 @@ export class GuideTour {
       return occ.some((o) => Phaser.Geom.Rectangle.Overlaps(o, rr));
     };
     let show = true;
-    if (occ.length && hits(bx, by)) {
+    // 258차 — 작은 모달 창이 떠 있으면 말풍선은 그 창 옆에 선다(오른쪽 → 왼쪽 → 아래 → 위). 다른 일반 창은 덮어도 된다 —
+    //   모달이 떠 있는 동안 나머지 창은 눌리지 않는다. 짚는 대상이 그 창 안이면 꼬리로 그 창을 가리킨다.
+    const dlg = this.dialogOcc[this.dialogOcc.length - 1];
+    let besideDialog = false;
+    if (dlg) {
+      const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - h - 8);
+      const midY = clampY(dlg.centerY - h / 2);
+      const cands: [number, number, 'left' | 'right' | 'none'][] = [
+        [dlg.right + 18, midY, 'left'], [dlg.x - 18 - BUBBLE_W, midY, 'right'],
+        [dlg.centerX - BUBBLE_W / 2, dlg.bottom + 16, 'none'], [dlg.centerX - BUBBLE_W / 2, dlg.y - 16 - h, 'none'],
+      ];
+      const overDialog = (x: number, y: number): boolean => {
+        const rr = new Phaser.Geom.Rectangle(x - 4, y - 4, BUBBLE_W + 8, h + 8);
+        return this.dialogOcc.some((o) => Phaser.Geom.Rectangle.Overlaps(o, rr));
+      };
+      const ok = cands.find(([x, y]) => x >= 6 && y >= 6 && x + BUBBLE_W <= GAME_WIDTH - 6 && y + h <= GAME_HEIGHT - 6 && !overDialog(x, y));
+      if (ok) {
+        [bx, by] = ok;
+        const aimsDialog = !!target && dlg.contains(target.centerX, target.centerY);
+        tail = aimsDialog ? ok[2] : 'none';
+        pointAt = aimsDialog;
+        besideDialog = true;
+      }
+    }
+    if (!besideDialog && occ.length && hits(bx, by)) {
       const U = occ.reduce((a, b) => Phaser.Geom.Rectangle.Union(a, b));
       const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - h - 8);
       const cands: [number, number][] = [
