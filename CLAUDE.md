@@ -35,7 +35,7 @@
 - **`work-log`** — **작업 기록·문서 체계** (docs/wiki 4층·8절 양식·갱신 체크리스트). **모든 작업 완료 시 필수**
 - **`doc-readability`** — **문서 가독성 규칙** (빈 줄·줄 길이 상한·블록인용 제한·차수 요약 양식). **문서 기록·갱신 시 `work-log`와 함께 로드**
 
-## 현재 진행 상황 (2026-10-15) — 이어받기 요약
+## 현재 진행 상황 (2026-10-16) — 이어받기 요약
 
 > 로드맵·다음 착수·잔여는 **`.agents/IMPLEMENTATION_PLAN.md`**, 차수 본문은 **`docs/wiki/03-WORKLOG/`**
 > (색인 `03-WORKLOG/README.md` §3.1). 이 절에는 **최근 3개 차수만** 둔다 — 새 차수를 넣으면 가장 오래된 것을 지운다.
@@ -53,11 +53,22 @@
   → **250 마우스 포인터 「찌 화살」 · main 반영 · 74차 배포** → **251 설정 「접근성」 탭(포인터 색 · 테 · 크기) · 색 구분 보정 · 모양으로도 표시 · 75차 배포**
   → **252 타이틀 로고(코드로 굽기) · 시세 띠 도감 이름 · 영어 · 행동 효과음 63종 · 76차 배포**
   → **253 받는 자리 답 3개 이상 · 긴 응답 · 물어보기(조사 대화) · 배경음 후보(Lyria 1 · 2판) · 고양이 · 날씨 효과음**
-  → **254 이어지는 대화(갈래) · 결말 1~3 · 인물 가게 조건 · 새 이야기 「건너편 가게」 · 이야기 넷 다시 쓰기**.
-- **로드맵(사용자 확정 2026-09-17)**: **요리 개체화 2단계 — 나머지 7개 레시피 변형(사용자 확인 대기)** → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
+  → **254 이어지는 대화(갈래) · 결말 1~3 · 인물 가게 조건 · 새 이야기 「건너편 가게」 · 이야기 넷 다시 쓰기**
+  → **255 요리 그림 7 · 요리 이름 규칙(주재료별 이름 · 효과) · 장갑 · 단화 한 켤레 · 채소 재료 → 작물 초상 · 아이템 그림 223장(Gemini) · 위키 선반 탭**.
+- **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
+  → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림**) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **255차**: **요리 그림 7 · 요리 이름 규칙(주재료별 이름 · 효과) · 장갑 · 단화 한 켤레 · 채소 재료 → 작물 초상 · 아이템 그림 223장(Gemini) · 위키 선반 탭** —
+  사용자 「지리(맑은탕) … 장어구이 아이템 이미지 Gemini로」 「어떤 생선이 들어갔느냐에 따라 이름과 효과가 달라져야 … 'OOO 지리(맑은탕)'처럼」
+  「기모 장갑 · 갯바위 단화 좌/우 한 쌍」 「무 · 대파 … '작물'에서 따와도」 「wiki … 별도의 탭으로」 「그 외 … 전부 작업」 →
+  요리 사진 7(매운탕과 같은 셀 3px · `tools/dish_photos.cjs` · `photoKey`) · 변형 레시피 2 → 8(전복죽만 고정 · `RECIPE_BASE_NAME` · `DISH_SPECIES_NAME` 「우럭」) ·
+  효과 = 주재료 특성(`TUNING.cook.variantEffect`) · 프로필 58 · `pair` 문구 · 채소 재료 10 = 작물 초상 별칭(154차 코드 그림이었다) ·
+  코드 그림 93 중 86 교체 · 16px 손그림 145 + 가구 8(`gemini_item_art.cjs` · `tools/item_looks/` · `item_cards.cjs` → `ItemImages.ts` · 씨앗 봉투 = 빈 봉투 + 초상 합성) ·
+  부팅 텍스처 97.5 → 23.8MB · 위키 선반 탭 넷 + 농사 갈래 셋 · 이름 규칙 절 · 위키 Version 54 · 55.
+  **다음 = Gemini 크레딧 충전 뒤 남은 코드 그림 7(`tools/item_looks/misc.cjs`) · 표시만 되는 요리 효과 다섯(사용자 결정) · 실플레이(요리 이름 · 효과)(백로그 CC)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-16-255-dish-names-item-art-wiki-shelves.md`.
 - **254차**: **이어지는 대화(갈래) · 결말 1~3 · 인물 가게 조건 · 새 이야기 「건너편 가게」 · 이야기 넷 다시 쓰기** —
   사용자 「대화 대상에 대한 우호도가 감소하거나 증가할 수 있어야 함」(A/B 원한 예시) 「기존 이야기를 다시 쓰고 … 결말을 1~3개 안으로」 →
   단계 그래프 대화(`StoryTalkDef` · `StoryTalks.ts` 머리 5조 · `rules/StoryTalk.ts` · 검사기 `tools/check_talks.mjs`) · 여러 사람 우호도 · 표시를 뒤 대화가 읽음 ·
@@ -72,15 +83,6 @@
   「비오는 소리만 따로 효과음으로」 → 날씨 환경음(`audio/Ambience` · `WeatherSound` — 비 · 바람 · 천둥 · 집 안 먹먹) · 집 고양이 8소리 · 원문 오타 · 영어 정리 · 위키 Version 52.
   **다음 = 사용자 배경 음악 곡 고르기 · 고양이 · 날씨 소리 청취(WAV 7) · `once` 편 거절 시 아크 잠김 확인(백로그 CA)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-15-253-bgm-choice-depth-inquiry.md`.
-- **252차**: **타이틀 로고(코드로 굽는 픽셀 로고) · 시세 띠 도감 이름 · 영어 · 행동 효과음 63종 · main 반영 · 76차 배포** —
-  사용자 「타이틀 로고를 … 새로 만들고 싶어(가시성 문제 + 통 이미지 의존성)」 「시세 띠에 어종 내부 id를 도감 이름으로 …」
-  「상호작용 시, 각기 다른 효과음」 → 옛 `ui/title_logo.png` 삭제 · 글자 격자 데이터(`data/TitleLogoArt.ts`)를 굽는 로고
-  (`ui/TitleLogo.ts` — 남색 테 · 입체 · 청록 물보라 · `i` 점 = 찌 · `g` 끝 = 바늘) · 시세 띠 도감 이름(`ExternalDataStore.speciesDisplayName`) ·
-  영어 사전 · 규칙 4 · 효과음 63종 합성(`audio/SfxBank.ts` — Gemini에 효과음 모델 없음) · 29파일 164곳 ·
-  창 열기/닫기(`DraggablePanel` — 다시 만들기는 조용 · `sound: false`) · 단추 딸깍(`audio/UiClickHook` — 손 커서) ·
-  GainNode 시작값 1 튐 수정 · main 빨리 감기 · 「테스트 배포」 76차.
-  **다음 = 사용자 효과음 청취(미리 듣기 WAV 6개) · 로고 의견 · 배경음(추후 — Lyria 후보)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-15-252-title-logo-ticker-sfx.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -100,6 +102,8 @@
   `food assets/fish/` = 어종 원본 57장(246) — 게임은 `node tools/fish_cards.cjs`가 굽는 `public/fish/` 카드 · 아이콘만 싣는다.
   `food assets/forage/art/` · `top/` = 갯것 · 땅지렁이 원본(248) — 게임은 `node tools/forage_cards.cjs`가 굽는 카드 · 아이콘 · 판 · 점 그림만 싣는다.
   `food assets/tackle/` = 낚시 장비 원본 115장(249 — 사용자 그림 41 · Gemini 74) — 게임은 `node tools/tackle_cards.cjs`가 굽는 `public/tackle/` 카드 · 아이콘만 싣는다.
+  `food assets/items/` = 장비 밖 아이템 원본 223장(255 — Gemini · 씨앗 봉투 틀 `_template/`) — 게임은 `node tools/item_cards.cjs`가 굽는 `public/items/` 카드 · 아이콘만 싣는다.
+  `food assets/dishes/` = 완성 요리 사진 원본 7장(255) — `node tools/dish_photos.cjs`가 `public/food/` 사진 · 칸 아이콘으로 굽는다.
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
   `assets/cursor/` = 게임 마우스 포인터 원본(250 — 찌 화살 · Gemini 원본) — `node tools/gen_game_cursor.cjs`가 `data/GameCursorArt.ts`를 굽는다.
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스).
@@ -158,7 +162,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 76차 배포 2026-10-15 = 252차(타이틀 로고 · 시세 띠 · 효과음)까지 포함**. 재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 53 = 254차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
+  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 55 = 255차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

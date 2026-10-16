@@ -4,6 +4,7 @@
 > 그 위에 **결과 생성 계층**(재료 프로필 → DishInstance → 요리 도감)을 얹는다.
 > 구현은 §39 순서대로 — **156차 = Stage 1~6(매운탕 3종 → DishInstance → 상세보기 → 요리 도감)**,
 > 정상 작동 확인 뒤 Stage 7~9(나머지 7개 레시피 · Item Library · 밸런싱).
+> **255차 = Stage 7**(전복죽을 뺀 레시피가 주재료로 갈라진다 — 이름 틀 · 효과 계수). Stage 8(Item Library) · 9(효과 장치 · 밸런싱)는 남았다.
 
 ## 0.5 코드 정합 노트 (156차 — 본문보다 우선)
 
@@ -22,6 +23,11 @@
 | 가격 | `COOKED_DISH_PRICING` = `TUNING.cook.pricing` — 사시미 계수와 별개 | 탄 것 0원 유지 |
 
 **156차 범위(Stage 1~6)**: 매운탕(`stew_red`)만 어종별로 갈라진다(`VARIANT_RECIPES`). 나머지 7개는 154차 경로 그대로.
+
+**255차 범위(Stage 7)**: 변형 레시피 8(`stew_red` · `stew_red_whole` · `stew_clear` · `grill_fish` · `braise_fish` · `stirfry_squid` · `soup_clam` · `grill_eel`) —
+`porridge_abalone`만 고정 이름(「전복죽 (별 N개)」). 이름 틀 `RECIPE_BASE_NAME` · 상에 오르는 이름 `DISH_SPECIES_NAME`(조피볼락 → 우럭) ·
+효과 크기 · 지속 = 주재료 특성(`TUNING.cook.variantEffect`) · 조리 프로필 58 · 변형 후보는 레시피 갈래별(`dishVariantKind` — 어류 · 두족류 · 채집 조개 · 장어류).
+기계적으로 적용되는 효과는 여전히 포만감 계열(`satiety` — 매운탕 · 생선조림)뿐이다. 상세는 [255차 워크로그](../docs/wiki/03-WORKLOG/2026-10-16-255-dish-names-item-art-wiki-shelves.md).
 
 ---
 

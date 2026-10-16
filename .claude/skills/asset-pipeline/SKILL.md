@@ -300,7 +300,7 @@ python3.13 tools/item_art/build.py --only __none__                              
 - 위키: `gen_wiki_images.py`가 같은 표로 원본을 읽는다. **아티팩트 한 판 파일 상한 511 · 한 번 발행 255** — `gen_game_wiki_data.mjs`가 8KB 이하 그림을
   HTML 안에 넣고(`tools/wiki_img/inlined.txt`) 파일로 둘 것만 `used.txt`에 적는다. 발행은 바뀐 · 새 그림만 올리고, 아티팩트에 있는데 `used.txt`에 없는 것은 `null`.
 
-## ⑦ 장비 밖 아이템 그림 — Gemini · 합성 · 별칭 (255차)
+## ⑨ 장비 밖 아이템 그림 — Gemini · 합성 · 별칭 · 요리 사진 (255차)
 
 코드로 그린 임시 그림(`art_*` — `tools/item_art/`) · 16px 손그림(`px:*`) · 그림이 없던 아이템(가구)을 249차 장비와 같은 카드 방식으로 바꾼다.
 
@@ -312,7 +312,7 @@ node tools/gemini_item_art.cjs --looks tools/item_looks/food.cjs --out <폴더> 
 node tools/seed_packets.cjs                     # 씨앗 = 빈 봉투 틀(Gemini 한 장) + 작물 초상 합성 → food assets/items/seed_*.png + item_looks/seeds.cjs
 node tools/item_cards.cjs [--sheet <png>]       # 카드(228×90 안) · 64px 아이콘 → public/items/ + src/data/ItemImages.ts (한 사람만 · 마지막에 한 번)
 python3.13 tools/item_art/build.py              # 이제 Gemini가 맡은 art_* 키를 굽지 않고 drawn/ PNG를 지운다
-node tools/dish_photos.cjs --from <폴더>         # 불요리 완성 요리(레시피 하나에 한 장) → food assets/dishes/ · public/food/ (셀 3px · 188칸) · food/icon/ 64px
+node tools/dish_photos.cjs --from <폴더>         # 불요리 완성 요리(레시피 하나에 한 장) → food assets/dishes/(셀 6px) · public/food/(셀 3px · 긴 변 192칸) · food/icon/ 64px
 ```
 
 - **키 규칙**: 옛 코드 그림 키(`art_*`)는 **같은 키**로 그림만 바꾼다(세이브 · 카탈로그 `iconTexture`를 안 고친다). 16px 키는 새 키 `item_<x>` + `px: ['px:it_x']`,
@@ -320,7 +320,12 @@ node tools/dish_photos.cjs --from <폴더>         # 불요리 완성 요리(레
 - **별칭부터 본다**(`tools/item_looks/_alias.cjs`) — 이미 있는 그림이 같은 물건이면 새로 그리지 않는다. 상점 채소 재료 → 작물 초상(`CROP_PORTRAIT`),
   상점 매운탕 · 전복죽 · 장어구이 · 예전 요리의 `px:it_dish_<계열>` → 레시피 사진(`TEXTURE`). 가리키는 그림이 없으면 `item_cards`가 별칭을 싣지 않는다(코드 그림이 남는다).
 - **한 켤레는 `pair: true`** — 「두 짝이 겹쳐 한 덩어리」 문구는 손가락 엉킨 장갑 · 세 짝 신발을 낳았다(255차 사용자 지적 — 기모 장갑 · 갯바위 단화). 「왼쪽 한 짝 + 오른쪽 한 짝, 정확히 두 짝」.
-- 흰 물건(소금 · 붕대 · 흰 접시 · 부직포)은 `keepWhite: true`, 뚫린 그물은 `mesh: true` — 설치 뒤 **어두운 바탕 시트**로 구멍 · 흰 테를 본다.
+- 흰 물건(소금 · 붕대 · 흰 접시 · 병 · 라벨 · 조명 띠)은 `keepWhite: true` — 고리 손잡이 · 바퀴살 · 격자처럼 속이 비치는 틈이 있으면 끈다.
+  뚫린 그물은 `mesh: true` — 단 **반짝이는 철사 격자(석쇠)에는 쓰지 않는다**(은색 반짝임까지 구멍으로 먹는다). 설치 뒤 **어두운 바탕 시트**로 구멍 · 흰 테를 본다.
+- 갇힌 배경 섬 빼기는 **그림 면적 3%까지** — 그보다 큰 틈(울타리 가로대 사이 4.2% · 전정가위 손잡이 사이 4.6%)은 흰 채로 남는다.
+  원본의 그 틈만 같은 판정으로 투명하게 만들어 다시 설치한다(다시 생성하면 같은 틈이 또 생긴다).
+- 요리 사진은 매운탕 두 장(셀 3px · 505~565px)과 같은 규격 · 국물 요리는 같은 검은 양수 냄비. 배선 = `FireRecipeDatabase.photoKey` + `BootScene` 한 줄.
+- **크레딧**: 2026-10-16 선불 크레딧 소진(HTTP 402) — 결제 문제라 우회하지 않는다. 남은 코드 그림 7은 `tools/item_looks/misc.cjs`에 표만 있다.
 - 씨앗 봉투 창은 그림의 25%라 `cutoutMulti`의 갇힌 흰 섬 제거(3% 미만)에 안 걸린다 — `seed_packets.cjs`가 「가장 큰 불투명 순백 덩어리」로 창을 따로 찾는다.
   띠 색은 작물 갈래(잎 · 열매 · 뿌리 · 곡물 · 콩 · 향채 · 나물 · 싹)마다 색상만 돌린다(틀 초록이 짙어 밝기를 조금 올린다).
 - 위키: `dump_wiki_items.mjs`가 게임과 같은 순서로 `imgKey`를 적고, `gen_wiki_images.py`가 `ITEM_IMAGE_FILES`(원본) · `public/food/*.png`를 읽는다.

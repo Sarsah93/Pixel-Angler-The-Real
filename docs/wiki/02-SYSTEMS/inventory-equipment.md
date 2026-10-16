@@ -1,6 +1,6 @@
 # S5·S12. 인벤토리 · 장비 · 보관(신선도) · 세이브
 
-> 상태 **🟢 운영**. 관련 차수 10·21·22·23·39·44·46·53·72·76·117·135·136·148·**249**
+> 상태 **🟢 운영**. 관련 차수 10·21·22·23·39·44·46·53·72·76·117·135·136·148·**249**·**255**
 
 ---
 
@@ -80,6 +80,7 @@
 | **채비 고정**(`rigLocked` · `lockRig`(트리 필수 칸 누락이면 거부)/`unlockRig` · 세이브 · `setRigNode` 가드(192 — 구 `setRigPart`·`setLure`·`setJigHead`·`setRigMode` 폐기) — `consumeRigItem`·`loseRigParts`는 `_rig` 직접 갱신이라 영향 없음) | ✅ | 155 — [S1](fishing-loop.md) |
 | **사시미 접시 메타**(`InvItem.sashimi`·`cutQuality`·`knifeTier`) + 음식 영양 상세(`FoodNutrition` 파생) | ✅ | 155 — [S4](sashimi-cooking.md) |
 | **장비 그림 종류별 키**(`TackleTextures` — `rodArtKey`(대 종류 8 + 죽간) · `reelArtKey`(베이트 · 레버 · 번수) · `lineArtKey`(목줄 · 합사 · 나일론)) · 옛 세이브 보정(`refreshTackleArt` — 빌려 쓰던 키일 때만) | ✅ | **249** — [S25](photo-pixel-art.md) |
+| **아이템 그림 고르기**(`ui/ItemIcon.ts` — 작물 초상 · 채소 별칭 → `itemImageKeyOf`(아이템 id → 16px 키 → 같은 음식 별칭 · `ItemImages.ts`) → 코드 그림 → `iconTexture` → 16px) · 옛 세이브 요리 계열 그림 키 → 레시피 사진(`refreshDishPhoto`) | ✅ | **255** — 가방 칸 새 그림 전부 · 이전 10/10 |
 
 ## 5. 잔여·차기
 
@@ -95,6 +96,8 @@
 
 ## 6. 함정·불변조건
 
+- **그림을 바꿀 때 아이템의 `iconTexture`를 고치지 않는다**(255) — 옛 키(`art_*` · `px:*`)를 그대로 두고 그림 표(`ItemImages.ts` — `node tools/item_cards.cjs`가 생성)로 잇는다.
+  세이브에 굳은 키가 그대로 맞으므로 이전이 필요 없다. 요리처럼 **키 자체가 계열 그림**이던 것만 불러올 때 바꾼다(`refreshDishPhoto`).
 - **장비 그림 키는 아이템 정의에 손으로 적지 않는다**(249) — 대 · 릴 · 줄은 `rodArtKey(id, name)` · `reelArtKey` · `lineArtKey`로 고른다.
   새 낚싯대는 core `rodSpecFor().use`가 맞으면 그림이 따라온다. 옛 세이브는 불러올 때 빌려 쓰던 키(`item_spinning_rod` · `px:it_rod` · `line_spool_saiso` 등)일 때만 바꾼다.
 
