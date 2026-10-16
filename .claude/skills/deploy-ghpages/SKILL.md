@@ -39,6 +39,8 @@ description: Pixel Angler 테스트 빌드 gh-pages 배포 절차. GitHub Pages 
 4. 기동 점검: `git fetch origin gh-pages` → `git archive origin/gh-pages | tar -x -C <작업폴더>/Pixel-Angler-The-Real` →
    그 상위에서 `python3 -m http.server 4173` → `http://localhost:4173/Pixel-Angler-The-Real/`로 하네스(404 · pageerror · 메뉴 기동).
    하위 경로로 띄워야 선행 `/` 경로 실수가 잡힌다. 프로덕션 번들에는 `__GS` · `__INV`가 없다 — `__PIXEL_ANGLER_GAME`만 쓴다.
+5. 그림 · 데이터 교체가 실렸는지는 **정적 파일 대조**로 먼저 본다 — gh-pages 트리(`assets/` · `index.html` 밖)를
+   `packages/client-pc/public/`과 바이트 대조한다(256차 — 1,820개 같음 · 다름 0 · 빠짐 0). 번들(`assets/`)은 키가 들어가 다르다.
 
 ### 손으로 하는 절차 (워크플로를 쓸 수 없을 때 · 사용자만)
 
@@ -67,6 +69,9 @@ git -C ../pixel-angler-gh-pages push origin gh-pages
 - **컨테이너 프록시가 `sarsah93.github.io` CONNECT를 403으로 막는다** — 라이브 검증(404 · pageerror)을 여기서는 못 한다.
   배포 커밋 · 푸시까지 하고 「라이브 검증은 사용자 몫」으로 보고한다(우회하지 않는다).
 - 커밋은 `-c user.name/-c user.email`로 저장소 마지막 커밋 작성자를 쓴다(컨테이너에 전역 git 사용자 없음).
+- **기상청(`apis.data.go.kr`)도 프록시가 막는다**(256차 — CONNECT 403) — 배포본 점검의 날씨는 결정적 Mock이다.
+  Mock은 기온과 상관없이 강수를 고르고(「진눈깨비 · 13.6°C」), 연동 상태 줄은 Mock 지역도 「11/11개 지역」 초록으로 센다(백로그 CD ⑤).
+  실데이터 문제로 오판하지 않는다.
 
 ## 경로·API 제약 (재배포 시 재확인)
 
