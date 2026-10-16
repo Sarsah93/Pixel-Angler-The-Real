@@ -710,13 +710,9 @@ export class WorldMapScene extends Phaser.Scene {
       ring.setAlpha(0);
     }
 
-    const label = this.add.text(x, y + 14, unlocked ? node.shortName : `${node.shortName} (잠금)`, {
-      fontFamily: '"Noto Sans KR", sans-serif',
-      fontSize: '9px',
-      color: unlocked ? '#c8e8ff' : '#7a8494',
-      backgroundColor: '#060f1ecc',
-      padding: { x: 3, y: 1 },
-    }).setOrigin(0.5, 0);
+    // 259차 — 지점 이름도 바탕 상자 없이 흰 테 글자(R14). 잠긴 곳은 글자만 회색
+    const label = this.add.text(x, y + 14, unlocked ? node.shortName : `${node.shortName} (잠금)`,
+      worldLabelStyle(9, unlocked ? {} : { ink: '#4a5563' })).setOrigin(0.5, 0);
 
     // 핀 인터랙션
     dot.setInteractive(new Phaser.Geom.Circle(0, 0, 14), Phaser.Geom.Circle.Contains);

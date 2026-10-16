@@ -392,6 +392,10 @@ export interface TuningConfig {
     seaBands: number;
     /** 하늘 그라데이션 보간 밴드 수 (4 앵커 → N밴드) */
     skyBands: number;
+    /** 259차 — 비 올 때 수면 빗방울(튐 · 물결) 초당 개수 — 보통 비 기준(소나기 ×1.8 · 진눈깨비 ×0.6 · 시간당 강수량 반영) (mockup) */
+    rainSplashPerSec: number;
+    /** 259차 — 발밑(가장 가까운) 빗방울 물결 고리 반지름 px — 먼 곳은 원근으로 줄어든다 (mockup) */
+    rainRippleMaxPx: number;
   };
   // ── 착수/드리프트 ←/→ 채비 횡 이동 (feel — CAST_MOVE_SPEC) ──
   castMove: {
@@ -1423,7 +1427,7 @@ export const TUNING: TuningConfig = {
   },
   hold: { liftM: 0.02, liftRateMps: 0.2 },
   foam: { spreadPx: 30 },
-  view: { seaBands: 14, skyBands: 12 },
+  view: { seaBands: 14, skyBands: 12, rainSplashPerSec: 48, rainRippleMaxPx: 16 },
   castMove: {
     tinyMps: 0.15, slowMps: 0.35, normalMps: 0.6, lotsMps: 0.9, boldMps: 1.3,
     stillCur: 0.05, weakCur: 0.18, mediumCur: 0.35,
@@ -1905,6 +1909,8 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'foam.spreadPx', min: 10, max: 120, step: 2, category: 'feel', label: '포말 분산(px)' },
   { path: 'view.seaBands', min: 6, max: 20, step: 1, category: 'feel', label: '바다 밴드 수' },
   { path: 'view.skyBands', min: 4, max: 20, step: 1, category: 'feel', label: '하늘 밴드 수' },
+  { path: 'view.rainSplashPerSec', min: 0, max: 120, step: 2, category: 'feel', label: '수면 빗방울(초당)' },
+  { path: 'view.rainRippleMaxPx', min: 4, max: 30, step: 1, category: 'feel', label: '빗방울 물결 크기(px)' },
   { path: 'castMove.slowMps', min: 0.15, max: 0.6, step: 0.05, category: 'feel', label: '횡이동 서서히(m/s)' },
   { path: 'castMove.normalMps', min: 0.3, max: 1.0, step: 0.05, category: 'feel', label: '횡이동 보통(m/s)' },
   { path: 'castMove.lotsMps', min: 0.6, max: 1.4, step: 0.05, category: 'feel', label: '횡이동 많이(m/s)' },

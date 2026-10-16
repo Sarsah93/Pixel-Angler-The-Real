@@ -437,6 +437,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private fpRainDrops: { obj: Phaser.GameObjects.Rectangle; speed: number }[] = [];
   private fpSnowFlakes: { obj: Phaser.GameObjects.Arc; speed: number; sway: number }[] = [];
   private fpFogBlobs: { obj: Phaser.GameObjects.Ellipse; speed: number }[] = [];
+  /**
+   * 259차 — 수면 빗방울(사용자 「비올 때, 실제처럼 바다에 빗물이 튀는 등 영향을 받는 표현」). 비 · 소나기 · 진눈깨비일 때만 만든다.
+   * `mult` = 날씨 · 강수량 배율, `dim` = 시간대 밝기. 하나 = 떨어진 자리 · 원근(0 먼바다 ~ 1 발밑) · 나이 · 튀는 물방울.
+   */
+  private rainSplash: {
+    g: Phaser.GameObjects.Graphics; mult: number; dim: number; acc: number;
+    list: { x: number; y: number; d: number; p: number; age: number; life: number; r: number; drops: { vx: number; vy: number }[] }[];
+  } | null = null;
   private lastTidal: TidalInfluence | null = null;
   private distText!: Phaser.GameObjects.Text;
   private foamParticles: Phaser.GameObjects.Arc[] = [];
@@ -562,6 +570,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.fpRainDrops = [];
     this.fpSnowFlakes = [];
     this.fpFogBlobs = [];
+    this.rainSplash = null;
   }
 
   create(): void {
@@ -1515,6 +1524,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 날씨 파티클 (비/눈/안개 — 화면 전면, 수심 패널(85) 아래)
     if (weather === 'rain' || weather === 'sleet') this.spawnFpRain(70);
     else if (weather === 'shower') this.spawnFpRain(110);
+    // 259차 — 수면에 빗방울이 튀고 물결이 번진다(소나기 ×1.8 · 진눈깨비 ×0.6 · 시간당 강수량이 있으면 그만큼)
+    const splashKind = weather === 'shower' ? 1.8 : weather === 'sleet' ? 0.6 : weather === 'rain' ? 1 : 0;
+    if (splashKind > 0) {
+      const mm = ExternalDataStore.getKmaWeather(this.cfg.region)?.rain1hMm;
+      const amount = typeof mm === 'number' && mm > 0 ? Phaser.Math.Clamp(0.7 + mm * 0.12, 0.7, 2) : 1;
+      this.rainSplash = { g: this.add.graphics().setDepth(22), mult: splashKind * amount, dim: 0.55 + 0.45 * waterDim, acc: 0, list: [] };
+    }
     else if (weather === 'snow') this.spawnFpSnow(50);
     else if (weather === 'fog') this.spawnFpFog();
 
@@ -1589,6 +1605,56 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     for (const f of this.fpFogBlobs) {
       f.obj.x += f.speed * dtSec;
       if (f.obj.x - f.obj.width / 2 > GAME_WIDTH) f.obj.x = -f.obj.width / 2;
+    }
+    this.updateRainSplash(dtSec);
+  }
+
+  /**
+   * 259차 — 수면 빗방울. 떨어진 자리에 물방울 두세 알이 0.2초 튀어 오르고, 원근에 맞춘 납작한 고리가 번지며 옅어진다.
+   * 먼바다(수평선 쪽)는 작고 납작하게, 발밑은 크고 둥글게 · 가까운 것은 고리가 두 겹. 수는 `TUNING.view.rainSplashPerSec`.
+   * 그래픽 한 장에 매 프레임 다시 그린다(동시에 수십 개 — 상한 220).
+   */
+  private updateRainSplash(dtSec: number): void {
+    const rs = this.rainSplash;
+    if (!rs || !rs.g.active) return;
+    const top = WATERLINE + 3, bottom = GAME_HEIGHT - 40;
+    rs.acc = Math.min(rs.acc + TUNING.view.rainSplashPerSec * rs.mult * dtSec, 12);
+    while (rs.acc >= 1 && rs.list.length < 220) {
+      rs.acc -= 1;
+      const d = Math.random();                     // 0 = 수평선 · 1 = 발밑 — 화면 줄마다 고르게(먼 줄은 넓은 바다가 눌려 촘촘해 보인다)
+      const p = 0.18 + 0.82 * d;                   // 원근 배율
+      const nDrops = d > 0.3 ? 2 + Math.floor(Math.random() * 2) : 0;
+      rs.list.push({
+        x: Math.random() * GAME_WIDTH, y: top + (bottom - top) * d, d, p, age: 0,
+        life: 0.4 + 0.45 * p, r: Math.max(1.5, TUNING.view.rainRippleMaxPx * p),
+        drops: Array.from({ length: nDrops }, () => ({ vx: (Math.random() * 2 - 1) * 40 * p, vy: -(50 + Math.random() * 60) * p })),
+      });
+    }
+    const g = rs.g;
+    g.clear();
+    rs.list = rs.list.filter((sp) => (sp.age += dtSec) < sp.life);
+    for (const sp of rs.list) {
+      const k = sp.age / sp.life;
+      const flat = 0.16 + 0.3 * sp.d;               // 고리 납작함(높이 / 너비) — 먼 곳일수록 납작
+      const x = Math.round(sp.x), y = Math.round(sp.y);
+      const r = 1 + (sp.r - 1) * (1 - (1 - k) * (1 - k));
+      g.lineStyle(1, 0xe2f2fb, (1 - k) * 0.6 * rs.dim);
+      g.strokeEllipse(x, y, r * 2, Math.max(1, r * 2 * flat));
+      if (sp.p > 0.5 && k > 0.3) {                 // 가까운 것은 안쪽 고리가 한 겹 더
+        const k2 = (k - 0.3) / 0.7;
+        const r2 = 1 + (sp.r * 0.55 - 1) * k2;
+        g.lineStyle(1, 0xe2f2fb, (1 - k2) * 0.4 * rs.dim);
+        g.strokeEllipse(x, y, r2 * 2, Math.max(1, r2 * 2 * flat));
+      }
+      if (sp.age < 0.07) { g.fillStyle(0xf2faff, 0.85 * rs.dim); g.fillRect(x - 1, y - 1, 2, 2); }   // 닿는 순간 반짝
+      if (sp.age < 0.22 && sp.drops.length) {
+        g.fillStyle(0xeaf6ff, (1 - sp.age / 0.22) * 0.9 * rs.dim);
+        const sz = sp.p > 0.65 ? 2 : 1;
+        for (const dr of sp.drops) {
+          const px = sp.x + dr.vx * sp.age, py = sp.y + dr.vy * sp.age + 350 * sp.p * sp.age * sp.age;
+          g.fillRect(Math.round(px), Math.round(py), sz, sz);
+        }
+      }
     }
   }
 

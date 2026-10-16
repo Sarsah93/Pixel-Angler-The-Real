@@ -17,12 +17,16 @@
  *    node tools/tackle_cards.cjs --check      # 굽지 않고 표 ↔ 원본 ↔ 출력만 대조
  *    node tools/tackle_cards.cjs --sheet <png> # 아이콘 검수 시트(가방 칸 색 위 · 30px 실제 크기 + 64px)
  *  표 = `packages/client-pc/src/data/TackleTextures.ts`의 TACKLE_IMAGE_FILES.
+ *
+ *  259차 — 어두운 장비 그림 8장(`OUTLINED`)은 바깥 윤곽에 아주 얇은 흰 테(`tools/outline.cjs` — 256차 아이템 그림과 같은 규칙 ·
+ *  카드 1px · 아이콘 2px · 그물코 안 제외). 사용자 「감성돔 바늘이 잘 보이지 않는 걸로 보아 … 흰 테두리 작업을 적용」(백로그 CD ①).
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const { decodeAny } = require('./pixelize_crops.cjs');
 const { encode } = require('./lib_png.cjs');
+const { padRgba, addOutline } = require('./outline.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'food assets', 'tackle');
@@ -30,6 +34,14 @@ const OUT = path.join(ROOT, 'packages', 'client-pc', 'public', 'tackle');
 const OUT_ICON = path.join(OUT, 'icon');
 const TABLE_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'TackleTextures.ts');
 const CARD_W = 228, CARD_H = 90, ICON = 64;
+/**
+ * 259차 — 가방 칸 바탕(#0e1d2e)에 묻히는 그림(색 거리 60 안 픽셀 84~96%) — 바깥 윤곽 흰 테.
+ * 기본 · 프로 게 통발 · 어류 그물 통발 · 촬영 스태프 필드백 · 감성돔 바늘 3호(사용자 그림) · 뜰채 3 · 5 · 7m(한 장) · 장어 통발 둘.
+ */
+const OUTLINED = new Set([
+  'trap_crab_basic.png', 'trap_crab_pro.png', 'trap_fish_net.png', 'bag_field.png',
+  'it_hook_chinu.png', 'landing_net.png', 'trap_eel_basic.png', 'trap_eel_pro.png',
+]);
 
 function parseArgs(argv) {
   const P = { check: false, sheet: '', only: null };
@@ -98,12 +110,18 @@ async function main() {
   let before = 0, after = 0;
   for (const f of files) {
     const img = await decodeAny(path.join(SRC, f));
-    const [cw, ch] = fit(img.w, img.h, CARD_W, CARD_H);
-    const [iw, ih] = fit(img.w, img.h, ICON, ICON);
-    const cb = encode(cw, ch, shrinkKeepAlpha(img.data, img.w, img.h, cw, ch), path.join(OUT, f));
-    encode(iw, ih, shrinkKeepAlpha(img.data, img.w, img.h, iw, ih), path.join(OUT_ICON, f));
-    before += img.w * img.h * 4; after += cw * ch * 4 + iw * ih * 4;
-    console.log(`${f}: ${img.w}x${img.h} → 카드 ${cw}x${ch}(${(cb / 1024).toFixed(0)}KB) · 아이콘 ${iw}x${ih}`);
+    // 259차 — 테를 두르는 그림은 칸에서 사방 t를 비우고 줄인 뒤 덧댄다(카드 t 1 · 아이콘 t 2 — 칸 밖으로 넘지 않는다)
+    const t = OUTLINED.has(f) ? 1 : 0;
+    const bake = (bw, bh, tt, out) => {
+      const [w, h] = fit(img.w, img.h, bw - tt * 2, bh - tt * 2);
+      let r = { w, h, data: shrinkKeepAlpha(img.data, img.w, img.h, w, h) };
+      if (tt > 0) { r = padRgba(r.data, w, h, tt); addOutline(r.data, r.w, r.h, tt); }
+      return { w: r.w, h: r.h, bytes: encode(r.w, r.h, r.data, out) };
+    };
+    const card = bake(CARD_W, CARD_H, t, path.join(OUT, f));
+    const icon = bake(ICON, ICON, t * 2, path.join(OUT_ICON, f));
+    before += img.w * img.h * 4; after += card.w * card.h * 4 + icon.w * icon.h * 4;
+    console.log(`${f}: ${img.w}x${img.h} → 카드 ${card.w}x${card.h}(${(card.bytes / 1024).toFixed(0)}KB) · 아이콘 ${icon.w}x${icon.h}${t ? ' · 흰 테' : ''}`);
   }
   console.log(`카드 · 아이콘 ${files.length}장 · 텍스처(RGBA) ${(before / 1048576).toFixed(1)}MB → ${(after / 1048576).toFixed(2)}MB`);
   if (P.sheet) {

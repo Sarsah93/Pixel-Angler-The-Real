@@ -213,6 +213,7 @@ export class CraftBoard {
     c.setX(Math.min(x, maxX));
     this.container.add(c);
     this.dexTip = c;
+    this.matchScroll();
   }
 
   // ── 왼쪽: 도면 목록 ───────────────────────────────────
@@ -379,11 +380,12 @@ export class CraftBoard {
     chk.materials.forEach((m, i) => {
       const col = i % 2, row = Math.floor(i / 2);
       const mx = x + pad + col * half, my = cy + row * 26;
-      this.container.add(createItemIcon(this.scene, mx + 11, my + 11, materialLook(m.material), 20));
-      const tt = this.scene.add.text(mx + 26, my + 3, `${m.material.nameKo}  ${m.have}/${m.need}`, {
+      // 259차 — 재료 그림 20 → 24px(줄 26px 안) — 어두운 장비 그림의 흰 테(카드 굽기 2px)가 20px에선 점선으로 끊겼다
+      this.container.add(createItemIcon(this.scene, mx + 12, my + 11, materialLook(m.material), 24));
+      const tt = this.scene.add.text(mx + 28, my + 3, `${m.material.nameKo}  ${m.have}/${m.need}`, {
         fontFamily: FONT, fontSize: '11px', color: m.ok ? '#d8e6f2' : '#ff8a7a',
       });
-      clampTextWidth(tt, half - 30);
+      clampTextWidth(tt, half - 32);
       this.container.add(tt);
     });
     cy += Math.ceil(chk.materials.length / 2) * 26 + 4;
@@ -465,7 +467,7 @@ export class CraftBoard {
     // 사유(단추 위 — R6)
     const reason = !chk.ok ? chk.reason : null;
     const laneBusy = CraftingStore.laneJobs(this.lane).length >= CraftingStore.laneCap();
-    const msg = this.status || (laneBusy && !reason ? (this.lane === 'hand' ? '손이 비지 않았다 — 지금 것을 마치고 하자' : '작업대가 비지 않았다') : reason ?? '');
+    const msg = this.status || (laneBusy && !reason ? (this.lane === 'hand' ? '손이 비어 있지 않습니다 — 지금 만드는 것을 마친 뒤에 할 수 있습니다' : '작업대가 비어 있지 않습니다') : reason ?? '');
     if (msg) {
       const r = this.scene.add.text(x + pad, btnY - 16, t(msg), {
         fontFamily: FONT, fontSize: '11px', color: this.status ? this.statusColor : '#ffb37a',
@@ -484,7 +486,7 @@ export class CraftBoard {
     if (stored > 0) {
       this.mkButton(x + w - pad - 150, btnY, 150, `보관함 ${stored}개 꺼내기`, () => {
         const n = CraftingStore.claimStorage();
-        this.setStatus(n > 0 ? `${n}개를 가방에 넣었다` : '가방에 자리가 없다', n > 0);
+        this.setStatus(n > 0 ? `${n}개를 가방에 넣었습니다` : '가방에 자리가 없습니다', n > 0);
         this.o.onCrafted?.();
       });
     }
@@ -518,7 +520,7 @@ export class CraftBoard {
     const job = CraftingStore.activeJob(this.lane);
     if (!job) return;
     const r = CraftingStore.cancel(job.id);
-    this.setStatus(`취소했다 — 돌려받은 재료 ${r.refunded}개 · 잃은 재료 ${r.forfeited}개`, r.forfeited === 0);
+    this.setStatus(`취소했습니다 — 돌려받은 재료 ${r.refunded}개 · 잃은 재료 ${r.forfeited}개`, r.forfeited === 0);
     this.o.onCrafted?.();
   }
 
@@ -583,6 +585,22 @@ export class CraftBoard {
     this.dexTip = undefined;
     this.container.removeAll(true);
     this.render();
+    this.matchScroll();
+  }
+
+  /**
+   * 259차 — 다시 그린 자식을 컨테이너와 같은 scrollFactor로. 새 자식은 1로 태어나, 필드처럼 카메라가 움직인 씬에서는
+   * 첫 클릭(선택)으로 다시 그린 뒤부터 모든 클릭이 카메라 이동량만큼 어긋났다(「제작 창이 아무것도 안 눌린다」).
+   */
+  private matchScroll(): void {
+    const sx = this.container.scrollFactorX, sy = this.container.scrollFactorY;
+    const walk = (c: Phaser.GameObjects.Container): void => {
+      for (const ch of c.list) {
+        (ch as unknown as { setScrollFactor?: (x: number, y: number) => unknown }).setScrollFactor?.(sx, sy);
+        if (ch instanceof Phaser.GameObjects.Container) walk(ch);
+      }
+    };
+    walk(this.container);
   }
 
   // ═══════════════════════════════════════════════

@@ -27,6 +27,7 @@ import { MapPinStore } from '../store/MapPinStore.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { buildMarkerTip, placeTip, tipSignature, tipHolds, tipItems, isPinnedAt } from './MapMarkerTip.js';
 import { restoreHandCursor } from './DraggablePanel.js';
+import { worldLabelStyle } from './WorldLabel.js';
 
 export interface FullMapConfig {
   mapTex: string;
@@ -485,9 +486,8 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
         g.lineStyle(2, 0xffd257, 1); g.strokeCircle(x, y, 9);
         g.lineStyle(1, 0x5a3d00, 1); g.strokeCircle(x, y, 11);
         c.add(g);
-        const lbl = this.scene.add.text(x, y - 13, t.label, {
-          fontFamily: FONT, fontSize: '10px', color: '#ffe9a0', backgroundColor: '#0a1628dd', padding: { x: 4, y: 2 },
-        }).setOrigin(0.5, 1);
+        // 259차 — 지도 표시 이름도 바탕 상자 없이 흰 테 글자(R14 · 사용자 「지도 표시 이름 5곳도 흰 테 글자로」)
+        const lbl = this.scene.add.text(x, y - 13, t.label, worldLabelStyle(10)).setOrigin(0.5, 1);
         c.add(lbl);
       }
     }
@@ -500,9 +500,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
         const g = this.scene.add.graphics();
         this.drawPinShape(g, x, y);
         c.add(g);
-        const lbl = this.scene.add.text(x, y - 20, '핀', {
-          fontFamily: FONT, fontSize: '10px', color: '#9fe8ff', backgroundColor: '#0a1628dd', padding: { x: 4, y: 2 },
-        }).setOrigin(0.5, 1);
+        const lbl = this.scene.add.text(x, y - 20, '핀', worldLabelStyle(10)).setOrigin(0.5, 1);
         c.add(lbl);
       }
     }
@@ -512,7 +510,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       if (!inside(x, y)) continue;
       const dot = this.scene.add.circle(x, y, 3.5, 0x5c9cff).setStrokeStyle(1.2, 0xffffff, 0.9);
       c.add(dot);
-      const t = this.scene.add.text(x, y - 6, pr.name, { fontFamily: FONT, fontSize: '9px', color: '#cfe4ff', backgroundColor: '#0a162899', padding: { x: 2, y: 1 } }).setOrigin(0.5, 1);
+      const t = this.scene.add.text(x, y - 6, pr.name, worldLabelStyle(9)).setOrigin(0.5, 1);
       c.add(t);
     }
     // 나 — 빨간 점, 깜빡임(실시간 위치 — 250ms마다 다시 그린다)
@@ -522,7 +520,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     const halo = this.scene.add.circle(px, py, 8, 0xff4040, 0.25 * blink);
     const me = this.scene.add.circle(px, py, 4, 0xff4040).setStrokeStyle(1.5, 0xffffff, 0.95).setAlpha(0.6 + 0.4 * blink);
     c.add([halo, me]);
-    const meLbl = this.scene.add.text(px, py + 7, '나', { fontFamily: FONT, fontSize: '9px', color: '#ffd0d0', backgroundColor: '#0a162899', padding: { x: 2, y: 1 } }).setOrigin(0.5, 0);
+    const meLbl = this.scene.add.text(px, py + 7, '나', worldLabelStyle(9)).setOrigin(0.5, 0);
     c.add(meLbl);
     // 다시 그린 뒤에도 포인터가 마커 위에 머물러 있으면 카드를 그대로 둔다(가만히 있어도 사라지지 않게 —
     // 내용·위치가 같으면 서명이 같아 다시 만들지 않는다). 지도를 끄는 중이면 숨긴다.

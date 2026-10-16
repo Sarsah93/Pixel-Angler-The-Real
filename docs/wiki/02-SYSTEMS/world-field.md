@@ -15,7 +15,7 @@
 | core | `types/DepthProfile.ts` | 실측 연안 수심(거리→수심 보간·외삽) |
 | tools | `regions_config.py` · `fetch_region_osm.py` · `build_osm_tilemap.py` | **OSM 파이프라인** — 지역 17개 bbox 레지스트리 · Overpass 수집 캐시 · 10m/타일 래스터라이즈(flood·마스킹·스폰 스냅) |
 | tools | `build_region_maps.py` · `build_depth_profiles.py` | 지형 PNG → 타일 JSON(**심리스 분기 포함**) / 수심 ZIP → 프로필 |
-| client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 |
+| client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 · 지점 이름 흰 테 글자(259) |
 | client | `RegionFieldScene` | legacy 전맵 베이킹 / **심리스 분기**(meta 스폰·OSM POI·엣지 비활성) · 캐스팅 · 조명/날씨 · 설치 모드 |
 | client | `scenes/SeamlessChunks.ts` | **청크 스트리밍** — 64타일 청크 · RT 풀 12 LRU · 3×3 상주 · 프레임당 1베이킹 · 근접 충돌 · 벡터 차선 마킹 · 프롭 10종 · `invalidateTiles`(편집 반영) |
 | client(dev) | `dev/MapEditorPanel.ts` + `vite.config.ts` 미들웨어 | **맵 편집기(F7)** — 지형/프롭/지붕 페인트 · Ctrl+Z · `patch.json` 저장 · Ctrl+클릭 순간이동(맵·미니맵) |
@@ -92,7 +92,7 @@
 | **바닥 점 → 가게 간판 · 좌판만 노점(바로 거래) · 지도 캡처 POI 병합** | ✅ | **217** · **218** 캡처 6~10 — 가게별 영업시간 ⬜ |
 | **게임 상호**(실제 상호를 조금씩 바꾸기 — 표 하나 · 병합 때 적용) | ✅ | **218** |
 | 스폰 다중화(`meta.spawns[]`) | ⬜ | 스펙 §12-2 |
-| **전체 지도 오버레이(M)** — 휠 줌(맞춤~×8 · **내 위치 중심**)·드래그(**좌→우 = 지도 왼쪽으로** `DRAG_DIR`)·더블클릭 중심 · 마커(랜드마크·상점·식당·NPC·퀘스트 `?`/`!`) · 좌하단 범례 16종 · **빨간 점멸 현위치** · 피어 · **우클릭 핀 설정/제거** + 핀 화살표(청록) | ✅ | **155** — `ui/FullMapPanel.ts` · `store/MapPinStore.ts`(지역당 1개 · 세션 메모리) |
+| **전체 지도 오버레이(M)** — 휠 줌(맞춤~×8 · **내 위치 중심**)·드래그(**좌→우 = 지도 왼쪽으로** `DRAG_DIR`)·더블클릭 중심 · 마커(랜드마크·상점·식당·NPC·퀘스트 `?`/`!`) · 좌하단 범례 16종 · **빨간 점멸 현위치** · 피어 · **우클릭 핀 설정/제거** + 핀 화살표(청록) | ✅ | **155** — `ui/FullMapPanel.ts` · `store/MapPinStore.ts`(지역당 1개 · 세션 메모리) · 259 이름표(목표 · 핀 · 다른 사람 · 「나」) 흰 테 글자 |
 | 미니맵 **타이틀바 [−][+]** 크기 단계 + 미니맵 아래 **퀘스트 추적기**(제목·목표·방법·거리) + 목표 방향 점멸 화살표(금) | ✅ | 155 — M 키는 전체 지도로 이관 |
 | 미니맵 · 전체 지도 **마커 정보 카드**(호버 — 이름 · 종류 · 파는 것 · 영업 상태 · 의뢰 상태 · 거리·방향 · 겹친 자리 목록 · 누르면 핀) | ✅ | 200 · **201** — `ui/MapMarkerTip` · `BUILDING_GOODS` · `BUILDING_HOURS`(직판장·편의점 24h · 그 외 10~22시 · **202 — 닫힌 시간엔 거래 대신 문 앞 혼잣말**) |
 | **지형 어휘 확장 + 쌍(pair) 전이** — `p`(광장)·`d`(흙길)·`t`(갯벌)·`c`(농지)·`f`(숲) 5자 신설 · core `TerrainTransition.seamBetween`이 `blob/curb/spill/revet/foam`을 결정 · 칠하기 순서를 지형 정의(`paint`)가 소유 | ✅ | **172** — `core/rules/TerrainTransition.ts` · 속초 실측 `c` 10,804 · `p` 4,877 · `f` 2,051 |

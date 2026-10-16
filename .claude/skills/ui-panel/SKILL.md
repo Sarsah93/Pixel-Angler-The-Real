@@ -11,6 +11,9 @@ description: Pixel Angler 팝업/패널/HUD UI 작성·수정·검수 규칙. Dr
 - **닫기는 우측 상단 ✕ 하나로 통일**(122차 사용자 지시) — 전체 화면 씬(도감·출처)도 하단/엣지 버튼 없이 우상단 ✕ + ESC. 푸터 텍스트는 뷰포트 계산(`maxScroll`)에 포함.
 - **씬에서 `scene.add.existing(panel)` + popupStack 등록** (ESC LIFO 편입). 하네스에서도 add.existing 필수.
 - **자식 추가/재구성 후 `this.applyFix()`(= applyScreenFixed) 필수** — 카메라 스크롤 씬에서 자식 scrollFactor 1이면 히트 판정이 카메라 이동량만큼 어긋난다.
+  - 259 — `DraggablePanel`은 매 프레임 끝(`postupdate`)에 `ensureScreenFixed`로 0이 아닌 자식을 고친다(안전망). 그래도 **스스로 다시 그리는 컴포넌트**
+    (보드 · 목록 — 자기 컨테이너를 비우고 다시 그리는 것)는 그 자리에서 맞춘다(`CraftBoard.matchScroll`) — 안전망은 한 프레임 늦고 패널 밖은 못 본다.
+    실측 사고: 제작 창이 필드에서 첫 클릭 뒤 전부 안 눌렸다(카메라 16,240px만큼 어긋남). 검수는 **카메라가 움직인 필드에서 둘째 클릭까지** 실마우스로.
 - **소리**(252차) — `DraggablePanel`이 열기 · 닫기 소리를 낸다(닫고 40ms 안에 다시 열면 = 다시 만들기 → 조용). 제 소리를 따로 내는 창(대화 · 혼잣말)은 설정에 `sound: false`.
   단추 딸깍은 손 커서(`useHandCursor`)면 자동이다(`audio/UiClickHook`) — 단추마다 `playUiClick`을 달지 않는다.
   행동 소리는 결과가 정해진 뒤(성공 · 실패 갈림) `playSfx('<레시피>')`(`audio/SfxBank.ts`)로 낸다 — 실패는 `deny` · 작업 빗나감은 `work_miss`.
@@ -82,11 +85,14 @@ description: Pixel Angler 팝업/패널/HUD UI 작성·수정·검수 규칙. Dr
 - **떠오르는 안내 글 전부가 같은 한 벌이다**(257차 — 사용자 「'슬롯 1에 저장했다' … 배경 직사각형 없이 텍스트 자체에 흰 테두리」).
   저장 알림 · 토스트 · 경고 띠 · 결과 띠 · 머리 위 말은 화면 고정이어도 `worldLabelStyle(size, { ink, align, wrap, bold })`로 만든다.
   글 스타일에 `backgroundColor` · `padding` 상자를 쓰지 않는다 — 경고는 글자색만 `WORLD_LABEL_WARN`(#8a1a0c). 줄 간격은 펼쳐서 더한다(`{ ...worldLabelStyle(14), lineSpacing: 6 }`).
-- 해당하지 않는 것: 칸 안 배지 · 칩(색 칸 자체가 정보) · 단추 · HUD 상시 칸(1인칭 상태 · 확률 · 거리) · 지도 표시(지도 위 판독) · dev 글. 새로 만들 때 어느 쪽인지 먼저 정한다.
+- 해당하지 않는 것: 칸 안 배지 · 칩(색 칸 자체가 정보) · 단추 · HUD 상시 칸(1인칭 상태 · 확률 · 거리) · dev 글. 새로 만들 때 어느 쪽인지 먼저 정한다.
+  **지도 표시 이름(전체 지도 표식 · 핀 · 다른 사람 · 「나」 · 세계 지도 지점)은 259부터 이 한 벌이다**(사용자 결정) — 9~10px · 잠긴 곳은 글자색만 회색.
   전수 점검은 `grep -rn "backgroundColor" packages/client-pc/src` → 글 객체만 골라 분류(257차 = 55곳 중 28곳 전환 · 표는 워크로그 257 §3).
 - **인물 머리 위 표시(의뢰 물음표 · 느낌표)는 이름표 옆 같은 줄**(258차 — 사용자 「'정옥선' 이라는 이름 왼쪽이나 오른쪽에 … '물음표'」).
   인물 그림 위에 겹쳐 놓지 않는다 — `RegionFieldScene.placeNpcMark`(이름 반폭 + 3px + 표시 반폭 8px). 이름표 · 거리 글이 같은 이름을 두 번 찍지 않게,
   대상 가까이에서는 퀘스트 거리 글(「정옥선 12m」)을 감춘다(`drawGuideArrow`의 `near`).
+  표시 그림은 16px 손그림(`tools/gen_pixel_icons.py` `mk_ready` · `mk_quest` · 미니맵 `mm_ready`) — 259에 다시 그렸다(옛 물음표는 점 아래 줄이 16칸 밖으로 잘렸다).
+  고칠 때는 테까지 16칸 안에 드는지 · 점이 줄기와 떨어지는지 · 바탕 넷(풀 · 도로 · 모래 · 밤)에서 1배로 읽히는지 본다.
 
 ## 마지막 방어선 · i18n
 

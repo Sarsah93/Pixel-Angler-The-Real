@@ -33,7 +33,7 @@
 | client 데이터 | `data/CraftOutputs.ts` | 산출 id → 인벤토리 템플릿 (상점에 있는 물건은 카탈로그 재사용) | ✅ 129 |
 | client 상태 | `store/CraftingStore.ts` | **두 줄 대기열**(손: 손이 비어 있을 때만 · 2초 넘는 틈은 버림 / 작업대: 오프라인 최대 8시간) · 개당 재료 · 진행 이월 · 보관함 · 취소 · 세이브 | ✅ 129 · 222 |
 | client 데이터 | `data/ShopCatalog.ts` 도면 종이 · `InvItem.blueprintId` | 도면 DB `learn.shop`이 가게 · 값을 정한다(자동 진열) · 아는 도면은 `ShopPanel`이 뺀다 | ✅ 223 |
-| client UI | `ui/CraftBoard.ts` · `ui/AdvancedCraftPanel.ts` · `ui/CraftResultDialog.ts` | 제작 보드(종류별 도면 › 상세·수량·시간·성공률) — **U '제작' 탭과 「작업대」 팝업이 공유** · 결과 창 · HUD 제작 칩(`RegionHud.refreshCraftChip`) | ✅ 129 · 222 |
+| client UI | `ui/CraftBoard.ts` · `ui/AdvancedCraftPanel.ts` · `ui/CraftResultDialog.ts` | 제작 보드(종류별 도면 › 상세·수량·시간·성공률) — **U '제작' 탭과 「작업대」 팝업이 공유** · 결과 창 · HUD 제작 칩(`RegionHud.refreshCraftChip`) · **259 — 다시 그린 자식 화면 고정(`matchScroll` — 필드에서 첫 클릭 뒤 전부 안 눌리던 것) · 사유 줄 합니다체(「재료가 부족합니다」) · 재료 그림 24px** | ✅ 129 · 222 · 259 |
 | core 계약 | `types/License.ts` | `LicenseCategory` 6군(낚시·해루질·통발·토지/주거·선박/어업·사업) · 16종(122차 +7) · `nameEn/descriptionEn/plannedNote` | ✅ 122 |
 | client 상태 | `store/GameState.ts` | `skillTree` 세이브 · `canLearnSkill/learnSkill` · `skillMult/skillBonus` · **`grantXp`·`addActivityXp`·`addLawfulReleaseXp`** · **`vitals`/`maxHp`/`maxFatigue`·`tickVitals`·`applyVitalsAction`·`applyIntake`·`sleepRecover`·`statuses`·`moveSpeedMult`** | ✅ 122·124·125 |
 | client 배선 | `RegionFieldScene`·`FirstPersonFishingScene`·`ForageSystem`·`HomeInteriorScene`·`InventoryPanel` | 드레인 틱(활동 자동 판정) · 행동 비용 5곳 · 음식 회복치 · 침대 수면 · 채집 부상 → 상태이상 승격 | ✅ 125 |
@@ -163,6 +163,12 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 - ~~퀘스트 진행 판정 + 일지 상태 실갱신~~ ✅134 — `StoryStore`(S22). 레거시 `GameState.quests`는 면허 요구조건용으로만 잔존.
 
 ## 6. 함정·불변조건
+
+### [259차] 제작 보드는 스스로 다시 그린다 — 다시 그린 뒤 scrollFactor를 맞춘다
+
+고르기 · 칩 · 수량 · 상태 변화마다 `redraw`가 컨테이너를 통째로 다시 만든다. 끝에서 `matchScroll()`을 빼면 필드(카메라가 움직인 씬)에서
+둘째 클릭부터 아무것도 안 눌린다(259 — 사용자 리포트). 창 공통 안전망(`DraggablePanel` `postupdate`)도 있지만 한 프레임 늦다 — 상세 [UI 페이지](ui-framework.md) §6.
+사유 줄 문구는 합니다체다(259 사용자 지시 「'재료가 부족합니다' 로」) — 같은 자리에 뜨는 새 안내를 해라체로 넣지 않는다.
 
 - **자격 만료는 봉쇄가 아니라 압박이다**(171차) — 자격이 사라지지 않고 '미갱신' 상태가 된다.
   위판만 막히고 평판이 깎이며, 갱신하면 즉시 복구된다. 149차 「닫히지 않는 목표는 만들지 않는다」와

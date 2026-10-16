@@ -4,6 +4,7 @@
 > · 252(타이틀 로고 코드 굽기 `TitleLogo` · 효과음 뱅크 `SfxBank` · 창 소리 · 단추 딸깍)
 > · 253(집 고양이 소리 8 · 날씨 환경음 — 비 · 바람 · 천둥 · 실내 먹먹함 `Ambience` · `WeatherSound`)
 > · 257(대사 문장 쉼 — core `paceSentences` · 떠오르는 안내 글 흰 테 28곳 — `worldLabelStyle` · `WORLD_LABEL_WARN`)
+> · 259(창 화면 고정 안전망 `ensureScreenFixed` — 제작 창 클릭 · 지도 표시 이름 흰 테 5곳)
 
 ---
 
@@ -23,7 +24,7 @@
 | `ui/RegionHud.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
 | `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동 · 191차 `side`·`alignTo`·`dockY`)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계(짚을 대상이 없으면 꼬리 없음) · 키 게이트 `GuideTour.blocksKey` · 세상 정지 판정 `GuideTour.blocking` · 대기열(씬 shutdown에 정리) · 플래그 `tour.<id>`(`ephemeral`이면 없음) · 14개 창 |
 | `ui/PrologueCoach.ts` | **프롤로그 말풍선 코치**(191차) — 씬이 매 프레임 넘기는 「지금 단계」(`CoachStage`)의 말풍선 하나 · 단계가 바뀌면 접고 새로 · 다른 가이드가 있으면 대기(`GuideTour.busy`) · 씬 pause에 접힘 · 집(`HomeInteriorScene.coachStage`)·필드(`RegionFieldScene.coachStage`) |
-| `ui/WorldLabel.ts` | **필드 글자 한 벌**(247) — `worldLabelStyle(size)` = 배경 없이 검은 글자 + 흰 테(11px 이상 3px). 머리 위 [F] 안내 · 떠오르는 안내 · 퀘스트 거리 · 이름표 · 설치물 꼬리표 |
+| `ui/WorldLabel.ts` | **필드 글자 한 벌**(247) — `worldLabelStyle(size)` = 배경 없이 검은 글자 + 흰 테(11px 이상 3px). 머리 위 [F] 안내 · 떠오르는 안내 · 퀘스트 거리 · 이름표 · 설치물 꼬리표 · 지도 표시 이름(259) |
 | `ui/GameCursor.ts` · `data/GameCursorArt.ts` | **게임 마우스 포인터**(250 · 251) — 찌 화살(사용자 선택 시안 1번 · 23px) · 설정으로 색(찌 · 야광찌 · 운영체제 기본) · 흰 테 4단 · 크기 1 · 2배. 누를 수 있는 곳은 테 한 단계 진하게(`handEdgeLevel`). 1 · 2 · 3배 data URI `image-set` · Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `handCursorCss()` · `applyCursorOptions` |
 | `ui/ColorAssist.ts` | **색 신호 한 벌**(251) — 뜻이 있는 색만 `cv(색)` · `cvCss('#…')`로 거쳐 색 구분 보정(끔 · 적록 · 청황)을 입힌다. 「모양으로도 표시」 단서 `drawBlockedX` · `drawHatch` · `drawMark`(`CONDITION_MARK`) · 안내 문장 두 벌 `cvText` · 방식별 문구 `okBadLegend` · 서명 조각 `a11ySig` |
 | `ui/AccessSettingsTab.ts` | **설정 「접근성」 탭**(251) — 포인터 3줄 · 색 구분 2줄(흐름 배치) · 포인터 미리보기(밝은 곳 · 어두운 곳) · 신호 미리보기. 고르면 즉시 저장 · `game.events` `'a11y-changed'` |
@@ -84,7 +85,7 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | **상호작용 겹침 선택 창**(`InteractChoicePanel`) — 드래그 · 우측 한 겹 확장 · ↑↓/Enter/ESC | ✅ | 178 |
 | **획득 알림 30초 + 직접 닫기**(✕ · 본문 클릭 · 모두 닫기) + 추적기 아래 재배치 | ✅ | 178 |
 | **드래그 고스트 반투명 + 목표 소켓 하이라이트** | ✅ | 178 |
-| DraggablePanel 공통화 + 화면 고정 히트 보정 | ✅ | 13 |
+| DraggablePanel 공통화 + 화면 고정 히트 보정 · **259 안전망**(매 프레임 끝 `ensureScreenFixed` — 다시 그린 자식도 다음 프레임 안에 0) | ✅ | 13 · 259 |
 | 팝업 z-order 포커스 + ESC 정합 | ✅ | 76 |
 | 텍스트 상한 헬퍼 + 고순위 4건 수정 | ✅ | 54 |
 | 도감 페이징·헤더 겹침 | ✅ | 71 |
@@ -140,6 +141,14 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 
 ## 6. 함정·불변조건
 
+### [259차] 스스로 다시 그리는 보드의 새 자식은 scrollFactor 1로 태어난다 — 필드에서 클릭이 카메라만큼 어긋난다
+
+제작 보드(`CraftBoard`)는 고를 때마다 자기 컨테이너를 비우고 다시 그린다. 창은 처음 그릴 때만 `applyFix()`를 불러,
+다시 그린 글 · 단추 · 히트 사각형은 scrollFactor 1이었다 — 필드(카메라 가로 16,240px)에서 첫 클릭 뒤 **모든 클릭이 엉뚱한 곳**에 떨어졌다
+(사용자 「제작 관련해서 아무것도 클릭이 안되는 중」). 이제 `DraggablePanel`이 매 프레임 끝(`postupdate`)에 트리를 훑어 0이 아닌 것만 0으로 고친다
+(`ensureScreenFixed`). 그래도 **다시 그리는 컴포넌트는 그 자리에서 맞춘다**(`CraftBoard.matchScroll`) — 안전망은 한 프레임 늦고, 패널 밖 컨테이너는 못 본다.
+하네스는 반드시 카메라가 움직인 필드에서 **두 번째 클릭**까지 실마우스로 누른다(첫 클릭은 늘 들어간다).
+
 ### [258차] 대상이 모달 안이어도 모달은 피한다 — 「대상을 품은 창 = 설명하는 창」 예외
 
 `collectOccluders`는 대상을 품은 창을 가리는 창에서 뺀다(설명하는 창이니까). 그런데 상점 판매 가이드의 대상은 **열린 수량 창 자체**라,
@@ -158,6 +167,7 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 
 - 저장 알림 · 토스트 · 경고 · 결과 띠 · 머리 위 말 · 필드 이름표는 상자 없이 검은 글자 + 흰 테(R14). 경고는 글자색만 `WORLD_LABEL_WARN`.
 - `backgroundColor`가 남아도 되는 곳 — 칸 안 배지 · 칩 · 단추 · HUD 상시 칸 · dev 도구(257 분류 · 27곳). 새로 쓸 때 이 넷 중 하나인지 먼저 본다.
+- 259 — 지도 표시 이름(전체 지도 표식 · 핀 · 다른 사람 · 「나」 · 세계 지도 지점)도 흰 테 글자로 바꿨다(사용자 결정). 잠긴 지점은 글자색만 회색.
 
 ### [253차] 소리 크기는 A 가중으로, 누르개 뒤에서 잰다
 

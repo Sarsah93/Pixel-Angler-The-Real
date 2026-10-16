@@ -12,6 +12,10 @@
  * scrollFactor(기본 1)를 사용한다. 화면 고정 UI(컨테이너 scrollFactor 0) 안의
  * 자식이 scrollFactor 1이면, 카메라가 스크롤된 만큼 클릭 판정이 어긋난다.
  * → applyScreenFixed()로 트리 전체에 scrollFactor 0을 재귀 적용해야 한다.
+ *
+ * 259차 — 안전망: 자기 컨테이너를 비우고 다시 그리는 보드(제작 보드 등)는 새 자식이 scrollFactor 1로 태어난다.
+ * 필드처럼 카메라가 움직인 씬에서는 첫 클릭 뒤로 모든 클릭이 카메라 이동량만큼 어긋나 「아무것도 안 눌린다」(제작 창 실측).
+ * 그래서 패널은 매 프레임 끝(`postupdate`)에 트리를 훑어 0이 아닌 것만 0으로 고친다(`ensureScreenFixed`).
  */
 
 import Phaser from 'phaser';
@@ -32,6 +36,24 @@ export function applyScreenFixed(root: Phaser.GameObjects.Container): void {
     }
   };
   walk(root);
+}
+
+/**
+ * 259차 — `applyScreenFixed`의 가벼운 판: 0이 아닌 것만 고친다(읽기만 하는 비용 — 매 프레임 불러도 된다).
+ * @returns 고친 개수
+ */
+export function ensureScreenFixed(root: Phaser.GameObjects.Container): number {
+  let fixed = 0;
+  if (root.scrollFactorX !== 0 || root.scrollFactorY !== 0) { root.setScrollFactor(0); fixed++; }
+  const walk = (c: Phaser.GameObjects.Container): void => {
+    for (const child of c.list) {
+      const o = child as unknown as { scrollFactorX?: number; scrollFactorY?: number; setScrollFactor?: (v: number) => unknown };
+      if (o.setScrollFactor && (o.scrollFactorX !== 0 || o.scrollFactorY !== 0)) { o.setScrollFactor(0); fixed++; }
+      if (child instanceof Phaser.GameObjects.Container) walk(child);
+    }
+  };
+  walk(root);
+  return fixed;
 }
 
 /**
@@ -122,6 +144,8 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
   private static openedOnDown = -1;
   /** 252차 — 열기 · 닫기 소리를 내는 창인가 */
   private readonly sfx: boolean;
+  /** 259차 — 매 프레임 끝 화면 고정 안전망(다시 그린 자식) */
+  private readonly fixHandler = (): void => { if (this.active) ensureScreenFixed(this); };
 
   constructor(scene: Phaser.Scene, cfg: DraggablePanelConfig) {
     super(scene, cfg.x, cfg.y);
@@ -207,6 +231,7 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
       if (!blocked) this.bringSelfToTop();
     };
     scene.input.on('pointerdown', this.focusDownHandler);
+    scene.events.on('postupdate', this.fixHandler);
   }
 
   /** 스크린 좌표가 패널 rect 안인지 (패널은 scrollFactor 0 — p.x/p.y 그대로 비교) */
@@ -294,6 +319,7 @@ export class DraggablePanel extends Phaser.GameObjects.Container {
     this.scene?.input?.off('pointermove', this.moveHandler);
     this.scene?.input?.off('pointerup', this.upHandler);
     this.scene?.input?.off('pointerdown', this.focusDownHandler);
+    this.scene?.events?.off('postupdate', this.fixHandler);
     this.dimRect?.destroy();
     super.destroy(fromScene);
   }

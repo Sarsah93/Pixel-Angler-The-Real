@@ -336,7 +336,7 @@ class CraftingStoreManager {
    */
   check(bp: CraftBlueprint, qty = 1, at: CraftStation = bp.station): CraftCheck {
     if (!this.knows(bp.id)) {
-      return { ok: false, materials: [], reason: '모르는 도면이다', maxQty: 0, locked: true };
+      return { ok: false, materials: [], reason: '모르는 도면입니다', maxQty: 0, locked: true };
     }
     const materials = bp.materials.map((m) => {
       const have = haveCount(m);
@@ -360,16 +360,16 @@ class CraftingStoreManager {
       reason = `스킬 [${name}] ${req.rank}단계 필요`;
     } else if (bp.station !== 'hand' && at === 'hand') {
       locked = true;
-      reason = bp.station === 'advanced' ? '작업대에서 로드 빌딩 공구 세트로 만든다' : '작업대에서 만든다';
+      reason = bp.station === 'advanced' ? '작업대에서 로드 빌딩 공구 세트로 만듭니다' : '작업대에서 만듭니다';
     } else if (bp.station === 'advanced' && !this.hasAdvancedTools()) {
       locked = true;
-      reason = '로드 빌딩 공구 세트가 있어야 한다';
+      reason = '로드 빌딩 공구 세트가 있어야 합니다';
     } else if (!tpl) {
       reason = '산출 아이템 정의 없음 (데이터 오류)';
     } else if (materials.some((m) => !m.ok)) {
-      reason = '재료가 모자라다';
+      reason = '재료가 부족합니다';   // 259차 사용자 지시 — 제작하기 위 사유 줄은 합니다체
     } else if (!this.roomFor(tpl)) {
-      reason = '가방에 자리가 없다';
+      reason = '가방에 자리가 없습니다';
     }
     return { ok: reason === null, materials, reason, maxQty, locked };
   }
@@ -381,10 +381,10 @@ class CraftingStoreManager {
    */
   start(bp: CraftBlueprint, qty: number, at: CraftStation): string | null {
     const chk = this.check(bp, 1, at);
-    if (!chk.ok) return chk.reason ?? '만들 수 없다';
+    if (!chk.ok) return chk.reason ?? '만들 수 없습니다';
     const lane = laneOf(bp.station);
     if (this.laneJobs(lane).length >= this.laneCap()) {
-      return lane === 'hand' ? '손이 비지 않았다 — 지금 것을 마치고 하자' : '작업대가 비지 않았다';
+      return lane === 'hand' ? '손이 비어 있지 않습니다 — 지금 만드는 것을 마친 뒤에 할 수 있습니다' : '작업대가 비어 있지 않습니다';
     }
     const now = Date.now();
     const job: CraftJob = {

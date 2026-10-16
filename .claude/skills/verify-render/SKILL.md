@@ -196,6 +196,11 @@ const { chromium } = resolvePlaywright();
   `sc.chunks.preloadAround(x, y)`(청크 몸체 생성) → `pb.body.reset(x, y)` → `for (…) { pb.body.setVelocity(0, -150); sc.physics.world.step(1 / 60); }`
   → `world.postUpdate()` → `pb.setPosition(pb.body.center.x, pb.body.center.y)`(안 하면 그림이 옛 자리) → `sc.updateSpriteAndShadow()`.
   판정은 몸 윗변(`pb.body.top`)과 벽 그림 바닥선 · 그리기 순서는 `20 + 몸 중심 y × 0.001` 대 건물 `20 + bottomY × 0.001`.
+- **날씨를 고정해 1인칭 비 · 수면 빗방울을 본다**(259차) — 게임 시작 전 `globalThis.__EXT.getWeatherKind = () => 'rain'`(또는 'shower' · 'sleet') →
+  필드에서 `s.enterFirstPersonFishing(x, y, c, r)`(물 칸) → `globalThis.__FP.rainSplash`(없으면 비가 아닌 날) · 헤드리스는 rAF가 느려
+  `fp.updateRainSplash(1 / 30)`을 몇십 번 직접 부르고 `scene.pause()` 뒤 스크린샷을 찍는다(수 · 원근 분포는 `rainSplash.list`의 `d` · `p`).
+- **하네스에서 다른 씬(세계 지도 등)을 열 때 `game.scene.start(key)`는 필드를 멈추지 않는다**(259차) — 필드가 위에 그대로 그려진다.
+  씬 안의 `this.scene.start`와 다르다. `game.scene.stop('RegionFieldScene')` 뒤 `start`한다.
 - **가이드 단계는 점프해서 본다**(258차) — `const t = globalThis.__TOUR.active; t.go(t.opts.steps.findIndex((s) => /문장/.test(s.text)))` →
   상황(모달 등)을 만든 뒤 `for (…) t.tick(16)`로 타이핑 · 자리 잡기를 돌리고 `t.bubble.getBounds()`를 잰다. 끝나면 `t.dismiss()`.
   상점은 `sc.openShop(kind, branch)`(문 앞에 갈 필요 없음) · 팔 물건은 `(await import('/src/store/Prologue.ts')).prologueSquid()` 틀에서

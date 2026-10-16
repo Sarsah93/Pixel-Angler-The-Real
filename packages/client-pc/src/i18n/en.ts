@@ -867,9 +867,9 @@ export const EN_RULES: Rule[] = [
     (m, tr) => `Crafting  ${tr(m[1])}  ${m[2]} / ${m[3]}${m[4] ? '  · stopping after this one' : ''}${m[5] ? `  · queued ${m[6]}` : ''}`],
   [/^작업대에서 만드는 중  (.*) — (.+)$/, (m, tr) => `At the workbench  ${tr(m[1])} — ${m[2]}`],
   [/^보관함 (\d+)개 꺼내기$/, (m) => `Take out ${m[1]} from storage`],
-  [/^(\d+)개를 가방에 넣었다$/, (m) => `Put ${m[1]} in the bag`],
+  [/^(\d+)개를 가방에 넣었(?:다|습니다)$/, (m) => `Put ${m[1]} in the bag`],
   [/^(\d+)%  ·  남은 시간 (.+)$/, (m) => `${m[1]}%  ·  ${m[2]} left`],
-  [/^취소했다 — 돌려받은 재료 (\d+)개 · 잃은 재료 (\d+)개$/, (m) => `Cancelled — ${m[1]} material(s) returned · ${m[2]} lost`],
+  [/^취소했(?:다|습니다) — 돌려받은 재료 (\d+)개 · 잃은 재료 (\d+)개$/, (m) => `Cancelled — ${m[1]} material(s) returned · ${m[2]} lost`],
   [/^(\d+)시간 (\d+)분$/, (m) => `${m[1]}h ${m[2]}m`],
   [/^(\d+)분 (\d+)초$/, (m) => `${m[1]}m ${m[2]}s`],
   // 결과 창
