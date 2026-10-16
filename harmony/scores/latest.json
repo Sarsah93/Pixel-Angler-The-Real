@@ -1,9 +1,9 @@
 {
- "date": "2026-10-16",
- "audited_commit": "0a6047d66d9bb40c68b28feb9bb83ed16b69ae5f",
+ "date": "2026-10-17",
+ "audited_commit": "0b32ca662558bc6fc1f16f018cff5515770cfec7",
  "summary": {
-  "harmony_index": 48.4,
-  "balance": 37.3,
+  "harmony_index": 47.1,
+  "balance": 40.8,
   "weakest": "08-notes-memory",
   "measured_domains": 9
  },
@@ -31,12 +31,12 @@
   "02-code": {
    "name": "2 코드",
    "health": 68.0,
-   "mastery": 5.8,
+   "mastery": 5.1,
    "agency": null,
-   "overall": 44.7,
-   "scope_files": 379,
-   "reviewed_current": 22,
-   "reviewed_stale": 15,
+   "overall": 44.4,
+   "scope_files": 413,
+   "reviewed_current": 21,
+   "reviewed_stale": 16,
    "open_findings": {
     "심각": 0,
     "보통": 3,
@@ -51,10 +51,10 @@
   "03-files-docs": {
    "name": "3 파일·문서",
    "health": 86.0,
-   "mastery": 45.8,
+   "mastery": 35.5,
    "agency": null,
-   "overall": 70.9,
-   "scope_files": 808,
+   "overall": 67.1,
+   "scope_files": 1041,
    "reviewed_current": 370,
    "reviewed_stale": 0,
    "open_findings": {
@@ -71,12 +71,12 @@
   "04-design-media": {
    "name": "4 디자인·미디어",
    "health": 70.0,
-   "mastery": 43.1,
+   "mastery": 34.0,
    "agency": null,
-   "overall": 59.9,
-   "scope_files": 1446,
-   "reviewed_current": 623,
-   "reviewed_stale": 57,
+   "overall": 56.5,
+   "scope_files": 1823,
+   "reviewed_current": 620,
+   "reviewed_stale": 60,
    "open_findings": {
     "심각": 0,
     "보통": 3,
@@ -91,10 +91,10 @@
   "05-pipeline": {
    "name": "5 파이프라인",
    "health": 70.0,
-   "mastery": 8.5,
+   "mastery": 7.1,
    "agency": null,
-   "overall": 46.9,
-   "scope_files": 106,
+   "overall": 46.4,
+   "scope_files": 127,
    "reviewed_current": 9,
    "reviewed_stale": 4,
    "open_findings": {
@@ -131,12 +131,12 @@
   "07-api-env": {
    "name": "7 API·환경 설정",
    "health": 54.0,
-   "mastery": 43.5,
+   "mastery": 33.3,
    "agency": null,
-   "overall": 50.1,
-   "scope_files": 23,
-   "reviewed_current": 10,
-   "reviewed_stale": 5,
+   "overall": 46.2,
+   "scope_files": 24,
+   "reviewed_current": 8,
+   "reviewed_stale": 7,
    "open_findings": {
     "심각": 0,
     "보통": 6,
@@ -151,12 +151,12 @@
   "08-notes-memory": {
    "name": "8 노트·메모리",
    "health": 6.0,
-   "mastery": 11.8,
+   "mastery": 11.0,
    "agency": null,
-   "overall": 8.2,
-   "scope_files": 212,
-   "reviewed_current": 25,
-   "reviewed_stale": 24,
+   "overall": 7.9,
+   "scope_files": 219,
+   "reviewed_current": 24,
+   "reviewed_stale": 25,
    "open_findings": {
     "심각": 0,
     "보통": 12,
@@ -166,7 +166,7 @@
     "merged": 2,
     "closed": 0
    },
-   "open_proposals": 0
+   "open_proposals": 1
   },
   "09-skills": {
    "name": "9 스킬",
@@ -189,5 +189,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-10-15"
+ "previous_date": "2026-10-16"
 }
