@@ -12,6 +12,8 @@
  *   2. 아이콘 `packages/client-pc/public/items/icon/<파일>` — 긴 변 64px(가방 · 상점 · 퀵슬롯 칸 — `fitFishTexture`가 고른다)
  *   3. `packages/client-pc/src/data/ItemImages.ts` — 자동 생성(수동 편집 금지)
  *  줄이기는 `tackle_cards.cjs`의 면적 평균 + 불투명도 보존(`shrinkKeepAlpha`).
+ *  256차 — 생김새 표에 `outline: true`면 바깥 윤곽에 아주 얇은 흰 테를 두른다(`tools/outline.cjs` — 검은 새 그물 · 육묘 트레이가 어두운 칸에 묻혔다).
+ *   두께는 **화면에서 1px** — 카드는 제 크기로 그려지므로 1px, 64px 아이콘은 가방 칸에 약 30px로 줄여 그려지므로(NEAREST) 2px. 원본은 그대로다.
  *
  *  사용:
  *    node tools/item_cards.cjs              # 전부(원본이 있는 것만)
@@ -27,6 +29,7 @@ const { decodeAny } = require('./pixelize_crops.cjs');
 const { encode } = require('./lib_png.cjs');
 const { shrinkKeepAlpha } = require('./tackle_cards.cjs');
 const { loadLooks } = require('./gemini_item_art.cjs');
+const { padRgba, addOutline } = require('./outline.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'food assets', 'items');
@@ -124,15 +127,24 @@ async function main() {
     process.exit(lack.length ? 1 : 0);
   }
   fs.mkdirSync(OUT_ICON, { recursive: true });
+  const outlined = new Set(Object.values(LOOKS).filter((it) => it.outline).map((it) => it.file));
+  /** 줄이기 — `t` > 0이면 칸에서 사방 t를 비우고 줄인 뒤 얇은 흰 테(256차) */
+  const bake = (img, bw, bh, t, out) => {
+    const [w, h] = fit(img.w, img.h, bw - t * 2, bh - t * 2);
+    let r = { w, h, data: shrinkKeepAlpha(img.data, img.w, img.h, w, h) };
+    if (t > 0) { r = padRgba(r.data, w, h, t); addOutline(r.data, r.w, r.h, t); }
+    encode(r.w, r.h, r.data, out);
+    return r.w * r.h * 4;
+  };
   let before = 0, after = 0;
   for (const f of files) {
     const img = await decodeAny(path.join(SRC, f));
-    const [cw, ch] = fit(img.w, img.h, CARD_W, CARD_H);
-    const [iw, ih] = fit(img.w, img.h, ICON, ICON);
-    encode(cw, ch, shrinkKeepAlpha(img.data, img.w, img.h, cw, ch), path.join(OUT, f));
-    encode(iw, ih, shrinkKeepAlpha(img.data, img.w, img.h, iw, ih), path.join(OUT_ICON, f));
-    before += img.w * img.h * 4; after += cw * ch * 4 + iw * ih * 4;
+    const ol = outlined.has(f);
+    after += bake(img, CARD_W, CARD_H, ol ? 1 : 0, path.join(OUT, f));
+    after += bake(img, ICON, ICON, ol ? 2 : 0, path.join(OUT_ICON, f));
+    before += img.w * img.h * 4;
   }
+  if (outlined.size) console.log(`얇은 흰 테 ${outlined.size}장: ${[...outlined].join(' · ')}`);
   console.log(`카드 · 아이콘 ${files.length}장 · 텍스처(RGBA) ${(before / 1048576).toFixed(1)}MB → ${(after / 1048576).toFixed(2)}MB`);
   // 원본이 지워진 그림의 출력은 치운다(표와 출력이 갈라지지 않게)
   for (const dir of [OUT, OUT_ICON]) {

@@ -130,7 +130,7 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
     descKo: '가는 목줄에 작은 바늘을 묶은 전유동용 채비. 예민한 입질에 대응한다.',
     descEn: 'A fine-leader rig for free-drift fishing, matched to shy bites.',
     materials: [
-      { itemId: 'shop_carbon3', qty: 1, nameKo: '카본 목줄 3호', nameEn: 'Carbon Leader #3' },
+      { itemId: 'inv_carbon15', qty: 1, nameKo: '카본 목줄 3호', nameEn: 'Carbon Leader #3' },   // 256차 — 옛 중복 id `shop_carbon3` → 정본
       { itemId: 'inv_chinu3', qty: 2, nameKo: '감성돔 바늘 3호', nameEn: 'Chinu Hook #3' },
     ],
     outputId: 'craft_rig_blackfish', outputQty: 2, baseSuccess: 0.90, xp: 12,
@@ -342,7 +342,7 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
       { itemId: 'inv_mat_paint', qty: 1, nameKo: '도료 세트', nameEn: 'Paint Set' },
       { itemId: 'inv_mat_resin', qty: 1, nameKo: '에폭시 수지', nameEn: 'Epoxy Resin' },
     ],
-    outputId: 'shop_float10', outputQty: 2, baseSuccess: 0.8, xp: 24,
+    outputId: 'inv_float10', outputQty: 2, baseSuccess: 0.8, xp: 24,   // 256차 — 옛 중복 id `shop_float10` → 정본(시작 아이템 · 상점과 같은 칸에 쌓인다)
     timeSec: 180, minLevel: 14,
   },
   {
@@ -608,7 +608,7 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
       { itemId: 'inv_mat_tin', qty: 1, nameKo: '주석 잉곳', nameEn: 'Tin Ingot' },
       { itemId: 'inv_chinu3', qty: 2, nameKo: '감성돔 바늘 3호', nameEn: 'Chinu Hook #3' },
     ],
-    outputId: 'inv_jighead', outputQty: 4, baseSuccess: 0.86, xp: 18,
+    outputId: 'lure_jighead_3', outputQty: 4, baseSuccess: 0.86, xp: 18,   // 256차 — `inv_jighead`는 채비 무게가 0g으로 읽혔다(id에 숫자가 없다)
     requiresSkill: { id: 'craft_sinker', rank: 1 },
     timeSec: 120, minLevel: 10,
     learn: { via: 'shop', shop: 'market', priceWon: 12000 },

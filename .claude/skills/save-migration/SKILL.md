@@ -48,6 +48,15 @@ deserialize에서 **부재 시 주입**: `if (!this.find(id)) addItem(...)` (`cr
   그 뒤에 평소 굴림(`advanceAll`)을 돌린다 — 순서가 바뀌면 굴림이 먼저 벌을 매긴다.
 - 표를 다시 크게 바꾸면 `CARE_V`를 올린다. 새 게임은 키를 바로 최신으로 쓴다(정리할 것이 없다).
 
+## 같은 물건이 id 둘이면 — 정본 별칭 + 합치기 (256차)
+
+- 시작 아이템(`inv_*`)과 상점 · 카탈로그 아이템이 같은 물건인데 id가 다르면 위키 · 도감에 같은 이름이 둘 뜨고 가방에서 따로 쌓인다.
+  옛 id를 지우지 말고 **`store/ItemIdAlias.ts`의 `ITEM_ID_ALIAS`에 「옛 id → 정본 id」 한 줄**을 더한다.
+- 그 한 줄로 바뀌는 곳: 로드(`canonicalizeItem` — 정적 정보는 정본 시드에서 · 유저 상태는 그대로) · 같은 id 칸 합치기(`mergeSameIdItems` —
+  착용 중인 쪽이 남는다) · 분류가 바뀐 칸의 겹침 옮기기(`fixSlotCollisions` — 원래 있던 쪽이 자리를 지킨다) · 퀵슬롯 · 채비 칸 · **채비 트리 노드 `itemId`** ·
+  `addItem`(집 보관 · 바닥 줍기 · 거래 · 옛 제작 대기열이 옛 id로 넣어도 정본 칸에 쌓인다) · 상점 즐겨찾기 키(`id|이름`) · 중고 칸 · 도감(더 이른 최초 기록).
+- 상점 · 제작 표 · 시드는 정본 id로 고친다(옛 id를 데이터에 남기지 않는다). 검증은 옛 id 아이템 · 퀵슬롯 · 채비 트리를 끼운 세이브를 `deserialize`.
+
 ## 신선도/시간 관련
 
 - **오프라인(게임 종료) 중 신선도 정지**: deserialize에서 `savedAtMs` 기준 오프라인 갭만큼 `conditionSinceMs`(+쿨러 lastSyncMs/mediumSetAtMs)를 앞으로 민다 — wall-clock 전체 적용 시 "즉시 부패" 버그(39차).

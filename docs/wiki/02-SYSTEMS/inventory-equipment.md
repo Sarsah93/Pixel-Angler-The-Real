@@ -1,6 +1,6 @@
 # S5·S12. 인벤토리 · 장비 · 보관(신선도) · 세이브
 
-> 상태 **🟢 운영**. 관련 차수 10·21·22·23·39·44·46·53·72·76·117·135·136·148·**249**·**255**
+> 상태 **🟢 운영**. 관련 차수 10·21·22·23·39·44·46·53·72·76·117·135·136·148·**249**·**255**·**256**
 
 ---
 
@@ -80,6 +80,7 @@
 | **채비 고정**(`rigLocked` · `lockRig`(트리 필수 칸 누락이면 거부)/`unlockRig` · 세이브 · `setRigNode` 가드(192 — 구 `setRigPart`·`setLure`·`setJigHead`·`setRigMode` 폐기) — `consumeRigItem`·`loseRigParts`는 `_rig` 직접 갱신이라 영향 없음) | ✅ | 155 — [S1](fishing-loop.md) |
 | **사시미 접시 메타**(`InvItem.sashimi`·`cutQuality`·`knifeTier`) + 음식 영양 상세(`FoodNutrition` 파생) | ✅ | 155 — [S4](sashimi-cooking.md) |
 | **장비 그림 종류별 키**(`TackleTextures` — `rodArtKey`(대 종류 8 + 죽간) · `reelArtKey`(베이트 · 레버 · 번수) · `lineArtKey`(목줄 · 합사 · 나일론)) · 옛 세이브 보정(`refreshTackleArt` — 빌려 쓰던 키일 때만) | ✅ | **249** — [S25](photo-pixel-art.md) |
+| **같은 물건 한 id**(`store/ItemIdAlias.ts` — 뜰채 5m · 구멍찌 1.0호 · 카본 목줄 3호 · 지그헤드 3g) · 로드 · `addItem` 정본화 · 같은 id 칸 합치기 · 분류가 바뀐 칸 겹침 옮기기 · 퀵슬롯 · 채비 트리 · 즐겨찾기 · 도감 | ✅ | **256** — 위키 같은 이름 4쌍 → 0 · 지그헤드 0g 버그 |
 | **아이템 그림 고르기**(`ui/ItemIcon.ts` — 작물 초상 · 채소 별칭 → `itemImageKeyOf`(아이템 id → 16px 키 → 같은 음식 별칭 · `ItemImages.ts`) → 코드 그림 → `iconTexture` → 16px) · 옛 세이브 요리 계열 그림 키 → 레시피 사진(`refreshDishPhoto`) | ✅ | **255** — 가방 칸 새 그림 전부 · 이전 10/10 |
 
 ## 5. 잔여·차기
@@ -96,6 +97,10 @@
 
 ## 6. 함정·불변조건
 
+- **같은 물건에 id를 둘 만들지 않는다**(256) — 시작 아이템을 상점에 올릴 때는 시작 아이템 id를 그대로 판다(구멍찌 0.8호 · 합사 원줄 관례).
+  따로 `shop_*` id를 만들면 위키 · 도감에 같은 이름이 둘 뜨고 가방에서 따로 쌓인다(뜰채 5m 등 4쌍 — `ItemIdAlias`로 정리).
+  이미 퍼진 옛 id는 `ITEM_ID_ALIAS`에 한 줄을 더한다 — 로드 · `addItem` · 즐겨찾기 · 도감이 같이 정본으로 바꾼다.
+  id에서 수치를 읽는 아이템(지그헤드 `lure_jighead_<g>` — `jigHeadWeightById`)은 숫자 없는 id를 만들면 0으로 읽힌다.
 - **그림을 바꿀 때 아이템의 `iconTexture`를 고치지 않는다**(255) — 옛 키(`art_*` · `px:*`)를 그대로 두고 그림 표(`ItemImages.ts` — `node tools/item_cards.cjs`가 생성)로 잇는다.
   세이브에 굳은 키가 그대로 맞으므로 이전이 필요 없다. 요리처럼 **키 자체가 계열 그림**이던 것만 불러올 때 바꾼다(`refreshDishPhoto`).
 - **장비 그림 키는 아이템 정의에 손으로 적지 않는다**(249) — 대 · 릴 · 줄은 `rodArtKey(id, name)` · `reelArtKey` · `lineArtKey`로 고른다.

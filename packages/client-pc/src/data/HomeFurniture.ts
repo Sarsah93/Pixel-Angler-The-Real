@@ -474,12 +474,27 @@ function drawSofa(dot: DotFn, slab: SlabFn, slabV: SlabFn, shade: ShadeFn,
  * 나무 의자 — 등받이가 있는 쪽이 등이다.
  * 'up' = 식탁을 향해 앉는 의자(등받이가 아래 — 앉은 사람의 허리를 가린다) · 'down' = 정면 · 'right'/'left' = 옆모습.
  */
+/**
+ * 의자 등받이 — 위 가로대 + 양쪽 기둥 + 세로 살 셋(256차 — 아이템 그림 `item_furn_chair`와 같은 짜임).
+ * 전에는 통판에 어두운 홈 세 줄이라 밝은 널이 넷으로 읽혀 아이템 그림(기둥 둘 사이 살 셋)과 개수가 달라 보였다.
+ * 살 사이 틈은 비치는 그늘로 칠한다(투명으로 두면 뒤의 밝은 좌판이 비쳐 틈이 살처럼 보인다).
+ */
+function drawChairBack(dot: DotFn, slab: SlabFn, top: number, bottom: number): void {
+  const GAP = 0x3a2616;
+  const [mid, hi, lo] = WOOD_LIGHT;
+  slab(12, top, 24, 4, WOOD_LIGHT);                                       // 위 가로대
+  for (let yy = top + 4; yy < bottom; yy += 2) {
+    for (let xx = 16; xx < 32; xx += 2) dot(xx, yy, GAP);                 // 살 사이 그늘
+    for (const px of [12, 32]) { dot(px, yy, hi); dot(px + 2, yy, lo); }  // 양쪽 기둥(밝은 면 · 그늘 면)
+    for (const sx of [18, 23, 28]) dot(sx, yy, yy < top + 7 ? hi : mid);  // 살 셋
+  }
+}
+
 function drawChair(dot: DotFn, slab: SlabFn, slabV: SlabFn, shade: ShadeFn, dir: FurnDir): void {
   const OUT = 0x4a3018;
   if (dir === 'down') {
     shade(12, 44, 24);
-    slab(12, 4, 24, 16, WOOD_LIGHT);                          // 등받이 (위)
-    for (const sx of [17, 23, 29]) for (let yy = 8; yy < 18; yy += 2) dot(sx, yy, 0x66492b);   // 살
+    drawChairBack(dot, slab, 4, 20);                          // 등받이 (위)
     slab(10, 20, 28, 14, [0xa8835a, 0xc29d6c, 0x7a5734]);     // 좌판
     for (const lx of [12, 34]) for (let yy = 34; yy < 44; yy += 2) dot(lx, yy, OUT);   // 앞다리
     return;
@@ -487,16 +502,15 @@ function drawChair(dot: DotFn, slab: SlabFn, slabV: SlabFn, shade: ShadeFn, dir:
   if (dir === 'up') {
     shade(12, 44, 24);
     slab(10, 10, 28, 14, [0xa8835a, 0xc29d6c, 0x7a5734]);     // 좌판 (등받이 너머)
-    slab(12, 18, 24, 18, WOOD_LIGHT);                         // 등받이 뒷면 (아래)
-    for (const sx of [17, 23, 29]) for (let yy = 22; yy < 34; yy += 2) dot(sx, yy, 0x66492b);
+    drawChairBack(dot, slab, 18, 36);                         // 등받이 뒷면 (아래)
     for (const lx of [12, 34]) for (let yy = 36; yy < 44; yy += 2) dot(lx, yy, OUT);
     return;
   }
-  // 'right' (+ 'left' 반전) — 등받이가 왼쪽에 서 있는 옆모습
+  // 'right' (+ 'left' 반전) — 등받이가 왼쪽에 서 있는 옆모습. 옆에서는 기둥만 보인다(살은 기둥 뒤로 숨는다 — 256차에 가로 홈을 뺐다)
   shade(10, 44, 28);
   slab(12, 22, 26, 12, [0xa8835a, 0xc29d6c, 0x7a5734]);       // 좌판
   slabV(10, 4, 6, 32, WOOD_LIGHT);                            // 등받이 기둥
-  for (let yy = 8; yy < 22; yy += 4) for (let xx = 10; xx < 16; xx += 2) dot(xx, yy, 0x66492b);
+  for (let xx = 10; xx < 16; xx += 2) dot(xx, 4, WOOD_LIGHT[1]);   // 기둥 머리
   for (const lx of [12, 34]) for (let yy = 34; yy < 44; yy += 2) dot(lx, yy, OUT);
 }
 

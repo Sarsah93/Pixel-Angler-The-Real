@@ -15,6 +15,7 @@ import type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from '@tra/core';
 import { discoveryKey, FISH_DATABASE, dishDiscoveryName } from '@tra/core';
 import { SHORE_CREATURE_DATABASE } from '@tra/core';
 import { migrateSpeciesId } from '../data/SpeciesMigration.js';
+import { canonicalItemId } from './ItemIdAlias.js';
 
 /** 세이브 직렬화 형태 */
 export interface DiscoverySaveState {
@@ -105,8 +106,12 @@ class DiscoveryStoreClass {
       for (const e of saved.entries) {
         if (!e?.kind || !e?.id) continue;
         // 171차 — 통폐합된 어종은 현행 id로 옮긴다(없는 어종이 도감에 남지 않게).
-        const id = e.kind === 'fish' ? (migrateSpeciesId(e.id) ?? e.id) : e.id;
-        this.entries.set(discoveryKey(e.kind, id), { ...e, id });
+        // 256차 — 같은 물건 두 id였던 아이템(뜰채 5m 등)도 정본 id로(`ItemIdAlias`)
+        const id = e.kind === 'fish' ? (migrateSpeciesId(e.id) ?? e.id) : e.kind === 'item' ? canonicalItemId(e.id) : e.id;
+        const key = discoveryKey(e.kind, id);
+        const prev = this.entries.get(key);
+        if (prev && prev.firstAtMs <= e.firstAtMs) continue;   // 두 id가 한 항목이 되면 더 이른 최초 기록을 지킨다
+        this.entries.set(key, { ...e, id });
       }
       return;
     }

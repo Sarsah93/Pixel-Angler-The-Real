@@ -44,6 +44,7 @@ import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.j
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
 import { rigViewOf } from './RigParts.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
+import { canonicalItemId } from './ItemIdAlias.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
@@ -538,6 +539,70 @@ function refreshDishPhoto(i: InvItem): InvItem {
   return photo ? { ...i, iconTexture: photo, icon: '' } : i;
 }
 
+/** 시드 정의(정적 제품 정보) — 256차 정본 id 이전이 이름 · 분류 · 값 · 그림을 여기서 가져온다(처음 쓸 때 한 번 만든다) */
+let SEED_DEFS: Map<string, InvItem> | null = null;
+function seedDefOf(id: string): InvItem | undefined {
+  SEED_DEFS ??= new Map(createSeedItems().map((d) => [d.id, d]));
+  return SEED_DEFS.get(id);
+}
+
+/**
+ * 256차 — 같은 물건인데 id가 둘이던 아이템을 정본 id로(`ItemIdAlias` — 뜰채 5m · 구멍찌 1.0호 · 카본 목줄 3호 · 지그헤드 3g).
+ * 정적 제품 정보(이름 · 분류 · 값 · 그림)는 정본 시드에서 가져오고, 수량 · 칸 · 착용 · 고장 · 쓴 줄 길이 같은 유저 상태는 그대로 둔다.
+ * 별칭이 아니면 받은 것을 그대로 돌려준다. 세이브 로드와 `addItem`(상점 · 제작 · 거래 · 집 보관 · 바닥 줍기 전부)이 거친다.
+ */
+export function canonicalizeItem<T extends { id: string }>(t: T): T {
+  const id = canonicalItemId(t.id);
+  if (id === t.id) return t;
+  const sd = seedDefOf(id);
+  if (!sd) return { ...t, id };
+  return { ...t, id, name: sd.name, category: sd.category, subCategory: sd.subCategory, basePrice: sd.basePrice, iconTexture: sd.iconTexture, icon: sd.icon };
+}
+
+/**
+ * 256차 — 정본 id로 바꾼 뒤 같은 id가 둘이 된 칸을 하나로 합친다(수량 합 · 거래품 표시는 보수적으로).
+ * 남는 쪽은 착용 중인 것 → 없으면 먼저 있던 것. 합쳐져 빈 칸은 그대로 비워진다.
+ */
+function mergeSameIdItems(items: InvItem[]): InvItem[] {
+  const at = new Map<string, number>();
+  const out: InvItem[] = [];
+  for (const it of items) {
+    const k = at.get(it.id);
+    if (k === undefined) { at.set(it.id, out.length); out.push(it); continue; }
+    const prev = out[k];
+    const keep = prev.equipped || !it.equipped ? prev : it;
+    const drop = keep === prev ? it : prev;
+    out[k] = { ...keep, qty: keep.qty + drop.qty, traded: keep.traded || drop.traded || undefined };
+  }
+  return out;
+}
+
+/**
+ * 256차 — 같은 분류 그리드에서 칸 번호가 겹치는 아이템을 빈 칸으로 옮긴다.
+ * 정본 이전으로 분류가 바뀐 아이템(지그헤드: 낚시용품 → 루어)이 옛 칸 번호를 들고 와 겹칠 수 있다 —
+ * 원래 그 그리드에 있던 아이템이 자리를 지키고 옮겨 온 쪽(`movedIn`)이 비켜난다.
+ * 빈 칸이 용량 밖이면 '잠긴 칸'(148차 — 꺼낼 수 있다)에 둔다 — 조용히 사라지지 않는다.
+ */
+function fixSlotCollisions(items: InvItem[], movedIn: ReadonlySet<string> = new Set()): number {
+  const used = new Map<InvCategory, Set<number>>();
+  const moved: InvItem[] = [];
+  const ordered = [...items.filter((i) => !movedIn.has(i.id)), ...items.filter((i) => movedIn.has(i.id))];
+  for (const it of ordered) {
+    if (it.slot < 0) continue;
+    let set = used.get(it.category);
+    if (!set) used.set(it.category, (set = new Set()));
+    if (set.has(it.slot)) moved.push(it); else set.add(it.slot);
+  }
+  for (const it of moved) {
+    const set = used.get(it.category)!;
+    let free = 0;
+    while (set.has(free)) free++;
+    it.slot = free;
+    set.add(free);
+  }
+  return moved.length;
+}
+
 export const CARD_RIG_INFO: Record<CardRigType, { label: string; hooks: number; gapM: number }> = {
   yeolgi:     { label: '열기 (7단)',   hooks: 7, gapM: 0.3 },
   godeungeo:  { label: '고등어 (5단)', hooks: 5, gapM: 0.5 },
@@ -674,7 +739,7 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
     { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
     { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
-    { id: 'inv_jighead',  name: '지그헤드 3g',              icon: '', iconTexture: 'item_jighead', category: 'tackle', subCategory: '바늘/훅',   qty: 8,  basePrice: 3500,  equippable: false },
+    // 256차 — 「지그헤드 3g」(`inv_jighead` · 낚시용품 탭)는 루어 카탈로그의 `lure_jighead_3`과 같은 물건이라 시드에서 뺐다(`ItemIdAlias`)
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
     { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '', iconTexture: 'item_minnow', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
     { id: 'inv_metaljig', name: '메탈지그 20g',             icon: '', iconTexture: 'item_metal_jig', category: 'tackle', subCategory: '루어',      qty: 3,  basePrice: 8000,  equippable: false },
@@ -1339,6 +1404,7 @@ class InventoryStoreManager {
     // 171차 — 통폐합된 어종 id는 현행 id로 옮긴다(어획물은 아이템 id에도 어종이 박혀 있다).
     //  퀵슬롯 참조가 옛 id를 가리킬 수 있으므로 옛 id → 새 id 표를 만들어 아래에서 재지정한다.
     const idRemap = new Map<string, string>();
+    const catChanged = new Set<string>();   // 256차 — 정본 이전으로 분류(그리드)가 바뀐 아이템 id
     this._items = s.items.map((i0) => {
       const newId = migrateCatchItemId(i0.id);
       if (newId !== i0.id) idRemap.set(i0.id, newId);
@@ -1346,8 +1412,10 @@ class InventoryStoreManager {
         ? { ...i0, id: newId, speciesId: migrateSpeciesId(i0.speciesId) }
         : i0;
       // 243차 — 242차까지 「한 팩」 단위로 거둔 수확물은 팩 id로(수량 · 신선도 · 칸은 그대로 · 낱개 id는 이제 한 알이다)
-      const i = migrateLegacyPackItem(i1);
+      // 256차 — 같은 물건 두 id(뜰채 5m · 구멍찌 1.0호 · 카본 목줄 3호 · 지그헤드 3g)는 정본 id · 정본 정적 정보로(합치기는 아래)
+      const i = canonicalizeItem(migrateLegacyPackItem(i1));
       if (i.id !== i1.id) idRemap.set(i0.id, i.id);
+      if (i.category !== i1.category) catChanged.add(i.id);
       const sd = seedById.get(i.id);
       // 정적 기능 게이트 필드 — 구세이브에 누락됐으면 복원.
       //  tool/equippable = 손 도구(회칼/낚싯대/뜰채) 착용 게이트 · placeKey = 설치형 배치 게이트.
@@ -1409,10 +1477,13 @@ class InventoryStoreManager {
       };
     }).map((i) => refreshDishPhoto(refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i)))))
       .map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
+    // 256차 — 정본 id로 바뀌어 같은 id가 둘이 된 칸은 하나로 합치고, 분류가 바뀌어 겹친 칸 번호는 빈 칸으로 옮긴다
+    this._items = mergeSameIdItems(this._items);
+    fixSlotCollisions(this._items, catChanged);
     this._catchSeq = s.catchSeq ?? 0;
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => {
-      const m = id ? (idRemap.get(id) ?? id) : id;
+      const m = id ? (idRemap.get(id) ?? canonicalItemId(id)) : id;
       return m && valid.has(m) ? m : null;
     };
     this._quickslots = Array.from({ length: 8 }, (_, k) => ref(s.quickslots?.[k]));
@@ -1440,8 +1511,10 @@ class InventoryStoreManager {
     this._lureLine = ref(s.lureLine);
     this._lureLeader = ref(s.lureLeader);
     // 192차 — 채비 트리. 없으면(구세이브) 평면 소켓·루어 소켓에서 옮긴다. 사라진 아이템을 가리키는 칸은 비운다.
-    if (s.rigTree?.nodes?.length) this._tree = { nodes: s.rigTree.nodes.map((n) => ({ ...n })) };
-    else {
+    // 256차 — 채비 칸이 가리키는 옛 id도 정본으로(안 그러면 아래 sync가 「없는 아이템」으로 보고 칸을 비운다)
+    if (s.rigTree?.nodes?.length) {
+      this._tree = { nodes: s.rigTree.nodes.map((n) => (n.itemId ? { ...n, itemId: idRemap.get(n.itemId) ?? canonicalItemId(n.itemId) } : { ...n })) };
+    } else {
       this._tree = treeFromLegacy({
         ...this._rig, hasFloatStop: this.hasFloatStop, lure: this._lure, jigHead: this._jigHead,
         lureLine: this._lureLine, lureLeader: this._lureLeader, lureMode: this.rigMode === 'lure',
@@ -1801,6 +1874,7 @@ class InventoryStoreManager {
   setTradedLineage(on: boolean): void { this.tradedLineage = on; }
 
   addItem(template: InvItemTemplate, qty: number, opts: { silent?: boolean } = {}): boolean {
+    template = canonicalizeItem(template);   // 256차 — 옛 id(상점 · 루어 카탈로그 중복)로 들어와도 정본 칸에 쌓인다
     if (this.tradedLineage && !template.traded) template = { ...template, traded: true };
     const existing = this.find(template.id);
     if (existing) {

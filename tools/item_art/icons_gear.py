@@ -120,7 +120,7 @@ def grate(cv):
 # ─────────────────────────────────────────────
 # 현장 도구
 # ─────────────────────────────────────────────
-@icon('landing_net', ids=['inv_net', 'shop_net_3', 'shop_net_5', 'shop_net_7'], px=['px:it_net'], colors=44, label='뜰채')
+@icon('landing_net', ids=['inv_net', 'shop_net_3', 'shop_net_7'], px=['px:it_net'], colors=44, label='뜰채')
 def landing_net(cv):
     X, Y = cv.X, cv.Y
     u, v = cv.frame(10, 118, -45)

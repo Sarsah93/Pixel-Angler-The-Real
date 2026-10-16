@@ -14,6 +14,14 @@
 import { logicalYmd, shopScaleOf, shopStockCap, type ShopScale, type ShopScaleInput, type StockEntryInput } from '@tra/core';
 import { inPrologue } from './Prologue.js';
 import type { InvItemTemplate } from './InventoryStore.js';
+import { canonicalItemId } from './ItemIdAlias.js';
+
+/** 256차 — 상점 칸 키(`id|이름` · 중고는 `used|uid`)의 id 부분을 정본으로 */
+const canonicalEntryKey = (k: string): string => {
+  const bar = k.indexOf('|');
+  if (bar < 0 || k.startsWith('used|')) return k;
+  return `${canonicalItemId(k.slice(0, bar))}${k.slice(bar)}`;
+};
 
 /** 224차 — 가게 중고 칸 한 줄(손님이 판 장비 — 상태 · 내구 그대로) */
 export interface UsedGood {
@@ -147,13 +155,15 @@ class ShopStoreImpl {
     this.sold = s?.sold && typeof s.sold === 'object' ? s.sold : {};
     this.fav = {};
     for (const [k, v] of Object.entries(s?.fav ?? {})) {
-      if (Array.isArray(v)) this.fav[k] = v.filter((x): x is string => typeof x === 'string');
+      // 256차 — 즐겨찾기 키(`id|이름`)의 옛 중복 id를 정본으로(`ItemIdAlias` — 상점이 시작 아이템 id를 팔게 됐다)
+      if (Array.isArray(v)) this.fav[k] = [...new Set(v.filter((x): x is string => typeof x === 'string').map(canonicalEntryKey))];
     }
     this.used = {};
     for (const [k, v] of Object.entries(s?.used ?? {})) {
       if (!Array.isArray(v)) continue;
       const ok = v.filter((u): u is UsedGood => !!u && typeof u.uid === 'string' && !!u.tpl && typeof u.tpl.id === 'string'
-        && typeof u.qty === 'number' && u.qty > 0 && typeof u.price === 'number');
+        && typeof u.qty === 'number' && u.qty > 0 && typeof u.price === 'number')
+        .map((u) => (canonicalItemId(u.tpl.id) === u.tpl.id ? u : { ...u, tpl: { ...u.tpl, id: canonicalItemId(u.tpl.id) } }));   // 256차
       if (ok.length) this.used[k] = ok.slice(-USED_MAX_PER_SHOP);
     }
     this.roll();

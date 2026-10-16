@@ -26,7 +26,6 @@ export const ITEM_ART_BY_ID: Record<string, string> = {
   cook_grate: 'art_grate',
   inv_net: 'art_landing_net',
   shop_net_3: 'art_landing_net',
-  shop_net_5: 'art_landing_net',
   shop_net_7: 'art_landing_net',
   inv_rake: 'art_rake',
   shop_rod_holder: 'art_rod_holder',
