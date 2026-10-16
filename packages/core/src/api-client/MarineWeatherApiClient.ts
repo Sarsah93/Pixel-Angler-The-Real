@@ -97,6 +97,8 @@ export interface MarineWeatherInfo {
   surfaceCurrentDirDeg?: number;
   /** 표면 유속 (m/s) */
   surfaceCurrentSpeedMs?: number;
+  /** 256차 — 실데이터를 못 받아 만든 값(키 없음 · 전체 실패). 연동 상태 줄이 실데이터로 세지 않는다 */
+  mock?: boolean;
   /** 위도 */
   lat?: number;
   /** 경도 */
@@ -264,6 +266,7 @@ export class MarineWeatherApiClient {
         salinityPsu: st.sensors.sal ? 25 + r(120) / 10 : undefined,
         surfaceCurrentDirDeg: st.sensors.cur ? r(360) : undefined,
         surfaceCurrentSpeedMs: st.sensors.cur ? r(30) / 10 : undefined,
+        mock: true,
       };
     });
   }

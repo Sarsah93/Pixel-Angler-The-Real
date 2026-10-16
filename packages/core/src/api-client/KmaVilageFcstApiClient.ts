@@ -254,6 +254,35 @@ export function vilageFcstBase(now: Date): { baseDate: string; baseTime: string 
   return { baseDate: ymd(d), baseTime: `${String(pick).padStart(2, '0')}00` };
 }
 
+/**
+ * Mock 기온의 달별 평년값(℃ · 동해안 중부 대략 — 1월 → 12월).
+ * 256차 — 예전 Mock은 기온을 계절 없이 5~30℃에서 골라 한겨울에도 28℃가 나왔다.
+ */
+const MOCK_MONTH_MEAN_C = [0, 2, 6, 12, 16, 20, 24, 25, 21, 16, 9, 3] as const;
+
+/**
+ * Mock 강수 형태를 기온에 맞춘다(256차 — 예전에는 기온과 따로 골라 「진눈깨비 · 13.6℃」가 나왔다).
+ * 0℃ 이하 = 눈 · 3℃ 이하 = 진눈깨비 또는 눈 · 그 위 = 비 또는 소나기.
+ */
+function mockPtyForTemp(tempC: number, wet: boolean, roll: number): PtyCode {
+  if (!wet) return 0;
+  if (tempC <= 0) return 3;
+  if (tempC <= 3) return roll % 2 === 0 ? 2 : 3;
+  return roll % 3 === 0 ? 4 : 1;
+}
+
+/**
+ * Mock 하루 바탕 — 하늘 · 강수 · 기온을 같은 순서로 뽑는다.
+ * 현재 Mock과 「내일」 Mock이 같은 날짜 시드를 쓰므로 오늘 본 「내일」과 내일 본 「오늘」의 날씨 종류가 같다(190차 성질).
+ */
+function mockDayBase(r: (n: number) => number, month: number): { sky: SkyCode; pty: PtyCode; baseC: number } {
+  const sky = ([1, 3, 4] as SkyCode[])[r(3)];
+  const wet = r(10) >= 7;
+  const roll = r(6);
+  const baseC = Math.round((MOCK_MONTH_MEAN_C[month] + (r(101) - 50) / 10) * 10) / 10;   // 평년 ± 5℃
+  return { sky, pty: mockPtyForTemp(baseC, wet, roll), baseC };
+}
+
 export class KmaVilageFcstApiClient {
   private readonly apiKey: string;
   private readonly useMock: boolean;
@@ -375,20 +404,19 @@ export class KmaVilageFcstApiClient {
     return { date: hit.slice(0, 8), time: hit.slice(8, 12) };
   }
 
-  /** 결정적 Mock — 격자+날짜 시드로 하루 동안 고정 */
+  /** 결정적 Mock — 격자+날짜 시드로 하루 동안 고정. 기온은 달별 평년 ± 5℃, 강수 형태는 그 기온을 따른다(256차) */
   private mock(grid: KmaGrid, now: Date): KmaWeatherInfo {
     let h = (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()) >>> 0;
     h = (h * 31 + grid.nx * 397 + grid.ny) >>> 0;
     const r = (n: number) => ((h = (h * 1664525 + 1013904223) >>> 0) % n);
-    const sky = ([1, 3, 4] as SkyCode[])[r(3)];
-    const pty = (r(10) < 7 ? 0 : ([1, 2, 3, 4] as PtyCode[])[r(4)]) as PtyCode;
+    const { sky, pty, baseC } = mockDayBase(r, now.getMonth());
     return {
       grid,
       observedAt: now,
       sky,
       pty,
       kind: resolveWeatherKind(sky, pty),
-      tempC: 5 + r(250) / 10,
+      tempC: baseC,
       humidityPct: 40 + r(55),
       windSpeedMs: r(120) / 10,
       windDirectionDeg: r(360),
@@ -405,12 +433,12 @@ export class KmaVilageFcstApiClient {
     let h = (day.getFullYear() * 10000 + (day.getMonth() + 1) * 100 + day.getDate()) >>> 0;
     h = (h * 31 + grid.nx * 397 + grid.ny) >>> 0;
     const r = (n: number) => ((h = (h * 1664525 + 1013904223) >>> 0) % n);
-    const sky = ([1, 3, 4] as SkyCode[])[r(3)];
-    const pty = (r(10) < 7 ? 0 : ([1, 2, 3, 4] as PtyCode[])[r(4)]) as PtyCode;
-    const lo = 3 + r(200) / 10;
+    const { sky, pty, baseC } = mockDayBase(r, day.getMonth());
+    const lo = baseC - 2 - r(30) / 10;
+    const hi = baseC + 2 + r(30) / 10;
     return {
       date: ymd(day), kind: resolveWeatherKind(sky, pty),
-      tempMinC: Math.round(lo), tempMaxC: Math.round(lo + 4 + r(60) / 10),
+      tempMinC: Math.round(lo), tempMaxC: Math.round(hi),
       popMaxPct: pty === 0 ? r(40) : 60 + r(40), waveMaxM: (5 + r(25)) / 10,
     };
   }

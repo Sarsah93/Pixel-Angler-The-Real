@@ -721,6 +721,9 @@ class ExternalDataStoreManager {
   getApiStatusList(): { name: string; live: boolean; detail: string }[] {
     const r = this._snapshot?.realData;
     const kmaTotal = Object.keys(KMA_GRID_BY_REGION).length;
+    // 256차 — Mock으로 채운 값은 세지 않는다(예전에는 Mock 지역 · 관측소도 「11/11개 지역」 · 「76개 관측소」 초록이었다)
+    const kmaLive = [...this._kma.values()].filter((w) => !w.mock).length;
+    const marineLive = [...this._marine.values()].filter((m) => !m.mock).length;
     return [
       {
         name: '바다낚시지수 (해양조사원)',
@@ -739,13 +742,13 @@ class ExternalDataStoreManager {
       },
       {
         name: '해양기상 (해양측위정보원)',
-        live: this._marine.size > 0,
-        detail: this._marine.size > 0 ? `${this._marine.size}개 관측소` : (r ? 'Mock' : '수집 중'),
+        live: marineLive > 0,
+        detail: marineLive > 0 ? `${marineLive}개 관측소` : (r ? 'Mock' : '수집 중'),
       },
       {
         name: '기상청 단기예보',
-        live: this._kma.size > 0,
-        detail: this._kma.size > 0 ? `${this._kma.size}/${kmaTotal}개 지역` : (r ? 'Mock' : '수집 중'),
+        live: kmaLive > 0,
+        detail: kmaLive > 0 ? `${kmaLive}/${kmaTotal}개 지역` : (r ? 'Mock' : '수집 중'),
       },
     ];
   }
