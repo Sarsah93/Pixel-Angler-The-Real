@@ -70,7 +70,7 @@
   제작 보드 다시 그린 자식 scrollFactor 1(필드 카메라만큼 어긋남) → `CraftBoard.matchScroll` + 창 공통 안전망(`DraggablePanel` `postupdate` · `ensureScreenFixed`) ·
   사유 줄 합니다체 · 재료 그림 24px · `mk_ready` · `mk_quest` · `mm_ready` 다시 그림(점 잘림 · 획) · 지도 이름 5곳 `worldLabelStyle` ·
   수면 빗방울(`FirstPersonFishingScene.updateRainSplash` · `TUNING.view.rainSplashPerSec` 48 · `rainRippleMaxPx` 16) · `tackle_cards.cjs` `OUTLINED` 8장 ·
-  core 322/322 · 실렌더(한 · 영 · pageerror 0) · 위키 Version 57 · main 빨리 감기 · 「테스트 배포」 79차.
+  core 322/322 · 실렌더(한 · 영 · pageerror 0) · 위키 Version 57 · main 빨리 감기(`dc4135e`) · 「테스트 배포」 79차(gh-pages `99de6f5` · 하위 경로 점검 통과).
   **다음 = 79차 라이브 확인(사용자) · 작은 칸 흰 테 점선(요청 시) · 수면 빗방울 조율(실플레이)(백로그 CG)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-16-259-craft-clicks-quest-marks-map-labels-sea-rain-tackle-outlines.md`.
 - **258차**: **건물 윤곽 충돌 · 의뢰 표시 이름표 옆 · 가이드 말풍선 모달 비키기 · 대화창 효과 줄 빼기 · 채비 목줄 중간** —

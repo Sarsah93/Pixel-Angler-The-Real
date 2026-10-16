@@ -305,7 +305,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   「지도 표시 이름 5곳도 흰 테」: 전체 지도 · 세계 지도 이름 `worldLabelStyle` · 「이 말로」 자리 = 아무것도 안 보임(사용자 결정).
 - 「비올 때, 실제처럼 바다에 빗물이 튀는」: 수면 빗방울(반짝임 · 물방울 · 원근 고리 · `TUNING.view.rainSplashPerSec` 48 · `rainRippleMaxPx` 16).
   「감성돔 바늘이 잘 보이지 않는 … 흰 테두리」: `tackle_cards.cjs` `OUTLINED` 8장(9종 — 카드 1px · 아이콘 2px · 그물코 안 제외).
-- 검증: core 322/322 · 빌드 3/3 · typecheck 0 · 실렌더(제작 실마우스 둘째 클릭 이후 · 제작 끝까지 · 표시 · 지도 · 비 22 / 소나기 51 · 장비 · 한 · 영 · pageerror 0).
+- 검증: core 322/322 · 빌드 3/3 · typecheck 0 · 실렌더(제작 실마우스 둘째 클릭 이후 · 제작 끝까지 · 표시 · 지도 · 비 22 / 소나기 51 · 장비 · 한 · 영 · pageerror 0) ·
+  main `dc4135e` · 「테스트 배포」 79차(gh-pages `99de6f5` — 정적 파일 1,820 같음 · 하위 경로 기동 한 · 영 4xx 0 · pageerror 0).
   상세: [259차 워크로그](../docs/wiki/03-WORKLOG/2026-10-16-259-craft-clicks-quest-marks-map-labels-sea-rain-tackle-outlines.md).
 
 **이전 변경 (2026-10-16 258차) — 건물 윤곽 충돌 · 의뢰 표시 이름표 옆 · 가이드 말풍선 모달 비키기 · 대화창 효과 줄 빼기 · 채비 목줄 중간**

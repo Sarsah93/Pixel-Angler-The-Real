@@ -157,7 +157,8 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 - 제작 창: 다시 그린 자식 scrollFactor 1 → 필드에서 첫 클릭 뒤 전부 어긋남 → `matchScroll` + 창 공통 안전망(`ensureScreenFixed`) · 사유 줄 합니다체.
 - 의뢰 물음표 · 느낌표 · 미니맵 물음표 다시 그림(잘린 점 · 고르지 않은 획) · 지도 이름 5곳 흰 테 · 「이 말로」 자리는 비워 둠(사용자 결정).
 - 1인칭 수면 빗방울(반짝임 · 물방울 · 원근 고리 · 튜닝 둘) · 어두운 장비 그림 8장 흰 테(`tackle_cards.cjs` `OUTLINED`) · 제작 재료 그림 24px.
-- 검증: core 322/322 · 빌드 3/3 · typecheck 0 · 실렌더(한 · 영) · pageerror 0 · 위키 Version 57 · main 빨리 감기 · 「테스트 배포」 79차.
+- 검증: core 322/322 · 빌드 3/3 · typecheck 0 · 실렌더(한 · 영) · pageerror 0 · 위키 Version 57 · main 빨리 감기(`dc4135e`) ·
+  「테스트 배포」 79차(gh-pages `99de6f5` — 정적 파일 1,820 같음 · 하위 경로 기동 한 · 영 4xx 0 · pageerror 0).
 - 상세: [워크로그 259](../docs/wiki/03-WORKLOG/2026-10-16-259-craft-clicks-quest-marks-map-labels-sea-rain-tackle-outlines.md)
 
 ### 258차 (2026-10-16) — 건물 윤곽 충돌 · 의뢰 표시 이름표 옆 · 가이드 말풍선 모달 비키기 · 대화창 효과 줄 빼기 · 채비 목줄 중간

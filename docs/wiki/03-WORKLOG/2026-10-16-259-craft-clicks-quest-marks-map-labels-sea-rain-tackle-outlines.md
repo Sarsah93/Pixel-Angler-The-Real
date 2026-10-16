@@ -91,6 +91,7 @@
 | 수면 빗방울 | `r259d.cjs rain\|shower` — `__EXT.getWeatherKind` 고정 · `fp.updateRainSplash(1/30)` ×40 | 비 동시 22(최대 25) · 소나기 51(최대 56) · 먼바다 작고 납작 · 발밑 크고 두 겹 · 깊이 22(전경 55 · 빗줄기 70 · 창 85 아래) |
 | 장비 흰 테 | `tackle_cards.cjs --only … --sheet` · 실렌더 `r259e.cjs`(제작 창 재료 · 가방 · 획득 알림) | 16파일만 바뀜 · 바늘이 재료 칸(24px)에서 보임 · 가방 칸(30px) 한 줄 테 · 그물코 안 테 없음 |
 | 빌드 · 시험 | core vitest · `pnpm run build` · client typecheck | 322/322 · 3/3 · 0 · pageerror 0(한 · 영) |
+| 배포 | main `dc4135e` → 「테스트 배포」 79차(gh-pages `99de6f5`) · 정적 파일 대조 · 하위 경로 기동 점검(`live259.cjs` 한 · 영) | 1,820 같음 · 다름 0 · 빠짐 0 · 소스맵 0 · 메뉴 11.9초 · 흰 테 장비 그림 크기 = 저장소(바늘 49×90 · 36×64) · 4xx 0 · pageerror 0 · 영어 한글 남은 글 0 |
 
 재현 — dev 서버(core 고친 뒤 `.vite` 지우고 재시작) → scratchpad `r259a.cjs ko|en after` · `r259bc.cjs ko` · `r259d.cjs rain|shower` · `r259e.cjs`.
 
