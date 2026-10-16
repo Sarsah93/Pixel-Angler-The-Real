@@ -314,7 +314,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   <header class="mast">
     <div class="kicker">Pixel Angler The Real · Wiki</div>
     <h1>Pixel Angler The Real Wiki</h1>
-    <p class="lead">조행록(할 일 188편)에서 시작해 요리·어종·아이템·농사·스킬·시스템까지 묶은 게임 전체 안내서입니다.
+    <p class="lead">조행록(할 일 <span id="fq0"></span>편)에서 시작해 요리·어종·아이템·농사·스킬·시스템까지 묶은 게임 전체 안내서입니다.
       조행록 탭에서 할 일 하나를 고르면 의뢰인의 말, 목표, <b>실제로 재생되는 장면</b>, 받는 것이 한 장으로 펼쳐지고,
       나머지 탭은 <b>분류 버튼</b>으로 모아 본 뒤 카드를 눌러 그림과 상세를 엽니다.</p>
     <div class="tally" id="tally"></div>
@@ -390,6 +390,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   document.getElementById('tally').innerHTML = tally
     .map(([v, k]) => '<div><b>' + nf(v) + '</b><span>' + k + '</span></div>').join('');
   document.getElementById('fq').textContent = nf(D.counts.quests);
+  document.getElementById('fq0').textContent = nf(D.counts.quests);   // 255차 — 머리말 숫자도 데이터에서(188 고정이 191편과 어긋났다)
   document.getElementById('fm').textContent = nf(D.counts.main);
   document.getElementById('fs').textContent = nf(D.counts.sub);
   document.getElementById('fa').textContent = nf(D.counts.arcs);
