@@ -1,6 +1,6 @@
 {
- "date": "2026-10-17",
- "audited_commit": "0b32ca662558bc6fc1f16f018cff5515770cfec7",
+ "date": "2026-10-18",
+ "audited_commit": "7c7416da4c196987abc9a23e6dcbf58b4ecec62f",
  "summary": {
   "harmony_index": 47.1,
   "balance": 40.8,
@@ -189,5 +189,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-10-16"
+ "previous_date": "2026-10-17"
 }
