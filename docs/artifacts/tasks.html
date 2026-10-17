@@ -1,0 +1,478 @@
+<title>Pixel Angler 남은 과업 설계</title>
+<style>
+  :root {
+    --ground: #eef2f0;
+    --surface: #ffffff;
+    --surface-2: #e7ecea;
+    --ink: #131b1e;
+    --ink-soft: #38474a;
+    --muted: #5f6f72;
+    --hairline: #d6ddda;
+    --hairline-strong: #c2ccc8;
+    --accent: #c2841f;      /* brand gold */
+    --ocean: #1f8a82;       /* teal */
+    --ocean-soft: #e2efed;
+    --done: #3a8f54;
+    --prog: #c2841f;
+    --wired: #2f76a8;       /* 사용자 결정 · 실검증 대기 */
+    --todo: #7a8689;
+    --risk: #c24a3a;
+    --done-bg: #e6f1ea;
+    --prog-bg: #f6ecd8;
+    --wired-bg: #e0ecf4;
+    --todo-bg: #e8ebea;
+    --risk-bg: #f6e2de;
+    --shadow: 0 1px 2px rgba(20,30,32,.05), 0 8px 24px rgba(20,30,32,.05);
+    --radius: 10px;
+    --maxw: 1080px;
+    --prose: 70ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1316;
+      --surface: #141d21;
+      --surface-2: #1b262b;
+      --ink: #e6ede9;
+      --ink-soft: #b9c7c5;
+      --muted: #869a9a;
+      --hairline: #243138;
+      --hairline-strong: #31424a;
+      --accent: #e0a63f;
+      --ocean: #3bb3a8;
+      --ocean-soft: #142a29;
+      --done: #56b374;
+      --prog: #e0a63f;
+      --wired: #5aa6d6;
+      --todo: #8a979a;
+      --risk: #e2705f;
+      --done-bg: #16281d;
+      --prog-bg: #2a2413;
+      --wired-bg: #132630;
+      --todo-bg: #1e2528;
+      --risk-bg: #2c1a17;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1316;
+    --surface: #141d21;
+    --surface-2: #1b262b;
+    --ink: #e6ede9;
+    --ink-soft: #b9c7c5;
+    --muted: #869a9a;
+    --hairline: #243138;
+    --hairline-strong: #31424a;
+    --accent: #e0a63f;
+    --ocean: #3bb3a8;
+    --ocean-soft: #142a29;
+    --done: #56b374;
+    --prog: #e0a63f;
+    --wired: #5aa6d6;
+    --todo: #8a979a;
+    --risk: #e2705f;
+    --done-bg: #16281d;
+    --prog-bg: #2a2413;
+    --wired-bg: #132630;
+    --todo-bg: #1e2528;
+    --risk-bg: #2c1a17;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Pretendard Variable", "Pretendard", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.003em;
+  }
+  .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding-inline: 22px; }
+  @media (max-width: 560px) { .wrap { padding-inline: 16px; } }
+
+  /* ---- header ---- */
+  header { padding: 54px 0 30px; }
+  .tide { height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--ocean), var(--accent) 70%, transparent); margin-bottom: 26px; }
+  .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ocean); font-weight: 600; }
+  h1 { font-size: clamp(28px, 4.4vw, 40px); line-height: 1.14; margin: 12px 0 14px; letter-spacing: -0.02em; text-wrap: balance; font-weight: 800; }
+  .lede { font-size: 17px; color: var(--ink-soft); max-width: var(--prose); margin: 0; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; font-size: 13px; color: var(--muted); }
+  .meta-row b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---- sections ---- */
+  section { padding: 34px 0; border-top: 1px solid var(--hairline); }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  h2 { font-size: clamp(21px, 3vw, 26px); margin: 0; letter-spacing: -0.015em; font-weight: 750; text-wrap: balance; }
+  h3 { font-size: 17px; margin: 26px 0 10px; letter-spacing: -0.01em; font-weight: 700; }
+  .sub { color: var(--muted); font-size: 14.5px; margin: 4px 0 18px; max-width: var(--prose); }
+  p { max-width: var(--prose); }
+  p.wide { max-width: none; }
+
+  /* ---- pills ---- */
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 650; padding: 2px 9px; border-radius: 999px; white-space: nowrap; line-height: 1.5; }
+  .pill.done { color: var(--done); background: var(--done-bg); }
+  .pill.prog { color: var(--prog); background: var(--prog-bg); }
+  .pill.wired { color: var(--wired); background: var(--wired-bg); }
+  .pill.todo { color: var(--todo); background: var(--todo-bg); }
+  .pill.risk { color: var(--risk); background: var(--risk-bg); }
+  .pill.sm { font-size: 10px; padding: 1px 6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+  /* ---- tables ---- */
+  .tscroll { overflow-x: auto; border: 1px solid var(--hairline); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 14px; vertical-align: top; }
+  thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 650; border-bottom: 1px solid var(--hairline-strong); background: var(--surface-2); white-space: nowrap; }
+  tbody tr + tr td { border-top: 1px solid var(--hairline); }
+  td.sys { font-weight: 650; white-space: nowrap; }
+  td .id { font-size: 12px; color: var(--muted); }
+  td.num { font-variant-numeric: tabular-nums; }
+  tbody tr:hover td { background: color-mix(in srgb, var(--ocean) 5%, transparent); }
+
+  /* ---- cards ---- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 18px 0; }
+  .card { border: 1px solid var(--hairline); border-radius: var(--radius); padding: 16px 17px; background: var(--surface); box-shadow: var(--shadow); }
+  .card h4 { margin: 0 0 6px; font-size: 14.5px; font-weight: 700; }
+  .card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; max-width: none; }
+  .card .k { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--muted); }
+
+  /* ---- callout ---- */
+  .callout { border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; padding: 15px 18px; margin: 18px 0; box-shadow: var(--shadow); }
+  .callout.ocean { border-left-color: var(--ocean); }
+  .callout.risk { border-left-color: var(--risk); }
+  .callout .tag { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); display: block; margin-bottom: 5px; }
+  .callout.ocean .tag { color: var(--ocean); }
+  .callout.risk .tag { color: var(--risk); }
+  .callout p { margin: 0; font-size: 14.5px; color: var(--ink-soft); max-width: var(--prose); }
+  .callout p + p { margin-top: 8px; }
+
+  /* ---- phase roadmap ---- */
+  .phases { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
+  .phase { display: grid; grid-template-columns: 46px 1fr; gap: 18px; padding: 18px 0; border-top: 1px solid var(--hairline); }
+  .phase:first-child { border-top: none; }
+  .phase .pn { font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+  .phase .pn small { display: block; font-size: 10.5px; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin-top: 3px; }
+  .phase h4 { margin: 2px 0 6px; font-size: 16.5px; font-weight: 700; }
+  .phase p { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
+  .phase ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-soft); }
+  .phase li { margin: 3px 0; }
+  .taglist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  ul.clean { list-style: none; padding: 0; margin: 12px 0; }
+  ul.clean > li { position: relative; padding-left: 20px; margin: 9px 0; font-size: 14.5px; color: var(--ink-soft); max-width: var(--prose); }
+  ul.clean > li::before { content: "→"; position: absolute; left: 0; color: var(--ocean); font-weight: 700; }
+  ul.clean > li b { color: var(--ink); }
+
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  strong { color: var(--ink); font-weight: 700; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 14px 0 4px; font-size: 12.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  footer { padding: 30px 0 60px; border-top: 1px solid var(--hairline); color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 560px) {
+    .phase { grid-template-columns: 1fr; gap: 6px; }
+    .phase .pn { font-size: 15px; }
+    td.sys { white-space: normal; }
+  }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="tide"></div>
+  <div class="eyebrow mono">Pixel Angler The Real · Phase 6+ 설계 · 259차 기준</div>
+  <h1>남은 과업 지도와 다음에 짤 시스템</h1>
+  <p class="lede">259차까지의 구현을 다시 점검했다. 98차판이 짚었던 해루질 · 불요리 · 텃밭은 모두 섰고, 남은 대과제는 <b>농장 경영의 나머지(E2~E5)</b>, <b>지역 맵이라는 무대</b>, 그리고 <b>사용자가 정하거나 직접 봐야 하는 일</b>이다. 이 페이지는 그 셋을 의존 순서대로 늘어놓는다.</p>
+  <div class="meta-row">
+    <span><b>기준</b> 259차 (2026-10-16 · 79차 배포)</span>
+    <span><b>현 위치</b> Phase 6 · 게임플레이 심화</span>
+    <span><b>다음 대과제</b> 농장 E2 → E5 (사용자 확정 2026-09-17)</span>
+    <span><b>갱신</b> 게임 설계가 바뀌는 차수마다 (260차 규칙)</span>
+  </div>
+</header>
+
+<!-- ==================== 1. 현황 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">01</span><h2>지금까지 무엇이 되어 있나</h2></div>
+  <p class="sub">시스템별 성숙도. 98차판과 달리 「엔진만 있고 배선이 빈」 시스템은 남지 않았다 — 대신 <strong>길은 다 깔렸는데 사용자 결정이나 실플레이 체감을 기다리는 것</strong>이 늘었다(파란 표시).</p>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--done)"></i> 성숙 · 안정</span>
+    <span><i class="dot" style="background:var(--prog)"></i> 진행 · 부분</span>
+    <span><i class="dot" style="background:var(--wired)"></i> 사용자 결정 · 실검증 대기</span>
+    <span><i class="dot" style="background:var(--todo)"></i> 스키마만 · 미착수</span>
+  </div>
+
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>시스템</th><th>상태</th><th>핵심 실측</th></tr></thead>
+      <tbody>
+        <tr><td class="sys">낚시 루프 <span class="id mono">S1 · S2</span></td><td><span class="pill done"><span class="dot" style="background:var(--done)"></span>성숙</span></td><td>1인칭 + 탑다운 · 물리 9종 · 물때 8단계 · 채비 트리(258 목줄 중간) · 구멍치기 · 거치대 · 비 오는 날 수면(259). 어탐 레이더만 비어 있다.</td></tr>
+        <tr><td class="sys">손질 (회뜨기) <span class="id mono">S3</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>진행</span></td><td>어류 3어종군 마감 · 두족류 3종 개방. <strong>갑오징어 13</strong> · 광어 · 두족류 가이드 좌표 실측(사용자)이 남았다.</td></tr>
+        <tr><td class="sys">회썰기 · 불요리 <span class="id mono">S4</span></td><td><span class="pill done"><span class="dot" style="background:var(--done)"></span>성숙</span></td><td>사시미 별 5개 · 불요리 레시피 9 · 요리 개체화 2단계(어종 프로필 58 · 변형 8). 스시 · 효과 다섯의 장치가 남았다.</td></tr>
+        <tr><td class="sys">인벤 · 보관 <span class="id mono">S5</span></td><td><span class="pill done"><span class="dot" style="background:var(--done)"></span>성숙</span></td><td>가방 사다리 25 → 37칸 · 윈도우드 스크롤 · 쿨러 정리 창 · 여러 마리 놓아주기.</td></tr>
+        <tr><td class="sys">경제 · 시세 <span class="id mono">S6 · S9</span></td><td><span class="pill done"><span class="dot" style="background:var(--done)"></span>성숙</span></td><td>위판(147) · 장바구니 · 가게 규모별 재고 · 정기 지출. <strong>KAMIS 실시세는 키를 기다린다</strong> · 경매 구매자 측은 잠겨 있다.</td></tr>
+        <tr><td class="sys">월드맵 · 지역 <span class="id mono">S7</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>부분</span></td><td>속초 심리스(벡터 건물 239 · 윤곽 충돌 258) · 부산 · 홈타운. <strong>OSM land 14개 확장</strong> · 조도 재설계 · 외옹치/대포항이 남았다.</td></tr>
+        <tr><td class="sys">홈베이스 · 텃밭 <span class="id mono">S8</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>진행</span></td><td><strong>E1 텃밭 완결</strong>(235~248 — 작물 86 · 관리 · 병해충 16 · 재배 요소 · 칸 연출) · 가구 배치 · 관상 수조 · 잠과 결산. E2~E5는 미착수.</td></tr>
+        <tr><td class="sys">해루질 · 통발 <span class="id mono">S14</span></td><td><span class="pill done"><span class="dot" style="background:var(--done)"></span>성숙</span></td><td>인-맵 채집 · 현실화(224) · 조례 · 통발 8종 · 위판 판로 · 세션 공유. 잠수 · 야간 F8 조율이 남았다.</td></tr>
+        <tr><td class="sys">제작 <span class="id mono">S16</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>부분</span></td><td>손 · 작업대 대기열 · 오프라인 진행 · 품질 · 도면 40 · 분해 · 259 클릭 고침. <strong>재료 체인 · 광질 · 작업대 업그레이드</strong>가 E3를 기다린다.</td></tr>
+        <tr><td class="sys">성장 · 생존 <span class="id mono">S21</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>부분</span></td><td>레벨 200 · 스킬 95노드(예산 216) · 생존 · 칭호. 잠긴 스킬 14와 면허 6종이 해당 시스템을 기다린다.</td></tr>
+        <tr><td class="sys">스토리 · 퀘스트 <span class="id mono">S22</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>진행</span></td><td>191편 · 아크 24 · 이어지는 대화 · 결말 · 물어보기 · 문장 쉼. <strong>속초 밖 무대가 없어</strong> 인물 29명 · Ch2~7 지역 목표 · 원격 컷씬이 묶여 있다.</td></tr>
+        <tr><td class="sys">캐릭터 · 그림 <span class="id mono">S23 · S25</span></td><td><span class="pill done"><span class="dot" style="background:var(--done)"></span>성숙</span></td><td>어종 57 · 작물 98 · 장비 115 · 아이템 223장이 카드 방식. 남은 코드 그림 7은 Gemini 크레딧을 기다린다 · 달리기/눕기 포즈.</td></tr>
+        <tr><td class="sys">UI · 접근성 · 소리 <span class="id mono">S10 · S11</span></td><td><span class="pill wired"><span class="dot" style="background:var(--wired)"></span>대기</span></td><td>흰 테 글자 규칙 · 체험 가이드 · 접근성 탭 · 효과음 63종 · 창 화면 고정 안전망. <strong>배경 음악 곡 고르기 · 효과음 청취</strong>가 사용자 몫이다.</td></tr>
+        <tr><td class="sys">멀티플레이 <span class="id mono">S24</span></td><td><span class="pill prog"><span class="dot" style="background:var(--prog)"></span>부분</span></td><td>세션 · 거래 공증 · 231 전수조사 항목 전부 해소. NAT 통과 · 서버 권위 · 플리마켓이 남았다.</td></tr>
+        <tr><td class="sys">Tauri 패키징 <span class="id mono">S19</span></td><td><span class="pill todo"><span class="dot" style="background:var(--todo)"></span>미착수</span></td><td>아이콘 세트만 있다. Phase 9.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== 2. 구조 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">02</span><h2>남은 과업의 구조 — 3개의 축</h2></div>
+  <p class="sub">생산 · 가공 · 판매의 세 축으로 다시 보면, 98차에 비어 있던 생산 축이 낚시 · 채집 · 텃밭으로 찼다. 남은 빈칸은 <strong>생산의 나머지(수조 · 벌목 · 채굴 · 보트)와 판매 축 위의 「경영」</strong>이다.</p>
+
+  <div class="cards">
+    <div class="card">
+      <span class="k mono">축 1</span>
+      <h4>생산</h4>
+      <p>낚시 <span class="pill done sm">성숙</span> · 해루질 · 통발 <span class="pill done sm">성숙</span> · 텃밭 <span class="pill done sm">E1 완결</span> · 상업 수조 <span class="pill todo sm">E2</span> · 벌목 · 채굴 · 보트 <span class="pill todo sm">E3</span></p>
+    </div>
+    <div class="card">
+      <span class="k mono">축 2</span>
+      <h4>가공</h4>
+      <p>손질 <span class="pill prog sm">진행</span> · 회썰기 · 플레이팅 <span class="pill done sm">성숙</span> · 불요리 · 요리 개체화 <span class="pill done sm">성숙</span> · 제작 <span class="pill prog sm">부분</span> · 스시 <span class="pill todo sm">미착수</span></p>
+    </div>
+    <div class="card">
+      <span class="k mono">축 3</span>
+      <h4>판매 · 경영</h4>
+      <p>직판 · 상점 <span class="pill done sm">성숙</span> · 위판 <span class="pill done sm">성숙</span> · 정기 지출 <span class="pill done sm">성숙</span> · 식당 납품 · 계약 <span class="pill todo sm">E5</span> · 플리마켓 <span class="pill todo sm">서버 권위 뒤</span></p>
+    </div>
+  </div>
+
+  <div class="callout ocean">
+    <span class="tag">핵심 통찰 · 병목이 「쓰임」에서 「무대」로 옮겨 갔다</span>
+    <p>98차판의 병목은 산출물의 쓰임이었다 — 잡은 것 · 캔 것을 팔거나 먹을 곳이 없었다. 위판(147) · 불요리(154) · 요리 개체화(255)로 풀렸다.</p>
+    <p>지금 병목은 <strong>무대, 곧 지역 필드 맵</strong>이다. 이야기의 Ch2~7 지역 목표, 좌표 없는 인물 29명, 물어보기 · 이어지는 대화 확장, 원격지 컷씬, 선상 조건이 전부 「그 지역 필드가 서야」 열린다. 맵 확장(OSM land 14)은 그래서 이야기 트랙의 선행 조건이다.</p>
+  </div>
+
+  <div class="callout">
+    <span class="tag">확정된 전제 · 게임 시계는 실시간이다</span>
+    <p>98차판의 갈림길(압축 달력 vs 실시간)은 닫혔다. 농사는 235차에 <strong>실제 시간 · 실제 계절 + 빠른 작물 · 중간 수확 · 시설 배율 상한</strong>으로 확정했고, 잠 · 결산 · 저장은 213차에 <strong>새벽 4시 하루 경계</strong>로 정했다. E2 수조와 E5 정산도 이 위에 얹는다 — 쿨러 · 냉장고의 「오프라인 경과」 패턴과 하루 결산 장부(<code>LedgerStore</code>)를 그대로 쓴다.</p>
+  </div>
+</section>
+
+<!-- ==================== 3. 농장 경영 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">03</span><h2>농장 경영 — E1 다음의 네 단계</h2></div>
+  <p class="sub">사용자 확정 순서(2026-09-17)의 다음 대과제. E1 텃밭은 235~248차에 걸쳐 끝났고, 남은 E2~E5는 98차판의 설계를 지금 코드 위에서 다시 짠 것이다.</p>
+
+  <h3>E1 · 텃밭 <span class="pill done" style="vertical-align:middle">완결 · 235 ~ 248</span></h3>
+  <ul class="clean">
+    <li><b>무엇이 섰나:</b> 마당 2구획 + 빌린 밭 5구획 · 작물 86종(난이도 4단계) · 작물마다 관리 작업 · 병해충 16 · 재배 요소(물 · 과습 · 피로 · 도구) · 2×2 칸 연출 · 개량종 · 날로 먹기 · 포장 · 땅지렁이 · 초상 98장.</li>
+    <li><b>남은 것은 조율:</b> 난이도 문턱 · 놓침 벌 · 물 띠 · 과습 36시간 · 피로 88 같은 수치는 실플레이 체감 뒤에 맞춘다. 실제 시세(KAMIS)는 키 발급을 기다린다.</li>
+    <li><b>다음 텃밭 후보:</b> 개량종 확장(대추토마토 · 꿀고구마 · 오이맛고추) · 트레이 파종 확대(배추 · 부추 · 곤드레) · 날씨 연동 일(비 전후 약 · 가뭄 물).</li>
+  </ul>
+
+  <h3>E2 · 상업 활어 수조 <span class="pill todo" style="vertical-align:middle">다음 착수 · 소~중</span></h3>
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>층</th><th>할 일</th><th>재사용</th></tr></thead>
+      <tbody>
+        <tr><td class="sys">상태 · 세이브</td><td><code>AquariumState.fish</code>를 <code>unknown[]</code>에서 실타입으로 · 세이브 직렬화 · 구세이브 백필</td><td>관상 수조 <code>HomeStore.tanks</code>(190) · 스킬 <code>save-migration</code></td></tr>
+        <tr><td class="sys">신선도</td><td><code>freshnessMult</code>(0.1) 소비 — 활어를 거의 멈춘 채 오래 보관해 값이 좋을 때 판다</td><td>쿨러 해수 매질 · 오프라인 신선도 정지</td></tr>
+        <tr><td class="sys">설치 · 창</td><td>실외 설치물 수조 · 넣기 / 꺼내기 / 팔기 창</td><td>쿨러 패널 · 설치물 배치 · 멀티 설치물 공유(234)</td></tr>
+        <tr><td class="sys">위험</td><td>패류독소 · 거래품 표지가 수조를 거쳐도 그대로 따라가야 한다</td><td>관상 수조의 234차 규칙</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>E3 · 채집류 — 벌목 · 채굴 · 보트 <span class="pill todo" style="vertical-align:middle">소 each</span></h3>
+  <p>공통 틀은 그대로다 — <b>도구 게이트 → 드랍 → <code>removedIds</code> 영속 → 리스폰.</b> 홈타운의 나무 · 바위는 이미 배치 · 렌더돼 있어 핸들러만 붙이면 된다. 달라진 것은 이 산출물이 갈 곳이 생겼다는 점이다: <strong>제작의 재료 체인 · 광질(봉돌 주조는 작업대) · 작업대 업그레이드</strong>가 전부 E3를 기다린다. 채굴이 서면 잠긴 스킬 일부와 퀘스트의 수동 「광질」 목표 2개가 함께 풀린다.</p>
+
+  <h3>E4 · 하우스 Tier 1~3 · 집 꾸미기 <span class="pill todo" style="vertical-align:middle">중</span></h3>
+  <p><code>HOUSE_TIERS</code>(0~3)는 여전히 어디서도 쓰이지 않는다. GameState에 tier 상태 + 실내 씬 파라미터화 + 승급 구매 · 기능(주방 · 지하 · 2층) 해금. 가구 배치(189)는 이미 있으니, 남은 집 꾸미기 — <b>옷장 · 수납 선반 판매 · 가구 제작</b> — 를 여기서 함께 연다. 퀘스트의 수동 「가구」 목표 3개와 면허 「주택 부지」가 이 단계에서 풀린다.</p>
+
+  <h3>E5 · 경영 루프 <span class="pill todo" style="vertical-align:middle">중~대</span></h3>
+  <p>「경영」의 본체. 판매 인프라(위판 · 직판 · 상점)와 하루 결산 장부가 이미 있으니, 그 위에 <b>납품 계약(어종 · 수량 · 기한) · 수요 · 시세 대응 · 재고 · 정산</b>을 얹는다. 171차부터 계약만 있던 <b>위생 점검 → 영업 정지 연동</b>, 147차에 보존해 둔 <b>경매 구매자 측</b>(중매인으로 사 오기)이 여기서 쓰인다.</p>
+
+  <div class="callout ocean">
+    <span class="tag">규모 감 · 권장 순서</span>
+    <p>E2(소~중) → E3(소 each · 제작 재료 체인과 함께) → E4(중) → E5(중~대). E2를 먼저 두는 이유는 98차판과 같다 — 스키마 골격이 있고 신선도 정지가 곧 돈이라 투자 대비 산출이 가장 높다.</p>
+  </div>
+</section>
+
+<!-- ==================== 4. 무대 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">04</span><h2>맵 트랙 — 이야기가 기다리는 무대</h2></div>
+  <p class="sub">사용자 동반 병행 트랙. 지금 지점은 <strong>사용자 실검증</strong>이다 — 타일 조화 규칙(172 · 173) · 고도 층과 다리(178 · 183~186) · 벡터 건물(239)을 실플레이로 보고, 괜찮으면 그 규칙을 켠 채로 새 맵 확장으로 넘어간다.</p>
+
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>무대가 서면</th><th>지금 묶여 있는 것</th><th>열리는 조건</th></tr></thead>
+      <tbody>
+        <tr><td class="sys">다른 지역 필드</td><td>Ch2~7의 <code>region:*</code> 목표 · 좌표 없는 인물 29명</td><td>OSM land 14개 확장 — 지역마다 terrain ↔ OSM 육안 대조 + 스폰 검수</td></tr>
+        <tr><td class="sys">인물이 필드에 섬</td><td>물어보기(지금 속초 9인) · 이어지는 대화 확장(N05 · N08 · N12 …)</td><td>그 인물의 지역 맵 + 실측 좌표</td></tr>
+        <tr><td class="sys">인천 맵</td><td>원격지 컷씬 N18-6 3부작(지금 무대는 속초 경매장 임시)</td><td>인천 필드 + <code>playRemoteCinematic</code></td></tr>
+        <tr><td class="sys">태안 · 거제</td><td>N13-3 난로 · N18-4 선체 검수 현장(지금은 좌표만 · 속초 대체)</td><td>해당 지역 필드</td></tr>
+        <tr><td class="sys">배로 가는 섬</td><td>울릉 · 독도(<code>access: 'boat'</code>) · 원도권 갯바위</td><td>배 출조 콘텐츠(§05)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ul class="clean">
+    <li><b>속초 후속:</b> 조도 재설계(사진 시트 → 띠 · 층 · 등대 · 걷기 제한) · 외옹치 · 대포항 bbox 확장 · 속초 전역 GIS 스윕 · 맞붙은 1칸 틈 109곳(258 — 실플레이 의견 뒤) · 윤곽이 차도를 덮는 곳.</li>
+    <li><b>지형 고도(DEM)는 낚시 확립 후:</b> B 해안 변형(급경사 → 갯바위 · 완경사 → 모래 · 수직 → 인공 호안)이 먼저이고, 경사로 통행을 막지 않는다. <code>rasterio</code>와 절벽 타일 에셋이 선행이다.</li>
+  </ul>
+</section>
+
+<!-- ==================== 5. 이야기 · 선상 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">05</span><h2>이야기 · 선상 계통 — 수동 목표를 실시스템으로</h2></div>
+  <p class="sub">191편 중 아직 손으로 닫는(수동) 목표는 대화 · 장면 계통을 빼면 아래뿐이다 — 시스템이 서는 차수에 자동 판정으로 바꾼다. 요리 목표는 이미 자동이다(위키의 「대기」 표기는 260차에 고쳤다).</p>
+
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>목표 종류</th><th class="num">수동 목표</th><th>필요한 시스템</th></tr></thead>
+      <tbody>
+        <tr><td class="sys">배 출조 <span class="id mono">boatTrip</span></td><td class="num">9</td><td>배 출조 · 선상 낚시(드리프트 — 205 잔여) · <code>spotKind: 'boat'</code> 첫 소비</td></tr>
+        <tr><td class="sys">가구 <span class="id mono">furnish</span></td><td class="num">3</td><td>E4 집 꾸미기</td></tr>
+        <tr><td class="sys">광질 <span class="id mono">mine</span></td><td class="num">2</td><td>E3 채굴</td></tr>
+        <tr><td class="sys">생존 · 자리 지키기 <span class="id mono">survive · holdPosition</span></td><td class="num">2 · 2</td><td>밀물 고립 · 해무 같은 기상 이벤트</td></tr>
+        <tr><td class="sys">무상 납품 <span class="id mono">deliverFree</span></td><td class="num">1</td><td>납품 경로(E5와 함께 검토)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ul class="clean">
+    <li><b>먼저 확인할 것(백로그 CA ①):</b> <code>once</code> 정책 편(N12-1 · N13-1 · N15-1)을 거절하면 아크가 영구히 잠길 수 있다 — 원문 모순을 고치기 전에 이것부터 본다.</li>
+    <li><b>좌판(Ch5)</b>은 배 출조(Ch4)와 함께 남은 계통이다. 경영 루프(E5)와 판매 창을 공유할 수 있다.</li>
+    <li><b>작은 후속:</b> 일지에 「내가 한 말」 다시 보기 · <code>choice.*</code> 플래그 약 60종을 읽는 후속 대사 · 낚시 NPC가 대화할 때 돌아보기.</li>
+  </ul>
+</section>
+
+<!-- ==================== 6. 사용자 대기 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">06</span><h2>사용자 결정 · 실검증 대기 큐</h2></div>
+  <p class="sub">코드는 준비됐고 사용자가 정하거나 직접 봐야 다음이 열리는 것들. 개발을 막지 않게 따로 줄을 세운다.</p>
+
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>무엇을</th><th>누가 · 어떻게</th><th>그 뒤에 열리는 것</th></tr></thead>
+      <tbody>
+        <tr><td class="sys">배경 음악 고르기</td><td>Lyria 후보 2판(7곡 + 메뉴 · 낮 칩튠 · 밤바다)을 듣고 고른다</td><td>반복 이음매 · <code>public/audio/</code> · 설정 「배경 음악 / 환경음」 둘로</td></tr>
+        <tr><td class="sys">효과음 청취</td><td>갈래별 미리 듣기 WAV 6개</td><td>레시피 숫자만 고친다(<code>SfxBank</code>)</td></tr>
+        <tr><td class="sys">KAMIS 실시세</td><td>Open-API 키 → 저장소 비밀값 → 워크플로 <code>main</code> 병합 → 수동 1회</td><td>농산물 실시세 · 빠진 품목명 확인</td></tr>
+        <tr><td class="sys">Gemini 크레딧</td><td>충전(지금 402)</td><td>남은 코드 그림 7(수제 채비 · 가방 · 간이 백팩 · 이야기 물건 4)</td></tr>
+        <tr><td class="sys">요리 효과 다섯</td><td>효과 장치를 둘지 결정</td><td>맑은 속 · 고소한 한 끼 · 개운함 · 원기회복 · 활력</td></tr>
+        <tr><td class="sys">결말 되돌리기</td><td>지금은 「영구적」 — 원하면 긴 서브로</td><td>갈라지는 결말의 회복 경로</td></tr>
+        <tr><td class="sys">체감 확인</td><td>벽 높이 · 녹색 옥상(239) · 막힌 1칸 틈(258) · 문장 쉼 450ms(257) · 수면 빗방울(259) · 색약 보정(251)</td><td>수치 · 규칙 보강</td></tr>
+        <tr><td class="sys">배포 라이브 확인</td><td>79차 배포본을 브라우저로(컨테이너 프록시가 github.io를 막는다)</td><td>— </td></tr>
+        <tr><td class="sys">대기 에셋</td><td>오징어 껍질 분리본 · 아가미 안쪽면 · 3분할 · 광어 등쪽 단면 · 갑오징어 속껍질 · 한치 실사 · 눕기 스프라이트 · 종묘사 위치 캡처</td><td>갑오징어 13 · 손질 좌표 · 기절 연출 · 종묘사 POI</td></tr>
+        <tr><td class="sys">실플레이 조율값</td><td><code>TUNING.auction</code> · <code>hole</code> · <code>cook</code> · <code>castWeather</code> · <code>rodSpec</code> · <code>reelFight</code> · 작물 난이도 문턱</td><td>mockup → 확정값</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================== 7. 추천 순서 ==================== -->
+<section>
+  <div class="sec-head"><span class="sec-num mono">07</span><h2>추천 착수 순서</h2></div>
+  <p class="sub">사용자 확정 순서(농장 → 스시 · 요리 후보 → 경영 → 멀티 서버 권위 → 패키징)를 따르되, 맵 트랙은 병행으로 둔다. 번호가 실제 의존 순서다.</p>
+
+  <div class="phases">
+    <div class="phase">
+      <div class="pn mono">0<small>병행</small></div>
+      <div>
+        <h4>사용자 대기 큐 · 맵 실검증</h4>
+        <p>§06 큐와 §04 맵 트랙은 개발과 별도로 흐른다. 사용자 응답이 오는 대로 그 항목만 처리한다.</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">1</div>
+      <div>
+        <h4>짧은 정리 <span class="pill todo" style="vertical-align:middle">소</span></h4>
+        <ul>
+          <li>백로그 CA ① <code>once</code> 편 거절 시 아크 잠김 여부 확인</li>
+          <li>도움말 삽화 <code>help_rig_bait</code> · <code>help_rig_lure</code> 다시 찍기(258 채비 줄)</li>
+          <li>작은 칸 전용 아이콘(32px · 테 1px) — 요청 시(259 잔여)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">2</div>
+      <div>
+        <h4>E2 상업 활어 수조 <span class="pill todo" style="vertical-align:middle">소~중</span></h4>
+        <p>상태 실타입 · 세이브 · 신선도 정지 · 설치물 창. 관상 수조와 쿨러 패턴을 재사용한다.</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">3</div>
+      <div>
+        <h4>E3 벌목 · 채굴 · 보트 + 제작 재료 체인 <span class="pill todo" style="vertical-align:middle">중</span></h4>
+        <p>도구 게이트 · 드랍 · 리스폰. 산출물이 제작 재료 체인 · 광질 · 작업대 업그레이드로 흐르고, 잠긴 스킬 일부와 「광질」 목표가 풀린다.</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">4</div>
+      <div>
+        <h4>E4 하우스 Tier · 집 꾸미기 <span class="pill todo" style="vertical-align:middle">중</span></h4>
+        <p>tier 상태 · 실내 파라미터화 · 승급 · 옷장 · 선반 판매 · 가구 제작. 「가구」 목표와 「주택 부지」 면허가 풀린다.</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">5</div>
+      <div>
+        <h4>스시 · 요리 후보 확장 <span class="pill todo" style="vertical-align:middle">소~중</span></h4>
+        <p>고급 사시미 조각의 쓰임(스시) · 문어 삶기를 레시피로 옮길지 · 채집물 레시피(섭국 · 보말죽 · 성게알).</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">6</div>
+      <div>
+        <h4>E5 경영 루프 <span class="pill todo" style="vertical-align:middle">중~대</span></h4>
+        <p>납품 계약 · 수요 · 재고 · 정산(하루 결산 장부 재사용) · 위생 점검 연동 · 경매 구매자 측. 좌판(Ch5)과 판매 창을 맞춘다.</p>
+        <div class="taglist"><span class="pill done">위판 · 직판 · 상점</span><span class="pill done">하루 결산 장부</span><span class="pill todo">계약 · 수요</span></div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">7<small>병행</small></div>
+      <div>
+        <h4>무대 확장 → 이야기 · 배 출조</h4>
+        <p>OSM land 14 → 인물 29명 좌표 · Ch2~7 지역 목표 · 원격 컷씬 → 배 출조(선상 드리프트 · 울릉 · 독도)로 「배 출조」 목표 9개를 자동 판정으로.</p>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="pn mono">8<small>이후</small></div>
+      <div>
+        <h4>멀티 서버 권위 · NAT · 패키징</h4>
+        <p>공유 원장이 생길 때 서버 권위와 아이템 서명(플리마켓의 선행 조건) → NAT 통과(릴레이 또는 Steam 네트워킹) → Phase 9 Tauri · Steam.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <span class="tag">착수 전 확정할 3가지</span>
+    <p><b>1.</b> E2 수조의 성격 — 판매용 활어 보관(신선도 정지)만인가, 키우는 양식까지인가. &nbsp; <b>2.</b> E5 경영의 첫 형태 — 식당 납품 계약부터인가, 직접 가게 운영부터인가. &nbsp; <b>3.</b> 배 출조의 방식 — 선상 낚시 장면(드리프트)을 새로 만드는가, 이동 컷씬 + 새 지역 필드로 가는가.</p>
+  </div>
+</section>
+
+<footer>
+  Pixel Angler The Real · 259차 기준 남은 과업 설계 · 상태와 수치는 저장소 문서(IMPLEMENTATION_PLAN · docs/wiki)와 코드 실측에서 뽑았고, 순서는 사용자 확정 순서를 따른 제안입니다. 게임 설계가 바뀌는 차수마다 구현 라이브러리 · 채비 모딩 순서도 · 위키와 함께 갱신합니다.
+</footer>
+</div>

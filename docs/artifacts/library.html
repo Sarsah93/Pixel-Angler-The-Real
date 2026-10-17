@@ -1,0 +1,438 @@
+<title>Pixel Angler 구현 라이브러리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Silkscreen:wght@400;700&display=swap">
+<style>
+  :root{
+    --bg:#e7ecee; --panel:#f8faf9; --panel2:#eef2f2;
+    --ink:#1b2329; --mut:#5e6a70; --faint:#87949a;
+    --line:#ccd5d8; --line2:#dde4e5;
+    --sea:#2f6ea8; --gold:#a9761a; --sand:#c9b489;
+    --ok:#3f7a46; --part:#b07d17; --todo:#8a949a;
+    --okbg:#e3efe4; --partbg:#f6ecd8; --todobg:#e6eaeb;
+    --shadow:0 1px 0 rgba(27,35,41,.05);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#11161a; --panel:#1a2126; --panel2:#151c21;
+    --ink:#e2e8ea; --mut:#93a0a6; --faint:#77848a;
+    --line:#2c363c; --line2:#232c32;
+    --sea:#74aede; --gold:#e0a93f; --sand:#b49f78;
+    --ok:#7db95c; --part:#e0a93f; --todo:#79868d;
+    --okbg:#1d2a1f; --partbg:#2c2519; --todobg:#1e262a;
+    --shadow:none;
+  }}
+  :root[data-theme="dark"]{
+    --bg:#11161a; --panel:#1a2126; --panel2:#151c21;
+    --ink:#e2e8ea; --mut:#93a0a6; --faint:#77848a;
+    --line:#2c363c; --line2:#232c32;
+    --sea:#74aede; --gold:#e0a93f; --sand:#b49f78;
+    --ok:#7db95c; --part:#e0a93f; --todo:#79868d;
+    --okbg:#1d2a1f; --partbg:#2c2519; --todobg:#1e262a;
+    --shadow:none;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    font-weight:400; line-height:1.55; margin:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding-inline:16px; padding-block:0 64px}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+  .px{font-family:"Silkscreen","IBM Plex Mono",monospace; font-weight:700; letter-spacing:.02em}
+
+  /* masthead */
+  header.mast{padding-block:40px 26px; border-bottom:2px solid var(--ink)}
+  .eyebrow{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--gold); font-weight:600; margin:0 0 10px}
+  h1{font-size:clamp(28px,5.2vw,44px); line-height:1.1; font-weight:700; letter-spacing:-.02em;
+    margin:0 0 10px; text-wrap:balance}
+  .lede{font-size:15px; color:var(--mut); max-width:60ch; margin:0 0 4px; font-weight:300}
+  .stack{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--faint); margin:8px 0 0}
+
+  .figs{display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:1px;
+    margin-top:26px; background:var(--line); border:1px solid var(--line)}
+  .fig{background:var(--panel); padding:12px 12px 11px}
+  .fig b{display:block; font-family:"Silkscreen","IBM Plex Mono",monospace; font-weight:700;
+    font-size:clamp(19px,3.4vw,25px); line-height:1.15; letter-spacing:-.01em}
+  .fig span{display:block; font-size:11px; color:var(--mut); margin-top:5px; letter-spacing:.01em}
+
+  /* controls */
+  .bar{position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+    background:var(--bg); border-bottom:1px solid var(--line);
+    padding-block:10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .chips{display:flex; gap:6px; flex-wrap:wrap}
+  .chip{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500;
+    border:1px solid var(--line); background:var(--panel); color:var(--mut);
+    padding:5px 10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px}
+  .chip:hover{border-color:var(--ink); color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+  .chip .sq{width:8px; height:8px; display:inline-block}
+  .chip[aria-pressed="true"] .sq{outline:1px solid var(--bg)}
+  input[type="search"]{
+    flex:1 1 180px; min-width:0; font-family:"IBM Plex Sans KR",sans-serif; font-size:13px;
+    padding:6px 10px; border:1px solid var(--line); background:var(--panel); color:var(--ink)}
+  input[type="search"]:focus-visible, .chip:focus-visible, button:focus-visible{
+    outline:2px solid var(--gold); outline-offset:1px}
+  .count{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--faint); margin-left:auto}
+
+  /* distribution */
+  .dist{display:flex; height:6px; margin-top:18px; border:1px solid var(--line); background:var(--panel)}
+  .dist i{display:block; height:100%}
+  .distkey{display:flex; gap:14px; flex-wrap:wrap; margin-top:7px;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--mut)}
+  .distkey b{color:var(--ink); font-weight:600}
+
+  /* sections */
+  section.cat{margin-top:38px; scroll-margin-top:72px}
+  .cathead{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;
+    border-bottom:1px solid var(--ink); padding-bottom:8px}
+  .catnum{font-family:"Silkscreen","IBM Plex Mono",monospace; font-weight:700; font-size:22px;
+    color:var(--sand); line-height:1}
+  .cathead h2{font-size:20px; font-weight:600; margin:0; letter-spacing:-.01em}
+  .catnote{font-size:12.5px; color:var(--mut); font-weight:300; margin-left:2px}
+  .cattally{margin-left:auto; align-self:center; font-family:"IBM Plex Mono",monospace;
+    font-size:11px; color:var(--mut); white-space:nowrap}
+  .catbar{display:flex; height:6px; width:96px; align-self:center;
+    border:1px solid var(--line)}
+  .catbar i{display:block; height:100%}
+
+  .rows{display:grid; grid-template-columns:repeat(auto-fill,minmax(324px,1fr));
+    gap:0 22px; margin-top:2px}
+  .row{border-bottom:1px solid var(--line2); padding:11px 0 11px 12px;
+    border-left:3px solid var(--todo); position:relative}
+  .row.s-ok{border-left-color:var(--ok)}
+  .row.s-part{border-left-color:var(--part)}
+  .row.s-todo{border-left-color:var(--todo)}
+  .row.s-todo .rname, .row.s-todo .rdesc{color:var(--mut)}
+  .rtop{display:flex; align-items:baseline; gap:8px}
+  .rname{font-size:14.5px; font-weight:600; letter-spacing:-.005em}
+  .rwhen{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint); white-space:nowrap}
+  .rstat{font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600;
+    letter-spacing:.06em; margin-left:auto; white-space:nowrap}
+  .s-ok .rstat{color:var(--ok)} .s-part .rstat{color:var(--part)} .s-todo .rstat{color:var(--todo)}
+  .rdesc{font-size:13px; color:var(--mut); font-weight:300; margin-top:3px}
+  .rfigs{display:flex; flex-wrap:wrap; gap:4px 5px; margin-top:7px}
+  .rfigs span{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--mut);
+    background:var(--panel2); border:1px solid var(--line2); padding:2px 6px; white-space:nowrap}
+  .rsrc{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--sea); margin-top:6px;
+    word-break:break-word}
+
+  .empty{padding:22px 0; color:var(--mut); font-size:13px}
+  footer{margin-top:52px; padding-top:18px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--faint); display:flex; gap:14px; flex-wrap:wrap}
+  footer .mono{color:var(--mut)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+  @media (max-width:520px){
+    .rows{grid-template-columns:1fr}
+    .catbar,.cattally{display:none}
+    .rfigs span{white-space:normal}
+    .figs{grid-template-columns:repeat(4,1fr)}
+  }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Pixel Angler The Real · 259차 기준 · 2026-10-17</p>
+    <h1>구현 라이브러리</h1>
+    <p class="lede">2D 픽셀 퍼펙트 한국 해양 낚시 시뮬레이터 + 생활 경영 RPG.
+      259차까지 실제로 코드에 서 있는 것만 12개 카테고리로 묶었다.
+      수치는 전부 <span class="mono">packages/core/dist</span> 와 소스에서 뽑은 실측값이고, 항목 옆 숫자는 그 일이 들어간 차수다.</p>
+    <p class="stack mono">TypeScript 5.8 strict · Phaser 3.90 · Vite 6 · Turborepo 2 + pnpm 9 · Tauri v2 · Node 20+</p>
+
+    <div class="figs" id="figs"></div>
+
+    <div class="dist" id="dist"></div>
+    <div class="distkey" id="distkey"></div>
+  </header>
+
+  <div class="bar">
+    <div class="chips" id="chips"></div>
+    <input type="search" id="q" placeholder="이름 · 요약 · 모듈 검색" aria-label="항목 검색">
+    <span class="count mono" id="count"></span>
+  </div>
+
+  <main id="body"></main>
+
+  <footer>
+    <span class="mono">core 217 파일 (+ 시험 30) · client 218 파일</span>
+    <span class="mono">워크로그 180편 · 시스템 페이지 15</span>
+    <span class="mono">빌드 3/3 · typecheck 0 · core 시험 322/322</span>
+    <span>게임 설계가 바뀌는 차수마다 남은 과업 설계 · 채비 모딩 순서도 · 위키와 함께 갱신한다(260차 규칙).</span>
+  </footer>
+</div>
+
+<script>
+const ST = { ok:{k:'ok',ko:'운영',c:'var(--ok)'}, part:{k:'part',ko:'부분',c:'var(--part)'}, todo:{k:'todo',ko:'예정',c:'var(--todo)'} };
+
+// w = 들어간 차수(없으면 생략)
+const DATA = [
+{ n:'낚시', note:'캐스팅 → 입질 → 파이팅 → 랜딩. core 물리 모듈이 판정을 전담한다.', items:[
+  { n:'캐스팅 물리', s:'ok', w:'127', d:'완력·파워·조준 방향의 3D 탄도. 착수 예상 마커와 궤적 미리보기를 실시간으로 그린다.', f:['400ms 홀드 = 필요 파워 눈금','산포 링','비행 카메라 팔로우'], src:'CastingPhysicsEngine · CastingModel' },
+  { n:'날씨 캐스팅 보정', s:'ok', w:'127', d:'풍속 3m/s를 넘어서면 맞바람이 비거리를 깎고 옆바람이 착수점을 민다. 비는 유속과 밑걸림을 올린다.', f:['9m/s → ×0.73','옆바람 산포 ×1.6','비 유속 ×1.27'], src:'CastWeather' },
+  { n:'비 오는 날 수면', s:'ok', w:'259', d:'1인칭 화면 바다에 빗방울이 떨어진 자리마다 반짝임 · 물방울 · 원근을 맞춘 납작 고리가 생긴다.', f:['초당 48 · 고리 16px','소나기 ×1.8 · 진눈깨비 ×0.6','F8 조율 대기'], src:'FirstPersonFishingScene.updateRainSplash · TUNING.view' },
+  { n:'입질 시퀀스', s:'ok', d:'초릿대 굽힘 3단계로 어신을 읽고 우클릭으로 챔질한다. 릴링·뒷줄견제로 다음 단계를 유도할 수 있다.', f:['패턴 7종','챔질 5 / 20 / 100%','어종별 패턴'], src:'BiteSequenceEngine' },
+  { n:'파이팅', s:'ok', w:'132 · 210', d:'랜딩 진행도는 거리, 제압은 별도 축이다. 도주는 언제나 플레이어 반대쪽이고, 릴 드랙 · 기어비가 미끄럼과 회수 속도를 정한다.', f:['패턴 3종 (바늘털이·여박기·횡러닝)','드랙 = 줄과 릴 중 약한 쪽','피로 페이즈 4단'], src:'FightingPhase · FightPhysics2D · FishFatigueModel' },
+  { n:'체장-체중 관계 (LWR)', s:'ok', w:'133', d:'무게를 a·L^b로 바꾸고 체형 7종을 파이트에 반영했다. 갈치 1m가 10kg이던 구 모델을 전수 재보정했다.', f:['감성돔 40cm 953g','장어형 요동 1.2Hz','비만도 ±계절 보정'], src:'FishDatabase · FightPhysics2D' },
+  { n:'스풀 · 베일', s:'ok', w:'136', d:'채비에 원줄 길이 상태를 두어 전유동·흘림이 반유동과 다른 조법이 됐다. R 홀드로 베일을 연다.', f:['닫힘 60초 20 → 9.56m','페더링 상한 4m · 백래시','슬랙 유예 ×0.4'], src:'SpoolSystem' },
+  { n:'조류 물리', s:'ok', d:'조수·반탄·조경 Hit Zone·횡·본류 5존이 채비 위치와 입질 확률을 동시에 움직인다.', f:['조경지대 입질 ×1.6','본류 ×0.35','존 경계는 캐스팅 거리 비례'], src:'TidalCurrentEngine' },
+  { n:'물때 흐름 8단계', s:'ok', w:'204 · 205', d:'초·중·끝 들물/날물과 만조·간조 물돌이로 나눈다. 어종마다 잘 무는 물때가 다르고, 채비마다 물때 전략이 갈린다.', f:['어종 × 물때 13묶음','동해 감쇠 0.3','채비 × 물때 전략'], src:'TideFlowPhase · TidePhasePreference · TidePhaseStrategy' },
+  { n:'해저 지형 프로필', s:'ok', d:'거리 기반 연속 지형. 암초·수초·수심이 침강 한계와 밑걸림 판정을 함께 결정한다.', f:['수심 패널 단면 렌더','실측 연안 수심 연동'], src:'SeabedProfile · DepthProfile' },
+  { n:'밑밥 3D 동조', s:'ok', d:'파슬이 침강하며 조류를 타고 흐른다. 수심과 수평 거리 양쪽이 겹칠 때만 동조율이 오른다.', f:['수명 8초','조류 감쇠 침강','바닥 코팅 보너스'], src:'ChumPhysics' },
+  { n:'어종 스폰 오라클', s:'ok', d:'지형·수심층·미끼 선호·물때·주야를 곱해 개체를 뽑는다. 금지체장과 금어기가 여기서 걸린다.', f:['오라클 55종','도감 56종','땅지렁이 미끼 (248)'], src:'FishSpawningOracle · BaitDatabase · ClosedSeason' },
+  { n:'피딩타임', s:'ok', d:'계절 시간창 × 조류 × 날씨로 활성도를 산출해 입질 기본 확률에 곱한다.', f:['배율 0.2 ~ 1.5','동해 지역계수','골든타임 라벨'], src:'FeedingTimeCalculator' },
+  { n:'필드 이벤트', s:'ok', d:'보일링과 스쿨링. 맵 격자 칸 × 시간 슬롯의 성질로 발생해 멀티에서도 양쪽 계산이 일치한다.', f:['격자 24타일 × 45초','가장자리 링 ×1.8','직격은 ×0.5'], src:'FieldEventManager' },
+  { n:'구멍치기', s:'ok', w:'149', d:'테트라포드 · 사석 틈에 채비를 수직으로 내린다. 블록 위에서 짧게 누르면 구멍치기, 꾹 누르면 캐스팅이다.', f:['장소 게이트 spotKind','2.2m 구멍','TUNING.hole 15키'], src:'HoleFishing' },
+  { n:'채비 모딩 트리', s:'ok', w:'192 · 258', d:'원줄 한 칸에서 시작해 고른 것에 따라 오른쪽으로 칸이 열린다. 258차에 목줄 중간(봉돌 자리)과 목줄 끝 네 갈래가 생겼다.', f:['간편 채비 6종','권장 외 미끼 −92%','봉돌 여럿이면 무게 합산'], src:'RigTree · InventoryStore.rigSummary' },
+  { n:'다중 미끼 · 카드 채비', s:'ok', w:'193 ~ 196', d:'바늘마다 미끼를 달고 하나 이상이면 완성이다. 전갱이 · 열기 카드 채비는 3~7단이고, 제철 무리면 두세 마리가 함께 걸린다.', f:['미끼 바늘당 +2%','카드 합계 +10% 상한','무리 걸림 두 마리 10%'], src:'baitBiteBonus · CARD_RIG_ENTRIES · rollSchool' },
+  { n:'들어뽕 · 뜰채', s:'ok', w:'196', d:'랜딩 순간 바늘이 빠질 수 있다. 발판 높이 × 무게로 오르고, 자루가 충분한 뜰채면 0이 된다.', f:['한 마리 0.5%','상한 25%','뜰채 3 · 5 · 7m'], src:'LandingDrop' },
+  { n:'밑걸림 대처', s:'ok', w:'136 · 206 · 258', d:'여 위로 끌린 거리만큼 걸린다. 끌어당기기와 끊기 중 하나를 고르고, 바늘을 잃어도 목줄 중간 봉돌 · 끝 도래는 남는다.', f:['끌기 10/10/30/50','끊기 50:50','첫 퀘스트 진행 ×0.3'], src:'SnagDrag · GearDurability' },
+  { n:'장비 고장 · 내구도', s:'ok', w:'136', d:'내구도는 못 쓰게 되는 시계가 아니라 고장이 잦아지는 계수다. 수리점과 자가 수리가 있다.', f:['고장 8종','초릿대 1.5%/캐스트','수리비 3,000 ~ 28,500원'], src:'GearDurability' },
+  { n:'낚싯대 · 릴 제원', s:'ok', w:'209 · 210', d:'용도 8가지 대와 릴 종류. 비거리 · 적합 채비 무게 · 과부하가 판정되고, 무거우면 초릿대가 부러진다.', f:['상점 대 14 · 릴 6','과부하 초릿대 파손','TUNING.rodSpec 조율 대기'], src:'RodCatalog · RodFit' },
+  { n:'거치대', s:'ok', w:'207 · 209', d:'원투 대를 거치대에 걸어 두고 다른 일을 한다. 입질이 오면 알린다.', f:['원투만','1인칭에서도 이어 굴림','남의 거치대 입질은 동기화 안 됨'], src:'RodHolderSystem' },
+  { n:'어탐 레이더', s:'todo', d:'SeabedProfile 조회를 그대로 쓰면 되는 자리만 비워 두었다.', f:['전제 구조 완비'], src:'—' },
+]},
+
+{ n:'손질 · 요리', note:'원물 → 필렛 → 회 → 접시, 그리고 불 위의 냄비. 실사 픽셀 스프라이트와 가이드 좌표가 축이다.', items:[
+  { n:'손질 FSM', s:'ok', d:'방향 5상태와 도마 회전 4방위 위에서 프리미티브 19종이 단계를 판정한다. 가이드 트레이스 커버율로 통과가 갈린다.', f:['섹션 11 · 작업 19','자유 순서 + 체크포인트','부산물 팝업 · 즉시 지급'], src:'ButcheryProcess · ButcherySections' },
+  { n:'돔류 · 방어류 삼면뜨기', s:'ok', d:'어종군별 가이드 좌표를 분리해 체형이 달라도 선이 몸을 따라간다. 마감된 계통이다.', f:['30스테이지','가이드 좌표 9세트 × 2군','실사 단계 스프라이트'], src:'ButcheryProfiles · PixelFishStages' },
+  { n:'넙치류 다섯장뜨기', s:'ok', d:'중앙 척추 기준 4면을 각각 뜨고 중골까지 다섯 장. 엔가와는 따로 분리해 별도 회썰기를 탄다.', f:['필렛 4 + 중골','엔가와 2컷 → 3점','F9 좌표 5종 근사'], src:'ButcheryProcess · PixelFishFlat' },
+  { n:'두족류 손질', s:'part', d:'무늬오징어가 정본이고 한치는 트리를 공유한다. 문어는 삶기 → 다리 분리 → 숙회까지 열려 있다.', f:['무늬오징어 20스테이지','문어 8스테이지','갑오징어 13 잔여'], src:'CephalopodStages · CephalopodProfiles' },
+  { n:'회썰기', s:'ok', d:'일반은 탑뷰 14컷, 고급 사시미는 측면 사선 16컷. 썬 조각이 팬아웃으로 밀려 나간다.', f:['야나기바 게이트','컷 오버라이드 테이블','조각 = 개별 아이템'], src:'SashimiSlicing · SashimiPanel' },
+  { n:'사시미 플레이팅', s:'ok', w:'135', d:'접시를 돌려가며 4방위에 조각을 놓는다. 도중에 내리면 미완성 접시 아이템으로 보관된다.', f:['접시 4종 · 방위당 4~7점','진행률 % 배지','신선도는 가장 오래된 조각 계승'], src:'UtilizationPanel' },
+  { n:'사시미 별 5개', s:'ok', w:'155', d:'신선도 · 컷 정확도 · 식감 · 구성 · 완성도 다섯 축으로 별을 매긴다. 시간이 지나면 별이 깎인다.', f:['별 5개 + 시간 감쇠','가게 채소면 5번째 별 막힘'], src:'SashimiQuality' },
+  { n:'수율 · 등급', s:'ok', d:'양은 칼·스킬·신선도가, 질은 방혈·시메·컷 정확도가 만든다. 막칼은 특급을 못 만든다.', f:['회칼 3등급','특/상/중/하','손질 스킬 Lv.20'], src:'ButcheryProcess · KnifeDatabase' },
+  { n:'부산물', s:'ok', d:'머리·척추뼈·갈빗대·지아이뼈·내장·껍질이 각각 아이템으로 나온다. 내장은 밑밥으로 전환된다.', f:['실사 trimmings 아이콘','어종별 머리 색 변형','내장 전용 신선도 곡선'], src:'ButcheryByproducts · InventoryStore' },
+  { n:'불요리', s:'ok', w:'154 ~ 157', d:'화구와 용기를 조합해 설치하고 실시간으로 끓인다. 집 주방에서도 되고, 걸어 둔 채 다른 일을 할 수 있다.', f:['레시피 9','별 5개 · 시간 감쇠','걸어두기'], src:'CookingStore · FIRE_RECIPES · COOKWARES' },
+  { n:'요리 개체화', s:'ok', w:'156 · 255', d:'같은 레시피라도 들어간 어종에 따라 이름 · 회복치 · 효과 · 값이 달라진다. 「우럭 지리(맑은탕)」처럼 부른다.', f:['어종 조리 프로필 58','변형 레시피 8 (전복죽만 고정)','요리 도감 탭'], src:'FISH_COOKING_PROFILES · DISH_VARIANT_NAME · DishInstance' },
+  { n:'완성 요리 사진', s:'ok', w:'255', d:'레시피마다 사진 한 장. 매운탕과 같은 셀 크기로 맞추고 칸 아이콘은 64px로 굽는다.', f:['9 / 9','Gemini 7'], src:'dish_photos.cjs · public/food' },
+  { n:'표시만 되는 요리 효과', s:'part', w:'255', d:'맑은 속 · 고소한 한 끼 · 개운함 · 원기회복 · 활력은 상세에 뜨지만 실제 효과 장치가 없다.', f:['효과 다섯','사용자 결정 대기'], src:'RECIPE_EFFECTS · TUNING.cook' },
+  { n:'스시', s:'todo', d:'고급 사시미 조각을 소비하는 자리. 우클릭 메뉴에 스텁만 있다.', f:['입력 = 고급 사시미'], src:'—' },
+]},
+
+{ n:'텃밭', note:'실제 시간 · 실제 계절로 자란다. 빠른 작물 · 중간 수확 · 시설이 매일 할 거리를 만든다.', items:[
+  { n:'텃밭 농사', s:'ok', w:'235', d:'마당 2구획에 이용권으로 5구획을 더 빌린다. 비가 오면 물을 준 셈이고, 비워 둬도 죽지 않고 시들기만 한다.', f:['작물 86종','칸 1㎡ = 10a 수량 ÷ 1,000','시설 상한 잎 ×2.0 · 철 ×1.4'], src:'FarmSim · FarmStore · CROP_DATABASE' },
+  { n:'난이도 · 기를 자격', s:'ok', w:'237', d:'쉬움 · 보통 · 까다로움 · 아주 까다로움 네 단계. 보통은 Lv15, 까다로움은 Lv25부터 기를 수 있다.', f:['유기농업기능사 35,000원','문턱 15 · 25 · 40'], src:'CROP_DIFFICULTY · License' },
+  { n:'관리 작업 · 병해충', s:'ok', w:'238 · 245', d:'작물마다 그 작물의 일이 차례로 온다 — 지주 · 유인 · 곁순 · 웃거름 · 방제. 놓치면 수량이 준다.', f:['관리 표 86','일 36종','병해충 16'], src:'CropCareSim · CROP_CARE_PLANS · DISEASE_DEFS' },
+  { n:'재배 요소', s:'ok', w:'247', d:'물 양 띠 · 과습 · 노동 피로 · 도구 · 거두기 전 물 끊기 · 후처리 공정까지 작물마다 다르다.', f:['86종 표','과습 36시간','피로 상한 88'], src:'CROP_CULTIVATION · FarmFieldSystem' },
+  { n:'칸 연출 · 손에 든 것', s:'ok', w:'247', d:'한 칸 = 2×2 타일. 칸마다 흙 · 작물 · 해 둔 일이 그려지고, 손에 든 도구로 그 자리에서 일한다.', f:['작물 모양 13','지주 · 끈 · 망 · 비닐 · 짚'], src:'FarmFieldSystem · FarmWorkPanel' },
+  { n:'새 작물 · 개량종', s:'ok', w:'241 · 242', d:'참외 · 수박 · 블루베리 · 토마토 · 딸기와 상추 9품종. 원종을 여러 번 거두면 개량종이 종묘사에 열린다.', f:['개량종 3','상추 9품종'], src:'CROP_DATABASE' },
+  { n:'날로 먹기 · 포장', s:'ok', w:'241 · 243', d:'수확물마다 날로 먹을 수 있는지 갈랐다. 「한 팩」 작물은 낱개로 거두고 포장해서 판다.', f:['먹는다 46 · 나눠서 13 · 못 먹는다 25','팩 6종'], src:'CROP_RAW_EAT · CROP_NO_RAW' },
+  { n:'종묘사 · 귀한 작물', s:'ok', w:'238 · 247', d:'아주 까다로운 9종은 열흘에 한 번꼴 입고된다. 묵힌 칸에 저절로 싹이 나기도 한다.', f:['입고 귀띔','포기 나누기'], src:'RARE_ARRIVAL_EVERY · WILD_TUNING' },
+  { n:'농산물 시세', s:'part', w:'236', d:'달 지수 × 주간 출렁임 × 등급으로 값을 매긴다. KAMIS 실시세 경로는 완성됐고 키 발급과 첫 실행이 남았다.', f:['GitHub Actions 하루 1회','키 대기 (사용자)'], src:'ProduceMarket · KAMIS_CROP_ITEMS' },
+  { n:'땅지렁이', s:'ok', w:'248', d:'일구고 캐고 김맬 때 나온다. 주워서 바다 미끼로 쓴다.', f:['일구기 0.30','비 오면 더 나옴'], src:'FarmFieldSystem' },
+  { n:'작물 초상', s:'ok', w:'244 · 245', d:'사진이나 Gemini 그림을 어종 기준(셀 6px · 192셀)으로 굽는다. 게임은 카드와 64px 아이콘만 싣는다.', f:['98 / 98','보정 쌍 13'], src:'pixelize_crops.cjs · CropPortraits' },
+]},
+
+{ n:'집 · 생활', note:'집은 저장 · 잠 · 결산 지점이자 꾸미는 공간이다.', items:[
+  { n:'홈베이스 (원룸)', s:'ok', w:'44', d:'원룸 Tier 0. 침대가 저장 지점이고 냉장고는 신선도 시계를 멈춘다.', f:['냉동 8 + 냉장 16칸','출조 요금 · 귀가'], src:'HomeInteriorScene · HomeBase · FridgeStore' },
+  { n:'가구 배치', s:'ok', w:'189 · 190', d:'들기 · 돌리기 · 넣어 두기 · 꺼내기. 생활용품점 가구 8종이 「넣어 둔 가구」로 배달된다.', f:['길 판정','첫 진입 가이드'], src:'HomeInteriorScene · HomeStore' },
+  { n:'집 살림', s:'ok', w:'190 · 253', d:'창 · 조명 · 라디오 물때 방송 · 식탁 식사 +25% · 고양이 · 벽 장식. 고양이와 날씨 소리가 있다.', f:['고양이 소리 8가지','실내는 먹먹하게'], src:'HomeInteriorScene · Ambience' },
+  { n:'관상 수조', s:'ok', w:'190 · 234', d:'실내 가구 수조. 활어 4마리 · 45cm까지 넣고 상하지 않는다. 패류독소는 그대로 따라온다.', f:['4마리','거래품 표지 유지'], src:'HomeStore.tanks' },
+  { n:'잠 · 결산 · 저장', s:'ok', w:'211 · 213', d:'「저장만 하기 / 자기」. 실시간으로 자고 다 자면 저장한다. 새벽 4시가 하루 경계이고 잠들면 그날 결산이 뜬다.', f:['오늘 하루 결산','최근 14일 돌아보기'], src:'LedgerStore · GameState' },
+  { n:'보건소 실내', s:'ok', w:'215', d:'홈타운 보건소 접수대에서 진료받는다. 실내 공간 1단계다.', f:['진료비 45,000원'], src:'RegionFieldScene' },
+  { n:'상업 활어 수조 (E2)', s:'todo', d:'실외 설치물 수조. 상태 골격만 있다.', f:['신선도 정지 = 경제 직결'], src:'AquariumState' },
+  { n:'벌목 · 채굴 · 보트 (E3)', s:'todo', d:'나무 · 바위는 배치 · 렌더만 돼 있고 상호작용은 「추후」 안내다.', f:['제작 재료의 출처'], src:'—' },
+  { n:'하우스 Tier 1~3 (E4)', s:'todo', d:'평수 · 주방 · 지하 · 2층. 데이터만 있고 어디서도 쓰지 않는다.', f:['HOUSE_TIERS'], src:'HomeBase' },
+  { n:'경영 루프 (E5)', s:'todo', d:'납품 계약 · 수요 · 재고 · 정산. 판매 인프라 위에 얹는 대과제다.', f:['식당 납품','하루 결산과 연결'], src:'—' },
+]},
+
+{ n:'월드 · 이동', note:'실지형 기반 타일맵. OSM · 위성 래스터 · 실측 수심이 한 맵으로 합류한다.', items:[
+  { n:'심리스 속초', s:'ok', d:'분할 맵이 아니라 단일 대형 맵을 청크로 스트리밍한다. 타일 1칸 = 5m.', f:['1179 × 642 타일','POI 560','청크 32타일'], src:'SeamlessChunks · RegionFieldScene' },
+  { n:'OSM 타일맵 파이프라인', s:'ok', d:'OSM을 받아 지형·도로·POI로 굽고 위성 래스터를 병합한다. 지역 추가는 설정 한 줄이다.', f:['land 14개 확장 잔여','patch.json 편집 병합'], src:'fetch_region_osm.py · build_osm_tilemap.py' },
+  { n:'위성 래스터 보강', s:'ok', w:'109', d:'Sentinel-2 NDWI/NDVI로 식생·포장·모래를 분류해 OSM 기본값만 채운다.', f:['좌표 정합 98.84%','© Copernicus'], src:'fetch_region_raster.py · classify_raster.py' },
+  { n:'도로 벡터 · 교통', s:'ok', d:'도로를 타일 그림이 아니라 벡터 밴드로 굽는다. 차량은 도로 그래프 위를 우측통행한다.', f:['회전교차로 · 신호 교차로','차량은 캐릭터보다 크게'], src:'TrafficSystem · SeamlessChunks' },
+  { n:'해안 지형 · 고도 층', s:'ok', w:'183 ~ 186', d:'방파제 단면을 거리로 자동 분류하고 등대를 세운다. 고도 층과 금강대교 고가를 두 다리로 나눴다.', f:['등대 5기','조도 41 × 33','다리 밑 = 물'], src:'computeBreakwaters · Elevation' },
+  { n:'벡터 건물', s:'ok', w:'239', d:'OSM 윤곽 위에 2.5D 벽과 종류별 지붕을 세운다. 간판은 차도 · 지붕 아래를 피해 문 옆 땅에 선다.', f:['건물 546채','1층 12px · 상한 48','체감 조율 대기'], src:'BuildingArt · shopSignSpot' },
+  { n:'건물 윤곽 충돌', s:'ok', w:'258', d:'그림 윤곽 4px 띠로 막는다. 몸이 벽 바닥선에서 멈춰 건물 앞에 그려진다.', f:['막힌 1칸 틈 109','문 이동 24'], src:'BuildingArt.unitBodyRects · check_building_reach.py' },
+  { n:'레거시 지역 타일맵', s:'ok', d:'색상 분류 기반 구 파이프라인. 부산 8맵과 홈타운이 아직 이 위에 있다.', f:['부산 8맵','홈타운 48 × 32'], src:'build_region_maps.py · RegionMap' },
+  { n:'월드맵 · 출조', s:'ok', w:'259', d:'전국 지도에서 지역으로 이음새 없이 줌인한다. 출조에는 교통비가 들고, 지점 이름은 흰 테 글자다.', f:['출조 요금 10,000원 · 귀가 무료','잠긴 지점은 회색 글자'], src:'WorldMapScene · WorldMap' },
+  { n:'전체 지도 · 핀', s:'ok', w:'155 · 259', d:'M으로 연다. 목표 표식 · 핀 · 다른 사람 · 「나」가 흰 테 글자로 뜬다.', f:['핀은 세션 메모리','목표 화살표'], src:'FullMapPanel · MapPinStore' },
+  { n:'마을 사람 · 일과', s:'ok', w:'166 · 214', d:'마을 사람 120인이 배회하고, 이야기 인물은 시각별 일과를 따른다.', f:['amb_* 120인','일과 8인'], src:'FieldNpcSystem · NPC_ROUTINES' },
+  { n:'씬 전환', s:'ok', d:'하위 씬은 pause + launch로 띄우고 stop + resume으로 돌아온다. 페이드 미발화는 폴백 타이머가 막는다.', f:['씬 11개','SceneFade 전수 적용','재진입 가드'], src:'SceneFade · game.ts' },
+  { n:'지형 고도 (DEM)', s:'todo', d:'낚시가 확립된 뒤로 미룬 트랙. 경사는 통행 차단이 아니라 자원 배치 태그로 쓴다.', f:['B 해안 지형 변형 우선','rasterio 필요'], src:'RASTER_UPLIFT_AMENDMENT' },
+]},
+
+{ n:'성장 · 생존', note:'레벨 200과 스킬 예산 216이 한 등식으로 묶여 있다.', items:[
+  { n:'레벨 · 경험치', s:'ok', w:'124', d:'만렙 200. 어획 XP는 희귀도 × 체장이고 첫 발견은 5배다. 만렙에서도 경험치는 계속 쌓인다.', f:['xpToNext = 25n^1.5 + 75','활동 XP 5종'], src:'Progression · GameState.grantXp' },
+  { n:'스킬 트리', s:'part', w:'241', d:'95노드(유료 90 + 히든 5). 예산 216 = 레벨 200 + 면허 15 + 시작 1. 열린 스킬은 전부 배선됐고 14종은 시스템을 기다린다.', f:['열린 65 전부 배선','잠긴 14','카테고리 7'], src:'SkillDatabase · SkillTreePanel' },
+  { n:'생존 지표', s:'ok', w:'125', d:'허기·수분·피로가 활동 시간에만 흐른다. 저장 구조에 타임스탬프가 없으니 게임을 끄면 멈춘다.', f:['활동 드레인 6종','행동 비용 8종','하루 3끼 기준'], src:'Vitals · GameState.vitals · FoodNutrition' },
+  { n:'상태이상', s:'ok', d:'오한 → 감기 → 독감처럼 진행 체인을 탄다. 자연치유와 재발 판정이 함께 돈다.', f:['11종','픽셀 아이콘 배지','패류독소 식중독 (229)'], src:'StatusEffects · ShellfishToxin' },
+  { n:'기절 · 사망 · 파산', s:'ok', w:'126 · 231', d:'눕기 연출과 비네트 뒤에 팝업이 뜬다. 파산하면 그 세이브는 바로 지워진다.', f:['사망 재화 −15%','가방 유지','파산 = 세이브 삭제'], src:'CollapseOverlay · TUNING.collapse' },
+  { n:'숙련도', s:'ok', d:'기술형 스킬은 배운 뒤 그 행위를 해야 효과가 찬다. 구세이브는 0에서 시작한다.', f:['기술형 22스킬','배율 0 → 1.15'], src:'GameState.proficiency' },
+  { n:'칭호', s:'ok', w:'203 · 204', d:'행동 누적으로 칭호를 얻는다. 물때 단계별 어획 · 대물 점수 · 꽝 조사까지 센다.', f:['경로(OR) × 조건(AND)','「물때표 인간」'], src:'TitleStore · TITLE_DATABASE' },
+  { n:'면허 · 단속', s:'part', w:'237', d:'면허 21종이 장비·조업·판매 게이트를 연다. 6종은 해당 시스템이 없어 아직 발급 경로가 없다.', f:['카테고리 6군','발급 대기 6','유기농업기능사'], src:'License · LicensePanel' },
+  { n:'제작', s:'part', w:'222 · 223 · 259', d:'손과 작업대 두 대기열. 시간이 걸리고 오프라인에도 진행된다. 도면을 얻고 분해한다. 259차에 클릭이 어긋나던 것을 고쳤다.', f:['도면 40','품질 · 숙련','재료 체인 · 광질 잔여'], src:'CRAFT_BLUEPRINTS · CraftingStore · CraftBoard' },
+  { n:'구급품 · 보건소', s:'ok', d:'약국과 제작 구급품으로 상태이상을 치료한다. 홈타운 보건소는 전량 회복이다.', f:['진료비 45,000원','치료 종류 매칭','재발 롤 감소'], src:'GameState.applyRemedy · ItemVitals' },
+  { n:'정기 지출', s:'ok', w:'171 · 236', d:'자격 갱신 · 위생 점검 · 수경 재배기 전기료처럼 때마다 나가는 돈이 있다.', f:['전 자격 반년 187,000원','재화 곡선 확인 대기'], src:'Upkeep' },
+  { n:'달리기', s:'ok', w:'144', d:'Shift 홀드로 ×1.55. 걷기 < 달리기 < 자전거 위계를 고정했고 지치면 걷기로 강등된다.', f:['210 → 326 px/s','전용 포즈 없음'], src:'RegionFieldScene · CharacterSprite' },
+]},
+
+{ n:'스토리 · 퀘스트', note:'「조행록」 — 7챕터로 자격을 올라간다. 정본은 STORY_SPEC_v4.', items:[
+  { n:'퀘스트 데이터', s:'part', d:'191편이 7챕터를 관통한다. 목표는 행위 이벤트로 닫힌다. 다른 지역 목표는 그 지역 맵이 서야 닫힌다.', f:['메인 68 · 서브 123','아크 24','Ch2~7 지역 목표 대기'], src:'StoryQuestDatabase · STORY_CHAPTERS' },
+  { n:'나레이션', s:'ok', d:'주인공 1인칭 서두와 NPC 대사, 내용 기반 완료 선택지를 전편에 붙였다. 영어도 끝났다.', f:['191 / 191','선택지 영어 1048 / 1048'], src:'StoryNarrative · StoryChoicesEn' },
+  { n:'수산업법 5조', s:'ok', d:'낚싯대 어획 판매 금지 같은 규칙을 순수 함수로 세웠다. 강제 시점은 3단계로 고른다.', f:['canSell / canKeep / canUseGear / canGather','기본 = M1-06 완료 후'], src:'FisheryLaw · TUNING.law' },
+  { n:'대화창 · 받는 자리 답', s:'ok', w:'253 · 258', d:'받는 자리 답은 3개 이상이고 답마다 긴 대답이 있다. 대화창에는 대답 · 「받은 것」 · 마무리만 남기고, 효과 줄과 고르지 않은 답은 위키에서 본다.', f:['답 3개 이상','효과 줄은 위키만'], src:'DialoguePanel · StoryChoices' },
+  { n:'이어지는 대화 · 결말', s:'ok', w:'254', d:'갈래가 이어지는 대화와 결말 1~3. 고른 길에 따라 우호도 · 값 깎기 · 귀한 물건 · 영구 피해가 갈린다.', f:['대화 36','결말 6','되돌리기 없음'], src:'StoryTalk · STORY_TALKS · STORY_ENDINGS' },
+  { n:'물어보기', s:'part', w:'253', d:'인물 · 단서 · 낱말로 꼬리를 무는 질문(킹덤컴 방식). 지금은 속초에 선 인물과 조사 편 일부만 된다.', f:['속초 9인','조사 5편'], src:'Inquiry' },
+  { n:'문장마다 줄바꿈 · 쉼', s:'ok', w:'257', d:'번역 뒤 글을 문장으로 갈라 줄을 바꾸고 문장 끝마다 쉰다. 혼잣말 · 대화창 · 컷씬 모두 같다.', f:['쉼 450ms','컷씬 띠 세 줄까지'], src:'DialoguePacing.paceSentences' },
+  { n:'우호도', s:'ok', w:'140', d:'−1에서 1까지 5티어. 서브 보상과 품삯에 곱하고, 결말은 값 깎기 · 귀한 물건을 바꾼다.', f:['서브 보상 ×0.7 ~ 1.3','−0.4 미만이면 발주 거절'], src:'Affinity · StoryStore' },
+  { n:'인물 아크', s:'part', d:'24아크가 챕터를 넘나들며 이전 지역으로 다시 부른다. 속초 밖 인물은 아직 필드에 서지 않는다.', f:['아크 24','NPC 41인','좌표 없는 인물 29'], src:'StoryArcs · StoryNpcs' },
+  { n:'컷씬 · 장면 게이트', s:'ok', w:'165 · 167', d:'실제 필드에서 각본과 배우를 돌린다. 대화 · 수동 목표는 장면이 끝나야 닫힌다.', f:['원격지 컷씬은 맵 대기'], src:'QuestScenes · RegionFieldScene' },
+  { n:'조행록 (일지 J)', s:'ok', d:'레일은 챕터 진행 막대, 본문은 메인과 서브 두 갈래다. 해금된 것만 보인다.', f:['조행록 17장','사람들 색인'], src:'JournalPages · JournalPanel' },
+  { n:'품삯 일용직', s:'ok', w:'135', d:'얼음·그물·공동작업. 행동력을 쓰고 하루 상한이 있어 현금줄이 되지 않는다.', f:['3종 · 일당 상한 73,000원'], src:'DayJobs · StoryStore.work' },
+  { n:'해금형 보상', s:'ok', d:'메인은 물건이 아니라 자격을 준다. 귀속 장비는 팔 수도 넘길 수도 없다.', f:['귀속 장비','스킬 · 상점 해금'], src:'QuestRewardItems · ShopEntry.unlockKey' },
+  { n:'의뢰 표시', s:'ok', w:'258 · 259', d:'빨간 느낌표는 새 의뢰, 노란 물음표는 마칠 일. 이름표 오른쪽 같은 줄에 뜨고, 259차에 잘림 없이 다시 그렸다.', f:['미니맵 물음표','가까우면 거리 글 감춤'], src:'placeNpcMark · PixelIconArt' },
+  { n:'기한 벌칙', s:'ok', w:'147', d:'기한을 넘기면 하루에 평판이 1씩 깎인다. 재화 벌칙은 두지 않는다.', f:['missRepPerDay 1'], src:'TUNING.story' },
+  { n:'배 출조 · 좌판', s:'todo', d:'Ch4 배 출조와 Ch5 좌판 계통. spotKind boat는 계약만 열려 있다.', f:['선상 조건 6편 대기'], src:'—' },
+]},
+
+{ n:'경제 · 아이템', note:'잡은 것이 값이 되는 경로 전체. 실제 경락 시세가 들어온다.', items:[
+  { n:'인벤토리', s:'ok', w:'148', d:'카테고리 탭마다 소켓을 쓰고 아이템이 좌표를 갖는다. 가방으로 칸이 늘고, 칸이 줄면 넘친 칸은 잠긴 칸이 된다.', f:['기본 25칸 → 가방 37칸','윈도우드 스크롤','잠긴 칸'], src:'InventoryStore · InventoryPanel' },
+  { n:'신선도', s:'ok', d:'단순 체인이 아니라 상태 그래프다. 냉동은 해동을 거쳐야 나빠진다. 게임을 끄면 시계가 선다.', f:['8상태','부패 시 판매 불가','내장 전용 곡선'], src:'InventoryStore · CoolerStore' },
+  { n:'쿨러 · 냉장고', s:'ok', w:'196 · 199', d:'어창에 매질을 넣는다. 해수는 활어 시계를 멈추고 얼음은 신선을 유지한다. 가득 차면 정리 창이 뜬다.', f:['해수 1h · 얼음 2h','쿨러 정리 창','여러 마리 놓아주기'], src:'CoolerStore · FridgeStore · CoolerPanel · CoolerSwapPanel' },
+  { n:'상점', s:'ok', d:'구매·판매 탭에 수량 팝업과 확인창, 장바구니. 퀘스트 해금 품목은 플래그 전까지 목록에 없다.', f:['상점 종류 8','장바구니 · 즐겨찾기','가게 규모별 하루 재고 (221)'], src:'ShopCatalog · ShopPanel · ShopCartDialog · ShopStock' },
+  { n:'경락 시세', s:'ok', d:'MAFRA 수산물 도매 실데이터를 당일 기준으로 받아 어종에 매핑한다. 휴장이면 7일 역방향으로 누적한다.', f:['2023 계절 시세 재현','거래량 가중 평균'], src:'MafraAuctionApiClient · Economy' },
+  { n:'판매가 엔진', s:'ok', d:'kg 단가 × 중량 × 등급 × 길이. 상태별 배율이 곱해져 부패는 0원이 된다.', f:['보통 50% · 나쁨 10%','LWR 무게 연동'], src:'MarketPriceEvaluator · InventoryStore.getSellPrice' },
+  { n:'위판', s:'ok', w:'147', d:'파는 쪽 경매. 직판장 창구가 겸하고, 평판은 수수료율에만 걸린다.', f:['낙찰가 ≈ 매입가 103%','TUNING.auction 11키','구매자 측은 잠김'], src:'ConsignmentAuction · AuctionHousePanel · ConsignQueue' },
+  { n:'되팔기', s:'ok', w:'224', d:'장비는 중고 칸으로 되판다. 같은 날 되사기와 재고 보탬은 하지 않는다.', f:['장비만'], src:'ShopStore · ShopPanel' },
+  { n:'장비 · 페이퍼돌', s:'ok', w:'151', d:'인체 배치형 장비창에 드래그로 장착하고 착용이 캐릭터 그림에 반영된다.', f:['장착 부위 16 + 예약 6','물리 파라미터 툴팁'], src:'EquipmentPanel · EquipOutfit' },
+  { n:'도감 · 발견', s:'ok', w:'156 · 240 · 246', d:'한 번이라도 조우한 것만 공개된다. 요리 탭이 있고, 아이템 카드를 누르면 상세가 열린다.', f:['어종 · 해양생물 「이미지 없음」 0','발견 소스 4경로'], src:'DiscoveryStore · AnglerLogScene' },
+  { n:'플리마켓', s:'todo', d:'계약 타입은 정의돼 있다. 로컬 세이브가 수정 가능하므로 서버가 아이템에 서명하기 전에는 열지 않는다.', f:['에스크로 방식','서버 권위 전제'], src:'Multiplayer.MarketListing' },
+]},
+
+{ n:'채집 · 통발', note:'별도 씬이 아니라 속초 맵 위에서 벌어진다. 실제 어장 폴리곤과 조례가 걸려 있다.', items:[
+  { n:'인-맵 채집 (해루질)', s:'ok', w:'121', d:'지형 규칙으로 후보 타일을 뽑아 시간 시드로 스팟을 깐다. 야간에는 헤드랜턴 반경 안만 보인다.', f:['스팟 ≤ 220','[F] 홀드'], src:'ForagingEngine · ForageSystem' },
+  { n:'해루질 현실화', s:'ok', w:'224 · 225', d:'얕은 물은 장화로 들어가고, 손놀림 놀이 다섯 가지로 잡는다. 놓치면 그 자리에서 사라진다.', f:['놀이 5종','성게 75%'], src:'ForageMinigame · ForageGamePanel' },
+  { n:'어촌계 어장 · 조례', s:'ok', w:'121 · 227', d:'국립해양조사원 SHP를 클립해 실제 폴리곤을 얹었다. 안에서 잡으면 조례가 작동하고, 금어기 · 금지체장은 법정 값과 대조했다.', f:['적발 → 압수 + 벌금','강원 조례 5종'], src:'extract_fishfarms.py · GANGWON_FORAGE_ORDINANCE' },
+  { n:'통발', s:'ok', w:'121 · 147', d:'아이템으로 사서 물 위에 놓고 실시간으로 담근 뒤 회수한다. 잡은 것은 위판으로 판다.', f:['8종','wall-clock 침지','분실 롤 · 내구도'], src:'TrapDatabase · TrapFieldSystem' },
+  { n:'해양생물 DB', s:'ok', w:'229', d:'채집·통발 대상 생물의 서식과 법정 크기가 여기 모여 있다. 봄철 패류독소와 꽃게 외포란도 판정한다.', f:['21종','법정 크기 방류'], src:'ShoreCreatureDatabase · ShellfishToxin' },
+  { n:'과증식 해양생물', s:'ok', w:'138', d:'해파리와 불가사리가 수면 아래를 눌러 걸친다. 씬 전환 없이 훌치기로 수거한다.', f:['4종','구제 수매가'], src:'MarineNuisanceDatabase · NuisanceField' },
+  { n:'갯것 그림', s:'ok', w:'248', d:'갯것 10종과 땅지렁이를 그려 가방 · 놀이 판 · 필드 · 도감에 쓴다.', f:['카드 · 아이콘 · 판 · 점 그림'], src:'forage_cards.cjs' },
+  { n:'세션 공유', s:'ok', w:'232 · 233', d:'채집 스팟은 같은 세션 모두에게 같다. 누가 손대면 잠기고, 잡은 자리는 24~48시간 빈다.', f:['채집 중 잠금','24 ~ 48시간'], src:'WorldDepletionStore' },
+  { n:'잠수 (dive)', s:'todo', d:'수경 · 스노클 · 스쿠버 접근. 스쿠버는 조례상 비어업인 금지라 면허 경로 설계가 먼저다.', f:['wade는 224 완료'], src:'—' },
+]},
+
+{ n:'캐릭터 · 아트', note:'아트 격자를 코드가 소유한다. 사진과 생성 그림은 어종 기준 도트로 굽는다.', items:[
+  { n:'캐릭터 아트 격자', s:'ok', d:'셀 32×32 아트 픽셀을 정수 2배로 올린다. 레이어는 pose() 앵커만 참조하므로 신규 장비는 함수 하나다.', f:['몸 26행 → 52px','레이어 14종','그레인 2px'], src:'CharacterArt' },
+  { n:'페이퍼돌 장비', s:'ok', d:'바닐라는 나체 + 언더웨어이고 상의·하의·신발은 전부 장착 아이템이다.', f:['걷기 4프레임','얼굴 2×3 눈 + 표정'], src:'CharacterArt · CharacterSprite' },
+  { n:'NPC 캐스트', s:'ok', w:'166', d:'성별·연령·역할만 표로 두고 나머지는 id 해시로 갈린다. 마을 사람도 같은 규칙으로 분화한다.', f:['고유 41 · 중복 0','마을 사람 120'], src:'CharacterCast' },
+  { n:'대화 초상', s:'ok', w:'152 · 155', d:'32×32 전용 격자 얼굴. 앞머리 · 눈 · 수염 · 모자가 필드 그림과 같은 문법이다.', f:['표정은 입 4종 고정'], src:'FacePortrait' },
+  { n:'캐릭터 만들기', s:'ok', d:'HUD 패널 3장에 2열 5섹션. 색은 숫자가 아니라 실제 견본을 눌러 고른다.', f:['◀ ▶ 방향 회전','정지·걷기·달리기 프리뷰'], src:'CharacterCreateScene' },
+  { n:'픽셀 아이콘', s:'ok', d:'생성기 → 아트 데이터 → 캔버스 굽기. 텍스트 약어 배지 대신 16×16 손그림이다.', f:['아이콘 386','의뢰 표시 다시 그림 (259)'], src:'gen_pixel_icons.py · PixelIconArt · PixelIcon' },
+  { n:'어종 그림', s:'ok', w:'246 · 247', d:'원본은 food assets/fish/에 두고 게임은 카드와 64px 아이콘만 싣는다. 부팅 텍스처가 크게 줄었다.', f:['57 / 57','Gemini 4'], src:'fish_cards.cjs · FishTextures' },
+  { n:'장비 · 아이템 그림', s:'ok', w:'249 · 255 · 259', d:'장비 115장과 그 밖 아이템 223장을 카드 + 64px 아이콘으로 굽는다. 어두운 장비 그림 8장은 흰 테를 둘렀다.', f:['장비 115','아이템 223','남은 코드 그림 7 (Gemini 대기)'], src:'tackle_cards.cjs · item_cards.cjs' },
+  { n:'손질 단계 스프라이트', s:'ok', d:'어류는 자체 픽셀, 두족류는 사진이 곧 도마 그림이다. 원형 틀을 고정하고 없어진 부위만 지운다.', f:['어종군 3세트','두족류 실사 14장'], src:'PixelFishSprites · PixelButcherFish · pixelize_butchery.cjs' },
+  { n:'타이틀 로고', s:'ok', w:'252', d:'코드로 굽는 픽셀 로고 — 글꼴 격자 · 테 · 입체 · 찌 · 바늘. 낮과 밤 모두 읽힌다.', f:['그림 파일 없음'], src:'TitleLogo' },
+  { n:'마우스 포인터', s:'ok', w:'250 · 251', d:'찌 화살 포인터. 누를 수 있는 곳은 흰 테로 바뀌고, 설정에서 색 · 테 · 크기를 고른다.', f:['찌 · 야광찌 · 운영체제 기본','크기 1 · 2배'], src:'GameCursor · GameCursorArt' },
+  { n:'전용 포즈 (달리기 · 눕기)', s:'todo', d:'달리기는 걷기 프레임을 가속해 쓰고 기절·사망은 90° 회전으로 대신한다.', f:['run1~4 추가 필요','눈 감은 2프레임 대기'], src:'CharacterArt' },
+]},
+
+{ n:'멀티플레이', note:'같은 세계를 공유하되 진행도는 설계상 각자의 것. 서버는 은행이 아니라 공증인이다.', items:[
+  { n:'세션 · 로비', s:'ok', w:'143 · 145', d:'방을 열거나 코드로 참가한다. 순서는 게임 시작 → 혼자/여럿 → 로비 → 슬롯 → 캐릭터 만들기.', f:['/mp/* REST','1초 폴링','닉네임 중복 검사'], src:'Multiplayer · SessionRegistry · MultiplayerLobbyScene' },
+  { n:'설치물 공유', s:'ok', w:'234', d:'통발은 놓는 순간 남에게도 보인다. 같은 칸 중복 설치와 남의 통발 회수는 서버가 거절한다.', f:['안에 든 것은 비공개','재동기화'], src:'SessionRegistry.traps' },
+  { n:'공용 시드 · 날씨', s:'ok', w:'234', d:'서버 왕복 없는 순수 함수로 같은 난수를 만든다. 날씨는 세션 스냅샷을 함께 쓴다.', f:['보일링 · 과증식 · 교통 · 날씨','퀘스트 게이트 예외'], src:'mpWorldSeed · mpRng · SessionWeather' },
+  { n:'외형 · 활동 동기화', s:'ok', d:'서버가 캐릭터 설정을 보관해 본인이 만든 얼굴 그대로 보인다. 머리 위에 활동 배지가 붙는다.', f:['배지 4종','필드 밖 알파 0.55'], src:'MpPeer.look · MpActivity' },
+  { n:'피어 상호작용 · 건물 반투명', s:'ok', d:'밀어내는 것은 내 바디뿐이다. 건물 뒤에 들어가면 프리팹 기하로 판정해 반투명해진다.', f:['알파 1 → 0.38','새 물리 바디 없음'], src:'applyPeerPush · updateOccluders' },
+  { n:'지역 채팅', s:'ok', d:'presence에 편승해 왕복을 늘리지 않는다. 입력 중에는 Phaser 키보드를 통째로 끈다.', f:['입력 중 단축키 차단'], src:'RegionHud · SessionRegistry.chat' },
+  { n:'이어하기', s:'ok', d:'이름이 아니라 userId로 사람을 알아본다. 프로세스를 죽였다 켜도 시드·자리·통발이 복원된다.', f:['디스크 영속','이름 7일 잠금'], src:'MpSavedSession · MpResume' },
+  { n:'유저 간 거래', s:'ok', w:'146 · 232 · 233', d:'서버는 공증인이고 인벤은 각자 로컬이다. 복제 · 실패 무시 · 규칙 우회를 막았다.', f:['제안 → 잠금 → 확정 → 도장','서버 인증'], src:'MpTradeState · TradePanel' },
+  { n:'달아나는 생물 동기화', s:'ok', w:'235', d:'채집 놀이에서 달아나는 생물의 움직임을 세션 모두가 같게 본다.', f:['231 전수조사 마지막 항목'], src:'ForageSystem' },
+  { n:'정보 보기', s:'ok', w:'146', d:'상대의 레벨·장비·면허·최대어·출조 횟수만 보인다. 재화·인벤·퀘스트는 서버에도 올라가지 않는다.', f:['비공개 6종'], src:'MpProfile · PeerInfoPanel' },
+  { n:'NAT 통과', s:'todo', d:'지금은 LAN과 포트포워딩 전제다. 릴레이를 둘지 Steam 네트워킹으로 갈지 결정이 남았다.', f:['호스트-클라이언트 P2P 확정'], src:'—' },
+  { n:'서버 권위 · 원장', s:'todo', d:'공유 원장이 생기는 시점의 과제. 마켓을 열려면 서버가 아이템에 서명해야 한다.', f:['마켓의 선행 조건'], src:'—' },
+]},
+
+{ n:'UI · 기반', note:'모든 화면이 공유하는 뼈대와 도구.', items:[
+  { n:'패널 프레임워크', s:'ok', w:'259', d:'드래그 이동 · ✕ 닫기 · 클릭 시 최상단. 다시 그린 자식도 화면에 고정되도록 창마다 안전망이 돈다.', f:['창 · 대화상자 46','z 밴드 800 / 900','화면 고정 안전망'], src:'DraggablePanel · ensureScreenFixed' },
+  { n:'HUD · 겹침 규칙', s:'ok', w:'198', d:'상시 단추는 자기 콘텐츠에 앵커하고 HUD 예약 영역을 피한다. 겹침 감사로 부분 겹침 0을 확인한다.', f:['미니맵','수치 호버 팝업','ui_overlap_audit 0'], src:'RegionHud · ScreenReserve' },
+  { n:'체험 가이드', s:'ok', w:'188 · 258', d:'창을 처음 열 때 말풍선이 구성 요소를 짚고 직접 해 보게 한다. 작은 모달은 피해서 옆에 선다.', f:['첫 열기 40여 곳','말풍선 코치'], src:'GuideTour · PrologueCoach' },
+  { n:'흰 테 글자', s:'ok', w:'247 · 257 · 259', d:'필드 위 글자 · 떠오르는 안내 · 지도 이름은 바탕 상자 없이 검은 글자 + 흰 테 한 벌이다.', f:['떠오르는 안내 28곳','지도 이름 5곳','경고는 글자색만'], src:'WorldLabel.worldLabelStyle' },
+  { n:'도움말 라이브러리', s:'ok', w:'187 · 240', d:'F1로 열리는 3단 트리. 본문 수치는 코드에서 읽어 적었고 실캡처에 번호 콜아웃을 붙였다.', f:['15카테고리 · 101토픽','실캡처 49장','ko / en'], src:'HelpContent · HelpLibraryPanel' },
+  { n:'접근성', s:'ok', w:'251', d:'색 구분 보정 세 방식과 모양으로도 표시하기. 포인터 색 · 테 · 크기를 설정 탭에서 바로 본다.', f:['색약 보정 3방식','모양 보조 단서'], src:'ColorAssist · AccessSettingsTab' },
+  { n:'효과음', s:'ok', w:'252 · 253', d:'행동 효과음을 합성 레시피로 낸다. 고양이 · 날씨 환경음 · 실내 먹먹함까지 들어갔다.', f:['행동 63종','레시피 71','실청취 대기'], src:'SfxBank · Sfx · Ambience · WeatherSound' },
+  { n:'배경 음악', s:'todo', w:'253', d:'Lyria 후보 두 판을 만들었다. 곡을 고르는 것은 사용자 몫이고 게임에는 아직 없다.', f:['후보 2판','반복 이음매 · 설정 둘로'], src:'—' },
+  { n:'영문화', s:'part', d:'Text.setText를 후킹해 모든 문자열이 사전을 통과한다. 가방 탭 일부가 남아 있다.', f:['사전 약 3,200항목','스토리 전부','가방 탭 잔여'], src:'I18n · en*.ts' },
+  { n:'세이브', s:'ok', d:'슬롯 3개, 저장은 집 침대에서만. 구세이브는 로드 시점에 시드 백필로 새 필드를 채운다.', f:['유저 상태 불침범','오프라인 신선도 정지'], src:'GameState · SaveData' },
+  { n:'외부 실데이터', s:'part', d:'낚시지수·경락가·어획량·해양기상·단기예보가 들어온다. 키가 없거나 배포본이면 Mock으로 폴백한다.', f:['배포본은 기상청만 실데이터','KAMIS 키 대기'], src:'ExternalApiService · ExternalDataStore' },
+  { n:'튜닝', s:'ok', d:'매직넘버를 default + range + category로 중앙화하고 F8 슬라이더로 즉시 만진다.', f:['TUNING / TUNING_META','스냅샷 복사 → 확정'], src:'config/tuning.ts · DevTuningPanel' },
+  { n:'dev 도구', s:'ok', d:'맵 편집, 가이드 좌표 실측, 아이템·어종 지급까지 전부 게임 안에서 끝난다.', f:['F7 맵 편집기','F9 가이드 좌표','F10 크리에이티브 콘솔'], src:'MapEditorPanel · ButcheryPanel · DevConsolePanel' },
+  { n:'Tauri 패키징', s:'todo', d:'아이콘 세트만 생성돼 있다. Phase 9의 일이다.', f:['Steam 출시 목표'], src:'apps/tauri-wrapper' },
+]},
+];
+
+const HEAD = [
+  ['259','작업 차수'], ['11','게임 씬'], ['56','도감 어종'], ['86','작물'],
+  ['191','스토리 퀘스트'], ['95','스킬 노드'], ['46','창 · 대화상자'], ['854','아이템'],
+];
+
+// ---- render ----
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+$('#figs').innerHTML = HEAD.map(([v,l]) =>
+  `<div class="fig"><b>${v}</b><span>${l}</span></div>`).join('');
+
+const all = DATA.flatMap((c) => c.items);
+const tally = (arr) => ({ ok:arr.filter(i=>i.s==='ok').length, part:arr.filter(i=>i.s==='part').length, todo:arr.filter(i=>i.s==='todo').length });
+const T = tally(all);
+
+$('#dist').innerHTML = ['ok','part','todo'].map(k =>
+  `<i style="flex:${T[k]}; background:${ST[k].c}"></i>`).join('');
+$('#distkey').innerHTML = ['ok','part','todo'].map(k =>
+  `<span><b>${ST[k].ko} ${T[k]}</b> / ${all.length}</span>`).join('') +
+  `<span>총 ${DATA.length}개 카테고리</span>`;
+
+let filter = 'all', query = '';
+
+$('#chips').innerHTML =
+  `<button class="chip" data-f="all" aria-pressed="true">전체</button>` +
+  ['ok','part','todo'].map(k =>
+    `<button class="chip" data-f="${k}" aria-pressed="false"><i class="sq" style="background:${ST[k].c}"></i>${ST[k].ko}</button>`).join('');
+
+$('#chips').addEventListener('click', (e) => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  filter = b.dataset.f;
+  [...$('#chips').children].forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+  draw();
+});
+$('#q').addEventListener('input', (e) => { query = e.target.value.trim().toLowerCase(); draw(); });
+
+function match(it) {
+  if (filter !== 'all' && it.s !== filter) return false;
+  if (!query) return true;
+  return (it.n + ' ' + it.d + ' ' + it.f.join(' ') + ' ' + it.src + ' ' + (it.w || '')).toLowerCase().includes(query);
+}
+
+function draw() {
+  let shown = 0;
+  const html = DATA.map((cat, i) => {
+    const hits = cat.items.filter(match);
+    shown += hits.length;
+    if (!hits.length) return '';
+    const t = tally(cat.items);
+    const bar = ['ok','part','todo'].map(k => t[k] ? `<i style="flex:${t[k]}; background:${ST[k].c}"></i>` : '').join('');
+    const rows = hits.map(it => `
+      <div class="row s-${it.s}">
+        <div class="rtop"><span class="rname">${esc(it.n)}</span>${it.w ? `<span class="rwhen">${esc(it.w)}</span>` : ''}<span class="rstat">${ST[it.s].ko}</span></div>
+        <div class="rdesc">${esc(it.d)}</div>
+        <div class="rfigs">${it.f.map(f => `<span>${esc(f)}</span>`).join('')}</div>
+        ${it.src && it.src !== '—' ? `<div class="rsrc">${esc(it.src)}</div>` : ''}
+      </div>`).join('');
+    return `<section class="cat">
+      <div class="cathead">
+        <span class="catnum">${String(i+1).padStart(2,'0')}</span>
+        <h2>${esc(cat.n)}</h2>
+        <span class="catnote">${esc(cat.note)}</span>
+        <span class="cattally">${t.ok} 운영 · ${t.part} 부분 · ${t.todo} 예정</span>
+        <span class="catbar">${bar}</span>
+      </div>
+      <div class="rows">${rows}</div>
+    </section>`;
+  }).join('');
+  $('#body').innerHTML = html || `<p class="empty">조건에 맞는 항목이 없습니다.</p>`;
+  $('#count').textContent = `${shown} / ${all.length} 항목`;
+}
+draw();
+</script>

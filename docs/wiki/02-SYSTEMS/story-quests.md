@@ -202,8 +202,9 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
   영상 편집(`video_frame_selection`) · 구술 녹음 · 선박 서류는 지금 「의뢰인 앞 선택」 단계로 대신한다. 시스템이 서면 출처를 바꾼다.
   태안 난로(N13-3) 현장 지점은 태안 필드가 없어 좌표만 잡아 뒀다(그 지역 맵이 서면 실측).
   N18-4 선체 검수는 거제 대신 속초 청초호 옛 조선소 수리장에 뒀다(거제 필드가 서면 옮긴다).
-- **추적기 없는 목표 6종 승격 대기** — `cook`(불요리) · `furnish`(집) ·
-  `mine`(채광) · `boatTrip`/`holdPosition`/`survive`(배 출조·기상). 시스템이 서는 차수에 `manual` → auto(`farm`은 235차 auto).
+- **수동 목표 승격 대기**(260차 실측 — 대화 85 · 장면 custom 27 제외) — `boatTrip` 9 · `furnish` 3 · `mine` 2 ·
+  `survive` 2 · `holdPosition` 2 · `deliverFree` 1. 시스템이 서는 차수에 `manual` → auto.
+  `cook`(요리 목표 1개)은 이미 auto다 — 이 줄의 옛 「cook 대기」 표기는 낡은 것이었다(`farm`은 235차 auto).
 - **`spotKind: 'boat'` 미발화** — `standingSpotKind()`는 `breakwater|shore`만, 1인칭은 `hole|shore`만 낸다.
   선상 낚시가 서면 여기에 편입하고 그때 M3-01·M4-02·M4-06·N08-1/3·N11-4에 선상 조건을 얹는다.
 - `choice.*` 플래그 ~60종을 읽는 후속 조건(현재 N18-1 1곳) · 일지 '사람들'에 우호도 눈금.
