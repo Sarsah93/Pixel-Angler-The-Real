@@ -5,6 +5,7 @@
 #     수집 · 빌드를 러너가 하고 결과(캐시 · 정본 · 런타임 JSON)를 같은 브랜치에 올린다.
 #
 # 쓰는 법: Actions → 「OSM 지역 수집」 → Run workflow → 브랜치 고르기 → regions(공백으로 여러 개 — `tools/regions_config.py`의 키).
+#   이 파일이 아직 main에 없는 브랜치에서는 `pixelazed/_osm_request.txt`에 지역 키를 적어 푸시한다(아래 push 트리거).
 #   refetch = true 면 그 지역의 `pixelazed/_osmcache/<region>*` 를 지우고 다시 받는다(bbox를 바꿨을 때).
 #   끝나면 `git pull` 로 받는다. 이어서 손으로 할 것 = 게임 상호 표(`pixelazed/<region>/name_alias.json`) →
 #   `python tools/merge_capture_pois.py <region>` 다시 → core `SEAMLESS_REGIONS` · `REGION_AREA_NODES` 등록(스킬 `add-region`).
@@ -24,6 +25,12 @@ on:
         description: 캐시를 지우고 다시 받기 (true/false)
         required: false
         default: 'false'
+  # 요청 파일 방식 — 기본 브랜치(main)에 없는 워크플로는 Run workflow · API dispatch가 404라, 작업 브랜치에서는
+  #   `pixelazed/_osm_request.txt`(지역 키 한 줄에 하나 · `refetch` 줄 = 캐시 다시 받기)를 고쳐 밀면 그 푸시가 수집을 돈다.
+  #   워크플로가 올린 산출물 커밋(github.token)은 다시 워크플로를 깨우지 않는다(GitHub 규칙 — 무한 반복 없음).
+  push:
+    paths:
+      - pixelazed/_osm_request.txt
 
 # 실행한 브랜치에 산출물을 커밋하려면 쓰기 권한이 필요하다
 permissions:
@@ -48,10 +55,26 @@ jobs:
       - name: 파이썬 의존성 (terrain.png · 도달성 점검용)
         run: python -m pip install --quiet pillow numpy
 
-      - name: 수집 · 타일맵 · 건물 · 등대 · 게임 상호
+      # 수동 실행이면 입력값, 푸시면 요청 파일에서 지역 목록을 읽는다
+      - name: 지역 목록
+        id: req
         env:
           REGIONS: ${{ inputs.regions }}
           REFETCH: ${{ inputs.refetch }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REGIONS:-}" ]; then
+            REGIONS=$(grep -vE '^[[:space:]]*(#|$)' pixelazed/_osm_request.txt | grep -vx 'refetch' | xargs)
+            if grep -qx 'refetch' pixelazed/_osm_request.txt; then REFETCH=true; else REFETCH=false; fi
+          fi
+          echo "regions=$REGIONS" >> "$GITHUB_OUTPUT"
+          echo "refetch=${REFETCH:-false}" >> "$GITHUB_OUTPUT"
+          echo "지역: $REGIONS · refetch: ${REFETCH:-false}"
+
+      - name: 수집 · 타일맵 · 건물 · 등대 · 게임 상호
+        env:
+          REGIONS: ${{ steps.req.outputs.regions }}
+          REFETCH: ${{ steps.req.outputs.refetch }}
         run: |
           set -euo pipefail
           for r in $REGIONS; do
@@ -70,7 +93,7 @@ jobs:
 
       - name: 산출물 요약
         env:
-          REGIONS: ${{ inputs.regions }}
+          REGIONS: ${{ steps.req.outputs.regions }}
         run: |
           for r in $REGIONS; do
             echo "== $r"
@@ -86,7 +109,7 @@ jobs:
 
       - name: 같은 브랜치에 커밋 · 푸시
         env:
-          REGIONS: ${{ inputs.regions }}
+          REGIONS: ${{ steps.req.outputs.regions }}
         run: |
           set -euo pipefail
           for r in $REGIONS; do
