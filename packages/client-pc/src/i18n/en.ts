@@ -671,6 +671,8 @@ export const EN_DICT: Record<string, string> = {
   '대사 소리': 'Voice blips', '대화 글자가 찍힐 때 나는 인물 목소리 음량': 'Volume of the character voices played as dialogue types out',
   '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량': 'Volume of effects — casting, bites, reel, drag, coins, buttons',
   '파도 · 비 · 바람 · 천둥 같은 배경음 음량': 'Volume of background sounds — waves, rain, wind, thunder',
+  '배경 음악 볼륨 (BGM)': 'Music Volume', '장면마다 흐르는 음악 음량 — 항구 · 밤바다 · 낚시 · 집 · 텃밭 · 시장': 'Volume of the music for each place — harbor, night sea, fishing, home, garden, market',
+  '환경음 볼륨': 'Ambience Volume', '파도 · 비 · 바람 · 천둥 같은 환경음 음량': 'Volume of ambient sounds — waves, rain, wind, thunder',
   '하루를 마쳤다. 오늘 바뀐 것들을 카드로 모아 두었다 — 돈 · 낚시 · 이야기 · 성장 · 생활 순이다.': 'The day is done. Everything that changed today is gathered on cards — money, fishing, story, growth, daily life.',
   '자는 사이 하루가 지나갔다. 지난 하루에 있었던 일을 모아 두었다.': 'A day went by while you were away. Here is what happened that day.',
   '카드가 더 있으면 아래 화살표로 넘긴다.': 'If there are more cards, flip with the arrows below.',

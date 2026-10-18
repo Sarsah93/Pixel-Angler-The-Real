@@ -134,10 +134,10 @@
 
 <div class="wrap">
   <header class="mast">
-    <p class="eyebrow">Pixel Angler The Real · 259차 기준 · 2026-10-17</p>
+    <p class="eyebrow">Pixel Angler The Real · 261차 기준 · 2026-10-18</p>
     <h1>구현 라이브러리</h1>
     <p class="lede">2D 픽셀 퍼펙트 한국 해양 낚시 시뮬레이터 + 생활 경영 RPG.
-      259차까지 실제로 코드에 서 있는 것만 12개 카테고리로 묶었다.
+      261차까지 실제로 코드에 서 있는 것만 12개 카테고리로 묶었다.
       수치는 전부 <span class="mono">packages/core/dist</span> 와 소스에서 뽑은 실측값이고, 항목 옆 숫자는 그 일이 들어간 차수다.</p>
     <p class="stack mono">TypeScript 5.8 strict · Phaser 3.90 · Vite 6 · Turborepo 2 + pnpm 9 · Tauri v2 · Node 20+</p>
 
@@ -157,7 +157,7 @@
 
   <footer>
     <span class="mono">core 217 파일 (+ 시험 30) · client 218 파일</span>
-    <span class="mono">워크로그 180편 · 시스템 페이지 15</span>
+    <span class="mono">워크로그 181편 · 시스템 페이지 15</span>
     <span class="mono">빌드 3/3 · typecheck 0 · core 시험 322/322</span>
     <span>게임 설계가 바뀌는 차수마다 남은 과업 설계 · 채비 모딩 순서도 · 위키와 함께 갱신한다(260차 규칙).</span>
   </footer>
@@ -244,8 +244,9 @@ const DATA = [
   { n:'위성 래스터 보강', s:'ok', w:'109', d:'Sentinel-2 NDWI/NDVI로 식생·포장·모래를 분류해 OSM 기본값만 채운다.', f:['좌표 정합 98.84%','© Copernicus'], src:'fetch_region_raster.py · classify_raster.py' },
   { n:'도로 벡터 · 교통', s:'ok', d:'도로를 타일 그림이 아니라 벡터 밴드로 굽는다. 차량은 도로 그래프 위를 우측통행한다.', f:['회전교차로 · 신호 교차로','차량은 캐릭터보다 크게'], src:'TrafficSystem · SeamlessChunks' },
   { n:'해안 지형 · 고도 층', s:'ok', w:'183 ~ 186', d:'방파제 단면을 거리로 자동 분류하고 등대를 세운다. 고도 층과 금강대교 고가를 두 다리로 나눴다.', f:['등대 5기','조도 41 × 33','다리 밑 = 물'], src:'computeBreakwaters · Elevation' },
-  { n:'벡터 건물', s:'ok', w:'239', d:'OSM 윤곽 위에 2.5D 벽과 종류별 지붕을 세운다. 간판은 차도 · 지붕 아래를 피해 문 옆 땅에 선다.', f:['건물 546채','1층 12px · 상한 48','체감 조율 대기'], src:'BuildingArt · shopSignSpot' },
-  { n:'건물 윤곽 충돌', s:'ok', w:'258', d:'그림 윤곽 4px 띠로 막는다. 몸이 벽 바닥선에서 멈춰 건물 앞에 그려진다.', f:['막힌 1칸 틈 109','문 이동 24'], src:'BuildingArt.unitBodyRects · check_building_reach.py' },
+  { n:'벡터 건물', s:'ok', w:'239 · 261', d:'OSM 윤곽 위에 2.5D 벽과 종류별 지붕을 세운다. 261차부터 건물 그림은 이것 하나다 — 횟집 · 팝업 · 고층 · 주택 프리팹과 지붕 키트는 로드하지 않고, 가게가 있는데 윤곽이 없으면 발자국을 합성한다. 홈타운 · 부산도 같은 함수로 그린다.', f:['OSM 546채 + 합성 336채','프리팹 PNG 98장 로드 폐기','체감 조율 대기'], src:'BuildingArt · synthesizePoiBuildings · planLegacyBuildings' },
+  { n:'가게마다 문 · 간판', s:'ok', w:'239 · 261', d:'건물마다 가게 수만큼 문을 낸다. 그림의 문 · [F] 문 앞 칸 · 간판이 한 점을 쓴다. 간판은 차도 · 지붕 아래를 피해 문 옆 땅에 선다.', f:['가게 389','문 둘 이상 건물 17','24px 간격'], src:'BuildingUnit.doors · assignUnitDoors · shopSignSpot' },
+  { n:'건물 윤곽 충돌', s:'ok', w:'258 · 261', d:'그림 윤곽 4px 띠로 막는다. 몸이 벽 바닥선에서 멈춰 건물 앞에 그려진다. 레거시 맵(홈타운 · 부산)도 같은 사각형이고, 발 끝이 윤곽 안에 드는 칸은 걷는 칸이 아니다.', f:['막힌 1칸 틈 109','문 이동 24','발 끝 조건'], src:'BuildingArt.unitBodyRects · fillWallRects · isWalkable' },
   { n:'레거시 지역 타일맵', s:'ok', d:'색상 분류 기반 구 파이프라인. 부산 8맵과 홈타운이 아직 이 위에 있다.', f:['부산 8맵','홈타운 48 × 32'], src:'build_region_maps.py · RegionMap' },
   { n:'월드맵 · 출조', s:'ok', w:'259', d:'전국 지도에서 지역으로 이음새 없이 줌인한다. 출조에는 교통비가 들고, 지점 이름은 흰 테 글자다.', f:['출조 요금 10,000원 · 귀가 무료','잠긴 지점은 회색 글자'], src:'WorldMapScene · WorldMap' },
   { n:'전체 지도 · 핀', s:'ok', w:'155 · 259', d:'M으로 연다. 목표 표식 · 핀 · 다른 사람 · 「나」가 흰 테 글자로 뜬다.', f:['핀은 세션 메모리','목표 화살표'], src:'FullMapPanel · MapPinStore' },
@@ -334,7 +335,7 @@ const DATA = [
   { n:'설치물 공유', s:'ok', w:'234', d:'통발은 놓는 순간 남에게도 보인다. 같은 칸 중복 설치와 남의 통발 회수는 서버가 거절한다.', f:['안에 든 것은 비공개','재동기화'], src:'SessionRegistry.traps' },
   { n:'공용 시드 · 날씨', s:'ok', w:'234', d:'서버 왕복 없는 순수 함수로 같은 난수를 만든다. 날씨는 세션 스냅샷을 함께 쓴다.', f:['보일링 · 과증식 · 교통 · 날씨','퀘스트 게이트 예외'], src:'mpWorldSeed · mpRng · SessionWeather' },
   { n:'외형 · 활동 동기화', s:'ok', d:'서버가 캐릭터 설정을 보관해 본인이 만든 얼굴 그대로 보인다. 머리 위에 활동 배지가 붙는다.', f:['배지 4종','필드 밖 알파 0.55'], src:'MpPeer.look · MpActivity' },
-  { n:'피어 상호작용 · 건물 반투명', s:'ok', d:'밀어내는 것은 내 바디뿐이다. 건물 뒤에 들어가면 프리팹 기하로 판정해 반투명해진다.', f:['알파 1 → 0.38','새 물리 바디 없음'], src:'applyPeerPush · updateOccluders' },
+  { n:'피어 상호작용 · 건물 반투명', s:'ok', d:'밀어내는 것은 내 바디뿐이다. 건물 뒤에 들어가면 건물 그림의 바닥선으로 판정해 반투명해진다.', f:['알파 1 → 0.38','새 물리 바디 없음'], src:'applyPeerPush · updateOccluders' },
   { n:'지역 채팅', s:'ok', d:'presence에 편승해 왕복을 늘리지 않는다. 입력 중에는 Phaser 키보드를 통째로 끈다.', f:['입력 중 단축키 차단'], src:'RegionHud · SessionRegistry.chat' },
   { n:'이어하기', s:'ok', d:'이름이 아니라 userId로 사람을 알아본다. 프로세스를 죽였다 켜도 시드·자리·통발이 복원된다.', f:['디스크 영속','이름 7일 잠금'], src:'MpSavedSession · MpResume' },
   { n:'유저 간 거래', s:'ok', w:'146 · 232 · 233', d:'서버는 공증인이고 인벤은 각자 로컬이다. 복제 · 실패 무시 · 규칙 우회를 막았다.', f:['제안 → 잠금 → 확정 → 도장','서버 인증'], src:'MpTradeState · TradePanel' },
@@ -352,7 +353,7 @@ const DATA = [
   { n:'도움말 라이브러리', s:'ok', w:'187 · 240', d:'F1로 열리는 3단 트리. 본문 수치는 코드에서 읽어 적었고 실캡처에 번호 콜아웃을 붙였다.', f:['15카테고리 · 101토픽','실캡처 49장','ko / en'], src:'HelpContent · HelpLibraryPanel' },
   { n:'접근성', s:'ok', w:'251', d:'색 구분 보정 세 방식과 모양으로도 표시하기. 포인터 색 · 테 · 크기를 설정 탭에서 바로 본다.', f:['색약 보정 3방식','모양 보조 단서'], src:'ColorAssist · AccessSettingsTab' },
   { n:'효과음', s:'ok', w:'252 · 253', d:'행동 효과음을 합성 레시피로 낸다. 고양이 · 날씨 환경음 · 실내 먹먹함까지 들어갔다.', f:['행동 63종','레시피 71','실청취 대기'], src:'SfxBank · Sfx · Ambience · WeatherSound' },
-  { n:'배경 음악', s:'todo', w:'253', d:'Lyria 후보 두 판을 만들었다. 곡을 고르는 것은 사용자 몫이고 게임에는 아직 없다.', f:['후보 2판','반복 이음매 · 설정 둘로'], src:'—' },
+  { n:'배경 음악', s:'ok', w:'253 · 261', d:'자리마다 곡이 흐른다 — 메뉴 · 낮 필드(둘 번갈아) · 밤 · 낚시 · 집 · 텃밭 · 시장. 파일 앞뒤 무음을 잘라 반복 이음매를 굽고, 곡 사이는 2초 교차, 같은 자리는 10분 고정이다. 설정은 배경 음악과 환경음이 따로다.', f:['Lyria 10곡 26MB','반복 이음매 굽기','사용자 실청취 대기'], src:'Music · Sfx(music 버스) · SettingsScene' },
   { n:'영문화', s:'part', d:'Text.setText를 후킹해 모든 문자열이 사전을 통과한다. 가방 탭 일부가 남아 있다.', f:['사전 약 3,200항목','스토리 전부','가방 탭 잔여'], src:'I18n · en*.ts' },
   { n:'세이브', s:'ok', d:'슬롯 3개, 저장은 집 침대에서만. 구세이브는 로드 시점에 시드 백필로 새 필드를 채운다.', f:['유저 상태 불침범','오프라인 신선도 정지'], src:'GameState · SaveData' },
   { n:'외부 실데이터', s:'part', d:'낚시지수·경락가·어획량·해양기상·단기예보가 들어온다. 키가 없거나 배포본이면 Mock으로 폴백한다.', f:['배포본은 기상청만 실데이터','KAMIS 키 대기'], src:'ExternalApiService · ExternalDataStore' },
@@ -363,7 +364,7 @@ const DATA = [
 ];
 
 const HEAD = [
-  ['259','작업 차수'], ['11','게임 씬'], ['56','도감 어종'], ['86','작물'],
+  ['261','작업 차수'], ['11','게임 씬'], ['56','도감 어종'], ['86','작물'],
   ['191','스토리 퀘스트'], ['95','스킬 노드'], ['46','창 · 대화상자'], ['854','아이템'],
 ];
 

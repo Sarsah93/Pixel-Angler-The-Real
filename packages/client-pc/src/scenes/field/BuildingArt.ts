@@ -16,6 +16,10 @@
  *  3. **종류별 지붕** — 주택 = 박공(용마루 · 밝은 면/어두운 면) · 아파트 = 콘크리트(엘리베이터 탑 · 물탱크 · 난간) · 상가 = 평지붕(실외기) ·
  *     공공 = 밝은 콘크리트(채광창) · 산업 = 패널 · 지붕만(roof) = 차양.
  * 좌표는 월드 px. 그리기는 청크 지붕 아틀라스(Graphics → RenderTexture)에 한 번.
+ *  4. 261차 — **건물 그림은 이것 하나다**(사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만」).
+ *     Gemini 횟집 · 팝업 · 고층 파사드 · TopDown 주택 프리팹과 Kenney 지붕 키트는 더 쓰지 않는다. 가게가 있는데 건물이 없는 자리는
+ *     씬이 합성 발자국(`RegionBuilding`)을 만들어 여기로 보낸다. 문은 가게마다 하나씩(`doors`) — 간판이 그 문 옆에 선다.
+ *     레거시(홈타운 · 부산 · 타일 20px) 맵도 같은 함수로 그린다(`minGroup` 1 · 타일 윤곽).
  */
 
 import Phaser from 'phaser';
@@ -45,7 +49,18 @@ export interface BuildingUnit {
   /** 바닥 타일 수(면적) */
   tiles: number;
   name?: string;
+  /**
+   * 261차 — 문 자리(월드 x · 문 변 위로 사영). 없으면 가장 아래 남향 변의 가운데 하나.
+   * 가게가 여럿인 건물은 가게마다 문이 하나씩 — 씬이 `prepareSeamlessPois`에서 채운다.
+   */
+  doors?: number[];
 }
+
+/** '#' 4-연결 성분(bbox · 타일 수) — 지붕 · 충돌 · POI 건물 조회의 기준 */
+export interface BuildingComp { c0: number; r0: number; c1: number; r1: number; n: number }
+
+/** 타일 윤곽 묶음의 종류 힌트(261차 — 레거시 맵: 홈타운 집 = 주택 · 부산 작은 덩어리 = 주택) */
+export interface GroupKindHint { kind: BuildingKindArt; levels?: number; name?: string }
 
 export interface BuildingPlanInput {
   terrainRows: string[];
@@ -53,11 +68,17 @@ export interface BuildingPlanInput {
   rows: number;
   tr: number;
   seed: number;
-  comps: { c0: number; r0: number; c1: number; r1: number; n: number }[];
+  comps: BuildingComp[];
   compOf: Int32Array;
   buildings: RegionBuilding[];
   /** 편집기 지붕 팔레트 오버라이드(성분 좌상단 "c,r" → 인덱스) */
   roofOverrides?: Record<string, number>;
+  /** 타일 윤곽으로 그릴 최소 묶음 크기(기본 2 — 래스터 스페클 제외. 레거시 맵은 1) */
+  minGroup?: number;
+  /** 타일 윤곽 계단 펴기 허용(타일 · 기본 0.85 — 작은 레거시 건물은 0.5) */
+  tileEps?: number;
+  /** 타일 윤곽 묶음의 종류 · 층수 힌트(없으면 'yes' · 면적 어림) */
+  groupKind?: (g: { tiles: number; c0: number; r0: number; c1: number; r1: number }) => GroupKindHint | undefined;
 }
 
 /** 포장 띠(윤곽 바깥 px) · 프레임 여유 */
@@ -93,6 +114,43 @@ export function pointInPoly(x: number, y: number, p: Pt[]): boolean {
     if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
+}
+
+/**
+ * '#' 타일 4-연결 성분 라벨링(전맵 1회) — 261차에 `SeamlessChunks.labelBuildings`에서 옮겨 레거시 맵과 공유한다.
+ * 반환 `compOf` = 타일 → 성분 id(-1 = 비건물).
+ */
+export function labelBuildingComps(terrainRows: string[], cols: number, rows: number): { comps: BuildingComp[]; compOf: Int32Array } {
+  const compOf = new Int32Array(cols * rows).fill(-1);
+  const comps: BuildingComp[] = [];
+  const qx = new Int32Array(cols * rows), qy = new Int32Array(cols * rows);
+  for (let r = 0; r < rows; r++) {
+    const line = terrainRows[r] ?? '';
+    for (let c = 0; c < cols; c++) {
+      if (line[c] !== '#' || compOf[r * cols + c] !== -1) continue;
+      const id = comps.length;
+      let head = 0, tail = 0, n = 0;
+      let c0 = c, c1 = c, r0 = r, r1 = r;
+      qx[tail] = c; qy[tail] = r; tail++;
+      compOf[r * cols + c] = id;
+      while (head < tail) {
+        const x = qx[head], y = qy[head]; head++;
+        n++;
+        if (x < c0) c0 = x; if (x > c1) c1 = x;
+        if (y < r0) r0 = y; if (y > r1) r1 = y;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+          const k = ny * cols + nx;
+          if (compOf[k] === -1 && (terrainRows[ny] ?? '')[nx] === '#') {
+            compOf[k] = id; qx[tail] = nx; qy[tail] = ny; tail++;
+          }
+        }
+      }
+      comps.push({ c0, r0, c1, r1, n });
+    }
+  }
+  return { comps, compOf };
 }
 
 function bounds(p: Pt[]): { x0: number; y0: number; x1: number; y1: number } {
@@ -440,17 +498,19 @@ export function planBuildingUnits(inp: BuildingPlanInput, coverOut?: Uint8Array)
           if (set.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk); }
         }
       }
-      // 외딴 한두 타일(래스터 스페클)은 그리지 않는다 — 걷기엔 남지만 그림으로는 쓰레기다
-      if (group.size < 2) continue;
+      // 외딴 한두 타일(래스터 스페클)은 그리지 않는다 — 걷기엔 남지만 그림으로는 쓰레기다(레거시 맵은 1칸 건물도 그린다)
+      if (group.size < (inp.minGroup ?? 2)) continue;
       const loops = traceMaskOutlines(group, cols);
       if (loops.length === 0) continue;
       let outer = loops[0];
       for (const l of loops) if (Math.abs(polyArea(l)) > Math.abs(polyArea(outer))) outer = l;
-      const simple = simplifyLoop(outer, EPS_TILE);
+      const simple = simplifyLoop(outer, inp.tileEps ?? EPS_TILE);
       const poly: Pt[] = simple.map(([x, y]) => [x * tr, y * tr]);
       if (polyArea(poly) < 0) poly.reverse();
-      const c0 = Math.min(...[...group].map((k) => k % cols)), r0 = Math.min(...[...group].map((k) => Math.floor(k / cols)));
-      units.push(mkUnit(`t${compId}_${c0}_${r0}`, 'yes', poly, group.size, compId));
+      const gc = [...group].map((k) => k % cols), gr = [...group].map((k) => Math.floor(k / cols));
+      const c0 = Math.min(...gc), r0 = Math.min(...gr);
+      const hint = inp.groupKind?.({ tiles: group.size, c0, r0, c1: Math.max(...gc), r1: Math.max(...gr) });
+      units.push(mkUnit(`t${compId}_${c0}_${r0}`, hint?.kind ?? 'yes', poly, group.size, compId, hint?.levels, hint?.name));
       if (coverOut) for (const k of group) coverOut[k] = 1;
     }
   }
@@ -535,6 +595,38 @@ function ruleLines(g: Phaser.GameObjects.Graphics, poly: Pt[], ax: ReturnType<ty
   }
 }
 
+/** 문이 서는 변 — 가장 아래(남쪽) 남향 변(길이 ≥ 10px). 차양(roof)이나 남향 변이 없으면 null */
+export function doorEdgeOf(u: BuildingUnit): { ax: number; ay: number; bx: number; by: number } | null {
+  if (u.kind === 'roof') return null;
+  const poly = u.poly, n = poly.length;
+  let best = -1, bestY = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % n];
+    const dx = bx - ax, dy = by - ay;
+    const L = Math.hypot(dx, dy);
+    if (L < 10) continue;
+    if (-dx / L <= 0.08) continue;   // 바깥 법선 y(시계 방향 · y 아래)가 남쪽을 보는 변만
+    const my = (ay + by) / 2;
+    if (my > bestY) { bestY = my; best = i; }
+  }
+  if (best < 0) return null;
+  const [ax, ay] = poly[best], [bx, by] = poly[(best + 1) % n];
+  return { ax, ay, bx, by };
+}
+
+/**
+ * 261차 — 문 자리들(월드 px). `doors`(x)가 있으면 그 x를 문 변 위로 사영(끝 8%는 피한다), 없으면 변의 가운데 하나.
+ * 씬의 [F] 문 칸 · 간판 자리 · 그림의 문이 전부 이 점을 쓴다 — 보이는 문과 들어가는 문이 어긋나지 않게.
+ */
+export function doorPointsOf(u: BuildingUnit): Pt[] {
+  const e = doorEdgeOf(u);
+  if (!e) return [];
+  const dx = e.bx - e.ax, dy = e.by - e.ay;
+  const at = (t: number): Pt => [e.ax + dx * t, e.ay + dy * t];
+  if (!u.doors || u.doors.length === 0) return [at(0.5)];
+  return u.doors.map((x) => at(Math.abs(dx) < 1e-3 ? 0.5 : Math.max(0.08, Math.min(0.92, (x - e.ax) / dx))));
+}
+
 /**
  * 건물 하나를 그린다 — `ox, oy` = 월드 (0,0)이 Graphics 좌표에서 놓이는 자리(프레임 원점 보정).
  * 순서: 포장 띠 → 그림자 → 남향 벽(처마선 · 창 · 1층 유리 · 문) → 지붕(종류) → 외곽선.
@@ -562,7 +654,6 @@ export function drawBuildingUnit(g: Phaser.GameObjects.Graphics, u: BuildingUnit
 
   // 2) 남향 벽 — 바깥 법선의 y가 아래(+)인 변
   const floors = Math.max(1, Math.min(u.levels, Math.floor((H - 3) / FLOOR_PX)));
-  let doorEdge = -1, doorY = -Infinity;
   for (let i = 0; i < n; i++) {
     const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % n];
     const dx = bx - ax, dy = by - ay;
@@ -626,16 +717,14 @@ export function drawBuildingUnit(g: Phaser.GameObjects.Graphics, u: BuildingUnit
         g.fillPoints(toPts([[ax, ay + wy + 5], [bx, by + wy + 5], [bx, by + wy + 6], [ax, ay + wy + 6]], ox, oy), true);
       }
     }
-    // 문 자리 — 가장 아래(남쪽) 변의 가운데
-    const my = (ay + by) / 2;
-    if (my > doorY && L >= 10) { doorY = my; doorEdge = i; }
   }
-  if (doorEdge >= 0 && u.kind !== 'roof') {
-    const [ax, ay] = poly[doorEdge], [bx, by] = poly[(doorEdge + 1) % n];
-    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+  // 문 — 가장 아래(남쪽) 변 위. 261차 — 가게마다 하나(`doors`), 없으면 가운데 하나
+  if (u.kind !== 'roof') {
     const glassDoor = u.kind === 'commercial' || u.kind === 'public' || (u.kind === 'yes' && u.roof !== 'gable');
-    g.fillStyle(DOOR_FRAME, 1); g.fillRect(ox + mx - 3, oy + my - 8, 6, 8);
-    g.fillStyle(glassDoor ? DOOR_GLASS : u.kind === 'industrial' ? DOOR_STEEL : DOOR_WOOD, 1); g.fillRect(ox + mx - 2, oy + my - 7, 4, 7);
+    for (const [mx, my] of doorPointsOf(u)) {
+      g.fillStyle(DOOR_FRAME, 1); g.fillRect(ox + mx - 3, oy + my - 8, 6, 8);
+      g.fillStyle(glassDoor ? DOOR_GLASS : u.kind === 'industrial' ? DOOR_STEEL : DOOR_WOOD, 1); g.fillRect(ox + mx - 2, oy + my - 7, 4, 7);
+    }
   }
 
   // 3) 지붕

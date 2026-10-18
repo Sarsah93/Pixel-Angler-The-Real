@@ -30,6 +30,7 @@ import { LedgerStore } from '../store/LedgerStore.js';
 import { DayReportPanel, type DayReportMode } from '../ui/DayReportPanel.js';
 import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { setAmbience } from '../audio/Ambience.js';
+import { playMusic } from '../audio/Music.js';
 import { weatherSoundFrom } from '../audio/WeatherSound.js';
 import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
@@ -277,6 +278,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   create(): void {
     setAmbience({ sea: 0.12, indoor: true });   // 211차 — 집 안 — 창 너머 먼 파도(253차 — 날씨는 창이 생긴 뒤 `syncWeatherSound`)
+    void playMusic('home');   // 261차 — 배경 음악: 옛집(가 · 나 번갈아)
     this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
     this.homeTitleKey = '';

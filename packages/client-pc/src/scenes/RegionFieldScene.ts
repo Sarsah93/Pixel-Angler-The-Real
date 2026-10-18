@@ -33,7 +33,7 @@ import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
 import { TradePanel } from '../ui/TradePanel.js';
 import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/CharacterSprite.js';
 import { NuisanceField } from '../ui/NuisanceField.js';
-import { ensureBuildingVariant } from '../ui/BuildingVariant.js';
+import { planBuildingUnits, drawBuildingUnit, packUnits, labelBuildingComps, unitBodyRects, pointInPoly, doorEdgeOf, doorPointsOf, type BuildingUnit } from './field/BuildingArt.js';
 import type { MarineNuisance } from '@tra/core';
 import { RegionLight, RegionBuilding,
   REGION_MAP_GRAPHS,
@@ -198,6 +198,7 @@ import { interiorLayoutOf, interiorTemplateOf, homeLayoutOf, type InteriorAction
 import { homeLineOf } from '../data/StoryDialogue.js';
 import { hideLoadingAfterRender, isLoadingShown, setLoadingProgress, setLoadingStage, stageForFile } from '../ui/LoadingOverlay.js';
 import { setAmbience } from '../audio/Ambience.js';
+import { playMusic, type MusicPlace } from '../audio/Music.js';
 import { weatherSoundLevels } from '../audio/WeatherSound.js';
 import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
 import { playSfx } from '../audio/SfxBank.js';
@@ -228,7 +229,7 @@ const COL = {
   water: 0x4a86b0, waterAlt: 0x437ea8, shore: 0x74add0,
   land: 0xbfae82, landAlt: 0xb7a578, beach: 0xd9c99b,
   grass: 0x7ba352, grassAlt: 0x729950,
-  buildFill: 0xa6805c, buildTop: 0xba9268, buildEdge: 0x6f523a,
+  // 261차 — 구 건물 판 색(buildFill · buildTop · buildEdge)은 뺐다 — 건물은 `BuildingArt`가 그린다
 };
 
 /**
@@ -302,8 +303,6 @@ export class RegionFieldScene extends Phaser.Scene {
   private overpassCollider?: Phaser.Physics.Arcade.Collider;
   /** POI 상점 프리팹 충돌 바디 (심리스 전용 — 청크 walls와 별도) */
   private poiWalls?: Phaser.Physics.Arcade.StaticGroup;
-  /** 현재 야간 여부 (setupAtmosphere가 갱신 — POI 발광 판단) */
-  private isNightNow = false;
   /** dev 편집기 — 프롭 풋프린트 미리보기 격자 */
   private editPreviewG?: Phaser.GameObjects.Graphics;
   /** dev 편집기 — 호버 고스트(선택 타일/오브젝트 실물 미리보기 — 회전·반전 반영, 106차-b) */
@@ -322,6 +321,17 @@ export class RegionFieldScene extends Phaser.Scene {
    * 청크 수명과 같이 간다(상주 해제 시 함께 버린다).
    */
   private occludersByChunk = new Map<string, Phaser.GameObjects.Image[]>();
+  /**
+   * 261차 — 가게(POI)가 있는데 건물 윤곽이 없는 자리에 합성한 발자국(이 지역 로드 동안만 · 지형 '#'로도 찍는다).
+   * 심리스는 `SeamlessChunks`에 OSM 윤곽과 함께 넘기고, 레거시(부산 · 홈타운)는 `planLegacyBuildings`가 쓴다.
+   */
+  private synthBuildings: RegionBuilding[] = [];
+  /** 261차 — 합성 발자국이 찍은 타일 키(편집기 저장 diff에서 제외) */
+  private synthTiles = new Set<number>();
+  /** 261차 — 레거시(비심리스) 맵의 벡터 건물 단위 · 그 단위가 맡은 '#' 칸(충돌은 윤곽 사각형) · 그림 */
+  private legacyUnits: BuildingUnit[] = [];
+  private legacyCover = new Uint8Array(0);
+  private legacyBuildingImgs: Phaser.GameObjects.Image[] = [];
   /** 지금 반투명 상태인 프리팹 — 이력(hysteresis)에 쓴다 */
   private faded = new Set<OccluderObj>();
   private occludeAt = 0;
@@ -747,6 +757,11 @@ export class RegionFieldScene extends Phaser.Scene {
     this.poiObjects.clear();
     this.occludersByChunk.clear();
     this.faded.clear();
+    this.synthBuildings = [];
+    this.synthTiles.clear();
+    this.legacyUnits = [];
+    this.legacyCover = new Uint8Array(0);
+    this.legacyBuildingImgs = [];
     const st0 = loadSettings();
     this.showFieldLabels = st0.showFieldLabels;
     // 178차 — 할 일 위치 안내(화살표) 켜고 끄기. 설정 창에서 바꾸면 즉시 반영된다.
@@ -844,6 +859,8 @@ export class RegionFieldScene extends Phaser.Scene {
     }
 
     if (this.seamlessDef) this.trimBuildingsOnRoads();
+    // 261차 — 가게가 있는데 건물이 없는 자리에 건물 발자국을 찍는다(지형 '#' + 윤곽) — 걷기 그리드 · 청크 · 충돌보다 먼저
+    this.synthesizePoiBuildings();
     this.buildTerrainGrid();
     // 홈타운 오브젝트 유효 상태 산출 → 충돌 타일 선반영 (병합 충돌/걷기 판정 공유)
     if (this.region === 'hometown') { this.computeHomeObjects(); this.upgradeFarmPlots(); }
@@ -864,10 +881,13 @@ export class RegionFieldScene extends Phaser.Scene {
           ? ((this.cache.json.get(`rlights_${this.seamlessDef.dataRegion}`) as RegionLight[] | undefined) ?? [])
           : [],
         roofOverrides: this.regionPatch.roofs,
-        // 239차 — 벡터 건물(윤곽 · 종류 · 층수). 없는 지역은 '#' 타일 윤곽만으로 그린다
-        buildings: this.seamlessDef.hasBuildings
-          ? ((this.cache.json.get(`rbuildings_${this.seamlessDef.dataRegion}`) as RegionBuilding[] | undefined) ?? [])
-          : [],
+        // 239차 — 벡터 건물(윤곽 · 종류 · 층수). 없는 지역은 '#' 타일 윤곽만으로 그린다. 261차 — 가게 자리 합성 발자국을 뒤에 잇는다
+        buildings: [
+          ...(this.seamlessDef.hasBuildings
+            ? ((this.cache.json.get(`rbuildings_${this.seamlessDef.dataRegion}`) as RegionBuilding[] | undefined) ?? [])
+            : []),
+          ...this.synthBuildings,
+        ],
         levels: this.regionPatch.levels ?? [], stairs: this.regionPatch.stairs ?? [], armor: this.regionPatch.armor ?? [],
         cols: this.cols, rows: this.rows, tr: TR, seed: mapSeed >>> 0,
         chunkTiles: RegionFieldScene.SEAMLESS_CHUNK_TILES,
@@ -875,7 +895,7 @@ export class RegionFieldScene extends Phaser.Scene {
         onChunkUnload: (cc, cr) => this.unloadChunkPois(cc, cr),
       });
       this._walls = this.chunks.walls;
-      // POI 상점 프리팹(팝업/횟집) 전용 충돌 — 청크 walls와 별도 그룹 (POI 로드/언로드가 관리)
+      // POI 사람(좌판 상인 · 경찰) 충돌 — 청크 walls와 별도 그룹 (POI 로드/언로드가 관리). 261차 — 상점 프리팹 몸체는 없어졌다(건물 윤곽이 막는다)
       this.poiWalls = this.physics.add.staticGroup();
       this.overpass = new OverpassSystem(this, this.regionPatch.overpasses ?? [], TR);
       this.prepareSeamlessPois();
@@ -910,9 +930,11 @@ export class RegionFieldScene extends Phaser.Scene {
       });
     } else {
       this.renderTerrain();
+      this.planLegacyBuildings();      // 261차 — 벡터 건물 단위(충돌 · 그림 · 간판 자리의 기준) — 충돌 바디보다 먼저
       this.buildCollision();
       this.spawnPlayer();
       this.drawPois();
+      this.renderLegacyBuildings();
     }
     this.initFarmField();   // 247차 — 텃밭 칸 그림은 이 시스템이 그린다(홈타운 그림보다 먼저)
     if (this.region === 'hometown') this.renderHomeObjects();
@@ -1013,6 +1035,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 안전망 — 하위 씬(낚시/실내)에서 복귀 시 전환 플래그가 남아 이동이 막히는 일 방지
       this.isTransitioning = false;
       MultiplayerClient.setActivity('field');   // 145차 — 하위 씬에서 돌아오면 다시 필드
+      this.syncMusic();   // 261차 — 낚시 · 집에서 돌아오면 필드 곡으로
       this.cameras.main.fadeIn(300, 0, 10, 20);
       this.restoreCamFollow();   // 127차 — 1인칭에서 돌아오면 카메라를 플레이어로
       this.clearCastFlight();
@@ -1102,8 +1125,21 @@ export class RegionFieldScene extends Phaser.Scene {
   private isWalkable(c: number, r: number): boolean {
     if (c < 0 || c >= this.cols || r < 0 || r >= this.rows) return false;
     if (this.blocked[r][c]) return false;
+    // 261차 — 발 끝(칸 아랫변)이 건물 윤곽 안에 드는 칸도 아니다 — OSM 윤곽은 '#' 칸보다 반 칸 북쪽까지 나와 있어
+    //   그 칸에 선 인물은 발이 벽 그림 속에 들어가 「지붕 위에 선」 것처럼 보였다(261차 실측 — 동명항 바람)
+    if (this.insideBuildingArtAt(c * TR + TR / 2, r * TR + TR - 1)) return false;
     // 258차 — 건물 그림 윤곽이 거의 맞붙은 틈(몸이 들어가지 않는 칸)은 걷는 칸이 아니다(스폰 · 인물 자리 · 길찾기)
     return !this.chunks || this.chunks.tileFitsBody(c, r);
+  }
+
+  /** 261차 — 점이 건물 바닥 윤곽 안인가 — 심리스는 청크, 레거시는 단위 목록 */
+  private insideBuildingArtAt(x: number, y: number): boolean {
+    if (this.chunks) return this.chunks.insideBuildingArt(x, y);
+    for (const u of this.legacyUnits) {
+      if (x < u.x0 || x > u.x1 || y < u.y0 || y > u.y1) continue;
+      if (pointInPoly(x, y, u.poly)) return true;
+    }
+    return false;
   }
 
   // ═══════════════════════════════════════════════════
@@ -1239,7 +1275,7 @@ export class RegionFieldScene extends Phaser.Scene {
           } else if (t === 'grass') {
             color = COL.grass;   // 188차 — 체커 제거(타일 바둑판). 질감은 아래 2px 그레인이 낸다
           } else if (t === 'building') {
-            color = COL.buildFill;
+            color = COL.land;   // 261차 — 건물 칸도 땅이다(벡터 건물이 그 위에 선다 — 구 갈색 판 · 타일 기와는 뺐다)
           } else {
             // 바다에 붙은 육지는 모래사장
             const beach =
@@ -1252,7 +1288,7 @@ export class RegionFieldScene extends Phaser.Scene {
           // ── 173차 · 지면 그레인 ── 구 구현은 타일 하나가 **단색 사각형 + 체커**라
           //   32px 심리스 맵과 나란히 놓으면 홈타운만 평면으로 보였다("올드한 에셋").
           //   심리스와 같은 **2px 그레인**을 얹어 입자를 맞춘다.
-          if (t !== 'building') {
+          {
             const gr = LEGACY_GRAIN[t] ?? LEGACY_GRAIN.land!;
             for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
               const hs = RegionFieldScene.hash2(mapSeed ^ 0x51a7, c * 32 + x, r * 32 + y);
@@ -1314,37 +1350,8 @@ export class RegionFieldScene extends Phaser.Scene {
           }
         }
       }
-      // ── 173차 · 건물 ── 구 구현은 **단색 갈색 사각형 + 2px 외곽선**이라 지붕인지 바닥인지
-      //   읽히지 않았다(사용자: "올드한 에셋"). 이제 지붕은 **기와 결**을 갖고, 덩어리 남쪽에는
-      //   벽면과 처마 그늘이 생기며, 땅에는 건물 그림자가 떨어진다.
-      for (let r = 0; r < this.rows; r++) {
-        for (let c = 0; c < this.cols; c++) {
-          if (this.terrain[r][c] !== 'building') continue;
-          const nN = this.terrainAt(c, r - 1) === 'building';
-          const nS = this.terrainAt(c, r + 1) === 'building';
-          const nW = this.terrainAt(c - 1, r) === 'building';
-          const nE = this.terrainAt(c + 1, r) === 'building';
-          const bx = c * TR, by = r * TR;
-          // 지붕면 — 가로 기와 결 (2행 주기)
-          for (let y = 0; y < TR; y += 2) for (let x = 0; x < TR; x += 2) {
-            const tile = (y % 6 === 0) ? 0x6d4530 : ((x + y) % 4 === 0 ? 0x8a5a3e : 0x7c5238);
-            g.fillStyle(tile, 1); g.fillRect(bx + x, by + y, 2, 2);
-          }
-          // 용마루 — 덩어리 북단
-          if (!nN) { for (let x = 0; x < TR; x += 2) { g.fillStyle(0xa4724d, 1); g.fillRect(bx + x, by, 2, 2); g.fillStyle(0x9a6845, 1); g.fillRect(bx + x, by + 2, 2, 2); } }
-          // 처마 그늘 — 덩어리 남단(벽면이 보이는 쪽)
-          if (!nS) {
-            for (let x = 0; x < TR; x += 2) for (let y = TR - 6; y < TR; y += 2) {
-              g.fillStyle(y < TR - 2 ? 0x5a3a26 : 0x3f2a1b, 1); g.fillRect(bx + x, by + y, 2, 2);
-            }
-            // 땅에 떨어지는 그림자 (한 칸 아래)
-            for (let x = 0; x < TR; x += 2) { g.fillStyle(0x1a2430, 0.3); g.fillRect(bx + x, by + TR, 2, 4); }
-          }
-          // 측면 모서리 — 선이 아니라 그늘 도트
-          if (!nW) for (let y = 0; y < TR; y += 2) { g.fillStyle(0x5a3a26, 1); g.fillRect(bx, by + y, 2, 2); }
-          if (!nE) for (let y = 0; y < TR; y += 2) { g.fillStyle(0x4c3020, 1); g.fillRect(bx + TR - 2, by + y, 2, 2); }
-        }
-      }
+      // 261차 — 구 타일 기와(173차 — 칸마다 결 · 처마 · 측면 도트)는 뺐다. 건물은 `renderLegacyBuildings`가 심리스와 같은 벡터 건물로 세운다
+      //   (사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만」 · R13).
       g.generateTexture(texKey, this.worldW, this.worldH);
       g.destroy();
     }
@@ -1361,12 +1368,17 @@ export class RegionFieldScene extends Phaser.Scene {
     this._walls = walls;
   }
 
-  /** blocked 그리드 → 행 병합 정적 바디 (초기 빌드/설치 후 재베이크 공용) */
+  /**
+   * blocked 그리드 → 행 병합 정적 바디 (초기 빌드/설치 후 재베이크 공용).
+   * 261차 — 벡터 건물 단위가 맡은 '#' 칸은 칸으로 막지 않고 **그림 윤곽 사각형**(`unitBodyRects` — 심리스 258차와 같은 규칙)으로 막는다.
+   */
   private fillWallRects(walls: Phaser.Physics.Arcade.StaticGroup): void {
+    const covered = (c: number, r: number): boolean =>
+      this.legacyCover.length > 0 && this.terrain[r][c] === 'building' && this.legacyCover[r * this.cols + c] === 1;
     for (let r = 0; r < this.rows; r++) {
       let cStart = -1;
       for (let c = 0; c <= this.cols; c++) {
-        const blocked = c < this.cols && this.blocked[r][c];
+        const blocked = c < this.cols && this.blocked[r][c] && !covered(c, r);
         if (blocked && cStart < 0) {
           cStart = c;
         } else if (!blocked && cStart >= 0) {
@@ -1379,6 +1391,14 @@ export class RegionFieldScene extends Phaser.Scene {
           walls.add(rect);
           cStart = -1;
         }
+      }
+    }
+    const clip = { x0: 0, y0: 0, x1: this.worldW, y1: this.worldH };
+    for (const u of this.legacyUnits) {
+      for (const b of unitBodyRects(u.poly, clip)) {
+        const rect = this.add.rectangle(b.x + b.w / 2, b.y + b.h / 2, b.w, b.h, 0x000000, 0).setVisible(false);
+        this.physics.add.existing(rect, true);
+        walls.add(rect);
       }
     }
   }
@@ -1670,86 +1690,22 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   // ═══════════════════════════════════════════════════
-  // 건물 (POI 위치에 종류별 픽셀 도트 건물 배치)
+  // 건물 (레거시 맵 — POI 칸 북쪽에 합성 발자국이 서고, 문 옆에 간판)
   // ═══════════════════════════════════════════════════
   private drawPois(): void {
     this.buildings = [];
+    const used = new Set<string>();
     this.mapData.pois.forEach((poi, i) => {
       const x = poi.col * TR + TR / 2;
       const y = poi.row * TR + TR / 2;
       const kind = BUILDING_KIND_CYCLE[i % BUILDING_KIND_CYCLE.length];
-
-      this.ensureBuildingTexture(kind);
-      // 발밑 기준 배치 (건물 하단 = 타일 중앙)
-      this.add.image(x, y + 10, `bld_${kind}`).setOrigin(0.5, 1).setDepth(14 + y * 0.001);
-
+      // 261차 — 구 `bld_<kind>` 도트 건물 그림은 그리지 않는다. 건물은 `synthesizePoiBuildings`가 POI 칸 북쪽에 찍은 발자국을
+      //   `renderLegacyBuildings`가 벡터 건물로 세운다. 여기선 거래 지점과 문 옆 간판만.
       // 217차 — 바닥 이름표는 그리지 않는다(이름은 다가가면 [F] 안내가 말한다)
       this.buildings.push({ x, y, kind, branch: { key: `${this.region}:${this.mapId}:poi${i}`, name: BUILDING_LABEL[kind] } });
+      const at = this.shopSignSpot({ x, y }, (i + 1) * 7919, used);
+      if (at) this.addShopSign(at.x, at.y, kind);
     });
-  }
-
-  /** 건물 종류별 픽셀 도트 텍스처 생성 (1회 베이킹, 모든 맵 공용) */
-  private ensureBuildingTexture(kind: BuildingKind): void {
-    const key = `bld_${kind}`;
-    if (this.textures.exists(key)) return;
-
-    // 종류별 배색: [벽, 지붕, 간판, 포인트]
-    const palette: Record<BuildingKind, [number, number, number, number]> = {
-      convenience: [0xe8e4da, 0x3f9e63, 0x2fa84f, 0xffffff],  // 초록 간판 편의점
-      mart:        [0xd9d2c2, 0xc25b28, 0xff8a3d, 0xffe066],  // 주황 간판 마트
-      market:      [0xcfc4ae, 0xa8433b, 0xd9534f, 0x74add0],  // 붉은 차양 직판장
-      restaurant:  [0xc9a877, 0x7d4f2c, 0xb06a3b, 0xffcf6b],  // 목조 식당
-      cafe:        [0xe3d5bd, 0x8a6a44, 0xc8a060, 0x6f523a],  // 베이지 카페
-      pub:         [0x5c4a6e, 0x33263f, 0x7b5cd6, 0xffd24a],  // 어두운 주점 + 등불
-      pharmacy:    [0xeceff2, 0x2f7f5e, 0x4fc38a, 0xff6b6b],  // 흰 벽 + 초록 십자 간판 약국
-      nursery:     [0xe4e8d6, 0x4a8a3a, 0x6fb84a, 0xd8b878],  // 238차 — 연두 간판 종묘사(모종판 · 흙 포대)
-      daily:       [0xdfe0d4, 0x2e5f9e, 0x3f86d8, 0xffd257],  // 파란 간판 생활용품점(사이소)
-    };
-    const [wall, roof, sign, accent] = palette[kind];
-    const W = 44, H = 42;
-
-    const g = this.add.graphics();
-    // 벽체
-    g.fillStyle(wall, 1);
-    g.fillRect(4, 14, W - 8, H - 14);
-    // 지붕 (계단식 도트)
-    g.fillStyle(roof, 1);
-    g.fillRect(2, 8, W - 4, 8);
-    g.fillRect(6, 4, W - 12, 4);
-    // 간판 밴드
-    g.fillStyle(sign, 1);
-    g.fillRect(4, 16, W - 8, 7);
-    // 간판 글자 도트 (추상)
-    g.fillStyle(0xffffff, 0.9);
-    g.fillRect(8, 18, 6, 3);
-    g.fillRect(17, 18, 6, 3);
-    g.fillRect(26, 18, 6, 3);
-    // 문
-    g.fillStyle(0x3d2f22, 1);
-    g.fillRect(W / 2 - 5, H - 14, 10, 14);
-    g.fillStyle(accent, 1);
-    g.fillRect(W / 2 + 1, H - 9, 2, 2);   // 손잡이
-    // 창문
-    g.fillStyle(0x9fd0e4, 0.95);
-    g.fillRect(8, 27, 8, 7);
-    g.fillRect(W - 16, 27, 8, 7);
-    g.lineStyle(1, 0x4a3a2a, 0.8);
-    g.strokeRect(8, 27, 8, 7);
-    g.strokeRect(W - 16, 27, 8, 7);
-    // 주점 등불 / 카페 컵 등 종류 포인트
-    if (kind === 'pub') {
-      g.fillStyle(accent, 1);
-      g.fillCircle(6, 20, 3);
-    } else if (kind === 'cafe') {
-      g.fillStyle(0xffffff, 1);
-      g.fillRect(W - 10, 10, 5, 4);
-    }
-    // 외곽선
-    g.lineStyle(2, 0x2a1c12, 1);
-    g.strokeRect(2, 8, W - 4, H - 8);
-
-    g.generateTexture(key, W, H);
-    g.destroy();
   }
 
   // ═══════════════════════════════════════════════════
@@ -1851,29 +1807,205 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /**
-   * POI → 건물 프리팹 텍스처 (의미 일치만 — 사용자 규칙 "편의점에 팝업스토어/횟집 금지").
-   *  횟집 = 음식점/수산 상점 중 이름이 횟집·회센터·활어·물회·해물 계열 → Gemini 횟집 2종
-   *  팝업스토어(노점) = 시장·기념품·잡화·수산물 판매(비음식점)·이름에 난전/노점/시장 → Gemini 팝업 4종
-   *  고층 = 호텔·은행 · 주택 = 민박/게스트하우스(TopDown 주택 2종)
+   * 261차 — 가게가 서는 건물의 꼴(구 프리팹 분류를 이어받았다 — 사용자 규칙 「편의점에 팝업스토어/횟집 금지」는 그대로).
+   *  횟집 = 음식점/수산 상점 중 이름이 횟집·회센터·활어·물회·해물 계열 → 상가 1~2층
+   *  좌판 = 시장 · 수산 좌판(`isStallPoi`) → 차양(기둥 + 천막) · 숙소 = 호텔/리조트(상가 6층) · 모텔/레지던스(상가 4층) · 민박/게스트하우스(주택 2층)
+   *  은행 = 상가 3층. 그 밖(편의점 · 마트 · 카페 …)은 건물 윤곽이 있으면 그 건물, 없으면 간판만.
+   * 반환 = 발자국 크기(타일) · 종류 · 층수. null = 발자국을 만들지 않는다.
    */
-  private poiVisualTex(poi: RegionPoi): string | null {
+  private poiSynthSpec(poi: RegionPoi): { w: number; h: number; kind: RegionBuilding['kind']; levels: number } | null {
     const name = poi.name ?? '';
     const kind = poi.shopKind ?? '';
     const h = Math.abs(Math.imul(poi.osmId | 0, 2654435761) >>> 0) / 4294967296;
     const seafoodName = /횟집|회센터|회 센터|활어|물회|해물|수산|어시장|생선|횟/.test(name);
     if ((poi.type === 'restaurant' && seafoodName) || (poi.type === 'shop' && kind === 'seafood' && /횟집|회/.test(name))) {
-      return `ts_gem_sashimi_${1 + (Math.floor(h * 2) % 2)}`;
+      return { w: 3, h: 2, kind: 'commercial', levels: h < 0.5 ? 1 : 2 };
     }
-    // 217차 — 노점 그림은 **진짜 좌판**에만(시장 · 수산 좌판). 사이소 · 마트처럼 건물인 가게가
-    //  길가 노점으로 서 있던 것(사용자 지적 「밖에서 상점처럼 상호작용」)을 걷었다.
-    if (this.isStallPoi(poi)) return `ts_gem_popup_${1 + (Math.floor(h * 4) % 4)}`;
+    if (this.isStallPoi(poi)) return { w: 2, h: 1, kind: 'roof', levels: 1 };
     if (poi.type === 'lodging') {
-      return /호텔|hotel|리조트|resort|콘도/i.test(name)
-        ? `ts_gem_building_${1 + (Math.floor(h * 5) % 5)}`
-        : (h < 0.5 ? 'ts_td_house_red' : 'ts_td_house_blue');
+      if (/호텔|hotel|리조트|resort|콘도/i.test(name)) return { w: 4, h: 3, kind: 'commercial', levels: 5 + (Math.floor(h * 3) % 3) };
+      if (/모텔|motel|레지던스|스위트|하버뷰/i.test(name)) return { w: 3, h: 3, kind: 'commercial', levels: 4 };
+      return { w: 3, h: 2, kind: 'house', levels: 2 };
     }
-    if (poi.type === 'bank') return `ts_gem_building_${1 + (Math.floor(h * 5) % 5)}`;
-    return null;
+    if (poi.type === 'bank') return { w: 3, h: 2, kind: 'commercial', levels: 3 };
+    // 그 밖의 가게(편의점 · 마트 · 음식점 · 카페 · 주점 · 약국 · 생활용품 · 종묘사)도 건물이 없으면 발자국을 받는다 —
+    //   사용자 「표지판이 있는 위치가 해당 상가 건물들일텐데」: 간판만 홀로 선 가게가 없게. 위판장(경매)은 큰 창고(패널 지붕).
+    const bk = this.poiBuildingKind(poi);
+    if (!bk) return null;
+    if (bk === 'market' && interiorTemplateOf('market', name) === 'auction') return { w: 4, h: 3, kind: 'industrial', levels: 1 };
+    const size: Record<BuildingKind, [number, number]> = {
+      convenience: [2, 2], mart: [3, 2], market: [3, 2], restaurant: [3, 2], cafe: [2, 2], pub: [2, 2], pharmacy: [2, 2], daily: [3, 2], nursery: [3, 2],
+    };
+    const [w, hh] = size[bk];
+    return { w, h: hh, kind: 'commercial', levels: bk === 'mart' || bk === 'daily' || bk === 'pharmacy' ? 2 : (h < 0.5 ? 1 : 2) };
+  }
+
+  /**
+   * 261차 — 가게(POI)가 있는데 건물 윤곽이 없는 자리에 **합성 발자국**을 찍는다(사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 …
+   * 지도 기반 건물들로 바꿔줘 … 표지판이 있는 위치가 해당 상가 건물들일텐데 거기에 반영을 잘 해줘」).
+   * 구 프리팹(횟집 · 팝업 · 고층 · 주택 그림)이 서던 110곳 가운데 83곳은 가장 가까운 건물 윤곽이 4칸 넘게 떨어져 있었다(261차 실측) —
+   * 그림만 빼면 간판만 남는다. 그래서 문 칸(앵커 · 차도면 가까운 땅) **북쪽**에 종류별 크기의 직사각형을 놓고 지형을 '#'로 찍은 뒤
+   * `RegionBuilding` 윤곽으로 `BuildingArt`에 보낸다 — 걷기 · 충돌 · 미니맵 · 문 · 간판이 전부 같은 칸을 본다.
+   *  조건: 전 칸이 맨땅 · 잔디 · 흙 · 광장('.' ',' 'd' 'p') · 기존 '#' · OSM 윤곽 · 다른 가게 앵커 · 차도 벡터 밴드(반폭 + 0.35칸) 밖.
+   *  자리가 없으면 좌우 ±1 · ±2칸 → 한 칸 줄여서(최소 2×2 · 좌판 2×1) → 그래도 없으면 발자국 없이 간판만(원인은 dev 로그).
+   *  이미 건물이 붙어 있는 가게(앵커가 '#'이거나 8이웃에 '#' · OSM 윤곽 안)는 그 건물의 가게다 — 만들지 않는다.
+   * 레거시 맵(부산)은 `pois`(col · row)마다 상가 3×2, 홈타운은 보건소 오브젝트 자리(2×2 공공)만.
+   */
+  private synthesizePoiBuildings(): void {
+    this.synthBuildings = [];
+    this.synthTiles.clear();
+    const cols = this.cols, nrows = this.rows;
+    const rows = this.mapData.terrain.slice();
+    const at = (c: number, r: number): string => (c < 0 || r < 0 || c >= cols || r >= nrows) ? '~' : (rows[r][c] ?? '~');
+    const occupied = new Set<number>();
+    // OSM 윤곽 안 칸(트림으로 '.'이 된 곳 포함)은 건물 자리다
+    if (this.seamlessDef?.hasBuildings) {
+      const osm = (this.cache.json.get(`rbuildings_${this.seamlessDef.dataRegion}`) as RegionBuilding[] | undefined) ?? [];
+      for (const b of osm) {
+        if (b.pts.length < 3) continue;
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (const [x, y] of b.pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+        for (let r = Math.max(0, Math.floor(y0)); r <= Math.min(nrows - 1, Math.ceil(y1)); r++) {
+          for (let c = Math.max(0, Math.floor(x0)); c <= Math.min(cols - 1, Math.ceil(x1)); c++) {
+            if (pointInPoly(c + 0.5, r + 0.5, b.pts)) occupied.add(r * cols + c);
+          }
+        }
+      }
+    }
+    // 차도 벡터 밴드 — 세그먼트 bbox로 먼저 거른다
+    const segs = this.regionRoads.flatMap((rd) => {
+      const out: { ax: number; ay: number; bx: number; by: number; hw: number }[] = [];
+      for (let i = 0; i < rd.pts.length - 1; i++) {
+        const [ax, ay] = rd.pts[i], [bx, by] = rd.pts[i + 1];
+        out.push({ ax, ay, bx, by, hw: rd.w / 2 });
+      }
+      return out;
+    });
+    // 세그먼트 격자 색인(16칸) + 칸별 기억 — 가게 400곳 × 후보 칸 수십을 세그먼트 4천과 다 비교하면 느리다
+    const CELL = 16, gw = Math.ceil(cols / CELL) + 2;
+    const segGrid = new Map<number, number[]>();
+    segs.forEach((sg, i) => {
+      const pad = sg.hw + 1;
+      for (let gy = Math.floor((Math.min(sg.ay, sg.by) - pad) / CELL); gy <= Math.floor((Math.max(sg.ay, sg.by) + pad) / CELL); gy++) {
+        for (let gx = Math.floor((Math.min(sg.ax, sg.bx) - pad) / CELL); gx <= Math.floor((Math.max(sg.ax, sg.bx) + pad) / CELL); gx++) {
+          const k = (gy + 1) * gw + gx + 1;
+          const list = segGrid.get(k);
+          if (list) list.push(i); else segGrid.set(k, [i]);
+        }
+      }
+    });
+    const roadMemo = new Map<number, boolean>();
+    const roadNear = (c: number, r: number, margin: number): boolean => {
+      const mk = r * cols + c;
+      const memo = roadMemo.get(mk);
+      if (memo !== undefined) return memo;
+      const px = c + 0.5, py = r + 0.5;
+      let hit = false;
+      for (const si of segGrid.get((Math.floor(py / CELL) + 1) * gw + Math.floor(px / CELL) + 1) ?? []) {
+        const sg = segs[si];
+        const hw = sg.hw + margin;
+        if (px < Math.min(sg.ax, sg.bx) - hw || px > Math.max(sg.ax, sg.bx) + hw || py < Math.min(sg.ay, sg.by) - hw || py > Math.max(sg.ay, sg.by) + hw) continue;
+        const vx = sg.bx - sg.ax, vy = sg.by - sg.ay;
+        const l2 = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((px - sg.ax) * vx + (py - sg.ay) * vy) / l2));
+        const dx = sg.ax + vx * t - px, dy = sg.ay + vy * t - py;
+        if (dx * dx + dy * dy <= hw * hw) { hit = true; break; }
+      }
+      roadMemo.set(mk, hit);
+      return hit;
+    };
+    // 1차는 맨땅 · 잔디 · 흙 · 광장만, 2차(`walk`)는 보도('w')도 — 길가 상가는 보도에 붙어 선다(동명항 횟집 거리처럼 보도 띠가 넓은 곳)
+    const buildable = (c: number, r: number, walk: boolean): boolean => {
+      const ch = at(c, r);
+      if (ch !== '.' && ch !== ',' && ch !== 'd' && ch !== 'p' && !(walk && ch === 'w')) return false;
+      if (occupied.has(r * cols + c)) return false;
+      return !roadNear(c, r, 0.35);
+    };
+    const doorOk = (c: number, r: number): boolean => {
+      const ch = at(c, r);
+      return (ch === '.' || ch === 'w' || ch === ',' || ch === 'p' || ch === 's' || ch === 'd') && !roadNear(c, r, 0.35);
+    };
+    // 가게 자리 목록 — 심리스는 OSM POI(앵커 타일), 레거시는 pois(col · row) + 홈타운 보건소
+    type Want = { id: string; name: string; tx: number; ty: number; w: number; h: number; kind: RegionBuilding['kind']; levels: number; fixed?: boolean };
+    const wants: Want[] = [];
+    if (this.seamlessDef) {
+      for (const poi of this.regionPois) occupied.add(poi.ty * cols + poi.tx);   // 다른 가게 앵커 위에 짓지 않는다
+      for (const poi of this.regionPois) {
+        const spec = this.poiSynthSpec(poi);
+        if (!spec) continue;
+        // 이미 건물이 있는 가게 — 앵커가 '#'이거나 8이웃에 '#'(OSM 윤곽 건물은 그 '#' 칸이 앵커 자리 · 바로 옆에 있다)
+        let near = false;
+        for (let dr = -1; dr <= 1 && !near; dr++) for (let dc = -1; dc <= 1; dc++) if (at(poi.tx + dc, poi.ty + dr) === '#') { near = true; break; }
+        if (near) continue;
+        wants.push({ id: `syn_${poi.osmId || `${poi.tx}_${poi.ty}`}`, name: poi.name, tx: poi.tx, ty: poi.ty, ...spec });
+      }
+    } else {
+      this.mapData.pois.forEach((poi, i) => {
+        occupied.add(poi.row * cols + poi.col);
+        wants.push({ id: `syn_${this.mapId}_${i}`, name: BUILDING_LABEL[BUILDING_KIND_CYCLE[i % BUILDING_KIND_CYCLE.length]], tx: poi.col, ty: poi.row, w: 3, h: 2, kind: 'commercial', levels: 1 + (i % 2) });
+      });
+      if (this.region === 'hometown') {
+        for (const o of HOMETOWN_OBJECTS) {
+          if (o.type !== 'clinic') continue;
+          wants.push({ id: 'syn_clinic', name: '보건소', tx: o.tx, ty: o.ty, w: o.fw ?? 2, h: o.fh ?? 2, kind: 'public', levels: 1, fixed: true });
+        }
+      }
+    }
+    let made = 0, dropped = 0;
+    const stamp = (c0: number, r0: number, w: number, h: number, wt: Want): void => {
+      for (let r = r0; r < r0 + h; r++) {
+        rows[r] = rows[r].slice(0, c0) + '#'.repeat(w) + rows[r].slice(c0 + w);
+        for (let c = c0; c < c0 + w; c++) { occupied.add(r * cols + c); this.synthTiles.add(r * cols + c); }
+      }
+      this.synthBuildings.push({ id: wt.id, kind: wt.kind, levels: wt.levels, name: wt.name, pts: [[c0, r0], [c0 + w, r0], [c0 + w, r0 + h], [c0, r0 + h]] });
+      made++;
+    };
+    for (const wt of wants) {
+      if (wt.fixed) {
+        // 오브젝트 자리 그대로(충돌은 오브젝트가 이미 막는다) — 지형만 '#'로 찍어 윤곽 단위가 서게 한다
+        stamp(wt.tx, wt.ty, wt.w, wt.h, wt);
+        continue;
+      }
+      // 문 칸 후보 — 앵커가 걷는 땅이면 그 칸부터, 가까운 땅(≤ 3칸)을 가까운 순으로 전부(길 건너 보도에만 자리가 나는 가게가 있다)
+      const doorCands: [number, number][] = [];
+      if (doorOk(wt.tx, wt.ty)) doorCands.push([wt.tx, wt.ty]);
+      for (let rad = 1; rad <= 3; rad++) {
+        for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+          if (Math.abs(dx) !== rad && Math.abs(dy) !== rad) continue;
+          if (doorOk(wt.tx + dx, wt.ty + dy)) doorCands.push([wt.tx + dx, wt.ty + dy]);
+        }
+      }
+      if (doorCands.length === 0) { dropped++; if (import.meta.env.DEV) console.log(`[RegionField] 발자국 문 칸 없음 — ${wt.name} (${wt.tx},${wt.ty})`); continue; }
+      // 크기 후보(원래 → 한 칸씩 줄여서) × 좌우 밀기 × 문 칸 후보 × (맨땅만 → 보도까지)
+      const sizes: [number, number][] = [[wt.w, wt.h]];
+      if (wt.w > 2) sizes.push([wt.w - 1, wt.h]);
+      if (wt.h > 2) sizes.push([wt.w, wt.h - 1]);
+      if (wt.w > 2 && wt.h > 2) sizes.push([wt.w - 1, wt.h - 1]);
+      if (wt.h > 1 && (wt.w > 2 || wt.h > 2)) sizes.push([2, 2]);
+      let placed = false;
+      for (const walk of [false, true]) {
+        for (const [dc, dr] of doorCands) {
+          for (const [w, h] of sizes) {
+            for (const shift of [0, -1, 1, -2, 2]) {
+              const c0 = dc - Math.floor((w - 1) / 2) + shift, r0 = dr - h;
+              if (c0 < 0 || r0 < 0 || c0 + w > cols || r0 + h > nrows) continue;
+              let ok = true;
+              for (let r = r0; r < r0 + h && ok; r++) for (let c = c0; c < c0 + w; c++) if (!buildable(c, r, walk)) { ok = false; break; }
+              if (!ok) continue;
+              stamp(c0, r0, w, h, wt);
+              placed = true;
+              break;
+            }
+            if (placed) break;
+          }
+          if (placed) break;
+        }
+        if (placed) break;
+      }
+      if (!placed) { dropped++; if (import.meta.env.DEV) console.log(`[RegionField] 발자국 자리 없음 — ${wt.name} (${wt.tx},${wt.ty})`); }
+    }
+    if (made > 0) this.mapData = { ...this.mapData, terrain: rows };
+    if (import.meta.env.DEV && wants.length > 0) console.log(`[RegionField] 가게 건물 발자국 ${made}개 합성 · ${dropped}개 자리 없음 (${this.mapId})`);
   }
 
   /**
@@ -1892,6 +2024,47 @@ export class RegionFieldScene extends Phaser.Scene {
     return null;
   }
 
+  /**
+   * 261차 — 가게마다 건물의 문 하나. POI 앵커가 들어 있는(또는 1.6칸 안의) 건물 그림 단위에 가게들을 모으고, 그 단위의 문 변(가장 아래
+   * 남향 변) 위에 가게 수만큼 문을 둔다 — 앵커 x를 변에 사영하고 24px 간격으로 벌린다(변이 짧으면 공유). 그림의 문 · [F] 문 칸 · 간판이
+   * 전부 이 점을 쓴다(사용자 「표지판이 있는 위치가 해당 상가 건물들일텐데 거기에 반영을 잘 해줘」).
+   * 반환 = POI 인덱스 → 문 점(월드 px) · 없으면 null(건물이 없는 가게 · 차양).
+   */
+  private assignUnitDoors(): ([number, number] | null)[] {
+    const out: ([number, number] | null)[] = this.regionPois.map(() => null);
+    if (!this.chunks) return out;
+    const byUnit = new Map<BuildingUnit, number[]>();
+    this.regionPois.forEach((poi, i) => {
+      if (!this.poiBuildingKind(poi)) return;   // 거래하는 가게만 문을 받는다
+      // 합성 발자국이 있는 가게는 그 건물(id 1:1) — 문 칸이 앵커에서 두세 칸 떨어진 경우도 잇는다
+      const u = this.chunks!.unitById(`syn_${poi.osmId || `${poi.tx}_${poi.ty}`}`)
+        ?? this.chunks!.unitNear(poi.tx * TR + TR / 2, poi.ty * TR + TR / 2, TR * 1.6)?.u ?? null;
+      if (!u) return;
+      const list = byUnit.get(u);
+      if (list) list.push(i); else byUnit.set(u, [i]);
+    });
+    for (const [u, idxs] of byUnit) {
+      const e = doorEdgeOf(u);
+      if (!e) continue;
+      const dx = e.bx - e.ax, dy = e.by - e.ay;
+      const L = Math.hypot(dx, dy) || 1;
+      const minT = Math.min(0.84, 24 / L);
+      // 앵커 x를 변에 사영(끝 8%는 피한다) → x 순으로 정렬 → 간격 벌리기
+      const ts = idxs.map((i) => {
+        const ax = this.regionPois[i].tx * TR + TR / 2;
+        const t = Math.abs(dx) < 1e-3 ? 0.5 : (ax - e.ax) / dx;
+        return { i, t: Math.max(0.08, Math.min(0.92, t)) };
+      }).sort((a, b) => a.t - b.t);
+      for (let k = 1; k < ts.length; k++) if (ts[k].t - ts[k - 1].t < minT) ts[k].t = ts[k - 1].t + minT;
+      const over = ts[ts.length - 1].t - 0.92;
+      if (over > 0) for (const t of ts) t.t = Math.max(0.08, t.t - over);
+      this.chunks.setUnitDoors(u, ts.map((t) => e.ax + dx * t.t));
+      const pts = doorPointsOf(u);
+      ts.forEach((t, k) => { out[t.i] = pts[Math.min(k, pts.length - 1)] ?? null; });
+    }
+    return out;
+  }
+
   /** POI 문 위치·청크 배정·거래 가능 목록 사전 계산 (create 1회) */
   private prepareSeamlessPois(): void {
     this.buildings = [];
@@ -1900,7 +2073,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.miniPlaceMarkers = [];
     this.poiByChunk.clear();
     const N = RegionFieldScene.SEAMLESS_CHUNK_TILES;
-    const reserved = new Set<string>();
+    const unitDoor = this.assignUnitDoors();
     this.regionPois.forEach((poi, i) => {
       // 150차 — 문 좌표가 차도 벡터 밴드 안이면 땅으로 민다(사용자 리포트 "횟집이 도로 위에").
       //  ⚠ 106차 `trimBuildingsOnRoads`는 **타일**만 걷어냈고, 화면의 아스팔트는 101차 이후
@@ -1908,7 +2081,25 @@ export class RegionFieldScene extends Phaser.Scene {
       //     `resolvePoiDoor`의 차도 회피는 타일 문자만 봐서 이 경우를 못 걸렀다.
       //  ⚠ 스프라이트가 아니라 **문**을 민다 — 거래 판정·NPC·미니맵 핀이 한 좌표를 공유하므로
       //     그림만 옮기면 "보이는 곳과 [F] 되는 곳"이 어긋난다.
-      const door = this.nudgePoiDoor(this.resolvePoiDoor(poi));
+      // 261차 — 건물의 문이 정해진 가게는 **그 문 앞 칸**(문 점에서 반 칸 남쪽 · 몸이 서는 칸)이 [F] 자리다. 밀린 자리가 건물 안이면 옛 규칙(BFS)으로.
+      let door: { x: number; y: number } | null = null;
+      const dp = unitDoor[i];
+      if (dp) {
+        const dc = Math.floor(dp[0] / TR), drr = Math.floor((dp[1] + TR * 0.5) / TR);
+        let fallback: { x: number; y: number } | null = null;
+        for (const [c, r] of [[dc, drr], [dc - 1, drr], [dc + 1, drr], [dc, drr + 1]] as const) {
+          const t = this.terrainAt(c, r);
+          if (t === undefined || t === 'building' || t === 'water' || t === 'cliff' || !this.chunks!.tileFitsBody(c, r)) continue;
+          const cand = this.nudgePoiDoor({ x: Math.max(c * TR + 4, Math.min(c * TR + TR - 4, dp[0])), y: r * TR + TR / 2 });
+          if (this.chunks!.insideBuildingArt(cand.x, cand.y)) continue;
+          // 차도 밴드 위 문은 마지막 수단 — 길가에 바짝 붙은 건물은 문 앞 칸이 아스팔트일 수 있다
+          if (t === 'road' || this.chunks!.onRoadBand(cand.x, cand.y)) { fallback ??= cand; continue; }
+          door = cand;
+          break;
+        }
+        door ??= fallback;
+      }
+      if (!door) door = this.nudgePoiDoor(this.resolvePoiDoor(poi));
       this.poiDoors.push(door);
       const key = `${Math.floor(poi.tx / N)},${Math.floor(poi.ty / N)}`;
       const list = this.poiByChunk.get(key);
@@ -1945,13 +2136,7 @@ export class RegionFieldScene extends Phaser.Scene {
           sub: placeKind && placeKind !== placeName ? placeKind : undefined,
         });
       }
-      // 건물 프리팹이 붙는 POI의 건물 컴포넌트는 고층 자동 배치에서 제외
-      if (this.poiVisualTex(poi)) {
-        const bk = this.chunks?.buildingKeyAt(poi.tx, poi.ty);
-        if (bk) reserved.add(bk);
-      }
     });
-    this.chunks?.setReservedBuildings(reserved);
   }
 
   /** 청크 상주 시작 — 해당 청크 POI 마커/라벨 생성 (스펙 §6-6: 상주 청크만 활성) */
@@ -1961,48 +2146,13 @@ export class RegionFieldScene extends Phaser.Scene {
     const list = this.poiByChunk.get(key);
     if (!list) return;
     const objs: Phaser.GameObjects.GameObject[] = [];
-    const occluders: Phaser.GameObjects.Image[] = [];
     const signDoors = new Set<string>();   // 239차 — 같은 문을 쓰는 가게는 간판 하나
     for (const i of list) {
       const poi = this.regionPois[i];
       const door = this.poiDoors[i];
       const kind = this.poiBuildingKind(poi);
-      // 건물 프리팹 (타일셋):
-      //  - 빌딩 파사드(building_N) = 건물 풋프린트 하단 중앙 (지붕 스프라이트 위 +0.0005)
-      //  - 상점 오브젝트(팝업/횟집) = **건물 앞 문 위치에 별도 배치 + 자체 충돌**(하단 띠) —
-      //    건물 풋프린트(지붕)와 겹치지 않고, 캐릭터가 오브젝트 앞을 지나면 앞에 보인다(y-sort)
-      // 138차 — 프리팹 11장이 도시 전체를 덮던 문제. POI마다 벽 색·차양·간판을 결정적으로 바꾼다.
-      const visBase = this.poiVisualTex(poi);
-      const vis = visBase ? ensureBuildingVariant(this, visBase, poi.osmId | 0) : null;
-      let hasSprite = false;
-      if (vis && this.textures.exists(vis)) {
-        const isShop = /popup|sashimi/.test(visBase ?? '');
-        const b = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
-        let lit: Phaser.GameObjects.Image | null = null;
-        if (isShop) {
-          const sx = door.x, sy = door.y + TR * 0.5;
-          const img = this.add.image(sx, sy, vis).setOrigin(0.5, 1).setDepth(20 + sy * 0.001);
-          objs.push(img);
-          const bw = Math.max(TR, img.displayWidth * 0.9), bh = TR * 0.6;
-          const body = this.add.rectangle(sx, sy - bh / 2, bw, bh, 0, 0).setVisible(false);
-          this.poiWalls?.add(body);
-          objs.push(body);
-          lit = img;
-        } else {
-          const bx = b ? ((b.c0 + b.c1 + 1) / 2) * TR : door.x;
-          const by = b ? (b.r1 + 1) * TR : door.y + TR / 2;
-          lit = this.add.image(bx, by, vis).setOrigin(0.5, 1).setDepth(20 + by * 0.001 + 0.0005);
-          objs.push(lit);
-        }
-        // 야간 — 상호작용 건물은 **오브젝트 전체**를 덮는 발광 (오브젝트 위 깊이 — 뒤에 숨지 않게)
-        if (lit && kind && this.isNightNow) {
-          const glow = this.add.ellipse(lit.x, lit.y - lit.displayHeight * 0.45, lit.displayWidth * 1.3, lit.displayHeight * 1.25, 0xffd080, 0.16)
-            .setDepth(lit.depth + 0.0002).setBlendMode(Phaser.BlendModes.ADD);
-          objs.push(glow);
-        }
-        if (lit) occluders.push(lit);   // 145차 — 캐릭터를 덮을 수 있는 그림
-        hasSprite = true;
-      }
+      // 261차 — 구 건물 프리팹(Gemini 횟집 · 팝업 · 고층 파사드 · TopDown 주택 + 자체 충돌 · 야간 발광 · 가림)은 그리지 않는다.
+      //   건물은 청크 아틀라스의 벡터 건물(합성 발자국 포함)이고, 가림 · 충돌 · 문도 거기서 온다(`SeamlessChunks`).
       // NPC (정적 — 문 옆에 선다, 충돌 있음)
       const role = this.poiNpcRole(poi);
       if (role) {
@@ -2023,15 +2173,15 @@ export class RegionFieldScene extends Phaser.Scene {
         objs.push(body);
       }
       // 217차 — 바닥의 점(「o」)과 이름표를 걷었다(사용자 지적 「날 것의 o 표시와 상호명」).
-      //  그림이 없는 가게는 문 옆에 **작은 간판**(기둥 + 판 + 종류 아이콘)이 선다 — 상호는 다가가면 [F] 안내가 말한다.
+      //  가게는 문 옆에 **작은 간판**(기둥 + 판 + 종류 아이콘)이 선다 — 상호는 다가가면 [F] 안내가 말한다.
       //  거래가 없는 장소(정류장 · 여객터미널 …)는 땅에 아무것도 없고 지도(미니맵 · M)에만 핀이 있다.
-      if (kind && !hasSprite) {
+      //  261차 — 가게마다 문이 하나씩이라 간판도 가게마다(같은 칸을 쓰는 문만 하나로 묶인다).
+      if (kind) {
         const at = this.shopSignSpot(door, poi.osmId | 0, signDoors);
         if (at) objs.push(...this.addShopSign(at.x, at.y, kind));
       }
     }
     this.poiObjects.set(key, objs);
-    if (occluders.length) this.occludersByChunk.set(key, occluders);
   }
 
   /**
@@ -2049,7 +2199,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const t = this.terrainAt(c, r);
       if (t === undefined || t === 'building' || t === 'water' || t === 'road') return false;
       if (this.chunks?.onRoadBand(x, y)) return false;
-      if (this.chunks?.coveredByBuilding(x, y - 10)) return false;   // 판(기둥 위 20px)이 지붕에 가리지 않게
+      if (this.coveredByBuildingArt(x, y - 10)) return false;   // 판(기둥 위 20px)이 지붕에 가리지 않게
       return true;
     };
     const pref = (seed & 2) === 0 ? 1 : -1;
@@ -2687,6 +2837,8 @@ export class RegionFieldScene extends Phaser.Scene {
         if (cur[c] === org[c]) continue;
         // 차도 안 건물 트림(런타임 변환)은 사용자 편집이 아니다 — 패치에 굽지 않는다(106차-b)
         if (cur[c] === '.' && this.roadTrimmed.has(r * this.cols + c)) continue;
+        // 261차 — 가게 자리 합성 발자국('#')도 런타임 변환이다
+        if (cur[c] === '#' && this.synthTiles.has(r * this.cols + c)) continue;
         tiles.push([c, r, cur[c]]);
       }
     }
@@ -3403,6 +3555,7 @@ export class RegionFieldScene extends Phaser.Scene {
       kind, name: where.name, stall, npc: where.key.includes(':npc:'), fallback: !branch,
     });
 
+    void playMusic('market');   // 261차 — 가게 안에서는 시장 곡(가 · 나 번갈아)
     // 좌측: 상점 / 우측: 인벤토리
     this.shopPanel = this.openPopup(
       (close) => new ShopPanel(this, 40, 60, shop, {
@@ -3418,6 +3571,7 @@ export class RegionFieldScene extends Phaser.Scene {
         this.shopPanel = null;
         MarketStore.close();
         ShopStore.close();
+        this.syncMusic();   // 261차 — 가게를 닫으면 필드 곡
         this.events.emit('inventory-changed');   // 인벤 칸의 시세 화살표를 거둔다
       },
     );
@@ -4328,7 +4482,6 @@ export class RegionFieldScene extends Phaser.Scene {
   private setupAtmosphere(): void {
     const hour = kstHour();
     const isNight = hour >= 20 || hour < 5;
-    this.isNightNow = isNight;
     const isDusk = (hour >= 17 && hour < 20) || (hour >= 5 && hour < 7);
     const weather = ExternalDataStore.getWeatherKind(this.region);
 
@@ -4456,44 +4609,13 @@ export class RegionFieldScene extends Phaser.Scene {
    * 부드러운 주변광 글로우만 명암 오버레이(40) 위(42)에 남겨 어둠을 뚫는 연출 유지.
    */
   private lightBuildings(strong: boolean): void {
-    // 심리스 — 건물 파사드 스프라이트가 없어(지붕 탑뷰) 창문/네온/대형 글로우가 허공에 뜬다
-    // (101차 사용자 리포트 "안개? 구름? 단순 도형" 중 일부가 이 발광 halo였음).
-    // 문 앞 소형 가로등 불빛만 남긴다.
-    if (this.seamless) {
-      // 문 앞 불빛 — 오브젝트(상점·NPC)보다 위 깊이(y-sort +0.003)라 뒤에 가려지지 않는다.
-      // 오브젝트 전체 발광은 loadChunkPois가 스프라이트 크기에 맞춰 얹는다(101차 후속 4).
-      for (const b of this.buildings) {
-        this.add.circle(b.x, b.y + 6, 26, 0xffd980, strong ? 0.12 : 0.06)
-          .setDepth(20 + b.y * 0.001 + 0.003).setBlendMode(Phaser.BlendModes.ADD);
-        this.add.circle(b.x, b.y - 6, 2, 0xfff2b0, strong ? 0.85 : 0.5)
-          .setDepth(20 + b.y * 0.001 + 0.003).setBlendMode(Phaser.BlendModes.ADD);
-      }
-      return;
-    }
-    const NEON: Record<BuildingKind, number> = {
-      convenience: 0x35ff7a, mart: 0xffa040, market: 0xff5555,
-      restaurant: 0xffcf6b, cafe: 0xffe2a8, pub: 0xc27cff, pharmacy: 0x4fffb0,
-      daily: 0x6ab8ff, nursery: 0x9aff6a,
-    };
+    // 문 앞 불빛만 — 오브젝트(상점·NPC)보다 위 깊이(y-sort +0.003)라 뒤에 가려지지 않는다.
+    // 261차 — 레거시 맵의 창문 불빛 · 네온사인(구 `bld_` 도트 건물의 창 위치에 맞춘 것)은 뺐다 — 건물은 전부 벡터 건물이라 창이 그 그림에 있다.
     for (const b of this.buildings) {
-      const facadeDepth = 16 + b.y * 0.001;
-      // 창문 불빛 (건물 텍스처의 창 위치와 정합) — 명암 오버레이 아래라 알파 보상
-      const winAlpha = strong ? 0.95 : 0.5;
-      this.add.rectangle(b.x - 10, b.y - 1, 8, 7, 0xffd980, winAlpha)
-        .setDepth(facadeDepth).setBlendMode(Phaser.BlendModes.ADD);
-      this.add.rectangle(b.x + 10, b.y - 1, 8, 7, 0xffd980, winAlpha)
-        .setDepth(facadeDepth).setBlendMode(Phaser.BlendModes.ADD);
-      // 주변광 글로우 (부드러운 광원 — 캐릭터 위로 번져도 자연스러움)
-      this.add.circle(b.x, b.y - 6, 42, 0xffc873, strong ? 0.11 : 0.05)
-        .setDepth(42).setBlendMode(Phaser.BlendModes.ADD);
-      // 네온사인 (간판 밴드 위) — 종류별 색 + 불규칙 명멸
-      const neon = this.add.rectangle(b.x, b.y - 12, 34, 6, NEON[b.kind], strong ? 0.7 : 0.4)
-        .setDepth(facadeDepth).setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({
-        targets: neon, alpha: strong ? 0.3 : 0.15,
-        duration: 800 + (Math.abs(b.x * 7 + b.y * 3) % 700), yoyo: true, repeat: -1,
-        delay: Math.abs(b.y) % 400,
-      });
+      this.add.circle(b.x, b.y + 6, 26, 0xffd980, strong ? 0.12 : 0.06)
+        .setDepth(20 + b.y * 0.001 + 0.003).setBlendMode(Phaser.BlendModes.ADD);
+      this.add.circle(b.x, b.y - 6, 2, 0xfff2b0, strong ? 0.85 : 0.5)
+        .setDepth(20 + b.y * 0.001 + 0.003).setBlendMode(Phaser.BlendModes.ADD);
     }
   }
 
@@ -4640,6 +4762,18 @@ export class RegionFieldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 261차 — 지금 자리에 맞는 배경 음악. 가게 창 · 실내 가게 = 시장, 홈타운 = 텃밭, 그 밖은 필드(낮 / 밤은 `Music`이 가른다).
+   * 1초 틱 · 하위 씬에서 돌아올 때 · 가게를 열고 닫을 때 부른다 — 같은 곡이면 아무것도 하지 않는다.
+   */
+  private syncMusic(): void {
+    let place: MusicPlace;
+    if (this.shopPanel) place = 'market';
+    else if (this.interior && this.interiorAt?.kind) place = 'market';   // 인물의 집(kind null) · 보건소는 필드 곡 그대로
+    else place = this.region === 'hometown' ? 'farm' : 'field';
+    void playMusic(place);
+  }
+
   update(_time: number, delta: number): void {
     LedgerStore.playTick(delta);   // 211차 — 하루 기록 놀던 시간
     GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
@@ -4653,6 +4787,7 @@ export class RegionFieldScene extends Phaser.Scene {
       setAmbience(this.interior
         ? { sea: 0.08, ...w, indoor: true }   // 215차 — 실내: 문 너머로 먼 소리만(253차 — 벽 너머 먹먹하게)
         : { sea: Math.min(1, sea * (1 + 0.3 * w.wind)), ...w });
+      this.syncMusic();   // 261차 — 자리(가게 · 실내 가게 · 홈타운 텃밭 · 낮 / 밤 필드)에 맞는 곡
       this.settleConsignments();   // 213차 — 맡겨 둔 위판(회차가 열렸으면 정산)
     }
     // init → create 사이 또는 shutdown 직전의 stale update 차단.
@@ -4950,6 +5085,68 @@ export class RegionFieldScene extends Phaser.Scene {
     this.scene.start('RegionFieldScene', { region: 'hometown' });
   }
 
+  /**
+   * 261차 — 레거시(비심리스) 맵 벡터 건물 단위. '#' 성분을 심리스와 같은 함수(`planBuildingUnits`)로 계획하되 타일 20px ·
+   * 1칸 묶음도 그린다(`minGroup` 1) · 계단은 0.5칸만 편다. 합성 발자국(`synthBuildings` — 부산 가게 · 홈타운 보건소)은 윤곽 폴리곤으로,
+   * 나머지 묶음은 홈타운 = 주택(집) · 부산 작은 덩어리(≤ 4칸) = 주택. 홈타운 집의 문은 집 문 오브젝트 x에 맞춘다.
+   */
+  private planLegacyBuildings(): void {
+    const { comps, compOf } = labelBuildingComps(this.mapData.terrain, this.cols, this.rows);
+    this.legacyCover = new Uint8Array(this.cols * this.rows);
+    let seed = 2166136261;
+    for (let i = 0; i < this.mapId.length; i++) seed = Math.imul(seed ^ this.mapId.charCodeAt(i), 16777619);
+    this.legacyUnits = planBuildingUnits({
+      terrainRows: this.mapData.terrain, cols: this.cols, rows: this.rows, tr: TR, seed: seed >>> 0,
+      comps, compOf, buildings: this.synthBuildings, minGroup: 1, tileEps: 0.5,
+      groupKind: (g) => this.region === 'hometown'
+        ? { kind: 'house', levels: 2, name: '집' }
+        : (g.tiles <= 4 ? { kind: 'house', levels: 1 + ((g.c0 + g.r0) % 2) } : undefined),
+    }, this.legacyCover);
+    if (this.region === 'hometown') {
+      for (const o of HOMETOWN_OBJECTS) {
+        if (o.type !== 'door') continue;
+        const x = o.tx * TR + TR / 2, y = o.ty * TR + TR / 2;
+        const u = this.legacyUnits.find((v) => pointInPoly(x, y, v.poly));
+        if (u) u.doors = [x];
+      }
+    }
+  }
+
+  /** 261차 — 레거시 건물 단위 그림(심리스 `buildChunkRoofs`와 같은 아틀라스 방식) — 깊이 = 바닥선 · 뒤로 들어가면 반투명 */
+  private renderLegacyBuildings(): void {
+    for (const img of this.legacyBuildingImgs) img.destroy();
+    this.legacyBuildingImgs = [];
+    if (this.legacyUnits.length === 0) return;
+    const MAX_W = Math.max(1024, ...this.legacyUnits.map((u) => u.x1 - u.x0));
+    const sheets = packUnits(this.legacyUnits, MAX_W, 4096);
+    for (const sheet of sheets) {
+      const atlas = this.make.renderTexture({ x: 0, y: 0, width: sheet.w, height: Math.max(16, sheet.h) }, false);
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      for (const { u, x, y } of sheet.items) drawBuildingUnit(g, u, x - u.x0, y - u.y0);
+      atlas.draw(g, 0, 0);
+      g.destroy();
+      for (const { u, x, y } of sheet.items) {
+        const fname = `b_${u.id}`;
+        atlas.texture.add(fname, 0, x, y, u.x1 - u.x0, u.y1 - u.y0);
+        const img = this.add.image(u.x0, u.y0, atlas.texture, fname).setOrigin(0, 0).setDepth(20 + u.bottomY * 0.001);
+        img.setData('bottomY', u.bottomY);
+        this.legacyBuildingImgs.push(img);
+      }
+      this.events.once('shutdown', () => atlas.destroy());
+    }
+    this.occludersByChunk.set('legacy', this.legacyBuildingImgs);
+  }
+
+  /** 261차 — 점이 건물 그림(발자국 · 벽 높이만큼 올라간 지붕)에 가리는가 — 심리스는 청크, 레거시는 단위 목록 */
+  private coveredByBuildingArt(x: number, y: number): boolean {
+    if (this.chunks) return this.chunks.coveredByBuilding(x, y);
+    for (const u of this.legacyUnits) {
+      if (x < u.x0 || x > u.x1 || y < u.y0 || y > u.y1) continue;
+      if (pointInPoly(x, y, u.poly) || pointInPoly(x, y + u.wallH, u.poly)) return true;
+    }
+    return false;
+  }
+
   /** 건물 입구 근접 감지 → [F] 거래 힌트 */
   private updateBuildingProximity(): void {
     const px = this.playerBody.x, py = this.playerBody.y;
@@ -5085,6 +5282,8 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private renderHomeObject(o: MapObject): void {
+    // 261차 — 집 문 · 보건소는 벡터 건물 단위가 그린다(집 윤곽의 문 · 공공 건물 발자국). 구 도트 그림은 안 그린다(상호작용은 그대로)
+    if (o.type === 'door' || o.type === 'clinic') { this.homeObjSprites.set(o.instanceId, []); return; }
     this.ensureObjTexture(o.type, o);
     const fw = o.fw ?? 1, fh = o.fh ?? 1;
     const cx = o.tx * TR + (fw * TR) / 2;

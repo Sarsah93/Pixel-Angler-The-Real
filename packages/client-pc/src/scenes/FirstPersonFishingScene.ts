@@ -70,6 +70,7 @@ import {
   playCatchFanfare, playRelease,
 } from '../audio/Sfx.js';
 import { setAmbience } from '../audio/Ambience.js';
+import { playMusic } from '../audio/Music.js';
 import { weatherSoundLevels } from '../audio/WeatherSound.js';
 import {
   snagDragChance, snagHazardPerM, sinkerHoldsBottom,
@@ -588,6 +589,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const w = weatherSoundLevels(this.cfg.region);
       setAmbience({ sea: Math.min(1, 0.9 * (1 + 0.2 * w.wind)), ...w });
     }
+    void playMusic('fishing');   // 261차 — 배경 음악: 기다림
     // 207차 — 끌림 거리 · 걸림 상태 · 봉돌 굴림도 캐스팅마다 새로
     this.dragPrev = null; this.snagStuck = null; this.snagChoice = false; this.parkTourAsked = false; this.parkChipAcc = 0; this.parkToastUntil = 0; this.snagHazardNow = 0; this.sinkerHold = SINKER_HOLDS;
     this.lastBiteProbPerSec = 0; this.lastSnagRisk = 1;

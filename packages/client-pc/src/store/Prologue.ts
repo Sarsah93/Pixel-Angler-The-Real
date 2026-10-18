@@ -124,7 +124,7 @@ const isBoxItem = (id: string): boolean => (boxIds ??= new Set(FATHER_BOX_ITEMS.
  */
 export function prologueProtects(id: string): boolean {
   if (!StoryStore.isActive(QID)) return false;
-  if (id === PROLOGUE_SQUID_ID) return !prologueStepDone('sell');
+  if (id === PROLOGUE_SQUID_ID) return !prologueStepDone('sell') && !GameState.getFlag(flagKey('sell'));   // 261차 — 한 번 팔았으면 남은 마리는 자유
   if (id === PROLOGUE_PHOTO_ID) return !prologueStepDone('photo');
   if (isBoxItem(id)) return !prologueStepDone('rod') || !prologueStepDone('reel');
   return false;
@@ -168,7 +168,10 @@ export function repairPrologue(): boolean {
       const photo = QUEST_REWARD_ITEMS.find((q) => q.id === PROLOGUE_PHOTO_ID);
       if (photo) { InventoryStore.addItem(takeFromFridge(PROLOGUE_PHOTO_ID) ?? { ...photo, bound: true }, 1); fixed = true; }
     }
-    if (GameState.getFlag(flagKey('squid')) && !prologueStepDone('sell') && !InventoryStore.find(PROLOGUE_SQUID_ID)) {
+    // 261차 — 한 번이라도 팔았으면(`prologue.sell` 깃발) 다시 주지 않는다. 장보기 다섯 갈래를 다 사기 전에 오징어를 팔면
+    //   「팔기」 목표는 차례 때문에 아직 못 닫혀 `prologueStepDone('sell')`이 거짓이라, 판 오징어가 가방에 되살아났다(사용자 리포트 —
+    //   「냉동 오징어 2개를 팔았는데 … 냉동 오징어가 하나 더 생겨져 있음」). 깃발만으로 목표가 닫히므로 되돌려 줄 이유가 없다.
+    if (GameState.getFlag(flagKey('squid')) && !prologueStepDone('sell') && !GameState.getFlag(flagKey('sell')) && !InventoryStore.find(PROLOGUE_SQUID_ID)) {
       // 234차 — 냉장고에서 꺼낸 묶음은 그 수량 그대로(구: 2마리를 꺼내 1마리만 넣었다)
       const back = takeFromFridge(PROLOGUE_SQUID_ID);
       InventoryStore.addItem(back ?? prologueSquid(), back?.qty ?? 1);

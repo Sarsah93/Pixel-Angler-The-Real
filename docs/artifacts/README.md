@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 2 — 259차 기준(260차 발행) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 2 — 259차 기준(260차 발행) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 2 — 258차 채비 문법(260차 발행) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 57 — 259차 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 3 — 261차 기준(261차 발행) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 3 — 261차 기준(261차 발행) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 3 — 261차 기준 · 채비 문법은 258차(261차 발행) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 58 — 261차(260차 이야기 페이지 정정 포함) |
 
 - 남은 과업 설계는 **비공개**(주인만 열림)다. 나머지 셋은 「링크가 있는 사람」 공유다. 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -48,4 +48,5 @@ console.log('어종',n(c.FISH_DATABASE),'작물',n(c.CROP_DATABASE),'퀘스트',
 2. 점검 — `node tools/check_artifact_page.cjs docs/artifacts/<이름>.html <출력 접두사> ['#flow']`
    (본문 가로 넘침 · SVG 글자 넘침 · 상자 겹침 · pageerror 0 → `PASS`). 스크린샷(밝음 · 어두움 · 폰)을 눈으로 본다.
 3. Artifact 도구 `publish` — `file_path` = 원본, `url` = 위 표의 주소. 다른 대화에서 처음 발행하면 먼저 `read`로 읽는다.
+   ⚠ 위키(3MB)는 `read`에 `path: 'index.html'`을 주면 파일로만 떨어지고 **발행 자격으로 치지 않는다**(261차 실측) — `path` 없이 읽어야 한다.
 4. 워크로그 §8에 네 주소와 새 판(Version)을 적고, 이 표의 「지금 판」을 고친다.

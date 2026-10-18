@@ -162,6 +162,11 @@ const { chromium } = resolvePlaywright();
 - `process.jumpTo` 직접 호출은 `renderedOrientation`/`renderedRotation`을 스냅하지 않는다 — 하네스 점프는 `panel.devJumpToTask(secIdx, taskId)` 사용(둘 다 스냅).
 
 - **가방(I) 단축키는 프롤로그 게이트(`hotkeyOk`)에 막힌다**(241차) — 새 게임 직후 하네스는 `scene.toggleInventory()`를 직접 부른다.
+- **새 게임 직후 홈타운은 바로 집 안(`HomeInteriorScene`)이다**(261차) — 필드 씬 활성을 기다리면 180초 뒤 타임아웃(필드는 `status 6` 멈춤).
+  `HomeInteriorScene`이 활성이면 `g.scene.stop('HomeInteriorScene'); g.scene.resume('RegionFieldScene')` 뒤 다시 기다린다.
+- **건물 · 가게 검증 수치**(261차) — `sc.synthBuildings`(합성 발자국) · `sc.chunks.unitNear(x, y, px)` · `unitById('syn_<osmId>')` · `u.doors` · `sc.poiDoors[i]` ·
+  `sc.chunks.insideBuildingArt(x, y)` · 발자국 안 충돌은 `sc.physics.overlapRect(...)`. 레거시 맵은 `sc.legacyUnits` · `sc.legacyBuildingImgs`.
+  배경 음악은 `--autoplay-policy=no-user-gesture-required`로 띄우고 `__MUSIC.state().playing`을 본다.
   탭은 `invPanel.currentTab = 'food'; invPanel.renderGrid()`, 칸 좌표 = `panel.x + gridX0 + col*73 + 33` / `panel.y + gridY0 + row*73 + 33`
   (그 탭의 아이템을 slot 순으로 센 인덱스). 메뉴 닫기는 ESC가 아니라 `invPanel.closeContextMenu()`(ESC는 가방까지 닫는다).
 - 텃밭 지급은 `(await import('/src/data/CropItems.ts')).cropItemTemplate(id)` → `__INV.addItem(tpl, n)` · 작물별 거둔 횟수는 `__FARM.harvestsOf('tomato')` ·

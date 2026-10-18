@@ -6,7 +6,9 @@
  *  - 낚시: 캐스팅 휙 · 착수 풍덩 · 입질 톡(단계별) · 챔질 · 헛챔질 · 릴 감는 딸깍(기어비가 빠르기를 정한다) ·
  *    드랙 풀리는 지지직 · 줄터짐 · 랜딩 팡파르
  *  - 생활: 돈 · 아이템 줍기 · 퀘스트 완료 · 하루 결산 · 버튼 · 먹기 · 타이틀
- *  - 버스 3개(효과음 · 대사 · 배경) — 설정의 볼륨 슬라이더(`pixelAngler_settings`)를 따른다.
+ *  - 버스 4개(효과음 · 대사 · 환경음 · 배경 음악) — 설정의 볼륨 슬라이더(`pixelAngler_settings`)를 따른다.
+ *    261차 — 환경음(파도 · 비 · 바람 · 천둥 = `ambVolume`)과 배경 음악(`bgmVolume` — `audio/Music.ts`)을 갈랐다.
+ *    옛 설정본에 `ambVolume`이 없으면 `bgmVolume`을 그대로 쓴다.
  *
  * AudioContext 생성 실패(비지원/권한) 시 전부 무음 무해. 브라우저 자동재생 정책 때문에
  * 첫 입력(클릭 · 키) 때 컨텍스트를 깨운다(`installAudioUnlock`).
@@ -16,10 +18,11 @@ let audioCtx: AudioContext | null = null;
 let sfxBus: GainNode | null = null;
 let voiceBus: GainNode | null = null;
 let ambBus: GainNode | null = null;
+let musicBus: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 
 /** 설정 볼륨 캐시 — 글자마다 localStorage를 읽지 않게 0.5초 단위로 갱신 */
-const vol = { sfx: 0.7, voice: 0.6, bgm: 0.5, at: -1 };
+const vol = { sfx: 0.7, voice: 0.6, amb: 0.5, music: 0.5, at: -1 };
 
 function readVolumes(): void {
   const now = Date.now();
@@ -28,10 +31,11 @@ function readVolumes(): void {
   try {
     const raw = localStorage.getItem('pixelAngler_settings');
     if (!raw) return;
-    const s = JSON.parse(raw) as { sfxVolume?: number; voiceVolume?: number; bgmVolume?: number };
+    const s = JSON.parse(raw) as { sfxVolume?: number; voiceVolume?: number; bgmVolume?: number; ambVolume?: number };
     if (typeof s.sfxVolume === 'number') vol.sfx = s.sfxVolume;
     if (typeof s.voiceVolume === 'number') vol.voice = s.voiceVolume;
-    if (typeof s.bgmVolume === 'number') vol.bgm = s.bgmVolume;
+    if (typeof s.bgmVolume === 'number') vol.music = s.bgmVolume;
+    vol.amb = typeof s.ambVolume === 'number' ? s.ambVolume : (typeof s.bgmVolume === 'number' ? s.bgmVolume : vol.amb);
   } catch { /* 무시 — 기본값 */ }
 }
 
@@ -47,7 +51,8 @@ function applyBusVolumes(): void {
   const t = audioCtx.currentTime;
   sfxBus?.gain.setTargetAtTime(vol.sfx, t, 0.05);
   voiceBus?.gain.setTargetAtTime(vol.voice, t, 0.05);
-  ambBus?.gain.setTargetAtTime(vol.bgm, t, 0.3);
+  ambBus?.gain.setTargetAtTime(vol.amb, t, 0.3);
+  musicBus?.gain.setTargetAtTime(vol.music, t, 0.3);
 }
 
 /** dev 하네스용 — 최근에 낸 소리 이름(소리가 실제로 들리는지는 헤드리스가 못 듣는다) */
@@ -71,8 +76,9 @@ export function audioContext(): AudioContext | null {
       sfxBus = audioCtx.createGain(); sfxBus.connect(audioCtx.destination);
       voiceBus = audioCtx.createGain(); voiceBus.connect(audioCtx.destination);
       ambBus = audioCtx.createGain(); ambBus.connect(audioCtx.destination);
+      musicBus = audioCtx.createGain(); musicBus.connect(audioCtx.destination);
       readVolumes();
-      sfxBus.gain.value = vol.sfx; voiceBus.gain.value = vol.voice; ambBus.gain.value = vol.bgm;
+      sfxBus.gain.value = vol.sfx; voiceBus.gain.value = vol.voice; ambBus.gain.value = vol.amb; musicBus.gain.value = vol.music;
     }
     if (audioCtx.state === 'suspended') void audioCtx.resume();
     readVolumes();
@@ -83,8 +89,8 @@ export function audioContext(): AudioContext | null {
   }
 }
 
-export function busOf(kind: 'sfx' | 'voice' | 'amb'): GainNode | null {
-  return kind === 'sfx' ? sfxBus : kind === 'voice' ? voiceBus : ambBus;
+export function busOf(kind: 'sfx' | 'voice' | 'amb' | 'music'): GainNode | null {
+  return kind === 'sfx' ? sfxBus : kind === 'voice' ? voiceBus : kind === 'music' ? musicBus : ambBus;
 }
 
 /** 1초짜리 흰 잡음 — 물소리 · 바람 · 드랙 · 착수에 공용 */

@@ -18,13 +18,13 @@
 
 import Phaser from 'phaser';
 import type { RegionRoad, RegionProp, RegionTileTex, RegionLight, RegionStair, RegionArmor, TileEdge, LevelCell, RegionBuilding } from '@tra/core';
-import { planBuildingUnits, drawBuildingUnit, packUnits, pointInPoly, unitBodyRects, type BuildingUnit } from './field/BuildingArt.js';
+import { planBuildingUnits, drawBuildingUnit, packUnits, pointInPoly, unitBodyRects, type BuildingUnit, labelBuildingComps, doorPointsOf, type BuildingComp } from './field/BuildingArt.js';
 import { COAST_OBJECTS } from '../data/TileCatalog.js';
 import {
   seamBetween, terrainClass, terrainPaint, terrainGroup, reliefHeight, castsReliefShadow, terrainDef, isRockTerrain,
   canStep, stairHighEdges,
 } from '@tra/core';
-import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, KENNEY_ROOF_COLORS, KENNEY_ROOF_PARTS, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
+import { GRASS_EDGE_SUFFIXES, PAVED_EDGE_SUFFIXES, TTP_EDGE_TILES, TTP_UNITS, COAST_DECKS, COAST_RUBBLE, COAST_EDGE_SRC, COAST_ROCK_COUNT } from '../data/TilesetManifest.js';
 import { SURFACES, SPECKS, paintSurfaceAtlas, paintSpeckAtlas, paintWaterAtlas, paintRockAtlas, paintTetrapod, paintStone, stoneCanvasSize, TETRA_ART, type SurfaceName, type SpeckName, type TetraTone, type StoneTone } from './SurfaceArt.js';
 
 
@@ -105,34 +105,14 @@ export const PROP_DEFS: PropDef[] = [
   { id: 'trash2', label: '철망 휴지통', tex: 'ts_kn_ktrash', cat: '시설물', scale: 2 },
   { id: 'monument', label: '기념탑', tex: 'smx_monument', cat: '시설물' },
   { id: 'jungja', label: '정자(쉼터)', tex: 'ts_gem_jungja', cat: '시설물' },
-  // 건물 (TopDown 주택 = 12px 원본 ×2 — 6×7칸 = 140×168px)
-  { id: 'house_red', label: '주택(빨강)', tex: 'ts_td_house_red', cat: '건물', scale: 2 },
-  { id: 'house_blue', label: '주택(파랑)', tex: 'ts_td_house_blue', cat: '건물', scale: 2 },
-  // 건물 요소 (TopDown 모듈 — 펜스·문·지붕 연장·실외기. 사용자 리포트: "차고"는 펜스 세트 오독)
+  // 261차 — 건물 프리팹(TopDown 주택 2 · Gemini 고층 5 · 팝업 4 · 횟집 2 · Kenney 노점 2)과 건물 요소(문 · 지붕 연장 · 실외기)는
+  //   팔레트에서 뺐다(사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고」). 건물은 전부 `field/BuildingArt.ts`가 그린다.
+  // 건물 요소 (TopDown 모듈 — 펜스. 사용자 리포트: "차고"는 펜스 세트 오독)
   { id: 'fence_h', label: '철망 펜스(가로)', tex: 'ts_td_fence_h', cat: '건물요소', scale: 2 },
   { id: 'fence_v1', label: '펜스 기둥 A', tex: 'ts_td_fence_v1', cat: '건물요소', scale: 2 },
   { id: 'fence_v2', label: '펜스 문 A', tex: 'ts_td_fence_v2', cat: '건물요소', scale: 2 },
   { id: 'fence_v3', label: '펜스 문 B', tex: 'ts_td_fence_v3', cat: '건물요소', scale: 2 },
   { id: 'fence_v4', label: '펜스 기둥 B', tex: 'ts_td_fence_v4', cat: '건물요소', scale: 2 },
-  { id: 'door_blue', label: '문(파랑)', tex: 'ts_td_door_blue', cat: '건물요소', scale: 2, passable: true },
-  { id: 'door_brown', label: '문(갈색)', tex: 'ts_td_door_brown', cat: '건물요소', scale: 2, passable: true },
-  { id: 'door_white', label: '문(흰색)', tex: 'ts_td_door_white', cat: '건물요소', scale: 2, passable: true },
-  { id: 'roof_ext_red', label: '지붕 연장(빨강)', tex: 'ts_td_roof_ext_red', cat: '건물요소', scale: 2, passable: true },
-  { id: 'roof_ext_blue', label: '지붕 연장(파랑)', tex: 'ts_td_roof_ext_blue', cat: '건물요소', scale: 2, passable: true },
-  { id: 'ac_unit', label: '실외기', tex: 'ts_td_ac_unit', cat: '건물요소', scale: 2 },
-  { id: 'building_1', label: '고층 1', tex: 'ts_gem_building_1', cat: '건물' },
-  { id: 'building_2', label: '고층 2', tex: 'ts_gem_building_2', cat: '건물' },
-  { id: 'building_3', label: '고층 3', tex: 'ts_gem_building_3', cat: '건물' },
-  { id: 'building_4', label: '고층 4', tex: 'ts_gem_building_4', cat: '건물' },
-  { id: 'building_5', label: '고층 5', tex: 'ts_gem_building_5', cat: '건물' },
-  { id: 'popup_1', label: '팝업스토어 1', tex: 'ts_gem_popup_1', cat: '건물' },
-  { id: 'popup_2', label: '팝업스토어 2', tex: 'ts_gem_popup_2', cat: '건물' },
-  { id: 'popup_3', label: '팝업스토어 3', tex: 'ts_gem_popup_3', cat: '건물' },
-  { id: 'popup_4', label: '팝업스토어 4', tex: 'ts_gem_popup_4', cat: '건물' },
-  { id: 'sashimi_1', label: '횟집 1', tex: 'ts_gem_sashimi_1', cat: '건물' },
-  { id: 'sashimi_2', label: '횟집 2', tex: 'ts_gem_sashimi_2', cat: '건물' },
-  { id: 'stall_green', label: '노점(초록)', tex: 'ts_kn_stall_green', cat: '건물', scale: 2 },
-  { id: 'stall_orange', label: '노점(주황)', tex: 'ts_kn_stall_orange', cat: '건물', scale: 2 },
   // 차량 (측면 — 가로 도로용 정적 배치)
   { id: 'car_a', label: '승용차 초록', tex: 'ts_kn_car_a', cat: '차량', scale: 2 },
   { id: 'car_c', label: '승용차 회색', tex: 'ts_kn_car_c', cat: '차량', scale: 2 },
@@ -188,10 +168,8 @@ export interface SeamlessChunksConfig {
   armor?: RegionArmor[];
   /** 건물 지붕 팔레트 오버라이드 — 컴포넌트 좌상단 "c,r" → 인덱스 */
   roofOverrides?: Record<string, number>;
-  /** 239차 — OSM 건물 윤곽 · 종류 · 층수(buildings.json). 없으면 '#' 타일 윤곽만으로 그린다 */
+  /** 239차 — OSM 건물 윤곽 · 종류 · 층수(buildings.json) + 261차 씬이 합성한 가게 발자국. 없으면 '#' 타일 윤곽만으로 그린다 */
   buildings?: RegionBuilding[];
-  /** 고층 프리팹 자동 배치에서 제외할 건물 컴포넌트 키(씬이 POI 건물 스프라이트를 붙인 곳) */
-  reservedBuildingKeys?: Set<string>;
   cols: number;
   rows: number;
   /** 타일 렌더 크기(px) — RegionFieldScene TR과 동일해야 좌표계가 일치한다 */
@@ -334,15 +312,6 @@ const EDGE_SUFFIX: Record<number, string> = {
   5: 'ns', 10: 'we', 7: 'nse', 13: 'nsw', 11: 'nwe', 14: 'swe', 15: 'nswe',
 };
 
-/** 지붕 팔레트 (컴포넌트 해시로 배정) — [밝은 사면, 어두운 사면, 용마루, 외벽] */
-const ROOFS: [number, number, number, number][] = [
-  [0xc25a4b, 0x9c4237, 0xd97c6b, 0x8a5a48],   // 붉은 기와
-  [0xcf8a45, 0xa96b30, 0xe0a468, 0x8a6848],   // 주황
-  [0x7a8698, 0x5f6b7d, 0x93a0b2, 0x5c6470],   // 슬레이트
-  [0x5f8d7d, 0x4a7263, 0x7aa694, 0x567262],   // 청록
-  [0x8a6f4d, 0x6d5639, 0xa08862, 0x6a5540],   // 갈색
-];
-
 /** 결정적 해시 (0~1) */
 function hash2(seed: number, x: number, y: number): number {
   let n = (seed ^ Math.imul(x, 374761393) ^ Math.imul(y, 668265263)) >>> 0;
@@ -358,15 +327,6 @@ function noise2(seed: number, x: number, y: number): number {
   const a = hash2(seed, ix, iy) * (1 - sx) + hash2(seed, ix + 1, iy) * sx;
   const b = hash2(seed, ix, iy + 1) * (1 - sx) + hash2(seed, ix + 1, iy + 1) * sx;
   return a * (1 - sy) + b * sy;
-}
-
-interface BuildingComp {
-  c0: number; r0: number; c1: number; r1: number;
-  /** 타일 수 (면적) */
-  n: number;
-  palIdx: number;
-  /** 대형(창고·터미널급) — 패널 지붕 */
-  big: boolean;
 }
 
 /**
@@ -692,22 +652,7 @@ export class SeamlessChunks {
       }
       if (map.size > 0) this.edgeTex.set(ch, map);
     }
-    // 건물 키트 — 지붕 오토타일 셀(+2×2 패널) + 벽 모듈(64×32 → 8칸으로 분할: 상단 4 + 하단 4)
-    for (const color of KENNEY_ROOF_COLORS) {
-      for (const part of KENNEY_ROOF_PARTS) {
-        bake(`ts_kn_roof_${color}_${part}`, `kit_roof_${color}_${part}`, tr, tr);
-      }
-      // 대각 지붕 코너 (101차 잔여) — Kenney 시트엔 45° 셀이 없어 'in' 셀을 삼각 클립 베이크.
-      //  buildKitRoof가 계단형(대각) 풋프린트의 스텝 코너에서 사각 코너 셀 대신 사용한다.
-      for (const q of ['ne', 'nw', 'se', 'sw'] as const) {
-        bake(`ts_kn_roof_${color}_in`, `kit_roof_${color}_tri_${q}`, tr, tr, q);
-      }
-    }
-    for (const wall of ['brick_red', 'brick_gray', 'brick_tan', 'glass', 'white']) {
-      for (let i = 0; i < 8; i++) {
-        bake(`ts_kn_wall_${wall}`, `kit_wall_${wall}_${i}`, tr, tr, undefined, (i % 4) * 16, Math.floor(i / 4) * 16);
-      }
-    }
+    // 261차 — Kenney 건물 키트(지붕 오토타일 · 벽 모듈) 굽기는 뺐다 — 239차부터 건물은 `BuildingArt`가 그리고, 키트 셀은 어디에도 쓰이지 않았다.
     this.ensureWaterTextures();
   }
 
@@ -2056,8 +2001,63 @@ export class SeamlessChunks {
     return { c0, r0, c1, r1, n };
   }
 
-  setReservedBuildings(keys: Set<string>): void {
-    this.cfg.reservedBuildingKeys = keys;
+  /** 261차 — 월드 px 점이 바닥 윤곽 안인 건물 그림 단위 */
+  unitAt(x: number, y: number): BuildingUnit | null {
+    const k = Math.floor(y / this.chunkPx) * this.chunkCols + Math.floor(x / this.chunkPx);
+    for (const u of this.unitsByChunk.get(k) ?? []) {
+      if (x < u.x0 || x > u.x1 || y < u.y0 || y > u.y1) continue;
+      if (pointInPoly(x, y, u.poly)) return u;
+    }
+    return null;
+  }
+
+  /**
+   * 261차 — 점에서 가장 가까운 건물 그림 단위(바닥 윤곽까지 거리 ≤ `maxDist` px). 안이면 거리 0.
+   * 가게 POI의 앵커가 건물 바로 앞(문 앞 보도)에 찍힌 경우 그 건물을 찾는다.
+   */
+  unitNear(x: number, y: number, maxDist: number): { u: BuildingUnit; d: number } | null {
+    const inside = this.unitAt(x, y);
+    if (inside) return { u: inside, d: 0 };
+    const cx = Math.floor(x / this.chunkPx), cy = Math.floor(y / this.chunkPx);
+    let best: { u: BuildingUnit; d: number } | null = null;
+    const seen = new Set<BuildingUnit>();
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        for (const u of this.unitsByChunk.get((cy + oy) * this.chunkCols + (cx + ox)) ?? []) {
+          if (seen.has(u)) continue;
+          seen.add(u);
+          if (x < u.x0 - maxDist || x > u.x1 + maxDist || y < u.y0 - maxDist || y > u.y1 + maxDist) continue;
+          let d = Infinity;
+          const p = u.poly;
+          for (let i = 0; i < p.length; i++) {
+            const [ax, ay] = p[i], [bx, by] = p[(i + 1) % p.length];
+            const vx = bx - ax, vy = by - ay;
+            const l2 = vx * vx + vy * vy || 1;
+            const t = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / l2));
+            const dd = Math.hypot(ax + vx * t - x, ay + vy * t - y);
+            if (dd < d) d = dd;
+          }
+          if (d <= maxDist && (!best || d < best.d)) best = { u, d };
+        }
+      }
+    }
+    return best;
+  }
+
+  /** 261차 — id로 건물 그림 단위(합성 발자국 `syn_<osmId>`는 가게와 1:1) */
+  unitById(id: string): BuildingUnit | null {
+    for (const u of this.units) if (u.id === id) return u;
+    return null;
+  }
+
+  /** 261차 — 건물 단위의 문 자리들(월드 px) — 그림 · [F] 문 칸 · 간판이 같은 점을 쓴다 */
+  unitDoorPoints(u: BuildingUnit): [number, number][] {
+    return doorPointsOf(u);
+  }
+
+  /** 261차 — 가게마다 문 하나(x 목록). 굽기 전에(씬 `prepareSeamlessPois`) 넣는다 — 이미 구운 청크는 다음 굽기에서 반영 */
+  setUnitDoors(u: BuildingUnit, xs: number[]): void {
+    u.doors = xs.length ? xs : undefined;
   }
 
   /** 프롭 스프라이트 생성 공용 — 텍스처 미로드면 null (타일셋 미배포 환경 방어) */
@@ -3467,41 +3467,11 @@ export class SeamlessChunks {
     }
   }
 
-  /** 건물(#) 연결요소 라벨링 — 컴포넌트 bbox·지붕 팔레트 배정 (전맵 1회) */
+  /** 건물(#) 연결요소 라벨링 — 컴포넌트 bbox (전맵 1회). 261차 — `BuildingArt.labelBuildingComps`로 옮겨 레거시 맵과 공유 */
   private labelBuildings(): void {
-    const { cols, rows } = this.cfg;
-    const qx = new Int32Array(cols * rows);
-    const qy = new Int32Array(cols * rows);
-    for (let r = 0; r < rows; r++) {
-      const line = this.cfg.terrainRows[r];
-      for (let c = 0; c < cols; c++) {
-        if (line[c] !== '#' || this.compOf[r * cols + c] !== -1) continue;
-        const id = this.comps.length;
-        let head = 0, tail = 0, n = 0;
-        let c0 = c, c1 = c, r0 = r, r1 = r;
-        qx[tail] = c; qy[tail] = r; tail++;
-        this.compOf[r * cols + c] = id;
-        while (head < tail) {
-          const x = qx[head], y = qy[head]; head++;
-          n++;
-          if (x < c0) c0 = x; if (x > c1) c1 = x;
-          if (y < r0) r0 = y; if (y > r1) r1 = y;
-          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-            const nx = x + dx, ny = y + dy;
-            if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
-            const k = ny * cols + nx;
-            if (this.compOf[k] === -1 && this.cfg.terrainRows[ny][nx] === '#') {
-              this.compOf[k] = id; qx[tail] = nx; qy[tail] = ny; tail++;
-            }
-          }
-        }
-        this.comps.push({
-          c0, r0, c1, r1, n,
-          palIdx: Math.floor(hash2(this.cfg.seed ^ 0xb17d, c0, r0) * ROOFS.length) % ROOFS.length,
-          big: n >= 120,   // 5m/타일 기준 ≥ 3,000㎡ — 창고·터미널급
-        });
-      }
-    }
+    const { comps, compOf } = labelBuildingComps(this.cfg.terrainRows, this.cfg.cols, this.cfg.rows);
+    this.comps = comps;
+    this.compOf = compOf;
   }
 
   /**
@@ -4157,23 +4127,7 @@ export class SeamlessChunks {
       }
     }
 
-    // ── 고층 프리팹 — 대형 건물 컴포넌트(≥ 60타일)에 Gemini 빌딩 파사드 (POI 예약 건물 제외) ──
-    if (hasTs) {
-      for (const comp of this.comps) {
-        if (comp.n < 60) continue;
-        const key = `${comp.c0},${comp.r0}`;
-        if (this.cfg.reservedBuildingKeys?.has(key)) continue;
-        // 컴포넌트는 좌상단이 속한 청크가 소유 (중복 생성 방지)
-        if (Math.floor(comp.c0 / N) !== cc || Math.floor(comp.r0 / N) !== cr) continue;
-        const idx = 1 + (Math.floor(hash2(seed ^ 0xb1d, comp.c0, comp.r0) * 5) % 5);
-        const tex = `ts_gem_building_${idx}`;
-        if (!this.scene.textures.exists(tex)) continue;
-        const x = ((comp.c0 + comp.c1 + 1) / 2) * tr;
-        const y = (comp.r1 + 1) * tr;
-        // 파사드는 같은 y-sort 층의 지붕보다 위 (+0.0005)
-        slot.deco.push(this.scene.add.image(x, y, tex).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0005));
-      }
-    }
+    // 261차 — 대형 건물 성분에 얹던 Gemini 고층 파사드 프리팹은 뺐다(벡터 건물이 층수대로 벽을 세운다).
 
     // (166차) 구 보행자 NPC 정지 프롭 산포 삭제 — 보도 위 사람은 `AmbientNpcSystem`이 배치하고 걷게 한다.
 

@@ -27,7 +27,10 @@ import { setColorVisionMode, setShapeCues, type ColorVisionMode } from '../ui/Co
 // ─────────────────────────────────────────────
 export interface GameSettings {
   sfxVolume: number;    // 0.0 ~ 1.0
+  /** 배경 음악(261차 — `audio/Music.ts`) 0.0 ~ 1.0 */
   bgmVolume: number;    // 0.0 ~ 1.0
+  /** 261차 — 환경음(파도 · 비 · 바람 · 천둥) 0.0 ~ 1.0. 옛 설정본에 없으면 `bgmVolume`을 따른다(`loadSettings`) */
+  ambVolume: number;
   /** 211차 — 대사 소리(글자마다 나는 목소리 블립) 0.0 ~ 1.0 */
   voiceVolume: number;
   language: 'ko' | 'en';
@@ -67,7 +70,7 @@ export interface GameSettings {
 const SETTINGS_STORAGE_KEY = 'pixelAngler_settings';
 
 const DEFAULT_SETTINGS: GameSettings = {
-  sfxVolume: 0.7, bgmVolume: 0.5, voiceVolume: 0.6, language: 'ko',
+  sfxVolume: 0.7, bgmVolume: 0.5, ambVolume: 0.5, voiceVolume: 0.6, language: 'ko',
   rodSide: 'right', reelHandle: 'left',
   hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
   showFieldLabels: false,
@@ -97,7 +100,12 @@ export function loadSettings(): GameSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     // 기존 저장본에 신규 필드가 없을 수 있으므로 기본값과 병합
-    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GameSettings>) };
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<GameSettings>;
+      // 261차 — 환경음 볼륨이 생기기 전 저장본: 옛 「배경음」 값을 환경음에도 그대로
+      if (typeof saved.ambVolume !== 'number' && typeof saved.bgmVolume === 'number') saved.ambVolume = saved.bgmVolume;
+      return { ...DEFAULT_SETTINGS, ...saved };
+    }
   } catch (_e) {/* ignore */}
   return { ...DEFAULT_SETTINGS };
 }
@@ -553,12 +561,13 @@ export class SettingsScene extends Phaser.Scene {
 
     const audioItems: { key: keyof GameSettings; label: string; desc: string }[] = [
       { key: 'sfxVolume', label: '효과음 볼륨 (SFX)', desc: '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량' },
-      { key: 'bgmVolume', label: '배경음 볼륨 (BGM)', desc: '파도 · 비 · 바람 · 천둥 같은 배경음 음량' },
+      { key: 'bgmVolume', label: '배경 음악 볼륨 (BGM)', desc: '장면마다 흐르는 음악 음량 — 항구 · 밤바다 · 낚시 · 집 · 텃밭 · 시장' },
+      { key: 'ambVolume', label: '환경음 볼륨', desc: '파도 · 비 · 바람 · 천둥 같은 환경음 음량' },
       { key: 'voiceVolume', label: '대사 소리', desc: '대화 글자가 찍힐 때 나는 인물 목소리 음량' },
     ];
 
     audioItems.forEach((item, i) => {
-      const iy = startY + i * 110;
+      const iy = startY + i * 92;   // 261차 — 4줄(효과음 · 배경 음악 · 환경음 · 대사)
 
       const label = this.add.text(startX, iy, item.label, {
         fontFamily: '"Noto Sans KR", sans-serif',
@@ -628,7 +637,7 @@ export class SettingsScene extends Phaser.Scene {
     });
 
     // 저장 안내
-    const saveNote = this.add.text(startX, startY + 330, '슬라이더 조절 후 자동 저장됩니다.', {
+    const saveNote = this.add.text(startX, startY + 92 * 4 + 4, '슬라이더 조절 후 자동 저장됩니다.', {
       fontFamily: '"Noto Sans KR", sans-serif',
       fontSize: '11px',
       color: '#4af2a1',

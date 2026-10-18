@@ -3,9 +3,9 @@
  * @description 오픈소스/생성 타일셋 스프라이트 매니페스트 (101차 후속 — `public/tileset/`).
  *
  * 원본: `pixelazed/tileset/` → `tools/extract_tileset_assets.py build`가 트림/재조립해 출력.
- *  - gem/  Gemini 생성 + 사용자 piskel 편집 (고해상 — 빌딩 5·팝업 4·횟집 2·정자·테트라·경계·NPC 5)
- *  - td/   TopDownCityPack (FisherG, 자유 이용 — 12px 그리드 도트: 나무·가로등·벤치·주택 …)
- *  - kn/   Kenney Roguelike Modern City (CC0 — 16px: 차량·노점·나무·프롭)
+ *  - gem/  Gemini 생성 + 사용자 piskel 편집 (고해상 — 정자·테트라·경계. 빌딩 5·팝업 4·횟집 2는 261차에 로드 폐기)
+ *  - td/   TopDownCityPack (FisherG, 자유 이용 — 12px 그리드 도트: 나무·가로등·벤치·펜스·차량. 주택·문·지붕 연장·실외기는 261차 폐기)
+ *  - kn/   Kenney Roguelike Modern City (CC0 — 16px: 차량·나무·프롭·지면. 노점 2 · 건물 키트(지붕 72 · 벽 5)는 261차 폐기)
  *  - ttp/  사용자 제작 TTP(테트라포드)·해안 접경 시트 (`pixelazed/tileset/1.png`·`2.png` →
  *          `extract_tileset_assets.py ttp` — 타일 32px(TR 1:1) · 테트라포드 스프라이트 3크기 × 좌우 플립)
  *  - coast/ 사용자 제작 해안 세트 (`돌 방파제 그리드`·`방파제 바위 및 바다 경계면 모서리`·
@@ -13,6 +13,8 @@
  *          Rock-Water 4·물 상세 7·부두 모서리 4)
  * 텍스처 키 = `ts_<폴더>_<파일명>`. RegionFieldScene(심리스)이 preload에서 일괄 로드한다.
  * 전부 **PNG 직접 로드** 에셋 — 재추출 + F5로 반영 (asset-pipeline 스킬 ⓪).
+ * ⚠ 261차 — **건물 그림 에셋은 로드하지 않는다**(사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만」).
+ *   파일은 `public/tileset/`에 그대로 두되(「우선 그냥 사용하지 않는 쪽으로 빼두고」) 목록에서 뺐다. 건물은 `scenes/field/BuildingArt.ts`가 그린다.
  */
 
 import { PLACEABLE_TILES, COAST_OBJECTS } from './TileCatalog.js';
@@ -23,8 +25,7 @@ export interface TilesetEntry {
 }
 
 const gem = [
-  'building_1', 'building_2', 'building_3', 'building_4', 'building_5',
-  'popup_1', 'popup_2', 'popup_3', 'popup_4', 'sashimi_1', 'sashimi_2',
+  // 261차 — building_1~5 · popup_1~4 · sashimi_1~2 로드 폐기(벡터 건물로 대체)
   'jungja', 'tetra', 'boundary_port',
   // 166차 — gem NPC 5종(생선 장수·할아버지·경찰관·아빠와 아이·관광객) 로드 폐기.
   //   마을 사람은 전부 `characterOf`가 굽는다(`scenes/field/FieldNpcSystem.ts`).
@@ -33,10 +34,8 @@ const td = [
   'tree_big', 'palm', 'tree_small', 'lamp_arm', 'lamp_arm2', 'pole', 'pole2',
   'traffic_light', 'traffic_light_stop', 'signpost', 'signpost_red',
   'sign_warn', 'sign_blue', 'sign_round', 'bench', 'trash', 'hydrant',
-  // 12px 격자 직접 크롭 (101차 후속 4 — 주택 6×7 · 지붕 연장 조각 · 철망 펜스 세트 · 문 · 실외기)
-  'house_red', 'house_blue', 'roof_ext_red', 'roof_ext_blue',
+  // 12px 격자 직접 크롭 (101차 후속 4 — 철망 펜스 세트. 주택 · 지붕 연장 · 문 · 실외기는 261차 로드 폐기)
   'fence_h', 'fence_v1', 'fence_v2', 'fence_v3', 'fence_v4',
-  'door_blue', 'door_brown', 'door_white', 'ac_unit',
   // 차량 (Sprites/Vehicles — 4방향 프레임: 우측면·정면·좌측면·후면. 주차 차량 = 벽 방향에 맞는 프레임)
   ...['car', 'pickup'].flatMap((k) => ['blue', 'green', 'red'].flatMap((c) => ['right', 'down', 'left', 'up'].map((d) => `${k}_${c}_${d}`))),
 ];
@@ -48,22 +47,10 @@ export const GRASS_EDGE_SUFFIXES = [
 ] as const;
 export const PAVED_EDGE_SUFFIXES = ['n', 'e', 's', 'w', 'nw', 'ne', 'sw', 'se'] as const;
 
-/** Kenney 건물 키트 — 지붕 오토타일(색 4 × 부위 18) + 벽 모듈(64×32, 5종). ×2 재베이크 후 사용.
- *  p1/p2 = 2×2 옥상 패널 블록(지붕 인테리어 타일링 변형 — 101차 잔여 해소) */
-export const KENNEY_ROOF_COLORS = ['red', 'gray', 'light', 'tan'] as const;
-export const KENNEY_ROOF_PARTS = [
-  'nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e', 'in', 'vent',
-  'p1_nw', 'p1_ne', 'p1_sw', 'p1_se', 'p2_nw', 'p2_ne', 'p2_sw', 'p2_se',
-] as const;
-export const KENNEY_WALLS = ['brick_red', 'brick_gray', 'brick_tan', 'glass', 'white'] as const;
-const knKit = [
-  ...KENNEY_ROOF_COLORS.flatMap((c) => KENNEY_ROOF_PARTS.map((p) => `roof_${c}_${p}`)),
-  ...KENNEY_WALLS.map((w) => `wall_${w}`),
-];
+// 261차 — Kenney 건물 키트(지붕 오토타일 색 4 × 부위 18 · 벽 모듈 5)와 노점 2종은 로드 목록에서 뺐다(벡터 건물로 대체).
 const kn = [
   'car_a', 'car_b', 'car_c', 'car_d', 'car_e', 'car_f',          // 측면 차량
   'car_g', 'car_h', 'car_i', 'car_j', 'car_k', 'car_l',          // 탑다운 차량 (도로 각도 회전)
-  'stall_green', 'stall_orange',
   'ktree_a', 'ktree_b', 'ktree_c', 'ktree_d', 'ktree_e', 'ktree_f',
   'klamp', 'klamp2', 'ktrash',
   // 지면 베이스 (16px — TR 32에서 ×2 정수 재베이크, SeamlessChunks.ensureGroundTextures)
@@ -77,7 +64,6 @@ const kn = [
   // 지면 오토타일 엣지/코너 (extract_tileset_assets EDGE_CELLS — 접미 = 다른 지형이 보이는 방위)
   ...GRASS_EDGE_SUFFIXES.map((s) => `ground_grass_edge_${s}`),
   ...PAVED_EDGE_SUFFIXES.flatMap((s) => [`ground_tan_edge_${s}`, `ground_pier_edge_${s}`, `ground_pave_edge_${s}`]),
-  ...knKit,
 ];
 
 /** TTP(테트라포드)·해안 접경 세트 — 타일은 **TR(32px) 1:1**이라 런타임 재샘플이 없다.

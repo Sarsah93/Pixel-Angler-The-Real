@@ -59,12 +59,24 @@
   → **257 대사 문장마다 줄바꿈 · 쉬는 구간 · 떠오르는 안내 글 흰 테(28곳)**
   → **258 건물 윤곽 충돌 · 의뢰 표시 이름표 옆 · 가이드 말풍선 모달 비키기 · 대화창 효과 줄 빼기 · 채비 목줄 중간**
   → **259 제작 창 클릭 · 의뢰 표시 다시 그리기 · 지도 이름 흰 테 · 수면 빗방울 · 어두운 장비 그림 흰 테 · main 반영 · 79차 배포**
-  → **260 아티팩트 3개 현행화(남은 과업 설계 · 구현 라이브러리 · 채비 모딩 순서도) · 아티팩트 4개 갱신 규칙**.
+  → **260 아티팩트 3개 현행화(남은 과업 설계 · 구현 라이브러리 · 채비 모딩 순서도) · 아티팩트 4개 갱신 규칙**
+  → **261 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
-- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림**) — 부족하면 규칙 보강,
+- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국**) — 부족하면 규칙 보강,
   괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+- **261차**: **구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남** —
+  사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만 … 표지판이 있는 위치가 해당 상가 건물들」 「냉동 오징어 2개를 팔았는데 … 하나 더 생겨져 있음」
+  「배경음악 초안 … 제일 최근에 변경한 부분들로 우선 적용」 →
+  Gemini 횟집 · 팝업 · 고층 · TopDown 주택 · Kenney 노점 · 지붕 키트 로드 폐기(PNG 98장 — 파일은 `public/tileset/`에 그대로 · `ui/BuildingVariant.ts` 삭제) ·
+  가게 389곳 중 건물 없는 자리 336곳에 발자국(`RegionFieldScene.synthesizePoiBuildings` — 종류 · 층수 · 크기 표 · 문 칸 후보 · 차도 밴드 · 다른 가게 · 물 회피 · 2차 보도 → 지형 '#' + 윤곽) ·
+  건물마다 가게 수만큼 문(`BuildingUnit.doors` · `assignUnitDoors`) = 그림 · [F] 문 앞 칸 · 간판 한 점 · 홈타운 집 · 보건소 · 부산 가게도 같은 벡터 건물(`planLegacyBuildings`) ·
+  발 끝이 윤곽 안인 칸은 걷는 칸 아님(`isWalkable`) · 오징어 = `repairPrologue`가 판 뒤 되살림 → `prologue.sell` 깃발(A/B 5회) ·
+  Lyria 2판 7 + 1판 3 = 10곡 → `audio/Music.ts`(자리마다 곡 · 반복 이음매 굽기 · 2초 교차 · 10분 고정) · 설정 「배경 음악」 「환경음」 ·
+  빌드 3/3 · core 322/322 · 실렌더(구 텍스처 0 · 발자국 336 · 자리 없음 6 · [F] · 홈타운 · 부산 · 음악 · pageerror 0) · 아티팩트 4개 재발행(위키 58 · 셋 Version 3).
+  **다음 = 사용자 육안(발자국 크기 · 층수 표 · 좌판 차양) · 배경 음악 실청취 · main 반영 · 80차 배포(요청 시)(백로그 CI)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-18-261-vector-buildings-only-bgm-squid.md`.
 - **260차**: **아티팩트 3개 현행화 · 아티팩트 4개 갱신 규칙** — 사용자 「남은 과업 설계, 구현 라이브러리, 채비모딩순서도 까지도 업데이트도 해줘.
   (이제부터 인게임 내 설계 변경이 이뤄지면 아티팩트 4개; 남은 과업 설계, 구현 라이브러리, 채비모딩순서도, wiki 전부 업데이트) 규칙으로 정해놔」 →
   남은 과업 설계(98차판 → 259차 기준) · 구현 라이브러리(146차판 → 12갈래 157항목 · 머리 숫자 core dist 실측) ·
@@ -82,16 +94,6 @@
   core 322/322 · 실렌더(한 · 영 · pageerror 0) · 위키 Version 57 · main 빨리 감기(`dc4135e`) · 「테스트 배포」 79차(gh-pages `99de6f5` · 하위 경로 점검 통과).
   **다음 = 79차 라이브 확인(사용자) · 작은 칸 흰 테 점선(요청 시) · 수면 빗방울 조율(실플레이)(백로그 CG)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-16-259-craft-clicks-quest-marks-map-labels-sea-rain-tackle-outlines.md`.
-- **258차**: **건물 윤곽 충돌 · 의뢰 표시 이름표 옆 · 가이드 말풍선 모달 비키기 · 대화창 효과 줄 빼기 · 채비 목줄 중간** —
-  사용자 「캐릭터가 벽에 걸려서 더 앞으로 가지지 않아야 … 경계(Collision) 명확화」 「'수량 지정' 창을 가리지 않도록 … 우측에」
-  「'정옥선' 이라는 이름 왼쪽이나 오른쪽에 … '물음표'」 「(위키로만 확인할 수 있도록)」 「'목줄' 다음에 … '목줄 중간' … 좁쌀봉돌/일반 봉돌」 →
-  건물 충돌 = 그림 윤곽 4px 띠(`BuildingArt.unitBodyRects` · 덮은 '#' 칸 몸체 없음 · 몸이 서는 칸만 걷기 · 문 자리 `tileFitsBody`) ·
-  도달성 점검 `tools/check_building_reach.py`(문 이동 24 · 잃은 문 1 · 막힌 1칸 틈 109) · 말풍선 = 작은 모달 옆(`GuideTour.dialogOcc`) ·
-  의뢰 표시 = 이름표 오른쪽 같은 줄(`placeNpcMark`) · 대화창 = 대답 · 「받은 것」 · 마무리만(효과 줄 · 고르지 않은 답 → 위키) ·
-  채비 = 목줄 → 목줄 중간(`leader_sinker`) → 목줄 끝(직결 매듭 · 도래 `end_swivel` · 스냅) · 옛 트리 이관(`migrateRigTree`) · 봉돌 여럿 무게 ·
-  core 322/322 · 실렌더(벽 · 표시 · 말풍선 · 대화 · 채비 · 한 · 영 · pageerror 0).
-  **다음 = 실플레이(막힌 틈 · 문 자리)(백로그 CF)** — main 반영 · 79차 배포 · 지도 이름 흰 테는 259에서 했다.
-  상세 `docs/wiki/03-WORKLOG/2026-10-16-258-outline-collision-rig-mid-leader.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -165,6 +167,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 13. **건물 둘레에 격자가 드러나는 그림 금지**(2026-10-12 · 239차 R13) — 건물은 OSM 윤곽 + 2.5D 벽 + 지붕(`scenes/field/BuildingArt.ts`).
    타일 지붕 셀 · 타일 에이프런 · 타일 그림자 띠를 되살리지 않는다. 간판 · 프롭은 차도 밴드 · 건물 타일 · 지붕 아래를 피한다(`shopSignSpot`).
    충돌도 그림 윤곽 띠(`unitBodyRects` — 258차)다 — '#' 칸 충돌(아래 두 줄만 막기)을 되살리지 않는다.
+   **261차부터 건물 그림 에셋(프리팹 · 키트)은 로드하지 않는다** — 가게 자리에 건물이 없으면 발자국을 합성한다(`synthesizePoiBuildings`). 레거시 맵도 같은 함수.
 14. **필드 위 글자에 바탕 상자 금지**(2026-10-14 · 247차 R14) — 머리 위 [F] 안내 · 떠오르는 안내 · 거리 · 이름표 · 꼬리표는
    검은 글자 + 흰 테 한 벌(`ui/WorldLabel.ts` `worldLabelStyle`). 노란 글자 + 남색 상자를 되살리지 않는다.
    257차부터 떠오르는 안내 글(저장 알림 · 토스트 · 경고 · 결과 띠)도 같은 한 벌 — 경고는 글자색만(`WORLD_LABEL_WARN`). 칸 안 배지 · 단추 · HUD 상시 칸은 제외.
@@ -179,11 +182,11 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 79차 배포 2026-10-16 = 259차까지 포함** — 257~259는 79차에 처음 실렸다).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 57 = 259차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
+  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 58 = 261차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 2 = 259차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 2 = 259차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 2 = 258차 문법) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 3 = 261차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 3 = 261차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 3 = 261차 기준 · 문법은 258차) · 위키(위 줄).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
