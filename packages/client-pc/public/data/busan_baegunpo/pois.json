@@ -1,0 +1,786 @@
+[
+ {
+  "type": "police",
+  "name": "용호3치안센터",
+  "nameEn": "Yongho 3 Community Policing Center",
+  "tx": 410,
+  "ty": 164,
+  "osmId": 368604153
+ },
+ {
+  "type": "bank",
+  "name": "남부산농협",
+  "nameEn": "Nambusan Nonghyup",
+  "tx": 407,
+  "ty": 111,
+  "osmId": 368640070
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "피케이마트",
+  "nameEn": "Pikei Mart",
+  "tx": 407,
+  "ty": 217,
+  "osmId": 368667283
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "씨티마트",
+  "nameEn": "City Mart",
+  "tx": 357,
+  "ty": 82,
+  "osmId": 368667651
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "축산마트",
+  "nameEn": "Chuksan Mart",
+  "tx": 136,
+  "ty": 41,
+  "osmId": 368667791
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "공마트",
+  "nameEn": "Gong Mart",
+  "tx": 357,
+  "ty": 82,
+  "osmId": 368668234
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "용당현대아이파크",
+  "nameEn": "Yongdang hyundai I Park",
+  "tx": 168,
+  "ty": 159,
+  "osmId": 368668424
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "삼성할인마트",
+  "nameEn": "Samseong Retail Shop",
+  "tx": 368,
+  "ty": 32,
+  "osmId": 368668944
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "주공마트",
+  "nameEn": "Jugong Mart",
+  "tx": 357,
+  "ty": 82,
+  "osmId": 368696200
+ },
+ {
+  "type": "hospital",
+  "name": "서민정형외과",
+  "nameEn": "Seomin Hospital",
+  "tx": 399,
+  "ty": 100,
+  "osmId": 368744526
+ },
+ {
+  "type": "hospital",
+  "name": "한마음여성의원",
+  "nameEn": "Hanmaeumyeoseong Clinic",
+  "tx": 389,
+  "ty": 216,
+  "osmId": 368745342
+ },
+ {
+  "type": "hospital",
+  "name": "조진수소아과의원",
+  "nameEn": "Jojinsusoagwa Clinic",
+  "tx": 381,
+  "ty": 240,
+  "osmId": 368745961
+ },
+ {
+  "type": "bank",
+  "name": "우리은행",
+  "nameEn": "Uri Bank",
+  "tx": 399,
+  "ty": 168,
+  "osmId": 368894395
+ },
+ {
+  "type": "fuel",
+  "name": "반도주유소",
+  "nameEn": "Bando Gas Station",
+  "tx": 185,
+  "ty": 18,
+  "osmId": 368906008
+ },
+ {
+  "type": "fuel",
+  "name": "남양주유소",
+  "nameEn": "Namyang Gas Station",
+  "tx": 389,
+  "ty": 256,
+  "osmId": 368906101
+ },
+ {
+  "type": "fuel",
+  "name": "공단주유소",
+  "nameEn": "Gongdan Gas Station",
+  "tx": 131,
+  "ty": 108,
+  "osmId": 368906190
+ },
+ {
+  "type": "fuel",
+  "name": "경인주유소",
+  "nameEn": "Gyeongin Gas Station",
+  "tx": 191,
+  "ty": 8,
+  "osmId": 368906202
+ },
+ {
+  "type": "fuel",
+  "name": "은마주유소",
+  "nameEn": "Eunma Gas Station",
+  "tx": 98,
+  "ty": 169,
+  "osmId": 368906509
+ },
+ {
+  "type": "fuel",
+  "name": "쌍용주유소",
+  "nameEn": "Ssangyong Gas Station",
+  "tx": 383,
+  "ty": 180,
+  "osmId": 368906554
+ },
+ {
+  "type": "fuel",
+  "name": "펙트주유소",
+  "nameEn": "Pekteu Gas Station",
+  "tx": 108,
+  "ty": 248,
+  "osmId": 368906674
+ },
+ {
+  "type": "fuel",
+  "name": "용당C.Y주유소",
+  "nameEn": "Yongdang C.Y Gas Station",
+  "tx": 153,
+  "ty": 112,
+  "osmId": 368906802
+ },
+ {
+  "type": "fuel",
+  "name": "북항대교주유소",
+  "nameEn": "Bukhangdaegyo Gas Station",
+  "tx": 108,
+  "ty": 248,
+  "osmId": 368907058
+ },
+ {
+  "type": "fuel",
+  "name": "용당씨와이주유소",
+  "nameEn": "Yongdangssiwai Gas Station",
+  "tx": 153,
+  "ty": 112,
+  "osmId": 368907128
+ },
+ {
+  "type": "fuel",
+  "name": "석유써비스신선대주유소",
+  "nameEn": "Seokyusseobiseusinseondae Gas Station",
+  "tx": 113,
+  "ty": 253,
+  "osmId": 368907295
+ },
+ {
+  "type": "restaurant",
+  "name": "용궁횟집",
+  "nameEn": "Yonggung Fish Restaurant",
+  "tx": 98,
+  "ty": 267,
+  "osmId": 368956694
+ },
+ {
+  "type": "restaurant",
+  "name": "주원횟집",
+  "nameEn": "Juwon Fish Restaurant",
+  "tx": 380,
+  "ty": 283,
+  "osmId": 368957201
+ },
+ {
+  "type": "restaurant",
+  "name": "아름횟집",
+  "nameEn": "Areum Fish Restaurant",
+  "tx": 128,
+  "ty": 25,
+  "osmId": 368958356
+ },
+ {
+  "type": "restaurant",
+  "name": "동국횟집",
+  "nameEn": "Dongguk Fish Restaurant",
+  "tx": 433,
+  "ty": 24,
+  "osmId": 368958465
+ },
+ {
+  "type": "restaurant",
+  "name": "청해횟집",
+  "nameEn": "Cheonghae Fish Restaurant",
+  "tx": 434,
+  "ty": 126,
+  "osmId": 368958547
+ },
+ {
+  "type": "restaurant",
+  "name": "감포횟집",
+  "nameEn": "Gampo Fish Restaurant",
+  "tx": 392,
+  "ty": 3,
+  "osmId": 368958576
+ },
+ {
+  "type": "restaurant",
+  "name": "부산횟집",
+  "nameEn": "Busan Fish Restaurant",
+  "tx": 96,
+  "ty": 252,
+  "osmId": 368959812
+ },
+ {
+  "type": "viewpoint",
+  "name": "오륙도 스카이워크",
+  "nameEn": "Oryukdo Skywalk",
+  "tx": 632,
+  "ty": 542,
+  "osmId": 4197185189
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Oryukdo Tourist Info Center",
+  "tx": 602,
+  "ty": 519,
+  "osmId": 4533702593
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 599,
+  "ty": 516,
+  "osmId": 4537643470
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 622,
+  "ty": 451,
+  "osmId": 4537646590
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 685,
+  "ty": 315,
+  "osmId": 4537647895
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 692,
+  "ty": 226,
+  "osmId": 4537648317
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 613,
+  "ty": 62,
+  "osmId": 4537650261
+ },
+ {
+  "type": "viewpoint",
+  "name": "이기대 산책로",
+  "nameEn": "Esplanade",
+  "tx": 611,
+  "ty": 48,
+  "osmId": 4537650264
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 605,
+  "ty": 10,
+  "osmId": 4537677343
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "탑 마트",
+  "nameEn": "",
+  "tx": 435,
+  "ty": 293,
+  "osmId": 4634570618
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "하나로 마트",
+  "nameEn": "",
+  "tx": 376,
+  "ty": 292,
+  "osmId": 4634570619
+ },
+ {
+  "type": "shop",
+  "shopKind": "yes",
+  "name": "홈플러스",
+  "nameEn": "",
+  "tx": 558,
+  "ty": 486,
+  "osmId": 4655371461
+ },
+ {
+  "type": "restaurant",
+  "name": "할매분식",
+  "nameEn": "",
+  "tx": 369,
+  "ty": 236,
+  "osmId": 4684573392
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "탑훼밀리마트",
+  "nameEn": "",
+  "tx": 448,
+  "ty": 133,
+  "osmId": 4686337376
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "CU",
+  "nameEn": "",
+  "tx": 464,
+  "ty": 133,
+  "osmId": 4686337377
+ },
+ {
+  "type": "bank",
+  "name": "부산은행 용호동지점",
+  "nameEn": "",
+  "tx": 404,
+  "ty": 122,
+  "osmId": 4686337378
+ },
+ {
+  "type": "shop",
+  "shopKind": "stationery",
+  "name": "문방사우",
+  "nameEn": "",
+  "tx": 414,
+  "ty": 120,
+  "osmId": 4686337380
+ },
+ {
+  "type": "restaurant",
+  "name": "롯데리아",
+  "nameEn": "Lotteria",
+  "tx": 399,
+  "ty": 110,
+  "osmId": 4686337381
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GS25 용호사거리점",
+  "nameEn": "",
+  "tx": 413,
+  "ty": 124,
+  "osmId": 4686337382
+ },
+ {
+  "type": "bank",
+  "name": "용호새마을금고",
+  "nameEn": "",
+  "tx": 411,
+  "ty": 131,
+  "osmId": 4686337383
+ },
+ {
+  "type": "restaurant",
+  "name": "해동반점",
+  "nameEn": "",
+  "tx": 420,
+  "ty": 125,
+  "osmId": 4686337384
+ },
+ {
+  "type": "shop",
+  "shopKind": "dry_cleaning",
+  "name": "하얀세탁",
+  "nameEn": "",
+  "tx": 450,
+  "ty": 130,
+  "osmId": 4686337385
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐일레븐 부산용호제일점",
+  "nameEn": "7-Eleven",
+  "tx": 402,
+  "ty": 83,
+  "osmId": 4686337694
+ },
+ {
+  "type": "shop",
+  "shopKind": "car_repair",
+  "name": "남부정비",
+  "nameEn": "",
+  "tx": 401,
+  "ty": 87,
+  "osmId": 4686337695
+ },
+ {
+  "type": "shop",
+  "shopKind": "car",
+  "name": "쉐보레 용호영업소",
+  "nameEn": "",
+  "tx": 406,
+  "ty": 87,
+  "osmId": 4686337696
+ },
+ {
+  "type": "shop",
+  "shopKind": "optician",
+  "name": "아이리더안경 용호점",
+  "nameEn": "",
+  "tx": 401,
+  "ty": 127,
+  "osmId": 4686337698
+ },
+ {
+  "type": "shop",
+  "shopKind": "bakery",
+  "name": "뚜레주르 용호점",
+  "nameEn": "",
+  "tx": 398,
+  "ty": 121,
+  "osmId": 4686337699
+ },
+ {
+  "type": "shop",
+  "shopKind": "cosmetics",
+  "name": "스킨푸드 용호점",
+  "nameEn": "",
+  "tx": 397,
+  "ty": 126,
+  "osmId": 4686337700
+ },
+ {
+  "type": "restaurant",
+  "name": "",
+  "nameEn": "",
+  "tx": 383,
+  "ty": 243,
+  "osmId": 5647370423
+ },
+ {
+  "type": "restaurant",
+  "name": "용호동할매 팥빙수 단팥죽",
+  "nameEn": "",
+  "tx": 383,
+  "ty": 17,
+  "osmId": 5774214253
+ },
+ {
+  "type": "restaurant",
+  "name": "부산 이기대맛집 착한생오리",
+  "nameEn": "Grilled Duck Restaurant",
+  "tx": 437,
+  "ty": 26,
+  "osmId": 6885874785
+ },
+ {
+  "type": "toilet",
+  "name": "유선정체육공원화장실",
+  "nameEn": "",
+  "tx": 295,
+  "ty": 363,
+  "osmId": 8797618928
+ },
+ {
+  "type": "hospital",
+  "name": "온누리마취통증의학과의원",
+  "nameEn": "",
+  "tx": 401,
+  "ty": 131,
+  "osmId": 8889107029
+ },
+ {
+  "type": "hospital",
+  "name": "조안과의원",
+  "nameEn": "",
+  "tx": 403,
+  "ty": 127,
+  "osmId": 8889107030
+ },
+ {
+  "type": "hospital",
+  "name": "메디컬 안과의원",
+  "nameEn": "",
+  "tx": 399,
+  "ty": 115,
+  "osmId": 8889107032
+ },
+ {
+  "type": "pharmacy",
+  "name": "시민약국",
+  "nameEn": "",
+  "tx": 396,
+  "ty": 115,
+  "osmId": 8889107033
+ },
+ {
+  "type": "pharmacy",
+  "name": "하나로약국",
+  "nameEn": "",
+  "tx": 399,
+  "ty": 103,
+  "osmId": 8889107034
+ },
+ {
+  "type": "restaurant",
+  "name": "정분식",
+  "nameEn": "",
+  "tx": 394,
+  "ty": 256,
+  "osmId": 8998693017
+ },
+ {
+  "type": "restaurant",
+  "name": "삼동국밥",
+  "nameEn": "",
+  "tx": 419,
+  "ty": 103,
+  "osmId": 9229939717
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 58,
+  "ty": 6,
+  "osmId": 9669357957
+ },
+ {
+  "type": "viewpoint",
+  "name": "관해정",
+  "nameEn": "Gwanhae Pavilion Overlook",
+  "tx": 559,
+  "ty": 94,
+  "osmId": 10216138890
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 685,
+  "ty": 155,
+  "osmId": 10836195606
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 678,
+  "ty": 179,
+  "osmId": 10836195607
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 672,
+  "ty": 268,
+  "osmId": 10836212629
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 672,
+  "ty": 340,
+  "osmId": 10836220131
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 609,
+  "ty": 456,
+  "osmId": 10836249330
+ },
+ {
+  "type": "shop",
+  "shopKind": "bakery",
+  "name": "Paris Baguette",
+  "nameEn": "",
+  "tx": 406,
+  "ty": 107,
+  "osmId": 11515634537
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "해파랑 편의점",
+  "nameEn": "Haeparang Convenience Store",
+  "tx": 600,
+  "ty": 523,
+  "osmId": 11515740140
+ },
+ {
+  "type": "cafe",
+  "name": "Starbucks",
+  "nameEn": "",
+  "tx": 162,
+  "ty": 40,
+  "osmId": 12089888669
+ },
+ {
+  "type": "viewpoint",
+  "name": "조망바위",
+  "nameEn": "",
+  "tx": 270,
+  "ty": 246,
+  "osmId": 12242814737
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 610,
+  "ty": 26,
+  "osmId": 12325182406
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 607,
+  "ty": 11,
+  "osmId": 12325312438
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 639,
+  "ty": 67,
+  "osmId": 12325317457
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 625,
+  "ty": 539,
+  "osmId": 12325369700
+ },
+ {
+  "type": "cafe",
+  "name": "Haeparang Cafe",
+  "nameEn": "",
+  "tx": 601,
+  "ty": 519,
+  "osmId": 12325409728
+ },
+ {
+  "type": "cafe",
+  "name": "Haeparang Cafe",
+  "nameEn": "",
+  "tx": 606,
+  "ty": 526,
+  "osmId": 12325422521
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 583,
+  "ty": 48,
+  "osmId": 12500413603
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 526,
+  "ty": 48,
+  "osmId": 12500462802
+ },
+ {
+  "type": "lighthouse",
+  "name": "오륙도 등대",
+  "nameEn": "Oryukdo Lighthouse",
+  "tx": 671,
+  "ty": 748,
+  "osmId": 475833896
+ },
+ {
+  "type": "hospital",
+  "name": "부산성모병원",
+  "nameEn": "Busans Saint Mary's Hospital",
+  "tx": 352,
+  "ty": 327,
+  "osmId": 510528038
+ },
+ {
+  "type": "restaurant",
+  "name": "맥도날드",
+  "nameEn": "McDonald's",
+  "tx": 176,
+  "ty": 46,
+  "osmId": 566231562
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "CU 용호쌍용점",
+  "nameEn": "",
+  "tx": 378,
+  "ty": 268,
+  "osmId": 1047546630
+ },
+ {
+  "type": "market",
+  "name": "용호삼성시장",
+  "nameEn": "",
+  "tx": 373,
+  "ty": 23,
+  "osmId": 1294812242
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 582,
+  "ty": 49,
+  "osmId": 1466268284
+ }
+]

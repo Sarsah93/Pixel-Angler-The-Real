@@ -1,0 +1,599 @@
+[
+ {
+  "type": "lodging",
+  "name": "송도콘도",
+  "nameEn": "Songdo Condominium",
+  "tx": 583,
+  "ty": 122,
+  "osmId": 368663266
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "가구메가마트",
+  "nameEn": "Gagumega Mart",
+  "tx": 18,
+  "ty": 204,
+  "osmId": 368666593
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "농심가마트",
+  "nameEn": "Nongsimga Mart",
+  "tx": 6,
+  "ty": 400,
+  "osmId": 368668465
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "제이-할인마트",
+  "nameEn": "Jei - Retail Shop",
+  "tx": 34,
+  "ty": 426,
+  "osmId": 368669564
+ },
+ {
+  "type": "lodging",
+  "name": "송도해모수찜질방",
+  "nameEn": "Songdohaemosu Jjimjilbang",
+  "tx": 578,
+  "ty": 125,
+  "osmId": 368856403
+ },
+ {
+  "type": "fuel",
+  "name": "해동주유소",
+  "nameEn": "Haedong Gas Station",
+  "tx": 461,
+  "ty": 0,
+  "osmId": 368906177
+ },
+ {
+  "type": "fuel",
+  "name": "대성주유소",
+  "nameEn": "Daeseong Gas Station",
+  "tx": 737,
+  "ty": 13,
+  "osmId": 368906298
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "그린세탁편의점",
+  "nameEn": "Green Setak Convenience Store",
+  "tx": 676,
+  "ty": 5,
+  "osmId": 368948720
+ },
+ {
+  "type": "restaurant",
+  "name": "동명횟집",
+  "nameEn": "Dongmyeong Fish Restaurant",
+  "tx": 561,
+  "ty": 180,
+  "osmId": 368956729
+ },
+ {
+  "type": "restaurant",
+  "name": "물레방아횟집",
+  "nameEn": "Mullebanga Fish Restaurant",
+  "tx": 564,
+  "ty": 155,
+  "osmId": 368956789
+ },
+ {
+  "type": "restaurant",
+  "name": "모아횟집",
+  "nameEn": "Moa Fish Restaurant",
+  "tx": 593,
+  "ty": 120,
+  "osmId": 368956841
+ },
+ {
+  "type": "restaurant",
+  "name": "송하횟집",
+  "nameEn": "Songha Fish Restaurant",
+  "tx": 676,
+  "ty": 109,
+  "osmId": 368956874
+ },
+ {
+  "type": "restaurant",
+  "name": "태성하모회자연산횟집",
+  "nameEn": "Taeseonghamohoejayeonsan Fish Restaurant",
+  "tx": 684,
+  "ty": 124,
+  "osmId": 368956913
+ },
+ {
+  "type": "restaurant",
+  "name": "부일횟집",
+  "nameEn": "Buil Fish Restaurant",
+  "tx": 564,
+  "ty": 186,
+  "osmId": 368957019
+ },
+ {
+  "type": "restaurant",
+  "name": "충남횟집",
+  "nameEn": "Chungnam Fish Restaurant",
+  "tx": 97,
+  "ty": 112,
+  "osmId": 368957074
+ },
+ {
+  "type": "restaurant",
+  "name": "본전횟집",
+  "nameEn": "Bonjeon Fish Restaurant",
+  "tx": 678,
+  "ty": 111,
+  "osmId": 368957115
+ },
+ {
+  "type": "restaurant",
+  "name": "송일횟집",
+  "nameEn": "Songil Fish Restaurant",
+  "tx": 561,
+  "ty": 159,
+  "osmId": 368957660
+ },
+ {
+  "type": "restaurant",
+  "name": "해변횟집",
+  "nameEn": "Haebyeon Fish Restaurant",
+  "tx": 657,
+  "ty": 101,
+  "osmId": 368957699
+ },
+ {
+  "type": "restaurant",
+  "name": "해녀횟집",
+  "nameEn": "Haenyeo Fish Restaurant",
+  "tx": 596,
+  "ty": 97,
+  "osmId": 368957953
+ },
+ {
+  "type": "restaurant",
+  "name": "바다횟집",
+  "nameEn": "Bada Fish Restaurant",
+  "tx": 593,
+  "ty": 119,
+  "osmId": 368958324
+ },
+ {
+  "type": "restaurant",
+  "name": "백광횟집",
+  "nameEn": "Baekgwang Fish Restaurant",
+  "tx": 578,
+  "ty": 223,
+  "osmId": 368958478
+ },
+ {
+  "type": "restaurant",
+  "name": "평화횟집",
+  "nameEn": "Pyeonghwa Fish Restaurant",
+  "tx": 641,
+  "ty": 26,
+  "osmId": 368958611
+ },
+ {
+  "type": "restaurant",
+  "name": "삼영횟집",
+  "nameEn": "Samyeong Fish Restaurant",
+  "tx": 562,
+  "ty": 181,
+  "osmId": 368958619
+ },
+ {
+  "type": "restaurant",
+  "name": "명산횟집",
+  "nameEn": "Myeongsan Fish Restaurant",
+  "tx": 492,
+  "ty": 152,
+  "osmId": 368958703
+ },
+ {
+  "type": "restaurant",
+  "name": "서울횟집",
+  "nameEn": "Seoul Fish Restaurant",
+  "tx": 560,
+  "ty": 172,
+  "osmId": 368958763
+ },
+ {
+  "type": "restaurant",
+  "name": "남포횟집",
+  "nameEn": "Nampo Fish Restaurant",
+  "tx": 579,
+  "ty": 128,
+  "osmId": 368959153
+ },
+ {
+  "type": "restaurant",
+  "name": "대구횟집",
+  "nameEn": "Daegu Fish Restaurant",
+  "tx": 568,
+  "ty": 133,
+  "osmId": 368959244
+ },
+ {
+  "type": "restaurant",
+  "name": "곤포횟집",
+  "nameEn": "Gonpo Fish Restaurant",
+  "tx": 683,
+  "ty": 119,
+  "osmId": 368959296
+ },
+ {
+  "type": "restaurant",
+  "name": "산지횟집",
+  "nameEn": "Sanji Fish Restaurant",
+  "tx": 569,
+  "ty": 132,
+  "osmId": 368959301
+ },
+ {
+  "type": "restaurant",
+  "name": "등대횟집",
+  "nameEn": "Deungdae Fish Restaurant",
+  "tx": 390,
+  "ty": 5,
+  "osmId": 368959303
+ },
+ {
+  "type": "restaurant",
+  "name": "송백횟집",
+  "nameEn": "Songbaek Fish Restaurant);멍기횟집 (Meonggi Fish Restaurant);거북횟집 (Geobuk Fish Restaurant",
+  "tx": 570,
+  "ty": 134,
+  "osmId": 368959755
+ },
+ {
+  "type": "restaurant",
+  "name": "총각횟집",
+  "nameEn": "Chonggak Fish Restaurant",
+  "tx": 583,
+  "ty": 230,
+  "osmId": 368959840
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "Songdo Beach",
+  "tx": 620,
+  "ty": 116,
+  "osmId": 4397761389
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 603,
+  "ty": 115,
+  "osmId": 4646289270
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐일레븐",
+  "nameEn": "7-Eleven",
+  "tx": 660,
+  "ty": 95,
+  "osmId": 4646292037
+ },
+ {
+  "type": "shop",
+  "shopKind": "car_repair",
+  "name": "",
+  "nameEn": "",
+  "tx": 103,
+  "ty": 64,
+  "osmId": 4709935289
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "",
+  "nameEn": "GS 25",
+  "tx": 104,
+  "ty": 125,
+  "osmId": 4968066224
+ },
+ {
+  "type": "pharmacy",
+  "name": "뉴송도 약국",
+  "nameEn": "New Songdo Pharmacy",
+  "tx": 566,
+  "ty": 130,
+  "osmId": 5591899823
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GS25",
+  "nameEn": "",
+  "tx": 587,
+  "ty": 120,
+  "osmId": 5591906423
+ },
+ {
+  "type": "lodging",
+  "name": "W모텔",
+  "nameEn": "W Motel",
+  "tx": 579,
+  "ty": 107,
+  "osmId": 5592684521
+ },
+ {
+  "type": "cafe",
+  "name": "타르틀레트",
+  "nameEn": "",
+  "tx": 1069,
+  "ty": 42,
+  "osmId": 6354241386
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "",
+  "nameEn": "GS 25",
+  "tx": 517,
+  "ty": 390,
+  "osmId": 6542688489
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 467,
+  "ty": 460,
+  "osmId": 6543866791
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 530,
+  "ty": 524,
+  "osmId": 6543881989
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 604,
+  "ty": 479,
+  "osmId": 6543881992
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 535,
+  "ty": 563,
+  "osmId": 6543886385
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 657,
+  "ty": 426,
+  "osmId": 6543932787
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 643,
+  "ty": 431,
+  "osmId": 6544141485
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 1076,
+  "ty": 65,
+  "osmId": 6728813885
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 537,
+  "ty": 638,
+  "osmId": 7059664886
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 683,
+  "ty": 128,
+  "osmId": 7444484611
+ },
+ {
+  "type": "lighthouse",
+  "name": "",
+  "nameEn": "",
+  "tx": 546,
+  "ty": 738,
+  "osmId": 8034734366
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "이마트24",
+  "nameEn": "eMart24",
+  "tx": 612,
+  "ty": 85,
+  "osmId": 8462433417
+ },
+ {
+  "type": "viewpoint",
+  "name": "구평동 회화나무",
+  "nameEn": "",
+  "tx": 102,
+  "ty": 117,
+  "osmId": 10724788605
+ },
+ {
+  "type": "viewpoint",
+  "name": "감천동 느티나무",
+  "nameEn": "",
+  "tx": 379,
+  "ty": 2,
+  "osmId": 10724788606
+ },
+ {
+  "type": "viewpoint",
+  "name": "암남동 팽나무",
+  "nameEn": "",
+  "tx": 519,
+  "ty": 376,
+  "osmId": 10724793806
+ },
+ {
+  "type": "restaurant",
+  "name": "",
+  "nameEn": "",
+  "tx": 644,
+  "ty": 462,
+  "osmId": 12815573944
+ },
+ {
+  "type": "restaurant",
+  "name": "",
+  "nameEn": "",
+  "tx": 643,
+  "ty": 462,
+  "osmId": 12815573945
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 641,
+  "ty": 459,
+  "osmId": 12815573946
+ },
+ {
+  "type": "lodging",
+  "name": "페어필드 바이 메리어트 부산 송도비치",
+  "nameEn": "Fairfield by Marriott Busan Songdo Beach",
+  "tx": 625,
+  "ty": 95,
+  "osmId": 12892104703
+ },
+ {
+  "type": "lodging",
+  "name": "Hotel Grab the Ocean",
+  "nameEn": "",
+  "tx": 600,
+  "ty": 106,
+  "osmId": 12892110902
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GC25",
+  "nameEn": "",
+  "tx": 628,
+  "ty": 94,
+  "osmId": 12892110903
+ },
+ {
+  "type": "viewpoint",
+  "name": "Skywalk",
+  "nameEn": "",
+  "tx": 701,
+  "ty": 152,
+  "osmId": 12892112701
+ },
+ {
+  "type": "fuel",
+  "name": "SK주유소",
+  "nameEn": "SK gas",
+  "tx": 707,
+  "ty": 30,
+  "osmId": 13326575588
+ },
+ {
+  "type": "fuel",
+  "name": "GS칼텍스",
+  "nameEn": "GS Caltex",
+  "tx": 734,
+  "ty": 7,
+  "osmId": 13326575589
+ },
+ {
+  "type": "restaurant",
+  "name": "Dongnyeok Korean Casual Dining",
+  "nameEn": "",
+  "tx": 664,
+  "ty": 62,
+  "osmId": 13664259901
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "7 Eleven",
+  "nameEn": "",
+  "tx": 704,
+  "ty": 124,
+  "osmId": 13895619401
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 703,
+  "ty": 124,
+  "osmId": 13895619501
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "크랩마트",
+  "nameEn": "Keuraep Mart",
+  "tx": 499,
+  "ty": 411,
+  "osmId": 22493133
+ },
+ {
+  "type": "hospital",
+  "name": "고신대학교복음병원",
+  "nameEn": "Koshin University Hospital",
+  "tx": 541,
+  "ty": 23,
+  "osmId": 469291849
+ },
+ {
+  "type": "police",
+  "name": "",
+  "nameEn": "",
+  "tx": 665,
+  "ty": 57,
+  "osmId": 469291851
+ },
+ {
+  "type": "bank",
+  "name": "부산은행 송도지점",
+  "nameEn": "",
+  "tx": 569,
+  "ty": 72,
+  "osmId": 480600091
+ },
+ {
+  "type": "cafe",
+  "name": "스타벅스",
+  "nameEn": "Starbucks",
+  "tx": 576,
+  "ty": 130,
+  "osmId": 483209618
+ }
+]
