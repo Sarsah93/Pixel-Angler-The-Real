@@ -359,6 +359,22 @@
     "F-0088"
    ],
    "origin": "2026-10-16 사용자 승인"
+  },
+  {
+   "id": "P-0022",
+   "date": "2026-10-19",
+   "domain": "02-code",
+   "kind": "적용",
+   "title": "CropCareSim 테스트의 안 읽는 변수 제거 — main CI core 타입 검사 TS6133 해소",
+   "pr": 12,
+   "branch": "harmony/2026-10-19",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0099",
+    "F-0039"
+   ],
+   "origin": "2026-10-19 일일 점검 — PR #11 댓글의 제안 패치"
   }
  ]
 }

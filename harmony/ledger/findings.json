@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "next_id": 99,
+ "next_id": 100,
  "findings": [
   {
    "id": "F-0001",
@@ -680,10 +680,10 @@
     "packages/core/tsconfig.build.json:1",
     "CLAUDE.md:85"
    ],
-   "why": "빌드는 테스트를 빼고 vitest는 타입을 보지 않아, 테스트 10개 파일의 타입 오류는 루트 typecheck에서만 드러난다.",
+   "why": "빌드는 테스트를 빼고 vitest는 타입을 보지 않아, 테스트 10개 파일의 타입 오류는 루트 typecheck에서만 드러난다. 2026-10-19 실제로 main CI가 이 틈으로 붉어졌다(F-0099).",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-19",
    "resolved_at": null
   },
   {
@@ -1711,6 +1711,20 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
+   "resolved_at": null
+  },
+  {
+   "id": "F-0099",
+   "domain": "01-engineering",
+   "severity": "보통",
+   "title": "main CI가 core 타입 검사 오류(TS6133)로 붉다 — 하모니 verify 3종에는 core 타입 검사가 없다",
+   "evidence": [
+    "packages/core/src/simulation/CropCareSim.test.ts:197"
+   ],
+   "why": "안 읽는 let 변수 하나로 `@tra/core:typecheck`가 실패한다. 하모니 verify 명령(build · client-pc typecheck · core test)은 이 검사를 못 잡는다.",
+   "status": "열림",
+   "first_seen": "2026-10-19",
+   "last_seen": "2026-10-19",
    "resolved_at": null
   }
  ]
