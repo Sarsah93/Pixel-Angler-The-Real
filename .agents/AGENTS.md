@@ -300,7 +300,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-18 261차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-18 262차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -309,7 +309,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-18 261차) — 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
+**최근 변경 (2026-10-18 262차) — 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
+
+- 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘」: 컨테이너는 Overpass · OSM 미러가 네트워크 정책으로 막혀(403)
+  **워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml` — `pixelazed/_osm_request.txt` 푸시 트리거 · 지역별 이어 가기 · fetch 재시도 · 러너가 실행 브랜치에 커밋)로 수집.
+  데이터 지역 13(속초 + 부산 감천 · 백운포 + 울산 · 포항 구룡포 · 거제 지세포 · 해금강 · 여수 · 태안 안흥 · 만리포 · 제주 도두 · 모슬포 · 서귀포 · 인천 연안부두) · 출조 구역 17.
+- core `SEAMLESS_AREA_REGIONS`(구역 → 데이터 지역) · `seamlessRegionOf(region, mapId)` · `RegionAreaNode.spawnLatLon`(구역별 내리는 자리) · 새 구역 노드 11 · 조행록 areaKey · 위키 「출조 지역」 탭 ·
+  `build_osm_tilemap.py` 바다 = 해안선 방향 투표(가장자리 시드 침수 해결) · `merge_capture_pois.py --auto`(게임 상호 자동 변환 3,516곳).
+- 검증: 하네스 17/17(걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 해금강 1 · 나머지 0) · 빌드 3/3 · typecheck 0 · core 322/322 · 해금강 스폰 보정(도장포 유람선 터미널) ·
+  아티팩트 4개(위키 59 · 셋 Version 4). 상세: [262차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md).
+
+**이전 변경 (2026-10-18 261차) — 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
 
 - 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만 … 표지판이 있는 위치가 해당 상가 건물들」: Gemini 횟집 · 팝업 · 고층 · TopDown 주택 · Kenney 노점 · 지붕 키트
   로드 폐기(PNG 98장 · `ui/BuildingVariant.ts` 삭제) · 가게 389곳 중 건물 없는 자리 336곳에 발자국(`synthesizePoiBuildings` — 종류 · 층수 · 크기 표 · 차도 밴드 · 다른 가게 · 물 회피) ·
@@ -329,18 +339,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 덤: 위키 이야기 페이지의 「요리 목표 승격 대기」는 낡은 표기였다(요리 목표 1개는 이미 자동) — 남은 수동 목표 수로 고쳤다.
 - 검증: 세 페이지 밝음 · 어두움 · 폰 폭 넘침 0 · 겹침 0 · pageerror 0 · 모듈 이름 실재 대조(지어낸 이름 1건 고침) · 코드 변경 없음.
   상세: [260차 워크로그](../docs/wiki/03-WORKLOG/2026-10-17-260-artifacts-refresh-four-artifact-rule.md).
-
-**이전 변경 (2026-10-16 259차) — 제작 창 클릭 · 의뢰 표시 다시 그리기 · 지도 이름 흰 테 · 수면 빗방울 · 어두운 장비 그림 흰 테 · main 반영 · 79차 배포**
-
-- 「제작 관련해서 아무것도 클릭이 안되는 중」: 제작 보드가 다시 그린 자식이 scrollFactor 1 → 필드(카메라 16,240px)에서 첫 클릭 뒤 전부 어긋남 →
-  `CraftBoard.matchScroll` + 창 공통 안전망(`DraggablePanel` `postupdate` · `ensureScreenFixed`) · 사유 줄 「재료가 부족합니다」 등 합니다체 · 재료 그림 24px.
-- 「물음표 디자인이 깔끔하지 않음 (일부 짤리고)」: `mk_ready` 점 아래 줄이 16칸 밖 → `mk_ready` · `mk_quest` · `mm_ready` 다시 그림(속 2px + 1px 테 · 점 분리).
-  「지도 표시 이름 5곳도 흰 테」: 전체 지도 · 세계 지도 이름 `worldLabelStyle` · 「이 말로」 자리 = 아무것도 안 보임(사용자 결정).
-- 「비올 때, 실제처럼 바다에 빗물이 튀는」: 수면 빗방울(반짝임 · 물방울 · 원근 고리 · `TUNING.view.rainSplashPerSec` 48 · `rainRippleMaxPx` 16).
-  「감성돔 바늘이 잘 보이지 않는 … 흰 테두리」: `tackle_cards.cjs` `OUTLINED` 8장(9종 — 카드 1px · 아이콘 2px · 그물코 안 제외).
-- 검증: core 322/322 · 빌드 3/3 · typecheck 0 · 실렌더(제작 실마우스 둘째 클릭 이후 · 제작 끝까지 · 표시 · 지도 · 비 22 / 소나기 51 · 장비 · 한 · 영 · pageerror 0) ·
-  main `dc4135e` · 「테스트 배포」 79차(gh-pages `99de6f5` — 정적 파일 1,820 같음 · 하위 경로 기동 한 · 영 4xx 0 · pageerror 0).
-  상세: [259차 워크로그](../docs/wiki/03-WORKLOG/2026-10-16-259-craft-clicks-quest-marks-map-labels-sea-rain-tackle-outlines.md).
 
 ---
 

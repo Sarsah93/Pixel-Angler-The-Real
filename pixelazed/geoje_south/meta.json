@@ -10,10 +10,10 @@
  "width": 1006,
  "height": 934,
  "spawn": [
-  439,
-  545
+  325,
+  622
  ],
- "spawnName": "도장포항(바람의 언덕)",
+ "spawnName": "도장포항(유람선 터미널)",
  "spawnApprox": true,
  "palette": {
   "~": "#3b6fb0",

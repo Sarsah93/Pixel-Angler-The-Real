@@ -132,10 +132,14 @@
 - **261차 잔여** — 합성 발자국 자리 없음 6곳(관광수산시장 골목 — 간판만) · 종류별 크기 · 층수 표(횟집 3×2 1~2층 · 호텔 4×3 5~7층 …)와 좌판 차양 2×1은 어림 → 사용자 육안 조율 ·
   문이 차도 밴드 위인 가게 50(길에 바짝 붙은 OSM 건물 — 옛 BFS 폴백) · 편집기(F7) 타일 수정 뒤 문 분배 사라짐(dev) · 레거시 20px 건물은 작다 ·
   구 건물 PNG 98장은 파일만 남았다(정리는 사용자 결정) — 상세 [261 §6](../03-WORKLOG/2026-10-18-261-vector-buildings-only-bgm-squid.md).
+- **262차 잔여** — 새 데이터 지역 12곳 사용자 육안(terrain ↔ 실지형 · 전국 지도 핀) · 자동 변환 상호 3,516곳 검토(`auto: true`) · 속초 밖 인물 좌표 ·
+  감천 투표 방식 재굽기(요청 파일에 `busan_gamcheon`만 · refetch 없음 — 75.3 → 64.2%) · 감천 서방파제 피복 · 해금강 잃은 문 1 · 여수 도달성 씨앗 ·
+  새 지역 래스터 · 어장 없음 · 여수 밀도(건물 8,157) 실플레이 · 워크플로 main 반영(Run workflow) · 네트워크 정책에 Overpass 허용(사용자) —
+  상세 [262 §6](../03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md).
 - **주차장 경계 펜스**(173차 잔여) — 배치 규칙은 세울 수 있으나 충돌·통행 검증이 별도 작업.
 - **마을 사람 낚시꾼**(166차 잔여) — 역할 `angler`인 사람이 물가에 서면 `StoryNpcActor`의 낚시 루프를 재사용해 낚시하게 할 수 있다(사용자 확인 후).
-- OSM 확장 절차: `regions_config.py`의 지역 키로 `fetch → build → build_region_maps →
-  SEAMLESS_REGIONS 등록 → terrain/스폰 검수` 반복. ⚠ 서해 2곳(taean)은 seaEdges 조정 가능성.
+- OSM 확장 절차(262차부터): `regions_config.py`에 속초 크기 bbox 한 줄 → `pixelazed/_osm_request.txt`에 지역 키를 적어 푸시(워크플로 「OSM 지역 수집」이 굽고 커밋) →
+  `git pull` → core `SEAMLESS_REGIONS` · `SEAMLESS_AREA_REGIONS` · `REGION_AREA_NODES`(`spawnLatLon`) 등록 → 하네스 `dist` · 도달성 · terrain 육안. 절차는 스킬 `add-region` 262 절.
 - **래스터 보강(109차)**: 신규 지역은 Browser 정찰로 장면 날짜 확정 → `regions_config.raster`
   딕셔너리 추가 → `fetch_region_raster → classify_raster → build_osm_tilemap`(병합 자동).
   잔여 = 사용자 육안 확정(도심 포장 'r' 46k 체감 — 과하면 병합 가드 조정) ·

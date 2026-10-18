@@ -38,6 +38,9 @@ tools/regions_config.py 에 지역 bbox 등록 (v4 — 262차: 속초 크기 bbo
   `seamlessRegionOf(regionId, mapId)` — 표에 없는 구역은 `SEAMLESS_REGIONS[regionId]`(지역 기본). 레거시 맵 그래프는 없어도 된다(심리스 모드).
 - **구역별 스폰은 `RegionAreaNode.spawnLatLon`(WGS84)** — 필드가 meta bbox 등장방형으로 타일을 구해 `nearestWalkable`로 스냅한다.
   bbox를 다시 잘라도 좌표는 그대로 쓸 수 있다. 자리는 `terrain.txt`(걷기 성분 · 'b' 띠)에서 고르고 하네스로 `dist 0.0`을 확인한다.
+  ⚠ **스폰 좌표를 기억으로 적지 말 것**(262차 해금강 — 「바람의 언덕 34.76°N」이 실제는 34.74°N이라 설정 스폰이 바다였고, 러너의 전역 폴백이 1.4 km 밖 갯바위를 골랐다).
+  `pois.json`의 이름 있는 POI 칸(유람선 터미널 · 항 수협 · 방파제 등대)을 bbox로 되돌린 위도 · 경도를 쓴다 — `lat = N − (ty+0.5)/H·(N−S)` · `lon = W + (tx+0.5)/W·(E−W)`.
+  `meta.spawnApprox`는 항상 true라 판정 근거가 아니다 — 러너 로그의 `[warn] 스폰 스냅 실패`와 하네스 `dist`로 본다. 캐시가 있으면 로컬 재굽기(`python3.13 tools/build_osm_tilemap.py <r> --no-raster` …)로 `meta.spawn`만 바뀐다.
   구역의 `pixelX/Y`(zoom_{slug} 256×256 위 핀)는 대략값 — 핀 편집 Dev Tool로 다듬는다.
 - **하네스**: 출조 구역마다 `scene.restart({ region, mapId })` → `playerTile()` · `seamlessDef.dataRegion` · 건물 · 가게 · 등대 · 404 · pageerror
   (262차 `harness_regions.cjs` 패턴 — 18구역 전부 `dist 0.0` · pageerror 0).

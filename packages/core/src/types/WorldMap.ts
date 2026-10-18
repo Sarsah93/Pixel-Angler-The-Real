@@ -558,7 +558,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
     {
       id: 'geoje_area_haegeumgang', name: '해금강', nameEn: 'Haegeumgang',
       desc: '남해 갯바위의 끝 · 초여름 긴꼬리벵에돔', descEn: 'The far rocks of the South Sea · early-summer largescale blackfish',
-      pixelX: 228, pixelY: 195, fieldMapId: 'geoje_haegeumgang_1', spawnLatLon: [34.7470, 128.6825],
+      pixelX: 228, pixelY: 195, fieldMapId: 'geoje_haegeumgang_1', spawnLatLon: [34.7420, 128.6627],
       details: [
         '갈곶 갯바위와 해금강 바위섬 — 발판이 거칠다',
         '대표 어종: 긴꼬리벵에돔(초여름) · 벵에돔 · 감성돔 · 돌돔 · 참돔',

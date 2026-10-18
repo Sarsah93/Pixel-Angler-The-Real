@@ -60,12 +60,24 @@
   → **258 건물 윤곽 충돌 · 의뢰 표시 이름표 옆 · 가이드 말풍선 모달 비키기 · 대화창 효과 줄 빼기 · 채비 목줄 중간**
   → **259 제작 창 클릭 · 의뢰 표시 다시 그리기 · 지도 이름 흰 테 · 수면 빗방울 · 어두운 장비 그림 흰 테 · main 반영 · 79차 배포**
   → **260 아티팩트 3개 현행화(남은 과업 설계 · 구현 라이브러리 · 채비 모딩 순서도) · 아티팩트 4개 갱신 규칙**
-  → **261 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**.
+  → **261 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
+  → **262 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장(데이터 지역 13 · 출조 구역 17) · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
-  맵 확정(육안)·OSM land 14개·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
-- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국**) — 부족하면 규칙 보강,
-  괜찮으면 규칙을 켠 채로 새 맵 확장. 차수별 잔여는 PLAN §2-3.
+  맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
+- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 + 262차 새 지역 12곳 terrain · 핀**) — 부족하면 규칙 보강.
+  새 지역은 워크플로로 굽는다(스킬 `add-region` 262 절). 차수별 잔여는 PLAN §2-3.
+- **262차**: **부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환** —
+  사용자 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘.」 「계속해서 진행해줘.」 →
+  컨테이너는 Overpass · OSM 미러가 막혀(403) **워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml` — `pixelazed/_osm_request.txt` 푸시 트리거 ·
+  지역별 이어 가기 · fetch 90초 4번 · 러너가 실행 브랜치에 커밋 · main에 없는 워크플로는 dispatch 404)로 수집 —
+  데이터 지역 13(속초 + 부산 감천 · 백운포 + 울산 방어진 · 포항 구룡포 · 거제 지세포 · 해금강 · 여수 구항 · 태안 안흥 · 만리포 · 제주 도두 · 모슬포 · 서귀포 · 인천 연안부두 — bbox 전부 속초 크기) ·
+  출조 구역 17(`REGION_AREA_NODES` 새 노드 11) · core `SEAMLESS_AREA_REGIONS`(구역 fieldMapId → 데이터 지역) · `seamlessRegionOf(region, mapId)` · `RegionAreaNode.spawnLatLon`(구역별 내리는 자리) ·
+  `build_osm_tilemap.py` 바다 = 해안선 방향 투표(성분별 다수결 — 가장자리 시드 침수 지세포 99% 해결) · `merge_capture_pois.py --auto`(게임 상호 자동 변환 3,516곳 · `auto: true`) ·
+  위키 「출조 지역」 탭 · 해금강 스폰 보정(설정 좌표가 바다 → 도장포 유람선 터미널 POI 실측 칸) ·
+  하네스 17/17(걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 해금강 1 · 나머지 0) · 빌드 3/3 · core 322/322 · 아티팩트 4개(위키 59 · 셋 Version 4).
+  **다음 = 사용자 육안(새 지역 12곳 terrain · 전국 지도 핀) · 자동 변환 상호 검토 · 인물 좌표 · 감천 투표 재굽기 · main 반영 · 80차 배포(요청 시)(백로그 CJ)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md`.
 - **261차**: **구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남** —
   사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만 … 표지판이 있는 위치가 해당 상가 건물들」 「냉동 오징어 2개를 팔았는데 … 하나 더 생겨져 있음」
   「배경음악 초안 … 제일 최근에 변경한 부분들로 우선 적용」 →
@@ -85,15 +97,6 @@
   위키 이야기 페이지 낡은 표기 정정(요리 목표는 이미 자동) · 코드 변경 없음.
   **다음 = 남은 과업 설계 공유 설정(사용자 — 지금 비공개) · 다음 인게임 설계 차수부터 4개 갱신**.
   상세 `docs/wiki/03-WORKLOG/2026-10-17-260-artifacts-refresh-four-artifact-rule.md`.
-- **259차**: **제작 창 클릭 · 의뢰 표시 다시 그리기 · 지도 이름 흰 테 · 수면 빗방울 · 어두운 장비 그림 흰 테 · main 반영 · 79차 배포** —
-  사용자 「제작 관련해서 아무것도 클릭이 안되는 중」 「'재료가 부족합니다' 로」 「물음표 디자인이 깔끔하지 않음 (일부 짤리고)」 「지도 표시 이름 5곳도 흰 테」
-  「비올 때, 실제처럼 바다에 빗물이 튀는」 「감성돔 바늘이 잘 보이지 않는 … 흰 테두리」 「(「이 말로」 자리는) 아무것도 보이지 않게」 「wiki · main · 재배포」 →
-  제작 보드 다시 그린 자식 scrollFactor 1(필드 카메라만큼 어긋남) → `CraftBoard.matchScroll` + 창 공통 안전망(`DraggablePanel` `postupdate` · `ensureScreenFixed`) ·
-  사유 줄 합니다체 · 재료 그림 24px · `mk_ready` · `mk_quest` · `mm_ready` 다시 그림(점 잘림 · 획) · 지도 이름 5곳 `worldLabelStyle` ·
-  수면 빗방울(`FirstPersonFishingScene.updateRainSplash` · `TUNING.view.rainSplashPerSec` 48 · `rainRippleMaxPx` 16) · `tackle_cards.cjs` `OUTLINED` 8장 ·
-  core 322/322 · 실렌더(한 · 영 · pageerror 0) · 위키 Version 57 · main 빨리 감기(`dc4135e`) · 「테스트 배포」 79차(gh-pages `99de6f5` · 하위 경로 점검 통과).
-  **다음 = 79차 라이브 확인(사용자) · 작은 칸 흰 테 점선(요청 시) · 수면 빗방울 조율(실플레이)(백로그 CG)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-16-259-craft-clicks-quest-marks-map-labels-sea-rain-tackle-outlines.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -179,14 +182,19 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 ## 타일맵 · 배포 (상세 절차는 스킬 참조)
 
 - 지역 타일맵 추가/재생성 → **스킬 `add-region`** (`py tools/build_region_maps.py <region>` — 파이프라인·타일 문자·맵 그래프·함정 일체).
-- 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), 타 지역(여수 등) 확장, POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
+  **262차부터 OSM 수집은 워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml`) — 이 컨테이너는 Overpass가 막혀 있다(403 · 환경 네트워크 정책).
+  작업 브랜치에서는 `pixelazed/_osm_request.txt`에 지역 키를 적어 푸시하면 러너가 굽고 그 브랜치에 커밋한다(main에 들어가면 Actions 탭 Run workflow).
+  ⚠ 러너가 도는 동안 같은 브랜치에 푸시하지 않는다(러너 푸시가 non-fast-forward로 거부돼 산출물을 잃는다).
+  심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon` · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
+  `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
+- 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 79차 배포 2026-10-16 = 259차까지 포함** — 257~259는 79차에 처음 실렸다).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 58 = 261차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
+  전체 위키(농사 · 출조 지역 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 59 = 262차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 3 = 261차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 3 = 261차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 3 = 261차 기준 · 문법은 258차) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 4 = 262차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 4 = 262차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 4 = 262차 기준 · 문법은 258차) · 위키(위 줄).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
