@@ -322,15 +322,81 @@ def build(region):
                             barrier.set(x + dx, y + dy, 1)
     SEA, LAND = ord('~'), ord('.')
     dq = deque()
-    for (x, y) in edge_seeds(W, H, cfg['seaEdges']):
-        if not barrier.get(x, y) and grid.g[y][x] != SEA:
-            grid.g[y][x] = SEA; dq.append((x, y))
-    while dq:
-        x, y = dq.popleft()
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < W and 0 <= ny < H and grid.g[ny][nx] != SEA and not barrier.get(nx, ny):
-                grid.g[ny][nx] = SEA; dq.append((nx, ny))
+    # 262차 — 해안선 방향 투표. OSM coastline은 걷는 방향 기준 **왼쪽이 뭍 · 오른쪽이 바다**(검증된 규칙). 장벽(해안선 띠)으로 나뉜
+    #   성분마다 선분의 오른쪽 칸(+1) · 왼쪽 칸(−1)을 세어 다수결로 바다를 정한다. bbox 가장자리가 육지를 지나도 내륙이 침수되지 않고
+    #   (요청 2 — 지세포 99% · 감천 북쪽 확장 94%), 방향이 어긋난 선 몇 개(부두 · 좁은 물길)에도 흔들리지 않는다(시드 하나로 채우면 98%가 바다였다).
+    #   `seaEdges`는 bbox 안에 해안선이 하나도 없을 때(먼바다만 보이는 bbox)의 폴백. 타일 좌표(y 아래)에서 진행 방향 (dx, dy)의 오른쪽 = (-dy, dx).
+    from array import array
+    comp = array('i', [-1]) * (W * H)
+    n_comp = 0
+    for y0 in range(H):
+        for x0 in range(W):
+            if comp[y0 * W + x0] != -1 or barrier.get(x0, y0):
+                continue
+            cid = n_comp; n_comp += 1
+            comp[y0 * W + x0] = cid; dq.append((x0, y0))
+            while dq:
+                x, y = dq.popleft()
+                for ddx, ddy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx2, ny2 = x + ddx, y + ddy
+                    if 0 <= nx2 < W and 0 <= ny2 < H and comp[ny2 * W + nx2] == -1 and not barrier.get(nx2, ny2):
+                        comp[ny2 * W + nx2] = cid; dq.append((nx2, ny2))
+    votes = {}
+    n_seg = 0
+    for wy in ways.values():
+        if tagged(wy, 'natural', 'coastline'):
+            pts = way_pts(wy, nodes, proj)
+            for i in range(len(pts) - 1):
+                (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+                dx, dy = x1 - x0, y1 - y0
+                seg = math.hypot(dx, dy)
+                if seg < 1e-6:
+                    continue
+                n_seg += 1
+                nx, ny = -dy / seg, dx / seg
+                n = int(seg) + 1
+                for s in range(n + 1):
+                    t = s / n
+                    px, py = x0 + dx * t, y0 + dy * t
+                    for sign in (1, -1):   # +1 = 오른쪽(바다 표) · −1 = 왼쪽(뭍 표) — 띠(±1) 바로 바깥 한 칸
+                        x = int(round(px + sign * nx * 2)); y = int(round(py + sign * ny * 2))
+                        if 0 <= x < W and 0 <= y < H:
+                            c = comp[y * W + x]
+                            if c >= 0:
+                                votes[c] = votes.get(c, 0) + sign
+    sea_comps = {c for c, v in votes.items() if v > 0}
+
+    def fill_edges():
+        for (x, y) in edge_seeds(W, H, cfg['seaEdges']):
+            if not barrier.get(x, y) and grid.g[y][x] != SEA:
+                grid.g[y][x] = SEA; dq.append((x, y))
+        while dq:
+            x, y = dq.popleft()
+            for ddx, ddy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx2, ny2 = x + ddx, y + ddy
+                if 0 <= nx2 < W and 0 <= ny2 < H and grid.g[ny2][nx2] != SEA and not barrier.get(nx2, ny2):
+                    grid.g[ny2][nx2] = SEA; dq.append((nx2, ny2))
+
+    if sea_comps:
+        n_sea = 0
+        for y in range(H):
+            row = grid.g[y]; base = y * W
+            for x in range(W):
+                if comp[base + x] in sea_comps:
+                    row[x] = SEA; n_sea += 1
+        ratio = n_sea / (W * H)
+        print(f'[flood] 해안선 방향 투표 — 선분 {n_seg:,} · 성분 {n_comp:,} 중 바다 {len(sea_comps)} → 바다 {ratio:.2%}')
+        if ratio > 0.92 or ratio < 0.03:
+            print('[flood][warn] 투표 결과가 비정상(내륙 침수 의심) — 가장자리 시드로 다시 채운다')
+            for y in range(H):
+                row = grid.g[y]
+                for x in range(W):
+                    if row[x] == SEA:
+                        row[x] = LAND
+            fill_edges()
+    else:
+        print(f'[flood] 시드 = 가장자리({cfg["seaEdges"]}) — bbox 안에 해안선이 없다')
+        fill_edges()
     for y in range(H):                                   # 해안선 셀 = 육지 가장자리
         row, brow = grid.g[y], barrier.g[y]
         for x in range(W):
@@ -338,6 +404,8 @@ def build(region):
                 row[x] = LAND
     sea = sum(r.count(SEA) for r in grid.g)
     print(f'[flood] sea ratio = {sea / (W * H):.2%}  (해안선 누수 시 비정상값 — terrain.png에서 막고 재실행)')
+    if not 0.05 <= sea / (W * H) <= 0.92:
+        print('[flood][warn] 바다 비율이 5~92% 밖 — 해안선 누수(내륙 침수) 또는 바다가 거의 없는 bbox. terrain.png 육안 검수 필요')
 
     # 2) 내수면 → 피복 → 도로 → 방파제 → 건물 (우선순위 순서 고정)
     for wy in ways.values():
@@ -751,7 +819,20 @@ def build(region):
             if p not in seen:
                 seen.add(p); dq.append((p[0], p[1], dist + 1))
     if spawn_tile is None:
-        print('[warn] 스폰 스냅 실패 — spawn 좌표가 이동가능 지형에서 1km 이상 떨어짐. 수동 지정 필요')
+        # 262차 — 100타일(500m) 안에 걷기 칸이 없으면 격자 전체에서 가장 가까운 걷기 칸으로(지도가 못 열리는 것보다 낫다). 경고는 남긴다
+        best = None
+        for y in range(H):
+            row = grid.g[y]
+            for x in range(W):
+                if row[x] in WALKABLE:
+                    dd = (x - sx) ** 2 + (y - sy) ** 2
+                    if best is None or dd < best[0]:
+                        best = (dd, x, y)
+        if best is not None:
+            spawn_tile = [best[1], best[2]]
+            print(f'[warn] 스폰 스냅 실패 — spawn 좌표가 이동가능 지형에서 1km 이상 떨어짐 → 가장 가까운 걷기 칸 ({best[1]}, {best[2]}) 약 {int(best[0] ** 0.5 * TILE_M)}m. 좌표 검수 필요')
+        else:
+            print('[warn] 스폰 스냅 실패 — 걷기 칸이 하나도 없다. bbox · seaEdges 검수 필요')
     else:
         print(f'[spawn] {cfg["spawnName"]} → tile ({spawn_tile[0]}, {spawn_tile[1]})')
 

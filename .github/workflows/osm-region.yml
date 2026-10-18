@@ -6,12 +6,13 @@
 #
 # 쓰는 법: Actions → 「OSM 지역 수집」 → Run workflow → 브랜치 고르기 → regions(공백으로 여러 개 — `tools/regions_config.py`의 키).
 #   이 파일이 아직 main에 없는 브랜치에서는 `pixelazed/_osm_request.txt`에 지역 키를 적어 푸시한다(아래 push 트리거).
-#   refetch = true 면 그 지역의 `pixelazed/_osmcache/<region>*` 를 지우고 다시 받는다(bbox를 바꿨을 때).
-#   끝나면 `git pull` 로 받는다. 이어서 손으로 할 것 = 게임 상호 표(`pixelazed/<region>/name_alias.json`) →
-#   `python tools/merge_capture_pois.py <region>` 다시 → core `SEAMLESS_REGIONS` · `REGION_AREA_NODES` 등록(스킬 `add-region`).
+#   refetch = true 면 그 지역의 `pixelazed/_osmcache/<region>*` 를 지우고 다시 받는다(bbox를 바꿨을 때). 캐시가 있으면 받지 않고 굽기만 한다.
+#   끝나면 `git pull` 로 받는다. 지역 하나가 실패해도(Overpass 5xx · 좌표 오류) 다음 지역으로 가고, 된 것은 커밋한 뒤 실패 목록으로 끝낸다.
+#   이어서 손으로 할 것 = 게임 상호 표(`pixelazed/<region>/name_alias.json` — 자동 변환분 `auto: true` 검토) →
+#   core `SEAMLESS_REGIONS` · `REGION_AREA_NODES` 등록(스킬 `add-region`).
 #
-# 순서(스킬 `add-region` 과 같다): fetch → build_osm_tilemap(--no-raster — 래스터 보강은 별도 트랙) → build_region_maps
-#   → extract_osm_buildings → extract_lights → merge_capture_pois(캡처 파일 없는 지역은 게임 상호만 — 마지막이어야 한다).
+# 순서(스킬 `add-region` 과 같다): fetch(실패 시 90초 간격 4번) → build_osm_tilemap(--no-raster — 래스터 보강은 별도 트랙) → build_region_maps
+#   → extract_osm_buildings → extract_lights → merge_capture_pois --auto(캡처 파일 없는 지역은 게임 상호만 · 표에 없는 가게는 자동 변환 — 마지막이어야 한다).
 name: OSM 지역 수집
 
 on:
@@ -44,7 +45,7 @@ jobs:
   build:
     name: 수집 · 굽기 · 브랜치 반영
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -72,32 +73,49 @@ jobs:
           echo "지역: $REGIONS · refetch: ${REFETCH:-false}"
 
       - name: 수집 · 타일맵 · 건물 · 등대 · 게임 상호
+        id: build
         env:
           REGIONS: ${{ steps.req.outputs.regions }}
           REFETCH: ${{ steps.req.outputs.refetch }}
         run: |
-          set -euo pipefail
-          for r in $REGIONS; do
-            echo "::group::$r"
+          set -uo pipefail
+          run_region() {
+            local r=$1 i ok=0
             if [ "$REFETCH" = "true" ]; then
               rm -f pixelazed/_osmcache/"$r".part_*.json pixelazed/_osmcache/"$r"_boundary.json
             fi
-            python tools/fetch_region_osm.py "$r"
-            python tools/build_osm_tilemap.py "$r" --no-raster
-            python tools/build_region_maps.py "$r"
-            python tools/extract_osm_buildings.py "$r"
-            python tools/extract_lights.py "$r"
-            python tools/merge_capture_pois.py "$r"
+            for i in 1 2 3 4; do
+              if python tools/fetch_region_osm.py "$r"; then ok=1; break; fi
+              echo "::warning::$r 수집 실패(${i}번째) — 90초 뒤 다시"
+              sleep 90
+            done
+            [ "$ok" = 1 ] || return 1
+            python tools/build_osm_tilemap.py "$r" --no-raster || return 1
+            python tools/build_region_maps.py "$r" || return 1
+            python tools/extract_osm_buildings.py "$r" || return 1
+            python tools/extract_lights.py "$r" || return 1
+            python tools/merge_capture_pois.py "$r" --auto || return 1
+          }
+          failed=""
+          for r in $REGIONS; do
+            echo "::group::$r"
+            if ! run_region "$r"; then
+              failed="$failed $r"
+              echo "::error::$r 실패 — 반쯤 구운 산출물은 되돌리고 다음 지역으로"
+              git checkout -q -- "pixelazed/$r" "packages/client-pc/public/data/$r" 2>/dev/null || true
+              git clean -fdq -- "pixelazed/$r" "packages/client-pc/public/data/$r" 2>/dev/null || true
+            fi
             echo "::endgroup::"
           done
+          echo "failed=${failed# }" >> "$GITHUB_OUTPUT"
 
       - name: 산출물 요약
         env:
           REGIONS: ${{ steps.req.outputs.regions }}
         run: |
           for r in $REGIONS; do
+            [ -f "packages/client-pc/public/data/$r/meta.json" ] || { echo "== $r — 산출물 없음(실패)"; continue; }
             echo "== $r"
-            ls -la pixelazed/_osmcache/ | grep "$r" || true
             ls -la "pixelazed/$r" "packages/client-pc/public/data/$r"
             python - "$r" <<'PY'
           import json, sys
@@ -110,15 +128,23 @@ jobs:
       - name: 같은 브랜치에 커밋 · 푸시
         env:
           REGIONS: ${{ steps.req.outputs.regions }}
+          FAILED: ${{ steps.build.outputs.failed }}
         run: |
           set -euo pipefail
+          git add -A -- pixelazed/_osmcache
           for r in $REGIONS; do
-            git add -A -- pixelazed/_osmcache "pixelazed/$r" "packages/client-pc/public/data/$r"
+            for d in "pixelazed/$r" "packages/client-pc/public/data/$r"; do
+              [ -d "$d" ] && git add -A -- "$d"
+            done
           done
           if git diff --cached --quiet; then
             echo "바뀐 것 없음 — 커밋하지 않는다"
-            exit 0
+          else
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -q -m "OSM 지역 수집(Actions): ${REGIONS}${FAILED:+ (실패: $FAILED)}"
+            git push -q origin "HEAD:${GITHUB_REF_NAME}"
           fi
-          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-            commit -q -m "OSM 지역 수집(Actions): ${REGIONS}"
-          git push -q origin "HEAD:${GITHUB_REF_NAME}"
+          if [ -n "${FAILED:-}" ]; then
+            echo "::error::실패한 지역: $FAILED — 요청 파일에 다시 적어 돌린다"
+            exit 1
+          fi
