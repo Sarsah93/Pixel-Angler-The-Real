@@ -1,0 +1,23 @@
+[
+{
+"tx": 589,
+"ty": 184,
+"colour": "white",
+"kind": "lighthouse",
+"major": true
+},
+{
+"tx": 667,
+"ty": 206,
+"colour": "white",
+"kind": "lighthouse",
+"name": "White Lighthouse"
+},
+{
+"tx": 566,
+"ty": 242,
+"colour": "white",
+"kind": "lighthouse",
+"major": true
+}
+]

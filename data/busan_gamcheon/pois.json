@@ -1,0 +1,599 @@
+[
+ {
+  "type": "lodging",
+  "name": "송도리조텔",
+  "nameEn": "Songdo Resortel",
+  "tx": 583,
+  "ty": 122,
+  "osmId": 368663266
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "가구왕마트",
+  "nameEn": "Gagu King Mart",
+  "tx": 18,
+  "ty": 204,
+  "osmId": 368666593
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "농심골마트",
+  "nameEn": "Nongsim-gol Mart",
+  "tx": 6,
+  "ty": 400,
+  "osmId": 368668465
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "제이원할인마트",
+  "nameEn": "J-One Discount Mart",
+  "tx": 34,
+  "ty": 426,
+  "osmId": 368669564
+ },
+ {
+  "type": "lodging",
+  "name": "송도해모찜질방",
+  "nameEn": "Songdo Haemo Jjimjilbang",
+  "tx": 578,
+  "ty": 125,
+  "osmId": 368856403
+ },
+ {
+  "type": "fuel",
+  "name": "해돋이주유소",
+  "nameEn": "Haedoji Gas",
+  "tx": 461,
+  "ty": 0,
+  "osmId": 368906177
+ },
+ {
+  "type": "fuel",
+  "name": "대선주유소",
+  "nameEn": "Daeseon Gas",
+  "tx": 737,
+  "ty": 13,
+  "osmId": 368906298
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "초록세탁편의점",
+  "nameEn": "Chorok Laundry Convenience Store",
+  "tx": 676,
+  "ty": 5,
+  "osmId": 368948720
+ },
+ {
+  "type": "restaurant",
+  "name": "동영횟집",
+  "nameEn": "Dongyeong Sashimi House",
+  "tx": 561,
+  "ty": 180,
+  "osmId": 368956729
+ },
+ {
+  "type": "restaurant",
+  "name": "물레바퀴횟집",
+  "nameEn": "Mulle-bakwi Sashimi House",
+  "tx": 564,
+  "ty": 155,
+  "osmId": 368956789
+ },
+ {
+  "type": "restaurant",
+  "name": "모음횟집",
+  "nameEn": "Moeum Sashimi House",
+  "tx": 593,
+  "ty": 120,
+  "osmId": 368956841
+ },
+ {
+  "type": "restaurant",
+  "name": "송화횟집",
+  "nameEn": "Songhwa Sashimi House",
+  "tx": 676,
+  "ty": 109,
+  "osmId": 368956874
+ },
+ {
+  "type": "restaurant",
+  "name": "태선하모회 자연산횟집",
+  "nameEn": "Taeseon Hamo Sashimi House",
+  "tx": 684,
+  "ty": 124,
+  "osmId": 368956913
+ },
+ {
+  "type": "restaurant",
+  "name": "부원횟집",
+  "nameEn": "Buwon Sashimi House",
+  "tx": 564,
+  "ty": 186,
+  "osmId": 368957019
+ },
+ {
+  "type": "restaurant",
+  "name": "충무횟집",
+  "nameEn": "Chungmu Sashimi House",
+  "tx": 97,
+  "ty": 112,
+  "osmId": 368957074
+ },
+ {
+  "type": "restaurant",
+  "name": "본천횟집",
+  "nameEn": "Boncheon Sashimi House",
+  "tx": 678,
+  "ty": 111,
+  "osmId": 368957115
+ },
+ {
+  "type": "restaurant",
+  "name": "송인횟집",
+  "nameEn": "Songin Sashimi House",
+  "tx": 561,
+  "ty": 159,
+  "osmId": 368957660
+ },
+ {
+  "type": "restaurant",
+  "name": "해변가횟집",
+  "nameEn": "Haebyeon-ga Sashimi House",
+  "tx": 657,
+  "ty": 101,
+  "osmId": 368957699
+ },
+ {
+  "type": "restaurant",
+  "name": "해녀네횟집",
+  "nameEn": "Haenyeo-ne Sashimi House",
+  "tx": 596,
+  "ty": 97,
+  "osmId": 368957953
+ },
+ {
+  "type": "restaurant",
+  "name": "바당횟집",
+  "nameEn": "Badang Sashimi House",
+  "tx": 593,
+  "ty": 119,
+  "osmId": 368958324
+ },
+ {
+  "type": "restaurant",
+  "name": "백강횟집",
+  "nameEn": "Baekgang Sashimi House",
+  "tx": 578,
+  "ty": 223,
+  "osmId": 368958478
+ },
+ {
+  "type": "restaurant",
+  "name": "평온횟집",
+  "nameEn": "Pyeongon Sashimi House",
+  "tx": 641,
+  "ty": 26,
+  "osmId": 368958611
+ },
+ {
+  "type": "restaurant",
+  "name": "삼연횟집",
+  "nameEn": "Samyeon Sashimi House",
+  "tx": 562,
+  "ty": 181,
+  "osmId": 368958619
+ },
+ {
+  "type": "restaurant",
+  "name": "명선횟집",
+  "nameEn": "Myeongseon Sashimi House",
+  "tx": 492,
+  "ty": 152,
+  "osmId": 368958703
+ },
+ {
+  "type": "restaurant",
+  "name": "서원횟집",
+  "nameEn": "Seowon Sashimi House",
+  "tx": 560,
+  "ty": 172,
+  "osmId": 368958763
+ },
+ {
+  "type": "restaurant",
+  "name": "남풍횟집",
+  "nameEn": "Nampung Sashimi House",
+  "tx": 579,
+  "ty": 128,
+  "osmId": 368959153
+ },
+ {
+  "type": "restaurant",
+  "name": "대광횟집",
+  "nameEn": "Daegwang Sashimi House",
+  "tx": 568,
+  "ty": 133,
+  "osmId": 368959244
+ },
+ {
+  "type": "restaurant",
+  "name": "곤포리횟집",
+  "nameEn": "Gonpori Sashimi House",
+  "tx": 683,
+  "ty": 119,
+  "osmId": 368959296
+ },
+ {
+  "type": "restaurant",
+  "name": "산지골횟집",
+  "nameEn": "Sanji-gol Sashimi House",
+  "tx": 569,
+  "ty": 132,
+  "osmId": 368959301
+ },
+ {
+  "type": "restaurant",
+  "name": "등불횟집",
+  "nameEn": "Deungbul Sashimi House",
+  "tx": 390,
+  "ty": 5,
+  "osmId": 368959303
+ },
+ {
+  "type": "restaurant",
+  "name": "송백나무횟집",
+  "nameEn": "Songbaek-namu Sashimi House",
+  "tx": 570,
+  "ty": 134,
+  "osmId": 368959755
+ },
+ {
+  "type": "restaurant",
+  "name": "총각네횟집",
+  "nameEn": "Chonggak-ne Sashimi House",
+  "tx": 583,
+  "ty": 230,
+  "osmId": 368959840
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "Songdo Beach",
+  "tx": 620,
+  "ty": 116,
+  "osmId": 4397761389
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 603,
+  "ty": 115,
+  "osmId": 4646289270
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
+  "tx": 660,
+  "ty": 95,
+  "osmId": 4646292037
+ },
+ {
+  "type": "shop",
+  "shopKind": "car_repair",
+  "name": "",
+  "nameEn": "",
+  "tx": 103,
+  "ty": 64,
+  "osmId": 4709935289
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 104,
+  "ty": 125,
+  "osmId": 4968066224
+ },
+ {
+  "type": "pharmacy",
+  "name": "새송도약국",
+  "nameEn": "Sae-Songdo Pharmacy",
+  "tx": 566,
+  "ty": 130,
+  "osmId": 5591899823
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 587,
+  "ty": 120,
+  "osmId": 5591906423
+ },
+ {
+  "type": "lodging",
+  "name": "V모텔",
+  "nameEn": "V Motel",
+  "tx": 579,
+  "ty": 107,
+  "osmId": 5592684521
+ },
+ {
+  "type": "cafe",
+  "name": "타르트레",
+  "nameEn": "Tartlet Cafe",
+  "tx": 1069,
+  "ty": 42,
+  "osmId": 6354241386
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 517,
+  "ty": 390,
+  "osmId": 6542688489
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 467,
+  "ty": 460,
+  "osmId": 6543866791
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 530,
+  "ty": 524,
+  "osmId": 6543881989
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 604,
+  "ty": 479,
+  "osmId": 6543881992
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 535,
+  "ty": 563,
+  "osmId": 6543886385
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 657,
+  "ty": 426,
+  "osmId": 6543932787
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 643,
+  "ty": 431,
+  "osmId": 6544141485
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 1076,
+  "ty": 65,
+  "osmId": 6728813885
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 537,
+  "ty": 638,
+  "osmId": 7059664886
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 683,
+  "ty": 128,
+  "osmId": 7444484611
+ },
+ {
+  "type": "lighthouse",
+  "name": "",
+  "nameEn": "",
+  "tx": 546,
+  "ty": 738,
+  "osmId": 8034734366
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "오마트24",
+  "nameEn": "O-Mart 24",
+  "tx": 612,
+  "ty": 85,
+  "osmId": 8462433417
+ },
+ {
+  "type": "viewpoint",
+  "name": "구평동 회화나무",
+  "nameEn": "",
+  "tx": 102,
+  "ty": 117,
+  "osmId": 10724788605
+ },
+ {
+  "type": "viewpoint",
+  "name": "감천동 느티나무",
+  "nameEn": "",
+  "tx": 379,
+  "ty": 2,
+  "osmId": 10724788606
+ },
+ {
+  "type": "viewpoint",
+  "name": "암남동 팽나무",
+  "nameEn": "",
+  "tx": 519,
+  "ty": 376,
+  "osmId": 10724793806
+ },
+ {
+  "type": "restaurant",
+  "name": "",
+  "nameEn": "",
+  "tx": 644,
+  "ty": 462,
+  "osmId": 12815573944
+ },
+ {
+  "type": "restaurant",
+  "name": "",
+  "nameEn": "",
+  "tx": 643,
+  "ty": 462,
+  "osmId": 12815573945
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 641,
+  "ty": 459,
+  "osmId": 12815573946
+ },
+ {
+  "type": "lodging",
+  "name": "페어뷰 호텔 송도비치",
+  "nameEn": "Fairview Hotel Songdo Beach",
+  "tx": 625,
+  "ty": 95,
+  "osmId": 12892104703
+ },
+ {
+  "type": "lodging",
+  "name": "호텔 캐치더오션",
+  "nameEn": "Hotel Catch the Ocean",
+  "tx": 600,
+  "ty": 106,
+  "osmId": 12892110902
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 628,
+  "ty": 94,
+  "osmId": 12892110903
+ },
+ {
+  "type": "viewpoint",
+  "name": "Skywalk",
+  "nameEn": "",
+  "tx": 701,
+  "ty": 152,
+  "osmId": 12892112701
+ },
+ {
+  "type": "fuel",
+  "name": "SJ주유소",
+  "nameEn": "SJ Gas",
+  "tx": 707,
+  "ty": 30,
+  "osmId": 13326575588
+ },
+ {
+  "type": "fuel",
+  "name": "GX칼텍",
+  "nameEn": "GX Caltech",
+  "tx": 734,
+  "ty": 7,
+  "osmId": 13326575589
+ },
+ {
+  "type": "restaurant",
+  "name": "동녘식당",
+  "nameEn": "Dongnyeok Diner",
+  "tx": 664,
+  "ty": 62,
+  "osmId": 13664259901
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
+  "tx": 704,
+  "ty": 124,
+  "osmId": 13895619401
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 703,
+  "ty": 124,
+  "osmId": 13895619501
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "크랩스마트",
+  "nameEn": "Crabs Mart",
+  "tx": 499,
+  "ty": 411,
+  "osmId": 22493133
+ },
+ {
+  "type": "hospital",
+  "name": "고신대학교복음병원",
+  "nameEn": "Koshin University Hospital",
+  "tx": 541,
+  "ty": 23,
+  "osmId": 469291849
+ },
+ {
+  "type": "police",
+  "name": "",
+  "nameEn": "",
+  "tx": 665,
+  "ty": 57,
+  "osmId": 469291851
+ },
+ {
+  "type": "bank",
+  "name": "부성은행 송도지점",
+  "nameEn": "Buseong Bank Songdo",
+  "tx": 569,
+  "ty": 72,
+  "osmId": 480600091
+ },
+ {
+  "type": "cafe",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
+  "tx": 576,
+  "ty": 130,
+  "osmId": 483209618
+ }
+]

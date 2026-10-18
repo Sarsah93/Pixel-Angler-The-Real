@@ -1,0 +1,786 @@
+[
+ {
+  "type": "police",
+  "name": "용호3치안센터",
+  "nameEn": "Yongho 3 Community Policing Center",
+  "tx": 410,
+  "ty": 164,
+  "osmId": 368604153
+ },
+ {
+  "type": "bank",
+  "name": "남부산농민조합",
+  "nameEn": "Nambusan Farmers Co-op",
+  "tx": 407,
+  "ty": 111,
+  "osmId": 368640070
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "피제이마트",
+  "nameEn": "PJ Mart",
+  "tx": 407,
+  "ty": 217,
+  "osmId": 368667283
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "씨타운마트",
+  "nameEn": "Sea Town Mart",
+  "tx": 357,
+  "ty": 82,
+  "osmId": 368667651
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "축산골마트",
+  "nameEn": "Chuksan-gol Mart",
+  "tx": 136,
+  "ty": 41,
+  "osmId": 368667791
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "공감마트",
+  "nameEn": "Gonggam Mart",
+  "tx": 357,
+  "ty": 82,
+  "osmId": 368668234
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "용당 현재파크 마트",
+  "nameEn": "Yongdang Hyeonjae Park Mart",
+  "tx": 168,
+  "ty": 159,
+  "osmId": 368668424
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "삼별할인마트",
+  "nameEn": "Sambyeol Discount Mart",
+  "tx": 368,
+  "ty": 32,
+  "osmId": 368668944
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "주곡마트",
+  "nameEn": "Jugok Mart",
+  "tx": 357,
+  "ty": 82,
+  "osmId": 368696200
+ },
+ {
+  "type": "hospital",
+  "name": "서민정형외과",
+  "nameEn": "Seomin Hospital",
+  "tx": 399,
+  "ty": 100,
+  "osmId": 368744526
+ },
+ {
+  "type": "hospital",
+  "name": "한마음여성의원",
+  "nameEn": "Hanmaeumyeoseong Clinic",
+  "tx": 389,
+  "ty": 216,
+  "osmId": 368745342
+ },
+ {
+  "type": "hospital",
+  "name": "조진수소아과의원",
+  "nameEn": "Jojinsusoagwa Clinic",
+  "tx": 381,
+  "ty": 240,
+  "osmId": 368745961
+ },
+ {
+  "type": "bank",
+  "name": "우람은행",
+  "nameEn": "Uram Bank",
+  "tx": 399,
+  "ty": 168,
+  "osmId": 368894395
+ },
+ {
+  "type": "fuel",
+  "name": "반달주유소",
+  "nameEn": "Bandal Gas",
+  "tx": 185,
+  "ty": 18,
+  "osmId": 368906008
+ },
+ {
+  "type": "fuel",
+  "name": "남향주유소",
+  "nameEn": "Namhyang Gas",
+  "tx": 389,
+  "ty": 256,
+  "osmId": 368906101
+ },
+ {
+  "type": "fuel",
+  "name": "공단셀프주유소",
+  "nameEn": "Gongdan Self Gas",
+  "tx": 131,
+  "ty": 108,
+  "osmId": 368906190
+ },
+ {
+  "type": "fuel",
+  "name": "경일주유소",
+  "nameEn": "Gyeongil Gas",
+  "tx": 191,
+  "ty": 8,
+  "osmId": 368906202
+ },
+ {
+  "type": "fuel",
+  "name": "은말주유소",
+  "nameEn": "Eunmal Gas",
+  "tx": 98,
+  "ty": 169,
+  "osmId": 368906509
+ },
+ {
+  "type": "fuel",
+  "name": "쌍룡주유소",
+  "nameEn": "Ssangryong Gas",
+  "tx": 383,
+  "ty": 180,
+  "osmId": 368906554
+ },
+ {
+  "type": "fuel",
+  "name": "팩토주유소",
+  "nameEn": "Facto Gas",
+  "tx": 108,
+  "ty": 248,
+  "osmId": 368906674
+ },
+ {
+  "type": "fuel",
+  "name": "용당씨엔와이주유소",
+  "nameEn": "Yongdang CNY Gas",
+  "tx": 153,
+  "ty": 112,
+  "osmId": 368906802
+ },
+ {
+  "type": "fuel",
+  "name": "북항다리주유소",
+  "nameEn": "Bukhang Bridge Gas",
+  "tx": 108,
+  "ty": 248,
+  "osmId": 368907058
+ },
+ {
+  "type": "fuel",
+  "name": "용당씨엔와이주유소",
+  "nameEn": "Yongdang CNY Gas",
+  "tx": 153,
+  "ty": 112,
+  "osmId": 368907128
+ },
+ {
+  "type": "fuel",
+  "name": "신선대셀프주유소",
+  "nameEn": "Sinseondae Self Gas",
+  "tx": 113,
+  "ty": 253,
+  "osmId": 368907295
+ },
+ {
+  "type": "restaurant",
+  "name": "용궁골횟집",
+  "nameEn": "Yonggung-gol Sashimi House",
+  "tx": 98,
+  "ty": 267,
+  "osmId": 368956694
+ },
+ {
+  "type": "restaurant",
+  "name": "주연횟집",
+  "nameEn": "Juyeon Sashimi House",
+  "tx": 380,
+  "ty": 283,
+  "osmId": 368957201
+ },
+ {
+  "type": "restaurant",
+  "name": "아람횟집",
+  "nameEn": "Aram Sashimi House",
+  "tx": 128,
+  "ty": 25,
+  "osmId": 368958356
+ },
+ {
+  "type": "restaurant",
+  "name": "동곡횟집",
+  "nameEn": "Donggok Sashimi House",
+  "tx": 433,
+  "ty": 24,
+  "osmId": 368958465
+ },
+ {
+  "type": "restaurant",
+  "name": "청하횟집",
+  "nameEn": "Cheongha Sashimi House",
+  "tx": 434,
+  "ty": 126,
+  "osmId": 368958547
+ },
+ {
+  "type": "restaurant",
+  "name": "감포리횟집",
+  "nameEn": "Gampori Sashimi House",
+  "tx": 392,
+  "ty": 3,
+  "osmId": 368958576
+ },
+ {
+  "type": "restaurant",
+  "name": "부성횟집",
+  "nameEn": "Buseong Sashimi House",
+  "tx": 96,
+  "ty": 252,
+  "osmId": 368959812
+ },
+ {
+  "type": "viewpoint",
+  "name": "오륙도 스카이워크",
+  "nameEn": "Oryukdo Skywalk",
+  "tx": 632,
+  "ty": 542,
+  "osmId": 4197185189
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Oryukdo Tourist Info Center",
+  "tx": 602,
+  "ty": 519,
+  "osmId": 4533702593
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 599,
+  "ty": 516,
+  "osmId": 4537643470
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 622,
+  "ty": 451,
+  "osmId": 4537646590
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 685,
+  "ty": 315,
+  "osmId": 4537647895
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 692,
+  "ty": 226,
+  "osmId": 4537648317
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 613,
+  "ty": 62,
+  "osmId": 4537650261
+ },
+ {
+  "type": "viewpoint",
+  "name": "이기대 산책로",
+  "nameEn": "Esplanade",
+  "tx": 611,
+  "ty": 48,
+  "osmId": 4537650264
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 605,
+  "ty": 10,
+  "osmId": 4537677343
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "탑나인마트",
+  "nameEn": "Top Nine Mart",
+  "tx": 435,
+  "ty": 293,
+  "osmId": 4634570618
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "하나루마트",
+  "nameEn": "Hanaru Mart",
+  "tx": 376,
+  "ty": 292,
+  "osmId": 4634570619
+ },
+ {
+  "type": "shop",
+  "shopKind": "yes",
+  "name": "홈플랫",
+  "nameEn": "Home Flat",
+  "tx": 558,
+  "ty": 486,
+  "osmId": 4655371461
+ },
+ {
+  "type": "restaurant",
+  "name": "할매네분식",
+  "nameEn": "Halmae-ne Bunsik",
+  "tx": 369,
+  "ty": 236,
+  "osmId": 4684573392
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "탑나인 패밀리마트",
+  "nameEn": "Top Nine Family Mart",
+  "tx": 448,
+  "ty": 133,
+  "osmId": 4686337376
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 464,
+  "ty": 133,
+  "osmId": 4686337377
+ },
+ {
+  "type": "bank",
+  "name": "부성은행 용호지점",
+  "nameEn": "Buseong Bank Yongho",
+  "tx": 404,
+  "ty": 122,
+  "osmId": 4686337378
+ },
+ {
+  "type": "shop",
+  "shopKind": "stationery",
+  "name": "문방사우당",
+  "nameEn": "Munbangsau-dang Stationery",
+  "tx": 414,
+  "ty": 120,
+  "osmId": 4686337380
+ },
+ {
+  "type": "restaurant",
+  "name": "버거리아",
+  "nameEn": "Burgeria",
+  "tx": 399,
+  "ty": 110,
+  "osmId": 4686337381
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24 용호사거리점",
+  "nameEn": "GX24 Yongho Crossroads",
+  "tx": 413,
+  "ty": 124,
+  "osmId": 4686337382
+ },
+ {
+  "type": "bank",
+  "name": "용호새마루금고",
+  "nameEn": "Yongho Saemaru Credit Union",
+  "tx": 411,
+  "ty": 131,
+  "osmId": 4686337383
+ },
+ {
+  "type": "restaurant",
+  "name": "해동루",
+  "nameEn": "Haedong-ru",
+  "tx": 420,
+  "ty": 125,
+  "osmId": 4686337384
+ },
+ {
+  "type": "shop",
+  "shopKind": "dry_cleaning",
+  "name": "하얀빨래방",
+  "nameEn": "Hayan Laundry",
+  "tx": 450,
+  "ty": 130,
+  "osmId": 4686337385
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인 용호제일점",
+  "nameEn": "Seven-Nine Yongho Jeil",
+  "tx": 402,
+  "ty": 83,
+  "osmId": 4686337694
+ },
+ {
+  "type": "shop",
+  "shopKind": "car_repair",
+  "name": "남부카정비",
+  "nameEn": "Nambu Car Service",
+  "tx": 401,
+  "ty": 87,
+  "osmId": 4686337695
+ },
+ {
+  "type": "shop",
+  "shopKind": "car",
+  "name": "쉐브릿자동차 용호영업소",
+  "nameEn": "Chevrit Motors Yongho",
+  "tx": 406,
+  "ty": 87,
+  "osmId": 4686337696
+ },
+ {
+  "type": "shop",
+  "shopKind": "optician",
+  "name": "아이리드안경 용호점",
+  "nameEn": "Eye-Lead Optical Yongho",
+  "tx": 401,
+  "ty": 127,
+  "osmId": 4686337698
+ },
+ {
+  "type": "shop",
+  "shopKind": "bakery",
+  "name": "뚜르제과 용호점",
+  "nameEn": "Tour Bakery Yongho",
+  "tx": 398,
+  "ty": 121,
+  "osmId": 4686337699
+ },
+ {
+  "type": "shop",
+  "shopKind": "cosmetics",
+  "name": "스킨푸디 용호점",
+  "nameEn": "Skin Foodie Yongho",
+  "tx": 397,
+  "ty": 126,
+  "osmId": 4686337700
+ },
+ {
+  "type": "restaurant",
+  "name": "",
+  "nameEn": "",
+  "tx": 383,
+  "ty": 243,
+  "osmId": 5647370423
+ },
+ {
+  "type": "restaurant",
+  "name": "용호할매 팥빙수",
+  "nameEn": "Yongho Halmae Patbingsu",
+  "tx": 383,
+  "ty": 17,
+  "osmId": 5774214253
+ },
+ {
+  "type": "restaurant",
+  "name": "착한오리집",
+  "nameEn": "Good Duck House",
+  "tx": 437,
+  "ty": 26,
+  "osmId": 6885874785
+ },
+ {
+  "type": "toilet",
+  "name": "유선정체육공원화장실",
+  "nameEn": "",
+  "tx": 295,
+  "ty": 363,
+  "osmId": 8797618928
+ },
+ {
+  "type": "hospital",
+  "name": "온누리마취통증의학과의원",
+  "nameEn": "",
+  "tx": 401,
+  "ty": 131,
+  "osmId": 8889107029
+ },
+ {
+  "type": "hospital",
+  "name": "조안과의원",
+  "nameEn": "",
+  "tx": 403,
+  "ty": 127,
+  "osmId": 8889107030
+ },
+ {
+  "type": "hospital",
+  "name": "메디컬 안과의원",
+  "nameEn": "",
+  "tx": 399,
+  "ty": 115,
+  "osmId": 8889107032
+ },
+ {
+  "type": "pharmacy",
+  "name": "시민사랑약국",
+  "nameEn": "Simin Sarang Pharmacy",
+  "tx": 396,
+  "ty": 115,
+  "osmId": 8889107033
+ },
+ {
+  "type": "pharmacy",
+  "name": "하나루약국",
+  "nameEn": "Hanaru Pharmacy",
+  "tx": 399,
+  "ty": 103,
+  "osmId": 8889107034
+ },
+ {
+  "type": "restaurant",
+  "name": "정이분식",
+  "nameEn": "Jeongi Bunsik",
+  "tx": 394,
+  "ty": 256,
+  "osmId": 8998693017
+ },
+ {
+  "type": "restaurant",
+  "name": "삼동네국밥",
+  "nameEn": "Samdong-ne Gukbap",
+  "tx": 419,
+  "ty": 103,
+  "osmId": 9229939717
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 58,
+  "ty": 6,
+  "osmId": 9669357957
+ },
+ {
+  "type": "viewpoint",
+  "name": "관해정",
+  "nameEn": "Gwanhae Pavilion Overlook",
+  "tx": 559,
+  "ty": 94,
+  "osmId": 10216138890
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 685,
+  "ty": 155,
+  "osmId": 10836195606
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 678,
+  "ty": 179,
+  "osmId": 10836195607
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 672,
+  "ty": 268,
+  "osmId": 10836212629
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 672,
+  "ty": 340,
+  "osmId": 10836220131
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 609,
+  "ty": 456,
+  "osmId": 10836249330
+ },
+ {
+  "type": "shop",
+  "shopKind": "bakery",
+  "name": "파리베이커",
+  "nameEn": "Paris Baker",
+  "tx": 406,
+  "ty": 107,
+  "osmId": 11515634537
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "해바람 편의점",
+  "nameEn": "Haebaram Convenience Store",
+  "tx": 600,
+  "ty": 523,
+  "osmId": 11515740140
+ },
+ {
+  "type": "cafe",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
+  "tx": 162,
+  "ty": 40,
+  "osmId": 12089888669
+ },
+ {
+  "type": "viewpoint",
+  "name": "조망바위",
+  "nameEn": "",
+  "tx": 270,
+  "ty": 246,
+  "osmId": 12242814737
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 610,
+  "ty": 26,
+  "osmId": 12325182406
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 607,
+  "ty": 11,
+  "osmId": 12325312438
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 639,
+  "ty": 67,
+  "osmId": 12325317457
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "",
+  "tx": 625,
+  "ty": 539,
+  "osmId": 12325369700
+ },
+ {
+  "type": "cafe",
+  "name": "해바람 카페",
+  "nameEn": "Haebaram Cafe",
+  "tx": 601,
+  "ty": 519,
+  "osmId": 12325409728
+ },
+ {
+  "type": "cafe",
+  "name": "해바람 카페",
+  "nameEn": "Haebaram Cafe",
+  "tx": 606,
+  "ty": 526,
+  "osmId": 12325422521
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 583,
+  "ty": 48,
+  "osmId": 12500413603
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 526,
+  "ty": 48,
+  "osmId": 12500462802
+ },
+ {
+  "type": "lighthouse",
+  "name": "오륙도 등대",
+  "nameEn": "Oryukdo Lighthouse",
+  "tx": 671,
+  "ty": 748,
+  "osmId": 475833896
+ },
+ {
+  "type": "hospital",
+  "name": "부산성모병원",
+  "nameEn": "Busans Saint Mary's Hospital",
+  "tx": 352,
+  "ty": 327,
+  "osmId": 510528038
+ },
+ {
+  "type": "restaurant",
+  "name": "맥스버거",
+  "nameEn": "Max's Burger",
+  "tx": 176,
+  "ty": 46,
+  "osmId": 566231562
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU 용호쌍용점",
+  "nameEn": "QU Yongho Ssangyong",
+  "tx": 378,
+  "ty": 268,
+  "osmId": 1047546630
+ },
+ {
+  "type": "market",
+  "name": "용호삼성시장",
+  "nameEn": "",
+  "tx": 373,
+  "ty": 23,
+  "osmId": 1294812242
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 582,
+  "ty": 49,
+  "osmId": 1466268284
+ }
+]

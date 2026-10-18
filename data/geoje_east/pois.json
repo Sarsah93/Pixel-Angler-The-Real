@@ -1,0 +1,461 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "outdoor",
+  "name": "대박낚스마트",
+  "nameEn": "Daebaknakseu Mart",
+  "tx": 537,
+  "ty": 340,
+  "osmId": 368697166
+ },
+ {
+  "type": "hospital",
+  "name": "일운보건지소",
+  "nameEn": "Irun Public Health Center",
+  "tx": 666,
+  "ty": 458,
+  "osmId": 368848520
+ },
+ {
+  "type": "hospital",
+  "name": "청구한의원",
+  "nameEn": "Cheonggu Oriental Medicine Clinic",
+  "tx": 579,
+  "ty": 445,
+  "osmId": 368848752
+ },
+ {
+  "type": "restaurant",
+  "name": "지세푸횟집",
+  "nameEn": "Jisepu Sashimi House",
+  "tx": 623,
+  "ty": 438,
+  "osmId": 368970467
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
+  "tx": 598,
+  "ty": 467,
+  "osmId": 4469551895
+ },
+ {
+  "type": "cafe",
+  "name": "당쿰커피",
+  "nameEn": "Dangkum Coffee",
+  "tx": 564,
+  "ty": 160,
+  "osmId": 4469659291
+ },
+ {
+  "type": "lodging",
+  "name": "소노캄 거재",
+  "nameEn": "Sonokam Geojae",
+  "tx": 603,
+  "ty": 146,
+  "osmId": 4679654128
+ },
+ {
+  "type": "cafe",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
+  "tx": 606,
+  "ty": 145,
+  "osmId": 4679654129
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "나들가개",
+  "nameEn": "Nadeulgagae",
+  "tx": 476,
+  "ty": 281,
+  "osmId": 4682736339
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "",
+  "nameEn": "",
+  "tx": 934,
+  "ty": 66,
+  "osmId": 4702958593
+ },
+ {
+  "type": "cafe",
+  "name": "투스푼플레이스",
+  "nameEn": "Two Spoon Place",
+  "tx": 561,
+  "ty": 146,
+  "osmId": 4703204650
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
+  "tx": 564,
+  "ty": 163,
+  "osmId": 4703204651
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 536,
+  "ty": 336,
+  "osmId": 4706566174
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "스카으마트",
+  "nameEn": "Seukaeu Mart",
+  "tx": 513,
+  "ty": 306,
+  "osmId": 4706566215
+ },
+ {
+  "type": "shop",
+  "shopKind": "tyres",
+  "name": "더타이어슙",
+  "nameEn": "Deotaieosyup",
+  "tx": 510,
+  "ty": 280,
+  "osmId": 4706566268
+ },
+ {
+  "type": "bank",
+  "name": "농햡",
+  "nameEn": "Nonghyap",
+  "tx": 569,
+  "ty": 410,
+  "osmId": 4707691840
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "하나루마트",
+  "nameEn": "Hanaru Mart",
+  "tx": 577,
+  "ty": 417,
+  "osmId": 4707701149
+ },
+ {
+  "type": "shop",
+  "shopKind": "yes",
+  "name": "신을슈퍼",
+  "nameEn": "Sineul Super",
+  "tx": 557,
+  "ty": 387,
+  "osmId": 4707721503
+ },
+ {
+  "type": "shop",
+  "shopKind": "tyres",
+  "name": "금후타이어",
+  "nameEn": "Geumhutaieo",
+  "tx": 557,
+  "ty": 416,
+  "osmId": 4707818351
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "지세포유람선터미널",
+  "nameEn": "Jisepo Ferry Terminal",
+  "tx": 613,
+  "ty": 413,
+  "osmId": 4707836098
+ },
+ {
+  "type": "police",
+  "name": "해양경비아전센터",
+  "nameEn": "Coast Guard Safety Center",
+  "tx": 635,
+  "ty": 435,
+  "osmId": 4707836104
+ },
+ {
+  "type": "bank",
+  "name": "수협",
+  "nameEn": "Suhyeop",
+  "tx": 648,
+  "ty": 448,
+  "osmId": 4707836147
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "수협수산판매장",
+  "nameEn": "Suhyeop Seafood Sales Center",
+  "tx": 645,
+  "ty": 446,
+  "osmId": 4707836148
+ },
+ {
+  "type": "police",
+  "name": "일운치안센터",
+  "nameEn": "",
+  "tx": 609,
+  "ty": 447,
+  "osmId": 4708011008
+ },
+ {
+  "type": "restaurant",
+  "name": "피자마로",
+  "nameEn": "Pijamaro",
+  "tx": 617,
+  "ty": 453,
+  "osmId": 4708011028
+ },
+ {
+  "type": "restaurant",
+  "name": "내내치킨",
+  "nameEn": "Naenae Chicken",
+  "tx": 591,
+  "ty": 466,
+  "osmId": 4708117596
+ },
+ {
+  "type": "restaurant",
+  "name": "멕시칸치킨",
+  "nameEn": "Mexican Chicken",
+  "tx": 611,
+  "ty": 484,
+  "osmId": 4709558400
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 613,
+  "ty": 478,
+  "osmId": 4709568362
+ },
+ {
+  "type": "pharmacy",
+  "name": "조인약국",
+  "nameEn": "Join Pharmacy",
+  "tx": 619,
+  "ty": 455,
+  "osmId": 4709622051
+ },
+ {
+  "type": "bank",
+  "name": "농햡",
+  "nameEn": "Nonghyap",
+  "tx": 621,
+  "ty": 452,
+  "osmId": 4711218207
+ },
+ {
+  "type": "hospital",
+  "name": "바다의원",
+  "nameEn": "Bada (Sea) Clinic",
+  "tx": 625,
+  "ty": 456,
+  "osmId": 4711218230
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "탑훼밀르마트",
+  "nameEn": "Taphwemilreu Mart",
+  "tx": 625,
+  "ty": 489,
+  "osmId": 4712612338
+ },
+ {
+  "type": "cafe",
+  "name": "카페알프레두",
+  "nameEn": "Kapealpeuredu",
+  "tx": 571,
+  "ty": 361,
+  "osmId": 4714176790
+ },
+ {
+  "type": "lodging",
+  "name": "둠호텔",
+  "nameEn": "Dum Hotel",
+  "tx": 727,
+  "ty": 612,
+  "osmId": 4714743337
+ },
+ {
+  "type": "lodging",
+  "name": "도여호텔",
+  "nameEn": "Doyeo Hotel",
+  "tx": 623,
+  "ty": 756,
+  "osmId": 4719731106
+ },
+ {
+  "type": "lodging",
+  "name": "프래밀리풀빌러호텔",
+  "nameEn": "Peuraemilripulbilreo Hotel",
+  "tx": 638,
+  "ty": 704,
+  "osmId": 4719731164
+ },
+ {
+  "type": "lodging",
+  "name": "Jungin Housa",
+  "nameEn": "Jungin Housa",
+  "tx": 787,
+  "ty": 27,
+  "osmId": 7999542885
+ },
+ {
+  "type": "viewpoint",
+  "name": "지세포성",
+  "nameEn": "",
+  "tx": 884,
+  "ty": 371,
+  "osmId": 10689848006
+ },
+ {
+  "type": "viewpoint",
+  "name": "소등리 느티나무",
+  "nameEn": "",
+  "tx": 477,
+  "ty": 206,
+  "osmId": 10689848106
+ },
+ {
+  "type": "restaurant",
+  "name": "해뜨는즙",
+  "nameEn": "Haetteuneunjeup",
+  "tx": 778,
+  "ty": 421,
+  "osmId": 10689848111
+ },
+ {
+  "type": "restaurant",
+  "name": "고풍쌈법",
+  "nameEn": "Gopungssambeop",
+  "tx": 614,
+  "ty": 459,
+  "osmId": 10689851405
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 1013,
+  "ty": 3,
+  "osmId": 12314364778
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
+  "tx": 1044,
+  "ty": 6,
+  "osmId": 12314364779
+ },
+ {
+  "type": "shop",
+  "shopKind": "books",
+  "name": "문성당",
+  "nameEn": "",
+  "tx": 1014,
+  "ty": 1,
+  "osmId": 12315743473
+ },
+ {
+  "type": "cafe",
+  "name": "카페 프로미시",
+  "nameEn": "Cafe Peuromisi",
+  "tx": 1014,
+  "ty": 2,
+  "osmId": 12315743474
+ },
+ {
+  "type": "shop",
+  "shopKind": "travel_agency",
+  "name": "상상속의여헹",
+  "nameEn": "Sangsangsokuiyeoheng",
+  "tx": 536,
+  "ty": 215,
+  "osmId": 13534107263
+ },
+ {
+  "type": "shop",
+  "shopKind": "travel_agency",
+  "name": "동백관궝",
+  "nameEn": "Dongbaekgwangwong",
+  "tx": 574,
+  "ty": 313,
+  "osmId": 13534107277
+ },
+ {
+  "type": "lodging",
+  "name": "거제 외도펠리시펜션",
+  "nameEn": "Geoje Oedopelrisi Pension",
+  "tx": 694,
+  "ty": 775,
+  "osmId": 14162128601
+ },
+ {
+  "type": "lodging",
+  "name": "라마다 스위츠 거재",
+  "nameEn": "Ramada Seuwicheu Geojae",
+  "tx": 535,
+  "ty": 216,
+  "osmId": 477062202
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 588,
+  "ty": 380,
+  "osmId": 477409853
+ },
+ {
+  "type": "fuel",
+  "name": "현재오일",
+  "nameEn": "Hyeonjae Oil",
+  "tx": 566,
+  "ty": 400,
+  "osmId": 477413167
+ },
+ {
+  "type": "fuel",
+  "name": "SO주유소",
+  "nameEn": "SO Gas",
+  "tx": 567,
+  "ty": 438,
+  "osmId": 477428975
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 437,
+  "ty": 564,
+  "osmId": 477623586
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 846,
+  "ty": 332,
+  "osmId": 478208008
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 875,
+  "ty": 288,
+  "osmId": 479844969
+ }
+]

@@ -1,0 +1,107 @@
+[
+ {
+  "type": "lodging",
+  "name": "송도오샨리조트",
+  "nameEn": "Songdoosyanrijoteu",
+  "tx": 359,
+  "ty": 608,
+  "osmId": 368662671
+ },
+ {
+  "type": "lodging",
+  "name": "터틀베으리조트",
+  "nameEn": "Teoteulbeeurijoteu",
+  "tx": 643,
+  "ty": 55,
+  "osmId": 368663833
+ },
+ {
+  "type": "restaurant",
+  "name": "돌삼횟집",
+  "nameEn": "Dolsam Sashimi House",
+  "tx": 485,
+  "ty": 438,
+  "osmId": 368971671
+ },
+ {
+  "type": "lodging",
+  "name": "만리포황투펜션",
+  "nameEn": "Manripohwangtu Pension",
+  "tx": 547,
+  "ty": 474,
+  "osmId": 6546822856
+ },
+ {
+  "type": "lodging",
+  "name": "해당훠펜션",
+  "nameEn": "Haedanghwo Pension",
+  "tx": 541,
+  "ty": 465,
+  "osmId": 6546822861
+ },
+ {
+  "type": "lodging",
+  "name": "모드느펜션",
+  "nameEn": "Modeuneu Pension",
+  "tx": 533,
+  "ty": 461,
+  "osmId": 6546822862
+ },
+ {
+  "type": "lodging",
+  "name": "꼴라브펜션",
+  "nameEn": "Kkolrabeu Pension",
+  "tx": 481,
+  "ty": 446,
+  "osmId": 6546822863
+ },
+ {
+  "type": "lodging",
+  "name": "맘마미어펜션",
+  "nameEn": "Mammamieo Pension",
+  "tx": 550,
+  "ty": 437,
+  "osmId": 6546822864
+ },
+ {
+  "type": "lodging",
+  "name": "파도소르",
+  "nameEn": "Padosoreu",
+  "tx": 542,
+  "ty": 425,
+  "osmId": 6546822865
+ },
+ {
+  "type": "lodging",
+  "name": "바다지우펜션",
+  "nameEn": "Badajiu Pension",
+  "tx": 532,
+  "ty": 428,
+  "osmId": 6546822866
+ },
+ {
+  "type": "lodging",
+  "name": "피노키우펜션",
+  "nameEn": "Pinokiu Pension",
+  "tx": 549,
+  "ty": 350,
+  "osmId": 6546822867
+ },
+ {
+  "type": "shop",
+  "shopKind": "ticket",
+  "name": "Chollipo Arboretim",
+  "nameEn": "Chollipo Arboretim",
+  "tx": 604,
+  "ty": 186,
+  "osmId": 8298543915
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 526,
+  "ty": 479,
+  "osmId": 8369844064
+ }
+]
