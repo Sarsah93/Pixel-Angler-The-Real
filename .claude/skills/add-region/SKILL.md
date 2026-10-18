@@ -201,4 +201,5 @@ node tools/gen_game_wiki_data.mjs --html > <폴더>/index.html   # 지도 탭 �
 - 하네스는 페이지 `Date`를 정오 KST로 밀고(밤 명암 · 가로등 없음) 사람 · 차 · 날씨 · HUD · 글자를 숨긴 뒤, 화면을 3,072px로 키우고
   `chunks.update`를 쥐어(`__force`일 때만 원래 갱신) 청크 3×3 블록마다 `preloadAround` → `postrender`에서 캔버스를 1/4(타일당 8px)로 누적한다.
   카메라 bounds는 떼야 가장자리 블록 중심을 잡는다. 산출 = `maps/<지역>/s_<col>_<row>.webp`(4,096 시트) · `overview.webp`(2px) · `index.json`.
-- 아티팩트에는 바뀐 지역의 시트만 `files`로 올린다(파일 상한 511 — 그림 283 + 지도 + index.html). 가게 종류 핀은 씬 규칙 복제(`dump_wiki_map_data.mjs`)라 씬을 고치면 같이 고친다.
+- 아티팩트에는 바뀐 지역의 시트만 `files`로 올린다(파일 상한 511 — 그림 283 + 지도 + index.html).
+  가게 종류 핀은 씬 규칙 복제(`dump_wiki_map_data.mjs`)라 씬을 고치면 같이 고친다.

@@ -72,7 +72,8 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 
 ## 5. 잔여·차기
 
-- **지도 탭(264)** — 레거시 속초 7맵 · 부산 8맵은 찍지 않았다(열리는 맵만). 건물 윤곽 · 걷기 칸 레이어 · 인물 시간대별 자리는 뒤로. 지형 · 가게 자리를 바꾼 지역은 `capture_wiki_maps.cjs <폴더> <지역>`으로 그 지역만 다시 찍어 `files`로 올린다.
+- **지도 탭(264)** — 레거시 속초 7맵 · 부산 8맵은 찍지 않았다(열리는 맵만). 건물 윤곽 · 걷기 칸 레이어 · 인물 시간대별 자리는 뒤로.
+  지형 · 가게 자리를 바꾼 지역은 `capture_wiki_maps.cjs <폴더> <지역>`으로 그 지역만 다시 찍어 `files`로 올린다.
 
 - ~~요리 레시피 도감~~ ✅156 · ✅255(변형 8레시피 — 후보 57 → 254 + 전복죽 · 쪽 넘김).
 - **그림 없는 항목**(174차 기준) — 수산생물 77종 중 **20종**, 아이템 318종 중 89종.
@@ -92,9 +93,12 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 
 ## 6. 함정·불변조건
 
-- **아티팩트 파일 상한 511 · 페이지 16MB(264)** — 위키는 그림 파일 283 + 지도 99 + index.html. 그림을 HTML 안에 넣을 때는 `G.inl[파일명]`에 **한 번만**(자리마다 data URI를 넣으면 같은 그림이 여러 자리에 나와 3배로 분다 — 13.5MB 실측).
-- **지도 탭의 가게 종류는 씬 규칙 복제(264)** — `dump_wiki_map_data.mjs`의 `kindOf` · `isStall` · `POI_LABEL`은 `RegionFieldScene.poiBuildingKind` · `isStallPoi` · `POI_LABEL`을 베낀 것이다. 씬을 고치면 같이 고친다.
-- **지도 캡처는 정오 · 맑음으로 고정(264)** — 페이지 `Date`를 정오 KST로 밀고(`kstHour`가 `new Date()`를 읽는다) 날씨 연출 · 차량 · 사람 · HUD · Text · 화면 고정 오브젝트를 숨긴다. 청크 3×3 상주 밖은 안 그려지므로 블록 중심을 청크 중앙에 둔다.
+- **아티팩트 파일 상한 511 · 페이지 16MB(264)** — 위키는 그림 파일 283 + 지도 99 + index.html.
+  그림을 HTML 안에 넣을 때는 `G.inl[파일명]`에 **한 번만**(자리마다 data URI를 넣으면 같은 그림이 여러 자리에 나와 3배로 분다 — 13.5MB 실측).
+- **지도 탭의 가게 종류는 씬 규칙 복제(264)** — `dump_wiki_map_data.mjs`의 `kindOf` · `isStall` · `POI_LABEL`은
+  `RegionFieldScene.poiBuildingKind` · `isStallPoi` · `POI_LABEL`을 베낀 것이다. 씬을 고치면 같이 고친다.
+- **지도 캡처는 정오 · 맑음으로 고정(264)** — 페이지 `Date`를 정오 KST로 밀고(`kstHour`가 `new Date()`를 읽는다)
+  날씨 연출 · 차량 · 사람 · HUD · Text · 화면 고정 오브젝트를 숨긴다. 청크 3×3 상주 밖은 안 그려지므로 블록 중심을 청크 중앙에 둔다.
 
 0. **위키 아티팩트는 생성기 4단계를 순서대로 돌려야 한다**(169차) —
    `pnpm --filter @tra/core run build` → `py tools/gen_wiki_images.py` → `node tools/dump_wiki_items.mjs`

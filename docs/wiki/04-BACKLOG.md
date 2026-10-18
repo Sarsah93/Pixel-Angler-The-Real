@@ -237,7 +237,8 @@
 
 ### B3. 데이터·환경 위험
 
-- **위키 지도 핀의 가게 종류 = 씬 규칙 복제(264)** — `tools/dump_wiki_map_data.mjs`(`kindOf` · `isStall` · `POI_LABEL`) ↔ `RegionFieldScene.poiBuildingKind` · `isStallPoi` · `POI_LABEL`. 한쪽만 고치면 위키 핀 종류가 게임과 어긋난다.
+- **위키 지도 핀의 가게 종류 = 씬 규칙 복제(264)** — `tools/dump_wiki_map_data.mjs`(`kindOf` · `isStall` · `POI_LABEL`) ↔
+  `RegionFieldScene.poiBuildingKind` · `isStallPoi` · `POI_LABEL`. 한쪽만 고치면 위키 핀 종류가 게임과 어긋난다.
 - **프로덕션엔 vite 프록시가 없다** — HTTP 전용 API(MAFRA·NMPNT)는 배포 시 Mock 폴백. 서버 프록시 필요.
 - **API 키가 번들에 인라인**된다(사용자 승인 상태). 공개 배포 시 재검토 대상.
 - **NMPNT 데이터 공백**: 파고 0개소 · 수온 11/76개소 · 강수/운량 필드 없음 → 날씨 판정은 기상청 API 의존.
@@ -254,7 +255,8 @@
 
 ## C. 최적화 요소
 
-- **위키 페이지 8.7MB(264)** — 그림 사전(20KB 이하 352장 HTML 안) + 지도 데이터 1.5MB(POI 5,053). 더 늘면 ① POI `nameEn` 빼기 ② 지도 시트 8,192px 합치기 ③ 지도만 다른 아티팩트로. 파일 수는 283 + 지도 99 + 1(상한 511).
+- **위키 페이지 8.7MB(264)** — 그림 사전(20KB 이하 352장 HTML 안) + 지도 데이터 1.5MB(POI 5,053).
+  더 늘면 ① POI `nameEn` 빼기 ② 지도 시트 8,192px 합치기 ③ 지도만 다른 아티팩트로. 파일 수는 283 + 지도 99 + 1(상한 511).
 
 | 대상 | 현황(실측) | 개선안 | 우선도 |
 |---|---|---|---|

@@ -67,15 +67,22 @@
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
-- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 + 262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
+- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
+  262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
 - **264차**: **위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포** —
-  사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일을 다 보여주기) … 확대/축소 … npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) … 조행록에서 지역을 누르면 지도로 … 다 하고나서 main 반영하고 81차 배포해줘」 →
-  `tools/capture_wiki_maps.cjs`(dev 서버 + Playwright — `Date`를 정오 KST로 · 사람 · 차 · 날씨 · HUD · 글자 숨김 · 화면 3,072px · `chunks.update` 쥐기 · 청크 3×3 블록 누적 · 타일당 8px · 4,096 WebP 시트 · 2px 축소판) ·
-  `tools/dump_wiki_map_data.mjs`(인물 자리 · 장소 · 현장 · 가게 종류 — 씬 규칙 복제 ⚠) · 생성기 `maps`(심리스 14 + 홈타운 · 가게 · 등대 · 어장 · 인물 · 현장 · 장소 · 내리는 자리 · 집 설치물 · 연결 색인) ·
-  템플릿 「지도」 탭(캔버스 뷰어 · 휠 · 끌기 · 핀치 · 검색 · 레이어 11 · 격자 · 칸 좌표 · 핀 상세 · 범례 · 해시 `#map/<지도>/<종류>/<id>`) · 조행록 위치 · 의뢰인 · 「지도」 절 ↔ 핀 양방향 · 출조 지역 카드 링크 ·
+  사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일을 다 보여주기) … 확대/축소 …
+  npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) …
+  조행록에서 지역을 누르면 지도로 … 다 하고나서 main 반영하고 81차 배포해줘」 →
+  `tools/capture_wiki_maps.cjs`(dev 서버 + Playwright — `Date`를 정오 KST로 · 사람 · 차 · 날씨 · HUD · 글자 숨김 · 화면 3,072px ·
+  `chunks.update` 쥐기 · 청크 3×3 블록 누적 · 타일당 8px · 4,096 WebP 시트 · 2px 축소판) ·
+  `tools/dump_wiki_map_data.mjs`(인물 자리 · 장소 · 현장 · 가게 종류 — 씬 규칙 복제 ⚠) ·
+  생성기 `maps`(심리스 14 + 홈타운 · 가게 · 등대 · 어장 · 인물 · 현장 · 장소 · 내리는 자리 · 집 설치물 · 연결 색인) ·
+  템플릿 「지도」 탭(캔버스 뷰어 · 휠 · 끌기 · 핀치 · 검색 · 레이어 11 · 격자 · 칸 좌표 · 핀 상세 · 범례 · 해시 `#map/<지도>/<종류>/<id>`) ·
+  조행록 위치 · 의뢰인 · 「지도」 절 ↔ 핀 양방향 · 출조 지역 카드 링크 ·
   그림 사전 `G.inl`(20KB 이하 352장 HTML 안 · 한 번만 — 파일 283 + 지도 99 + 1 = 383 / 511) ·
-  캡처 15지도 pageerror 0 · Playwright pageerror 0 · 위키 Version 63 · main 빨리 감기 · 81차 배포(__DEPLOY_SHORT__).
+  캡처 15지도 pageerror 0 · Playwright pageerror 0 · 위키 Version 63 · main 빨리 감기 ·
+  81차 배포(실행 10 · gh-pages `eb403f4` · 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
   **다음 = 사용자 육안(지도 탭 15지도 조감 · 핀 자리 · 8px 가독성) · 지형 · 가게 자리가 바뀐 지역은 그 지역만 다시 캡처(백로그 CL)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-18-264-wiki-map-tab-region-atlas.md`.
 - **263차**: **지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대** —
@@ -192,11 +199,13 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 81차 배포 2026-10-18 = 263차까지 포함**(264는 위키 · 도구만) — 263은 81차에 처음 실렸다 · main `__MAIN_SHA__`).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eb403f4` — **최근 81차 배포 2026-10-18 = 263차까지 포함**(264는 위키 · 도구만) —
+  263은 81차에 처음 실렸다 · main `01bbb50`).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 63 = 264차**
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 99파일).
-  지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다 — 지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
+  지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
+  지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
   남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 5 = 263차 기준 · 비공개) ·
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 5 = 263차 기준) ·
