@@ -315,7 +315,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   `tools/capture_wiki_maps.cjs`(게임 렌더러로 심리스 14 + 홈타운 통째 캡처 — 정오 · 숨김 · 청크 3×3 블록 누적 · 타일당 8px · 4,096 WebP 시트) · `tools/dump_wiki_map_data.mjs` · 생성기 `maps` 블록 ·
   템플릿 「지도」 탭(캔버스 뷰어 · 검색 · 레이어 11 · 격자 · 칸 좌표 · 핀 상세 · 해시 `#map/…`) · 조행록 위치 · 의뢰인 · 「지도」 절 ↔ 핀 양방향 링크 · 그림 사전 `G.inl`(20KB 이하 한 번만 — 파일 상한 511).
 - 게임 코드 변경 없음(도구 · 템플릿 · 문서). 씬의 가게 종류 규칙(`poiBuildingKind` · `isStallPoi` · `POI_LABEL`)을 덤프 도구가 복제한다 — 씬을 고치면 같이 고친다(백로그 B).
-- 검증: 캡처 15지도 pageerror 0 · Playwright 지도 탭(맞춤 · 인물 · 확대 · 검색 · 현장 · 홈타운 · 어두운 테마 · 폰 폭) pageerror 0 · 아티팩트 __WIKI_VERSION__(파일 __FILES_TOTAL__ / 511) ·
+- 검증: 캡처 15지도 pageerror 0 · Playwright 지도 탭(맞춤 · 인물 · 확대 · 검색 · 현장 · 홈타운 · 어두운 테마 · 폰 폭) pageerror 0 · 아티팩트 Version 63(파일 383 / 511) ·
   main 빨리 감기 · 「테스트 배포」 81차(__DEPLOY_SHORT__). 상세: [264차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-264-wiki-map-tab-region-atlas.md).
 
 **이전 변경 (2026-10-18 263차) — 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**

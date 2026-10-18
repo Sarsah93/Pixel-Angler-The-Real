@@ -91,7 +91,13 @@ function noonOffsetMs() {
       const f = g.scene.getScene('RegionFieldScene');
       if (f.scene.isActive()) f.scene.restart({ region, mapId }); else g.scene.start('RegionFieldScene', { region, mapId });
     }, { region, mapId });
-    await page.waitForFunction(() => { const s = globalThis.__PIXEL_ANGLER_GAME.scene.getScene('RegionFieldScene'); return s && s.scene.isActive() && !s.bootFailed && s.playerBody && s.hud && (s.chunks || s.region === 'hometown'); }, { timeout: 120000 });
+    // 홈타운은 새 게임이 집 안(HomeInteriorScene)에서 시작한다 — 실내를 닫고 필드를 깨운다(stop + resume 규칙)
+    await page.waitForFunction(() => {
+      const g = globalThis.__PIXEL_ANGLER_GAME; const s = g.scene.getScene('RegionFieldScene');
+      if (!s || s.bootFailed || !s.playerBody || !s.hud) return false;
+      if (!s.scene.isActive() && g.scene.isActive('HomeInteriorScene')) { g.scene.getScene('HomeInteriorScene').scene.stop(); g.scene.resume('RegionFieldScene'); return false; }
+      return s.scene.isActive() && (s.chunks || s.region === 'hometown');
+    }, { timeout: 120000, polling: 300 });
     await page.waitForTimeout(2500);
 
     // ── 준비: 화면 키우기 · 카메라 풀기 · 숨기기 · 청크 스트리밍 쥐기

@@ -1216,7 +1216,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (MV.map !== m) { MV.map = m; MV.sel = null; MV.hover = null; MV.pin = null; mapEl('mapsel').value = m.id; mapFit(); }
     const tg = parts[2] ? { kind: parts[2], id: decodeURIComponent(parts.slice(3).join('/')) } : null;
     const s = tg ? resolveTarget(m, tg) : null;
-    if (s) { MV.sel = s; centerOn(s.x, s.y, 8); } else if (tg) MV.sel = null;
+    if (s) { MV.sel = s; centerOn(s.x, s.y, 8); }
+    else { MV.sel = null; MV.pin = null; if (!tg) mapFit(); }   // 자리 없이 지도만 열면 전체 보기
     mapSide(); mapHash(); mapQueue();
     mapEl('mapview').scrollIntoView({ block: 'nearest' });
     return true;
