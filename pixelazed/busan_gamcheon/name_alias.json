@@ -260,6 +260,446 @@
   "f7509cc8572aee08": {
    "ko": "해변가횟집",
    "en": "Haebyeon-ga Sashimi House"
+  },
+  "5e005c39b3948156": {
+   "ko": "서부산농햡",
+   "en": "Seobusannonghyap",
+   "auto": true
+  },
+  "9691ed952b52006d": {
+   "ko": "부산경남양돈농햡",
+   "en": "Busangyeongnamyangdonnonghyap",
+   "auto": true
+  },
+  "443ba5e1ab23d44b": {
+   "ko": "우르마트",
+   "en": "Ureu Mart",
+   "auto": true
+  },
+  "339878b8b17bae19": {
+   "ko": "월드디잴마트",
+   "en": "Woldeudijael Mart",
+   "auto": true
+  },
+  "eb1d752c60e392d4": {
+   "ko": "한빛피승마트",
+   "en": "Hanbitpiseung Mart",
+   "auto": true
+  },
+  "437a7d81e2206028": {
+   "ko": "거산할은마트",
+   "en": "Geosanhaleun Mart",
+   "auto": true
+  },
+  "e226777f6c468293": {
+   "ko": "A+고그마트",
+   "en": "A+gogeu Mart",
+   "auto": true
+  },
+  "7e865668601c14dc": {
+   "ko": "푸른농선마트",
+   "en": "Pureunnongseon Mart",
+   "auto": true
+  },
+  "b9ac072e78a2e12d": {
+   "ko": "럭크마트",
+   "en": "Reokkeu Mart",
+   "auto": true
+  },
+  "7b665a0bc4802837": {
+   "ko": "시트마트",
+   "en": "Siteu Mart",
+   "auto": true
+  },
+  "14b5b413a4e2dd9f": {
+   "ko": "자요마트",
+   "en": "Jayo Mart",
+   "auto": true
+  },
+  "81ae44c28b31c185": {
+   "ko": "대규마트",
+   "en": "Daegyu Mart",
+   "auto": true
+  },
+  "75afc3ca8872771b": {
+   "ko": "영두마트",
+   "en": "Yeongdu Mart",
+   "auto": true
+  },
+  "5837d2c61ccd5dd8": {
+   "ko": "파와C마트",
+   "en": "PawaC Mart",
+   "auto": true
+  },
+  "bc6791d5fec6c1b2": {
+   "ko": "한아림마트",
+   "en": "Hanarim Mart",
+   "auto": true
+  },
+  "c18a6624324f7431": {
+   "ko": "탑훼미르마트",
+   "en": "Taphwemireu Mart",
+   "auto": true
+  },
+  "12ac98ff3d17d999": {
+   "ko": "탑플러시마트",
+   "en": "Tappeulreosi Mart",
+   "auto": true
+  },
+  "f932eb16556890a6": {
+   "ko": "감천할은마트",
+   "en": "Gamcheonhaleun Mart",
+   "auto": true
+  },
+  "c6a1aeeeb2a42d48": {
+   "ko": "농심할은마트",
+   "en": "Nongsimhaleun Mart",
+   "auto": true
+  },
+  "f6a90f9b91a05898": {
+   "ko": "유림할은마트",
+   "en": "Yurimhaleun Mart",
+   "auto": true
+  },
+  "6ae426ac3c209f8c": {
+   "ko": "삼양할은마트",
+   "en": "Samyanghaleun Mart",
+   "auto": true
+  },
+  "77e89c0791ac05a5": {
+   "ko": "서원탑패밀르마트",
+   "en": "Seowontappaemilreu Mart",
+   "auto": true
+  },
+  "fce862f0c1e07312": {
+   "ko": "한빛국민은행",
+   "en": "Hanbit Kookmin Bank",
+   "auto": true
+  },
+  "68a07f442333011c": {
+   "ko": "SC제을은행",
+   "en": "SCjeeuleunhaeng",
+   "auto": true
+  },
+  "92e358020cd3e5a0": {
+   "ko": "동벙주유소",
+   "en": "Dongbeong Gas Station",
+   "auto": true
+  },
+  "00958091d1127b3c": {
+   "ko": "영산주유소",
+   "en": "Yeongsan Gas Station",
+   "auto": true
+  },
+  "4af98434403208e0": {
+   "ko": "선걍주유소",
+   "en": "Seongyang Gas Station",
+   "auto": true
+  },
+  "e634310cf80cc742": {
+   "ko": "남보주유소",
+   "en": "Nambo Gas Station",
+   "auto": true
+  },
+  "027c9f1dd2301f12": {
+   "ko": "SK괴장주유소",
+   "en": "SKgoejang Gas Station",
+   "auto": true
+  },
+  "919981dd26353b52": {
+   "ko": "대창재1주유소",
+   "en": "Daechangjae1 Gas Station",
+   "auto": true
+  },
+  "92c9aec053cf3201": {
+   "ko": "괴정대상주유소",
+   "en": "Goejeongdaesang Gas Station",
+   "auto": true
+  },
+  "56ae2bdc66f82855": {
+   "ko": "버거퀸",
+   "en": "Burger Queen",
+   "auto": true
+  },
+  "8f4662b9d94a8554": {
+   "ko": "(주)대경주유수 (Daegyeong Gas Station)",
+   "en": "(ju)daegyeongjuyusu (Daegyeong Gas Station)",
+   "auto": true
+  },
+  "0211224bf5b67889": {
+   "ko": "건양주유소",
+   "en": "Geonyang Gas Station",
+   "auto": true
+  },
+  "7887a57f26dc7719": {
+   "ko": "부산비치관궝호텔",
+   "en": "Busanbichigwangwong Hotel",
+   "auto": true
+  },
+  "120c438e61bf99e3": {
+   "ko": "해몰횟집",
+   "en": "Haemol Sashimi House",
+   "auto": true
+  },
+  "c3b7149f734e3324": {
+   "ko": "오륙두횟집",
+   "en": "Oryukdu Sashimi House",
+   "auto": true
+  },
+  "a7bd11eebc8e414c": {
+   "ko": "포헝횟집",
+   "en": "Poheong Sashimi House",
+   "auto": true
+  },
+  "acf27f0a06a7c05f": {
+   "ko": "거재횟집",
+   "en": "Geojae Sashimi House",
+   "auto": true
+  },
+  "7efbf77695b7465f": {
+   "ko": "수두횟집",
+   "en": "Sudu Sashimi House",
+   "auto": true
+  },
+  "87f124ac97128714": {
+   "ko": "일숭횟집",
+   "en": "Ilsung Sashimi House",
+   "auto": true
+  },
+  "d9e7688e4485faba": {
+   "ko": "고상횟집",
+   "en": "Gosang Sashimi House",
+   "auto": true
+  },
+  "dec681207bd43ba5": {
+   "ko": "밀영횟집",
+   "en": "Milyeong Sashimi House",
+   "auto": true
+  },
+  "b2338b5052a505f4": {
+   "ko": "제을횟집",
+   "en": "Jeeul Sashimi House",
+   "auto": true
+  },
+  "18d3410a9889453b": {
+   "ko": "다데횟집",
+   "en": "Dade Sashimi House",
+   "auto": true
+  },
+  "d3879f7043f5c90f": {
+   "ko": "명즈횟집",
+   "en": "Myeongjeu Sashimi House",
+   "auto": true
+  },
+  "119061d7ffa6352d": {
+   "ko": "동넘횟집",
+   "en": "Dongneom Sashimi House",
+   "auto": true
+  },
+  "238c2c1dd3420fd1": {
+   "ko": "부선횟집",
+   "en": "Buseon Sashimi House",
+   "auto": true
+  },
+  "4fe5b835d0464350": {
+   "ko": "강넘횟집",
+   "en": "Gangneom Sashimi House",
+   "auto": true
+  },
+  "8a31c99869e697f9": {
+   "ko": "동상횟집",
+   "en": "Dongsang Sashimi House",
+   "auto": true
+  },
+  "385ac0943bd188c8": {
+   "ko": "신산횟집",
+   "en": "Sinsan Sashimi House",
+   "auto": true
+  },
+  "fc613d57099937ed": {
+   "ko": "소러횟집",
+   "en": "Soreo Sashimi House",
+   "auto": true
+  },
+  "006f6db654d2c635": {
+   "ko": "하둥횟집",
+   "en": "Hadung Sashimi House",
+   "auto": true
+  },
+  "f48efcfffaf946c1": {
+   "ko": "장타횟집",
+   "en": "Jangta Sashimi House",
+   "auto": true
+  },
+  "d3898ffb44a56d0c": {
+   "ko": "남헝횟집",
+   "en": "Namheong Sashimi House",
+   "auto": true
+  },
+  "82cac0e12b446a03": {
+   "ko": "청두횟집",
+   "en": "Cheongdu Sashimi House",
+   "auto": true
+  },
+  "41614ea05882eb2e": {
+   "ko": "유상횟집",
+   "en": "Yusang Sashimi House",
+   "auto": true
+  },
+  "14880b6e6286f3af": {
+   "ko": "With Ma",
+   "en": "With Ma",
+   "auto": true
+  },
+  "086201c7093757aa": {
+   "ko": "커피미므",
+   "en": "Coffee Mimeu",
+   "auto": true
+  },
+  "46b1583529333240": {
+   "ko": "부산삼진어목 본점",
+   "en": "Busansamjineomok Bonjeom",
+   "auto": true
+  },
+  "34f3bf2be9844797": {
+   "ko": "텁마트 감천점",
+   "en": "Teop Mart Gamcheonjeom",
+   "auto": true
+  },
+  "7b78bff28e60628c": {
+   "ko": "남다린감자탕",
+   "en": "Namdarin Gamjatang",
+   "auto": true
+  },
+  "92fc3effd0559c6c": {
+   "ko": "화셍약국",
+   "en": "Hwaseng Pharmacy",
+   "auto": true
+  },
+  "275268b938a64236": {
+   "ko": "등데약국",
+   "en": "Deungde Pharmacy",
+   "auto": true
+  },
+  "e8fd9efc63914ccd": {
+   "ko": "Gontran Cherriar",
+   "en": "Gontran Cherriar",
+   "auto": true
+  },
+  "d9d3410914d97bf5": {
+   "ko": "Kangkangnee Design studiu",
+   "en": "Kangkangnee Design Studiu",
+   "auto": true
+  },
+  "2c4a51b8990c9aa3": {
+   "ko": "에바더헤어",
+   "en": "Ebadeoheeo",
+   "auto": true
+  },
+  "5a539080795fcc4d": {
+   "ko": "영도뼈다괴해장국",
+   "en": "Yeongdoppyeodagoe Haejangguk",
+   "auto": true
+  },
+  "c87f24611ebb382c": {
+   "ko": "코서마트",
+   "en": "Koseo Mart",
+   "auto": true
+  },
+  "3361cbffe687ce75": {
+   "ko": "효원떡방                 딱.커피",
+   "en": "Hyowontteokbang Ttak. Coffee",
+   "auto": true
+  },
+  "229f38f874a7b1bc": {
+   "ko": "낙동겅오리",
+   "en": "Nakdonggeongori",
+   "auto": true
+  },
+  "1d56e3d9ef279b33": {
+   "ko": "포항몰회집",
+   "en": "Pohangmol Sashimi House",
+   "auto": true
+  },
+  "e3e92e4a052bdec4": {
+   "ko": "대둥반점",
+   "en": "Daedungbanjeom",
+   "auto": true
+  },
+  "59150f6cf8954993": {
+   "ko": "영다방",
+   "en": "Yeong Dabang",
+   "auto": true
+  },
+  "7f973b28c3bb9092": {
+   "ko": "포그니 이불커탠",
+   "en": "Pogeuni Ibulkeotaen",
+   "auto": true
+  },
+  "e24d6a98292f1de5": {
+   "ko": "백소세탁소",
+   "en": "Baeksosetakso",
+   "auto": true
+  },
+  "2efbee59b0739208": {
+   "ko": "유누헤어",
+   "en": "Yunuheeo",
+   "auto": true
+  },
+  "ad79e93ccc85210c": {
+   "ko": "산밭과일춘",
+   "en": "Sanbatgwailchun",
+   "auto": true
+  },
+  "83d2a6b250366c4b": {
+   "ko": "센스엔텍레포치",
+   "en": "Senseuentekrepochi",
+   "auto": true
+  },
+  "ff775b3821d07b2b": {
+   "ko": "사이소",
+   "en": "Saiso",
+   "auto": true
+  },
+  "8183d8ba1d51dad9": {
+   "ko": "투스푼플레이스",
+   "en": "Two Spoon Place",
+   "auto": true
+  },
+  "a4e49faff63f4b4c": {
+   "ko": "기업신용은행",
+   "en": "Business Credit Bank",
+   "auto": true
+  },
+  "c7a0705bdc6623d6": {
+   "ko": "텐퍼센티커피",
+   "en": "Tenpeosenti Coffee",
+   "auto": true
+  },
+  "19ddb1621816bdf2": {
+   "ko": "orp",
+   "en": "Orp",
+   "auto": true
+  },
+  "fa844c56f2d130c7": {
+   "ko": "삼진어목",
+   "en": "Samjineomok",
+   "auto": true
+  },
+  "4b88ae3ad9e7b9aa": {
+   "ko": "산마로식당",
+   "en": "Sanmaro Restaurant",
+   "auto": true
+  },
+  "ae0bbfbe145e508e": {
+   "ko": "연일자동처정비",
+   "en": "Yeoniljadongcheojeongbi",
+   "auto": true
+  },
+  "30ba1b60ab8ffb5e": {
+   "ko": "타이어셥",
+   "en": "Taieosyeop",
+   "auto": true
   }
  }
 }

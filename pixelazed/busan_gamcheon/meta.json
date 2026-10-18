@@ -3,15 +3,15 @@
  "bbox": [
   35.047,
   128.985,
-  35.082,
+  35.095,
   129.045
  ],
  "tileMeters": 5.0,
  "width": 1093,
- "height": 778,
+ "height": 1067,
  "spawn": [
   456,
-  311
+  600
  ],
  "spawnName": "감천항 동방파제 입구",
  "spawnApprox": true,
