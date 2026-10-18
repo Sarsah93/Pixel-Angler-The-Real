@@ -317,7 +317,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - core `SEAMLESS_AREA_REGIONS`(구역 → 데이터 지역) · `seamlessRegionOf(region, mapId)` · `RegionAreaNode.spawnLatLon`(구역별 내리는 자리) · 새 구역 노드 11 · 조행록 areaKey · 위키 「출조 지역」 탭 ·
   `build_osm_tilemap.py` 바다 = 해안선 방향 투표(가장자리 시드 침수 해결) · `merge_capture_pois.py --auto`(게임 상호 자동 변환 3,516곳).
 - 검증: 하네스 17/17(걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 해금강 1 · 나머지 0) · 빌드 3/3 · typecheck 0 · core 322/322 · 해금강 스폰 보정(도장포 유람선 터미널) ·
-  아티팩트 4개(위키 59 · 셋 Version 4) · main 빨리 감기(`6851660`) · 「테스트 배포」 80차(gh-pages `dbb11ac` — 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
+  아티팩트 4개(위키 59 · 셋 Version 4) · main 빨리 감기(`6851660`) · 「테스트 배포」 80차(gh-pages `dbb11ac` — 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0) ·
+  감천 요청 4 재굽기(63.7%) · 이야기 연계 점검(지도 층만 — 인물 29명 배치 · 장 잠금 · 부산 위판장은 백로그 CK).
   상세: [262차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md).
 
 **이전 변경 (2026-10-18 261차) — 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
