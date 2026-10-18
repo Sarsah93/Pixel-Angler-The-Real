@@ -9,8 +9,8 @@
  },
  {
   "type": "bank",
-  "name": "남부산농협",
-  "nameEn": "Nambusan Nonghyup",
+  "name": "남부산농민조합",
+  "nameEn": "Nambusan Farmers Co-op",
   "tx": 407,
   "ty": 111,
   "osmId": 368640070
@@ -18,8 +18,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "피케이마트",
-  "nameEn": "Pikei Mart",
+  "name": "피제이마트",
+  "nameEn": "PJ Mart",
   "tx": 407,
   "ty": 217,
   "osmId": 368667283
@@ -27,8 +27,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "씨티마트",
-  "nameEn": "City Mart",
+  "name": "씨타운마트",
+  "nameEn": "Sea Town Mart",
   "tx": 357,
   "ty": 82,
   "osmId": 368667651
@@ -36,8 +36,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "축산마트",
-  "nameEn": "Chuksan Mart",
+  "name": "축산골마트",
+  "nameEn": "Chuksan-gol Mart",
   "tx": 136,
   "ty": 41,
   "osmId": 368667791
@@ -45,8 +45,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "공마트",
-  "nameEn": "Gong Mart",
+  "name": "공감마트",
+  "nameEn": "Gonggam Mart",
   "tx": 357,
   "ty": 82,
   "osmId": 368668234
@@ -54,8 +54,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "용당현대아이파크",
-  "nameEn": "Yongdang hyundai I Park",
+  "name": "용당 현재파크 마트",
+  "nameEn": "Yongdang Hyeonjae Park Mart",
   "tx": 168,
   "ty": 159,
   "osmId": 368668424
@@ -63,8 +63,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "삼성할인마트",
-  "nameEn": "Samseong Retail Shop",
+  "name": "삼별할인마트",
+  "nameEn": "Sambyeol Discount Mart",
   "tx": 368,
   "ty": 32,
   "osmId": 368668944
@@ -72,8 +72,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "주공마트",
-  "nameEn": "Jugong Mart",
+  "name": "주곡마트",
+  "nameEn": "Jugok Mart",
   "tx": 357,
   "ty": 82,
   "osmId": 368696200
@@ -104,152 +104,152 @@
  },
  {
   "type": "bank",
-  "name": "우리은행",
-  "nameEn": "Uri Bank",
+  "name": "우람은행",
+  "nameEn": "Uram Bank",
   "tx": 399,
   "ty": 168,
   "osmId": 368894395
  },
  {
   "type": "fuel",
-  "name": "반도주유소",
-  "nameEn": "Bando Gas Station",
+  "name": "반달주유소",
+  "nameEn": "Bandal Gas",
   "tx": 185,
   "ty": 18,
   "osmId": 368906008
  },
  {
   "type": "fuel",
-  "name": "남양주유소",
-  "nameEn": "Namyang Gas Station",
+  "name": "남향주유소",
+  "nameEn": "Namhyang Gas",
   "tx": 389,
   "ty": 256,
   "osmId": 368906101
  },
  {
   "type": "fuel",
-  "name": "공단주유소",
-  "nameEn": "Gongdan Gas Station",
+  "name": "공단셀프주유소",
+  "nameEn": "Gongdan Self Gas",
   "tx": 131,
   "ty": 108,
   "osmId": 368906190
  },
  {
   "type": "fuel",
-  "name": "경인주유소",
-  "nameEn": "Gyeongin Gas Station",
+  "name": "경일주유소",
+  "nameEn": "Gyeongil Gas",
   "tx": 191,
   "ty": 8,
   "osmId": 368906202
  },
  {
   "type": "fuel",
-  "name": "은마주유소",
-  "nameEn": "Eunma Gas Station",
+  "name": "은말주유소",
+  "nameEn": "Eunmal Gas",
   "tx": 98,
   "ty": 169,
   "osmId": 368906509
  },
  {
   "type": "fuel",
-  "name": "쌍용주유소",
-  "nameEn": "Ssangyong Gas Station",
+  "name": "쌍룡주유소",
+  "nameEn": "Ssangryong Gas",
   "tx": 383,
   "ty": 180,
   "osmId": 368906554
  },
  {
   "type": "fuel",
-  "name": "펙트주유소",
-  "nameEn": "Pekteu Gas Station",
+  "name": "팩토주유소",
+  "nameEn": "Facto Gas",
   "tx": 108,
   "ty": 248,
   "osmId": 368906674
  },
  {
   "type": "fuel",
-  "name": "용당C.Y주유소",
-  "nameEn": "Yongdang C.Y Gas Station",
+  "name": "용당씨엔와이주유소",
+  "nameEn": "Yongdang CNY Gas",
   "tx": 153,
   "ty": 112,
   "osmId": 368906802
  },
  {
   "type": "fuel",
-  "name": "북항대교주유소",
-  "nameEn": "Bukhangdaegyo Gas Station",
+  "name": "북항다리주유소",
+  "nameEn": "Bukhang Bridge Gas",
   "tx": 108,
   "ty": 248,
   "osmId": 368907058
  },
  {
   "type": "fuel",
-  "name": "용당씨와이주유소",
-  "nameEn": "Yongdangssiwai Gas Station",
+  "name": "용당씨엔와이주유소",
+  "nameEn": "Yongdang CNY Gas",
   "tx": 153,
   "ty": 112,
   "osmId": 368907128
  },
  {
   "type": "fuel",
-  "name": "석유써비스신선대주유소",
-  "nameEn": "Seokyusseobiseusinseondae Gas Station",
+  "name": "신선대셀프주유소",
+  "nameEn": "Sinseondae Self Gas",
   "tx": 113,
   "ty": 253,
   "osmId": 368907295
  },
  {
   "type": "restaurant",
-  "name": "용궁횟집",
-  "nameEn": "Yonggung Fish Restaurant",
+  "name": "용궁골횟집",
+  "nameEn": "Yonggung-gol Sashimi House",
   "tx": 98,
   "ty": 267,
   "osmId": 368956694
  },
  {
   "type": "restaurant",
-  "name": "주원횟집",
-  "nameEn": "Juwon Fish Restaurant",
+  "name": "주연횟집",
+  "nameEn": "Juyeon Sashimi House",
   "tx": 380,
   "ty": 283,
   "osmId": 368957201
  },
  {
   "type": "restaurant",
-  "name": "아름횟집",
-  "nameEn": "Areum Fish Restaurant",
+  "name": "아람횟집",
+  "nameEn": "Aram Sashimi House",
   "tx": 128,
   "ty": 25,
   "osmId": 368958356
  },
  {
   "type": "restaurant",
-  "name": "동국횟집",
-  "nameEn": "Dongguk Fish Restaurant",
+  "name": "동곡횟집",
+  "nameEn": "Donggok Sashimi House",
   "tx": 433,
   "ty": 24,
   "osmId": 368958465
  },
  {
   "type": "restaurant",
-  "name": "청해횟집",
-  "nameEn": "Cheonghae Fish Restaurant",
+  "name": "청하횟집",
+  "nameEn": "Cheongha Sashimi House",
   "tx": 434,
   "ty": 126,
   "osmId": 368958547
  },
  {
   "type": "restaurant",
-  "name": "감포횟집",
-  "nameEn": "Gampo Fish Restaurant",
+  "name": "감포리횟집",
+  "nameEn": "Gampori Sashimi House",
   "tx": 392,
   "ty": 3,
   "osmId": 368958576
  },
  {
   "type": "restaurant",
-  "name": "부산횟집",
-  "nameEn": "Busan Fish Restaurant",
+  "name": "부성횟집",
+  "nameEn": "Buseong Sashimi House",
   "tx": 96,
   "ty": 252,
   "osmId": 368959812
@@ -329,8 +329,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "탑 마트",
-  "nameEn": "",
+  "name": "탑나인마트",
+  "nameEn": "Top Nine Mart",
   "tx": 435,
   "ty": 293,
   "osmId": 4634570618
@@ -338,8 +338,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "하나로 마트",
-  "nameEn": "",
+  "name": "하나루마트",
+  "nameEn": "Hanaru Mart",
   "tx": 376,
   "ty": 292,
   "osmId": 4634570619
@@ -347,16 +347,16 @@
  {
   "type": "shop",
   "shopKind": "yes",
-  "name": "홈플러스",
-  "nameEn": "",
+  "name": "홈플랫",
+  "nameEn": "Home Flat",
   "tx": 558,
   "ty": 486,
   "osmId": 4655371461
  },
  {
   "type": "restaurant",
-  "name": "할매분식",
-  "nameEn": "",
+  "name": "할매네분식",
+  "nameEn": "Halmae-ne Bunsik",
   "tx": 369,
   "ty": 236,
   "osmId": 4684573392
@@ -364,8 +364,8 @@
  {
   "type": "shop",
   "shopKind": "supermarket",
-  "name": "탑훼밀리마트",
-  "nameEn": "",
+  "name": "탑나인 패밀리마트",
+  "nameEn": "Top Nine Family Mart",
   "tx": 448,
   "ty": 133,
   "osmId": 4686337376
@@ -373,16 +373,16 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU",
-  "nameEn": "",
+  "name": "QU",
+  "nameEn": "QU",
   "tx": 464,
   "ty": 133,
   "osmId": 4686337377
  },
  {
   "type": "bank",
-  "name": "부산은행 용호동지점",
-  "nameEn": "",
+  "name": "부성은행 용호지점",
+  "nameEn": "Buseong Bank Yongho",
   "tx": 404,
   "ty": 122,
   "osmId": 4686337378
@@ -390,16 +390,16 @@
  {
   "type": "shop",
   "shopKind": "stationery",
-  "name": "문방사우",
-  "nameEn": "",
+  "name": "문방사우당",
+  "nameEn": "Munbangsau-dang Stationery",
   "tx": 414,
   "ty": 120,
   "osmId": 4686337380
  },
  {
   "type": "restaurant",
-  "name": "롯데리아",
-  "nameEn": "Lotteria",
+  "name": "버거리아",
+  "nameEn": "Burgeria",
   "tx": 399,
   "ty": 110,
   "osmId": 4686337381
@@ -407,24 +407,24 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "GS25 용호사거리점",
-  "nameEn": "",
+  "name": "GX24 용호사거리점",
+  "nameEn": "GX24 Yongho Crossroads",
   "tx": 413,
   "ty": 124,
   "osmId": 4686337382
  },
  {
   "type": "bank",
-  "name": "용호새마을금고",
-  "nameEn": "",
+  "name": "용호새마루금고",
+  "nameEn": "Yongho Saemaru Credit Union",
   "tx": 411,
   "ty": 131,
   "osmId": 4686337383
  },
  {
   "type": "restaurant",
-  "name": "해동반점",
-  "nameEn": "",
+  "name": "해동루",
+  "nameEn": "Haedong-ru",
   "tx": 420,
   "ty": 125,
   "osmId": 4686337384
@@ -432,8 +432,8 @@
  {
   "type": "shop",
   "shopKind": "dry_cleaning",
-  "name": "하얀세탁",
-  "nameEn": "",
+  "name": "하얀빨래방",
+  "nameEn": "Hayan Laundry",
   "tx": 450,
   "ty": 130,
   "osmId": 4686337385
@@ -441,8 +441,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "세븐일레븐 부산용호제일점",
-  "nameEn": "7-Eleven",
+  "name": "세븐나인 용호제일점",
+  "nameEn": "Seven-Nine Yongho Jeil",
   "tx": 402,
   "ty": 83,
   "osmId": 4686337694
@@ -450,8 +450,8 @@
  {
   "type": "shop",
   "shopKind": "car_repair",
-  "name": "남부정비",
-  "nameEn": "",
+  "name": "남부카정비",
+  "nameEn": "Nambu Car Service",
   "tx": 401,
   "ty": 87,
   "osmId": 4686337695
@@ -459,8 +459,8 @@
  {
   "type": "shop",
   "shopKind": "car",
-  "name": "쉐보레 용호영업소",
-  "nameEn": "",
+  "name": "쉐브릿자동차 용호영업소",
+  "nameEn": "Chevrit Motors Yongho",
   "tx": 406,
   "ty": 87,
   "osmId": 4686337696
@@ -468,8 +468,8 @@
  {
   "type": "shop",
   "shopKind": "optician",
-  "name": "아이리더안경 용호점",
-  "nameEn": "",
+  "name": "아이리드안경 용호점",
+  "nameEn": "Eye-Lead Optical Yongho",
   "tx": 401,
   "ty": 127,
   "osmId": 4686337698
@@ -477,8 +477,8 @@
  {
   "type": "shop",
   "shopKind": "bakery",
-  "name": "뚜레주르 용호점",
-  "nameEn": "",
+  "name": "뚜르제과 용호점",
+  "nameEn": "Tour Bakery Yongho",
   "tx": 398,
   "ty": 121,
   "osmId": 4686337699
@@ -486,8 +486,8 @@
  {
   "type": "shop",
   "shopKind": "cosmetics",
-  "name": "스킨푸드 용호점",
-  "nameEn": "",
+  "name": "스킨푸디 용호점",
+  "nameEn": "Skin Foodie Yongho",
   "tx": 397,
   "ty": 126,
   "osmId": 4686337700
@@ -502,16 +502,16 @@
  },
  {
   "type": "restaurant",
-  "name": "용호동할매 팥빙수 단팥죽",
-  "nameEn": "",
+  "name": "용호할매 팥빙수",
+  "nameEn": "Yongho Halmae Patbingsu",
   "tx": 383,
   "ty": 17,
   "osmId": 5774214253
  },
  {
   "type": "restaurant",
-  "name": "부산 이기대맛집 착한생오리",
-  "nameEn": "Grilled Duck Restaurant",
+  "name": "착한오리집",
+  "nameEn": "Good Duck House",
   "tx": 437,
   "ty": 26,
   "osmId": 6885874785
@@ -550,32 +550,32 @@
  },
  {
   "type": "pharmacy",
-  "name": "시민약국",
-  "nameEn": "",
+  "name": "시민사랑약국",
+  "nameEn": "Simin Sarang Pharmacy",
   "tx": 396,
   "ty": 115,
   "osmId": 8889107033
  },
  {
   "type": "pharmacy",
-  "name": "하나로약국",
-  "nameEn": "",
+  "name": "하나루약국",
+  "nameEn": "Hanaru Pharmacy",
   "tx": 399,
   "ty": 103,
   "osmId": 8889107034
  },
  {
   "type": "restaurant",
-  "name": "정분식",
-  "nameEn": "",
+  "name": "정이분식",
+  "nameEn": "Jeongi Bunsik",
   "tx": 394,
   "ty": 256,
   "osmId": 8998693017
  },
  {
   "type": "restaurant",
-  "name": "삼동국밥",
-  "nameEn": "",
+  "name": "삼동네국밥",
+  "nameEn": "Samdong-ne Gukbap",
   "tx": 419,
   "ty": 103,
   "osmId": 9229939717
@@ -639,8 +639,8 @@
  {
   "type": "shop",
   "shopKind": "bakery",
-  "name": "Paris Baguette",
-  "nameEn": "",
+  "name": "파리베이커",
+  "nameEn": "Paris Baker",
   "tx": 406,
   "ty": 107,
   "osmId": 11515634537
@@ -648,16 +648,16 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "해파랑 편의점",
-  "nameEn": "Haeparang Convenience Store",
+  "name": "해바람 편의점",
+  "nameEn": "Haebaram Convenience Store",
   "tx": 600,
   "ty": 523,
   "osmId": 11515740140
  },
  {
   "type": "cafe",
-  "name": "Starbucks",
-  "nameEn": "",
+  "name": "스타빈스",
+  "nameEn": "Starbeans",
   "tx": 162,
   "ty": 40,
   "osmId": 12089888669
@@ -704,16 +704,16 @@
  },
  {
   "type": "cafe",
-  "name": "Haeparang Cafe",
-  "nameEn": "",
+  "name": "해바람 카페",
+  "nameEn": "Haebaram Cafe",
   "tx": 601,
   "ty": 519,
   "osmId": 12325409728
  },
  {
   "type": "cafe",
-  "name": "Haeparang Cafe",
-  "nameEn": "",
+  "name": "해바람 카페",
+  "nameEn": "Haebaram Cafe",
   "tx": 606,
   "ty": 526,
   "osmId": 12325422521
@@ -752,8 +752,8 @@
  },
  {
   "type": "restaurant",
-  "name": "맥도날드",
-  "nameEn": "McDonald's",
+  "name": "맥스버거",
+  "nameEn": "Max's Burger",
   "tx": 176,
   "ty": 46,
   "osmId": 566231562
@@ -761,8 +761,8 @@
  {
   "type": "shop",
   "shopKind": "convenience",
-  "name": "CU 용호쌍용점",
-  "nameEn": "",
+  "name": "QU 용호쌍용점",
+  "nameEn": "QU Yongho Ssangyong",
   "tx": 378,
   "ty": 268,
   "osmId": 1047546630

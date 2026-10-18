@@ -74,6 +74,7 @@ import { RegionLight, RegionBuilding,
   RegionPatch,
   SeamlessRegionDef,
   seamlessRegionOf,
+  getRegionAreaNodes,
   seamBetween,
   getStatusEffect,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
@@ -274,6 +275,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private mapId!: string;
   private entryEdge?: EdgeDir | null;
   private entryT = 0.5;
+  /** 262차 — 출조 구역의 fieldMapId(WorldMapScene이 넘긴 mapId). 심리스에서는 데이터 지역 선택 · 구역별 스폰에 쓴다 */
+  private areaMapId?: string;
 
   private graph?: RegionMapGraph;
   private node!: RegionMapNode;
@@ -587,8 +590,10 @@ export class RegionFieldScene extends Phaser.Scene {
     this.region = dataIn.region;
     this.graph = REGION_MAP_GRAPHS[this.region];
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
-    // dataIn.mapId(구역별 fieldMapId)는 심리스에서 스폰 다중화 전까지 무시 (스펙 §12-2 후속).
-    this.seamlessDef = seamlessRegionOf(this.region);
+    // 262차 — dataIn.mapId(구역별 fieldMapId)로 ① 데이터 지역을 고르고(부산 백운포는 감천과 다른 bbox — `SEAMLESS_AREA_REGIONS`)
+    //   ② 구역별 스폰(`RegionAreaNode.spawnLatLon`)을 잡는다(스펙 §12-2 스폰 다중화).
+    this.areaMapId = dataIn.mapId;
+    this.seamlessDef = seamlessRegionOf(this.region, dataIn.mapId);
     TR = this.seamlessDef ? 32 : 20;
     this.mapId = this.seamlessDef
       ? `${this.seamlessDef.dataRegion}_seamless`
@@ -1603,9 +1608,19 @@ export class RegionFieldScene extends Phaser.Scene {
       MultiplayerClient.resume = null;
       return this.nearestWalkable(Math.floor(rs.x / TR), Math.floor(rs.y / TR));
     }
-    // 심리스 = meta.spawn (build_osm_tilemap이 최근접 이동가능 타일로 스냅한 값)
+    // 심리스 = 구역별 스폰(262차 — `RegionAreaNode.spawnLatLon` WGS84 → meta bbox 등장방형 타일 · 걷는 칸으로 스냅)
+    //   → 없으면 지역 기본 meta.spawn (build_osm_tilemap이 최근접 이동가능 타일로 스냅한 값)
     if (this.seamlessDef) {
-      const sp = this.regionMeta?.spawn;
+      const m = this.regionMeta;
+      const area = this.areaMapId ? getRegionAreaNodes(this.region).find((a) => a.fieldMapId === this.areaMapId) : undefined;
+      const ll = area?.spawnLatLon;
+      if (m && ll) {
+        const [s, w, n, e] = m.bbox;
+        const tx = Math.floor((ll[1] - w) / (e - w) * m.width);
+        const ty = Math.floor((n - ll[0]) / (n - s) * m.height);
+        if (tx >= 0 && ty >= 0 && tx < m.width && ty < m.height) return this.nearestWalkable(tx, ty);
+      }
+      const sp = m?.spawn;
       if (sp) return this.nearestWalkable(sp[0], sp[1]);
       return this.nearestWalkable(Math.floor(this.cols / 2), Math.floor(this.rows / 2));
     }

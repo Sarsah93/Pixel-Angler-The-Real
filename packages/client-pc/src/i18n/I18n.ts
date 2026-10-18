@@ -19,7 +19,7 @@ import Phaser from 'phaser';
 import {
   FISH_DATABASE, SHORE_CREATURE_DATABASE, LURES_CATALOG_DB, ORACLE_FISH_DB,
   LICENSE_DATABASE, LICENSE_STORY_ROUTES, SKILL_DATABASE, SKILL_CATEGORIES,
-  REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, SEAMLESS_REGIONS,
+  REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, allSeamlessRegionDefs,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_STATION_LABEL, CRAFT_QUALITY_LABEL,
   allChoiceLines, allNarrativeLines, allInquiryLines, allTalkLines,
@@ -81,7 +81,7 @@ function buildRuntimeDict(): void {
   for (const n of WORLD_NODE_DATABASE) { put(n.name, n.nameEn); put(n.shortName, n.shortNameEn); }
   for (const list of Object.values(REGION_AREA_NODES)) for (const a of list) put(a.name, a.nameEn);
   for (const g of Object.values(REGION_MAP_GRAPHS)) for (const n of g.nodes) put(n.name, n.nameEn);
-  for (const r of Object.values(SEAMLESS_REGIONS)) put(r.name, r.nameEn);
+  for (const r of allSeamlessRegionDefs()) put(r.name, r.nameEn);   // 262차 — 구역별 데이터 지역(부산 백운포)까지
   // 122차 — 면허·스킬·지역 설명·구역 상세: 데이터 필드(nameEn/descriptionEn/descEn/detailsEn)가 정본
   for (const l of LICENSE_DATABASE) { put(l.nameKo, l.nameEn); put(l.description, l.descriptionEn); if (l.plannedNote) put(l.plannedNote, l.plannedNoteEn); }
   // 170차 — 자격 이야기 경로 안내문도 데이터(noteEn)가 정본

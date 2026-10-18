@@ -240,6 +240,15 @@ export interface SeamlessRegionDef {
 }
 
 /**
+ * 262차 — 한 WorldMap 지역 안에 **데이터 지역(bbox)이 여럿**일 때의 구역별 매핑.
+ * 속초는 bbox 하나가 출조 구역 둘(속초항 · 동명항)을 다 덮지만, 부산은 감천항 · 암남공원(감천 bbox)과
+ * 백운포(10 km 동쪽 — 별도 bbox)가 한 지도에 들어가지 않는다(속초 크기 bbox 규칙 — `tools/regions_config.py`).
+ * 키 = 출조 구역의 `RegionAreaNode.fieldMapId`(WorldMapScene이 필드에 넘기는 `mapId`). 표에 없는 구역은
+ * `SEAMLESS_REGIONS[regionId]`(지역 기본)로 간다.
+ */
+export const SEAMLESS_AREA_REGIONS: Record<string, SeamlessRegionDef> = {};
+
+/**
  * 239차 — OSM 건물 하나(buildings.json · `tools/extract_osm_buildings.py`). '#' 타일은 걷기 · 충돌 정본이고,
  * 이 폴리곤은 **그림**(벽 · 지붕 · 종류)의 정본이다 — 대각선 건물도 타일 계단이 아니라 기울어진 윤곽으로 그린다.
  */
@@ -267,14 +276,44 @@ export interface RegionLight {
   name?: string;
 }
 
-/** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방) */
-export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
-  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true, hasFishFarms: true, hasBuildings: true },
+/**
+ * 262차 — 부산 데이터 지역 둘(속초 크기 bbox · `tools/regions_config.py` `busan_gamcheon` · `busan_baegunpo`).
+ * 등대 · 건물 파일은 워크플로 「OSM 지역 수집」이 항상 써 둔다(빈 배열이라도) — 플래그는 파일이 있을 때만(SPA 폴백 함정).
+ * 어장 폴리곤(`fishfarms.json`)은 원본 SHP(114 MB · gitignore)가 있어야 뽑을 수 있어 아직 없다.
+ */
+const BUSAN_GAMCHEON: SeamlessRegionDef = {
+  dataRegion: 'busan_gamcheon', dataDir: 'data/busan_gamcheon', name: '부산 감천항', nameEn: 'Busan Gamcheon Port',
+  hasLights: true, hasBuildings: true,
+};
+const BUSAN_BAEGUNPO: SeamlessRegionDef = {
+  dataRegion: 'busan_baegunpo', dataDir: 'data/busan_baegunpo', name: '부산 백운포', nameEn: 'Busan Baegunpo',
+  hasLights: true, hasBuildings: true,
 };
 
-/** 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로) */
-export function seamlessRegionOf(regionId: string): SeamlessRegionDef | undefined {
-  return ACTIVE_REGION_MODE === 'seamless' ? SEAMLESS_REGIONS[regionId] : undefined;
+/** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방). 구역별로 다른 데이터 지역은 `SEAMLESS_AREA_REGIONS` */
+export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
+  gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true, hasFishFarms: true, hasBuildings: true },
+  // 262차 — 지역 기본은 감천(감천항 서 · 동방파제 · 암남공원). 백운포 구역만 아래 표가 다른 데이터 지역으로 보낸다
+  busan: BUSAN_GAMCHEON,
+};
+SEAMLESS_AREA_REGIONS['busan_baegunpo_1'] = BUSAN_BAEGUNPO;
+
+/**
+ * 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로).
+ * 262차 — `mapId`(출조 구역의 fieldMapId)를 주면 구역별 데이터 지역(`SEAMLESS_AREA_REGIONS`)이 지역 기본보다 먼저다.
+ */
+export function seamlessRegionOf(regionId: string, mapId?: string): SeamlessRegionDef | undefined {
+  if (ACTIVE_REGION_MODE !== 'seamless') return undefined;
+  return (mapId ? SEAMLESS_AREA_REGIONS[mapId] : undefined) ?? SEAMLESS_REGIONS[regionId];
+}
+
+/** 262차 — 등록된 심리스 데이터 지역 전부(지역 기본 + 구역별) — 이름 사전 등록 · 점검용. 같은 정의는 한 번만 */
+export function allSeamlessRegionDefs(): SeamlessRegionDef[] {
+  const out: SeamlessRegionDef[] = [];
+  for (const d of [...Object.values(SEAMLESS_REGIONS), ...Object.values(SEAMLESS_AREA_REGIONS)]) {
+    if (!out.some((x) => x.dataRegion === d.dataRegion)) out.push(d);
+  }
+  return out;
 }
 
 /** 맵 상의 관심지점(POI) — 식당/카페/마트 등 아이콘 추론 결과 */

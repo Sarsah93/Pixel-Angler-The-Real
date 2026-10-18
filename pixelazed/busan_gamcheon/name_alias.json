@@ -1,0 +1,265 @@
+{
+ "_doc": "262차 — OSM 가게의 게임 상호(실제 상호를 조금씩 바꾼 것 — 사용자 지시 「상호명은 조금씩 다르게 하자(저작권)」). 키 = OSM 원래 이름(name 또는 영어 이름만 있으면 name:en)의 SHA-1 앞 16자 — 원래 상호를 평문으로 보관하지 않는다. ko = 게임 이름, en = 영어 표기(없으면 병합 스크립트가 만든다). 규칙: 업종 말(횟집 · 주유소 · 약국 · 편의점 · 마트 · 호텔)은 남긴다 — 간판 그림 · 실내 틀이 그 말로 갈린다. 프랜차이즈는 속초와 같은 가상 브랜드(GX24 · QU · 세븐나인 · 오마트24 · 스타빈스 · 버거리아 · 맥스버거 · 파리베이커 · GX칼텍 · SJ주유소 · 우람은행 · 새마루금고). 공공 · 병원 · 지명은 표에 넣지 않는다. 새 가게 추가: python tools/merge_capture_pois.py <region> --add \"원래 이름\" \"게임 이름\" [\"영어\"]",
+ "aliases": {
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24"
+  },
+  "1b94d88c3c034c27": {
+   "ko": "GX24",
+   "en": "GX24"
+  },
+  "21ff62494867a87a": {
+   "ko": "GX24",
+   "en": "GX24"
+  },
+  "4cbf053c245dd675": {
+   "ko": "GX24 용호사거리점",
+   "en": "GX24 Yongho Crossroads"
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU"
+  },
+  "3753bcc58502a928": {
+   "ko": "QU 용호쌍용점",
+   "en": "QU Yongho Ssangyong"
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine"
+  },
+  "047c1918520cdbfa": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine"
+  },
+  "45fcbfce2f6f8f6b": {
+   "ko": "세븐나인 용호제일점",
+   "en": "Seven-Nine Yongho Jeil"
+  },
+  "09f878efeb37dfb9": {
+   "ko": "오마트24",
+   "en": "O-Mart 24"
+  },
+  "02ba75d2cb9bd723": {
+   "ko": "스타빈스",
+   "en": "Starbeans"
+  },
+  "cb232a7a7077aa49": {
+   "ko": "스타빈스",
+   "en": "Starbeans"
+  },
+  "9c010cbe21b75143": {
+   "ko": "GX칼텍",
+   "en": "GX Caltech"
+  },
+  "bd15342ab4271d8c": {
+   "ko": "SJ주유소",
+   "en": "SJ Gas"
+  },
+  "e1c435dd68d92765": {
+   "ko": "버거리아",
+   "en": "Burgeria"
+  },
+  "cc2fa0195adb1a1e": {
+   "ko": "맥스버거",
+   "en": "Max's Burger"
+  },
+  "c64c8330fa71edd8": {
+   "ko": "파리베이커",
+   "en": "Paris Baker"
+  },
+  "c41a28b7c40c9372": {
+   "ko": "뚜르제과 용호점",
+   "en": "Tour Bakery Yongho"
+  },
+  "6921c494bed74f96": {
+   "ko": "홈플랫",
+   "en": "Home Flat"
+  },
+  "dc7eb8a618294e17": {
+   "ko": "우람은행",
+   "en": "Uram Bank"
+  },
+  "c5ad7b40ed4c3046": {
+   "ko": "용호새마루금고",
+   "en": "Yongho Saemaru Credit Union"
+  },
+  "7bf6627c287bee30": {
+   "ko": "남부산농민조합",
+   "en": "Nambusan Farmers Co-op"
+  },
+  "1a4c0072a37967e4": {
+   "ko": "부성은행 송도지점",
+   "en": "Buseong Bank Songdo"
+  },
+  "fb57b28e42850a2e": {
+   "ko": "부성은행 용호지점",
+   "en": "Buseong Bank Yongho"
+  },
+  "7cb67799db24d152": {
+   "ko": "하나루마트",
+   "en": "Hanaru Mart"
+  },
+  "7fa75e4211006595": {
+   "ko": "하나루약국",
+   "en": "Hanaru Pharmacy"
+  },
+  "db221f1ac1083e5a": {
+   "ko": "동녘식당",
+   "en": "Dongnyeok Diner"
+  },
+  "8b2b7c77e61d69ba": {
+   "ko": "호텔 캐치더오션",
+   "en": "Hotel Catch the Ocean"
+  },
+  "ea8ee5e4ceba651a": {
+   "ko": "V모텔",
+   "en": "V Motel"
+  },
+  "8aecc783ade9dab3": {
+   "ko": "가구왕마트",
+   "en": "Gagu King Mart"
+  },
+  "0763431d031cee40": {
+   "ko": "곤포리횟집",
+   "en": "Gonpori Sashimi House"
+  },
+  "ae8b5ab19197aee6": {
+   "ko": "초록세탁편의점",
+   "en": "Chorok Laundry Convenience Store"
+  },
+  "90f5b6de831168e8": {
+   "ko": "남풍횟집",
+   "en": "Nampung Sashimi House"
+  },
+  "68f9f6e85dfcda2d": {
+   "ko": "농심골마트",
+   "en": "Nongsim-gol Mart"
+  },
+  "c96ae0be95083561": {
+   "ko": "새송도약국",
+   "en": "Sae-Songdo Pharmacy"
+  },
+  "bf47eb11de68120f": {
+   "ko": "대광횟집",
+   "en": "Daegwang Sashimi House"
+  },
+  "3024f35712642f94": {
+   "ko": "대선주유소",
+   "en": "Daeseon Gas"
+  },
+  "5e5d2ac6884f9df1": {
+   "ko": "동영횟집",
+   "en": "Dongyeong Sashimi House"
+  },
+  "a4003af138ec4ed6": {
+   "ko": "등불횟집",
+   "en": "Deungbul Sashimi House"
+  },
+  "f49c0932f32a3d42": {
+   "ko": "명선횟집",
+   "en": "Myeongseon Sashimi House"
+  },
+  "18e7d63617c95aa6": {
+   "ko": "모음횟집",
+   "en": "Moeum Sashimi House"
+  },
+  "80c61f84a59e6aa7": {
+   "ko": "물레바퀴횟집",
+   "en": "Mulle-bakwi Sashimi House"
+  },
+  "ca905648788c6f85": {
+   "ko": "바당횟집",
+   "en": "Badang Sashimi House"
+  },
+  "582394ecdc7dd6b2": {
+   "ko": "백강횟집",
+   "en": "Baekgang Sashimi House"
+  },
+  "9a0ef28a98c9bb81": {
+   "ko": "본천횟집",
+   "en": "Boncheon Sashimi House"
+  },
+  "b26ca44dfb7de3a1": {
+   "ko": "부원횟집",
+   "en": "Buwon Sashimi House"
+  },
+  "69a7f9ccb0e9e0ac": {
+   "ko": "산지골횟집",
+   "en": "Sanji-gol Sashimi House"
+  },
+  "eee71f0982bc61bf": {
+   "ko": "삼연횟집",
+   "en": "Samyeon Sashimi House"
+  },
+  "c11fa89317fcdaa7": {
+   "ko": "서원횟집",
+   "en": "Seowon Sashimi House"
+  },
+  "4f517cbb5aee4bd4": {
+   "ko": "송도리조텔",
+   "en": "Songdo Resortel"
+  },
+  "5b02734c504aa3ea": {
+   "ko": "송도해모찜질방",
+   "en": "Songdo Haemo Jjimjilbang"
+  },
+  "5ebee98c44a31138": {
+   "ko": "송백나무횟집",
+   "en": "Songbaek-namu Sashimi House"
+  },
+  "ae0e631e0effc5a7": {
+   "ko": "송인횟집",
+   "en": "Songin Sashimi House"
+  },
+  "d2d33f5a8fcf5cb3": {
+   "ko": "송화횟집",
+   "en": "Songhwa Sashimi House"
+  },
+  "75a0361685282c4f": {
+   "ko": "제이원할인마트",
+   "en": "J-One Discount Mart"
+  },
+  "b21115a3d63c819e": {
+   "ko": "총각네횟집",
+   "en": "Chonggak-ne Sashimi House"
+  },
+  "256f0aff51ca3005": {
+   "ko": "충무횟집",
+   "en": "Chungmu Sashimi House"
+  },
+  "7b39fd32f3d9068c": {
+   "ko": "크랩스마트",
+   "en": "Crabs Mart"
+  },
+  "6f9700b5eb43d27a": {
+   "ko": "타르트레",
+   "en": "Tartlet Cafe"
+  },
+  "9b21a5002d98b7b9": {
+   "ko": "태선하모회 자연산횟집",
+   "en": "Taeseon Hamo Sashimi House"
+  },
+  "a44e3878a882e7dd": {
+   "ko": "페어뷰 호텔 송도비치",
+   "en": "Fairview Hotel Songdo Beach"
+  },
+  "92e5984a00c5b44b": {
+   "ko": "평온횟집",
+   "en": "Pyeongon Sashimi House"
+  },
+  "82c810e3677aba14": {
+   "ko": "해녀네횟집",
+   "en": "Haenyeo-ne Sashimi House"
+  },
+  "33692fbc9204d48a": {
+   "ko": "해돋이주유소",
+   "en": "Haedoji Gas"
+  },
+  "f7509cc8572aee08": {
+   "ko": "해변가횟집",
+   "en": "Haebyeon-ga Sashimi House"
+  }
+ }
+}

@@ -257,6 +257,11 @@ export interface RegionAreaNode {
   pixelY: number;
   /** 진입할 RegionFieldScene 맵 ID (RegionMapGraph의 노드 id) */
   fieldMapId: string;
+  /**
+   * 262차 — 심리스 구역별 스폰(WGS84 위도 · 경도). 필드가 데이터 지역 meta bbox로 타일을 구해 걷는 칸으로 스냅한다.
+   * 없으면 데이터 지역 기본 스폰(`meta.spawn`). 레거시 맵은 쓰지 않는다. 바다 위 점이면 가장 가까운 걷는 칸으로 간다.
+   */
+  spawnLatLon?: [number, number];
 
   // ── 낚시터 특성 (2026-07-16 실지 리서치 기반 — 지도 선택 화면 표시용) ──
   /** 특성 상세 라인 (지형/주요 어종/계절/시간대 등 — 출조 확인 카드에 표시) */
@@ -325,6 +330,8 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       pixelX: 184,
       pixelY: 60,
       fieldMapId: 'sokcho_sokchohang_1',
+      // 262차 — 속초항 여객선터미널 앞 부두(타일 466,156 — 'p' 포장 안벽). 구 동작 = 동명항 기본 스폰 하나
+      spawnLatLon: [38.2104, 128.5945],
       details: [
         '외항·내항·수로·해변으로 구역이 나뉨 (난이도: 수로 < 내항 < 해변 < 외항)',
         '내항·수로는 완만한 바닥 — 가족·입문 낚시 추천, 외항은 여·급심 본류대',
@@ -351,6 +358,8 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       pixelX: 221,
       pixelY: 49,
       fieldMapId: 'sokcho_dongmyeonghang_1',
+      // 262차 — 동명항 방파제 입구 = 지역 기본 스폰과 같은 자리(regions_config spawn)
+      spawnLatLon: [38.2117, 128.5980],
       details: [
         '시설이 잘 갖춰진 동해안 어항 — 외항 쪽은 급심',
         '대표 어종: 명태(겨울) · 가자미 · 임연수어 · 도다리 · 학공치 · 볼락 · 우럭',
@@ -380,6 +389,8 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       pixelX: 21,
       pixelY: 232,
       fieldMapId: 'busan_gamcheon_west_1',
+      // 262차 — 감천항 서쪽 바깥 방파제(추론 'b' 띠 · 걷기 성분은 감천동 쪽 — 반도 쪽과 길이 이어지지 않는다)
+      spawnLatLon: [35.04855, 129.00369],
       details: [
         '대형선이 드나드는 상항이라 물골이 깊음 (약 12~16m 추정)',
         '외항 방향 수중여 — 감성돔 포인트이나 밑걸림 주의',
@@ -406,6 +417,8 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       pixelX: 32,
       pixelY: 227,
       fieldMapId: 'busan_gamcheon_east_1',
+      // 262차 — 암남 반도 남서 끝(동방파제 뿌리 · 타일 432,688)
+      spawnLatLon: [35.05103, 129.00874],
       details: [
         '평균 수심 12~16m — 겨울 감성돔 적격, 직벽 구조로 발판 양호',
         '외항 쪽 수중여 3개 포인트 — 감성돔/돌돔 노림, 밑걸림 잦음',
@@ -432,6 +445,8 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       pixelX: 52,
       pixelY: 208,
       fieldMapId: 'busan_amnam_1',
+      // 262차 — 암남공원 입구(화장실 · 식당 무리 옆 보도 · 타일 650,445)
+      spawnLatLon: [35.06196, 129.02071],
       details: [
         '가까운 쪽: 여밭·암반 4~5m 낙차 (밑걸림 위험) / 먼 쪽: 6~10m 모래·펄·여밭 혼재',
         '대표 어종: 우럭 · 감성돔 · 광어 · 농어 · 호래기 · 문어',
@@ -458,6 +473,8 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       pixelX: 176,
       pixelY: 137,
       fieldMapId: 'busan_baegunpo_1',
+      // 262차 — 백운포 체육공원 북쪽 길(데이터 지역 busan_baegunpo 기본 스폰과 같은 자리)
+      spawnLatLon: [35.1075, 129.1095],
       details: [
         '석축·일자방파제 중심 — 석축에서 찌를 내리는 얕은 근거리 수역',
         '대표 어종: 학공치 · 전어 · 고등어(쉽게 붙음) · 호래기 · 농어 · 부시리',

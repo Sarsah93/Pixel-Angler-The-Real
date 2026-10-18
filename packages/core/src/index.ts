@@ -591,7 +591,7 @@ export {
   TERRAIN_BY_CHAR, OPPOSITE_EDGE, SOKCHO_MAP_GRAPH, BUSAN_MAP_GRAPH,
   HOMETOWN_MAP_GRAPH, REGION_MAP_GRAPHS, getRegionMapNode,
   isWalkableTerrain, isFishableStandTerrain,
-  ACTIVE_REGION_MODE, SEAMLESS_REGIONS, seamlessRegionOf,
+  ACTIVE_REGION_MODE, SEAMLESS_REGIONS, SEAMLESS_AREA_REGIONS, seamlessRegionOf, allSeamlessRegionDefs,
 } from './types/RegionMap.js';
 
 // 홈타운(집) 거점 — 오브젝트 인스턴스/영속 · 칸 단위 배치 · 수족관 · 하우스 확장 · 교통비

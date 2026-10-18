@@ -1,0 +1,277 @@
+{
+ "_doc": "262차 — OSM 가게의 게임 상호(실제 상호를 조금씩 바꾼 것 — 사용자 지시 「상호명은 조금씩 다르게 하자(저작권)」). 키 = OSM 원래 이름(name 또는 영어 이름만 있으면 name:en)의 SHA-1 앞 16자 — 원래 상호를 평문으로 보관하지 않는다. ko = 게임 이름, en = 영어 표기(없으면 병합 스크립트가 만든다). 규칙: 업종 말(횟집 · 주유소 · 약국 · 편의점 · 마트 · 호텔)은 남긴다 — 간판 그림 · 실내 틀이 그 말로 갈린다. 프랜차이즈는 속초와 같은 가상 브랜드(GX24 · QU · 세븐나인 · 오마트24 · 스타빈스 · 버거리아 · 맥스버거 · 파리베이커 · GX칼텍 · SJ주유소 · 우람은행 · 새마루금고). 공공 · 병원 · 지명은 표에 넣지 않는다. 새 가게 추가: python tools/merge_capture_pois.py <region> --add \"원래 이름\" \"게임 이름\" [\"영어\"]",
+ "aliases": {
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24"
+  },
+  "1b94d88c3c034c27": {
+   "ko": "GX24",
+   "en": "GX24"
+  },
+  "21ff62494867a87a": {
+   "ko": "GX24",
+   "en": "GX24"
+  },
+  "4cbf053c245dd675": {
+   "ko": "GX24 용호사거리점",
+   "en": "GX24 Yongho Crossroads"
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU"
+  },
+  "3753bcc58502a928": {
+   "ko": "QU 용호쌍용점",
+   "en": "QU Yongho Ssangyong"
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine"
+  },
+  "047c1918520cdbfa": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine"
+  },
+  "45fcbfce2f6f8f6b": {
+   "ko": "세븐나인 용호제일점",
+   "en": "Seven-Nine Yongho Jeil"
+  },
+  "09f878efeb37dfb9": {
+   "ko": "오마트24",
+   "en": "O-Mart 24"
+  },
+  "02ba75d2cb9bd723": {
+   "ko": "스타빈스",
+   "en": "Starbeans"
+  },
+  "cb232a7a7077aa49": {
+   "ko": "스타빈스",
+   "en": "Starbeans"
+  },
+  "9c010cbe21b75143": {
+   "ko": "GX칼텍",
+   "en": "GX Caltech"
+  },
+  "bd15342ab4271d8c": {
+   "ko": "SJ주유소",
+   "en": "SJ Gas"
+  },
+  "e1c435dd68d92765": {
+   "ko": "버거리아",
+   "en": "Burgeria"
+  },
+  "cc2fa0195adb1a1e": {
+   "ko": "맥스버거",
+   "en": "Max's Burger"
+  },
+  "c64c8330fa71edd8": {
+   "ko": "파리베이커",
+   "en": "Paris Baker"
+  },
+  "c41a28b7c40c9372": {
+   "ko": "뚜르제과 용호점",
+   "en": "Tour Bakery Yongho"
+  },
+  "6921c494bed74f96": {
+   "ko": "홈플랫",
+   "en": "Home Flat"
+  },
+  "dc7eb8a618294e17": {
+   "ko": "우람은행",
+   "en": "Uram Bank"
+  },
+  "c5ad7b40ed4c3046": {
+   "ko": "용호새마루금고",
+   "en": "Yongho Saemaru Credit Union"
+  },
+  "7bf6627c287bee30": {
+   "ko": "남부산농민조합",
+   "en": "Nambusan Farmers Co-op"
+  },
+  "1a4c0072a37967e4": {
+   "ko": "부성은행 송도지점",
+   "en": "Buseong Bank Songdo"
+  },
+  "fb57b28e42850a2e": {
+   "ko": "부성은행 용호지점",
+   "en": "Buseong Bank Yongho"
+  },
+  "7cb67799db24d152": {
+   "ko": "하나루마트",
+   "en": "Hanaru Mart"
+  },
+  "7fa75e4211006595": {
+   "ko": "하나루약국",
+   "en": "Hanaru Pharmacy"
+  },
+  "913270832c6bf015": {
+   "ko": "해바람 카페",
+   "en": "Haebaram Cafe"
+  },
+  "1b7186da38fdcc5c": {
+   "ko": "해바람 편의점",
+   "en": "Haebaram Convenience Store"
+  },
+  "1df8a698eb84b6d7": {
+   "ko": "감포리횟집",
+   "en": "Gampori Sashimi House"
+  },
+  "a7b5c5bac5f3a17d": {
+   "ko": "경일주유소",
+   "en": "Gyeongil Gas"
+  },
+  "ab48d419a2a94976": {
+   "ko": "공단셀프주유소",
+   "en": "Gongdan Self Gas"
+  },
+  "766d763c4c22545b": {
+   "ko": "공감마트",
+   "en": "Gonggam Mart"
+  },
+  "f298d9ec4153a76b": {
+   "ko": "남부카정비",
+   "en": "Nambu Car Service"
+  },
+  "699809393978466e": {
+   "ko": "남향주유소",
+   "en": "Namhyang Gas"
+  },
+  "f6bfbff5c934f978": {
+   "ko": "동곡횟집",
+   "en": "Donggok Sashimi House"
+  },
+  "eda9c51e31f52da6": {
+   "ko": "문방사우당",
+   "en": "Munbangsau-dang Stationery"
+  },
+  "47f7f4ef2ab46b10": {
+   "ko": "반달주유소",
+   "en": "Bandal Gas"
+  },
+  "b7c71b67c59205f2": {
+   "ko": "착한오리집",
+   "en": "Good Duck House"
+  },
+  "238c2c1dd3420fd1": {
+   "ko": "부성횟집",
+   "en": "Buseong Sashimi House"
+  },
+  "fd2f474fd778de67": {
+   "ko": "북항다리주유소",
+   "en": "Bukhang Bridge Gas"
+  },
+  "fb3dee1e79dfadd0": {
+   "ko": "삼동네국밥",
+   "en": "Samdong-ne Gukbap"
+  },
+  "3e98fc5bff8df7a1": {
+   "ko": "삼별할인마트",
+   "en": "Sambyeol Discount Mart"
+  },
+  "012e86ad93f47d9d": {
+   "ko": "신선대셀프주유소",
+   "en": "Sinseondae Self Gas"
+  },
+  "9a539f02f675a235": {
+   "ko": "쉐브릿자동차 용호영업소",
+   "en": "Chevrit Motors Yongho"
+  },
+  "71455cc253e9ab96": {
+   "ko": "스킨푸디 용호점",
+   "en": "Skin Foodie Yongho"
+  },
+  "8f476e7fa21ad651": {
+   "ko": "시민사랑약국",
+   "en": "Simin Sarang Pharmacy"
+  },
+  "63b64aef3ca8abf8": {
+   "ko": "쌍룡주유소",
+   "en": "Ssangryong Gas"
+  },
+  "c194c1a8494da359": {
+   "ko": "씨타운마트",
+   "en": "Sea Town Mart"
+  },
+  "9079625664adc1aa": {
+   "ko": "아람횟집",
+   "en": "Aram Sashimi House"
+  },
+  "f126deb9bded1900": {
+   "ko": "아이리드안경 용호점",
+   "en": "Eye-Lead Optical Yongho"
+  },
+  "b4c50cababb512cf": {
+   "ko": "용궁골횟집",
+   "en": "Yonggung-gol Sashimi House"
+  },
+  "1b312489b98dc4ba": {
+   "ko": "용당씨엔와이주유소",
+   "en": "Yongdang CNY Gas"
+  },
+  "051c0a8b8a557368": {
+   "ko": "용당씨엔와이주유소",
+   "en": "Yongdang CNY Gas"
+  },
+  "51326debd6ea5af9": {
+   "ko": "용당 현재파크 마트",
+   "en": "Yongdang Hyeonjae Park Mart"
+  },
+  "18792b36c0eaad81": {
+   "ko": "용호할매 팥빙수",
+   "en": "Yongho Halmae Patbingsu"
+  },
+  "7c758858444d6c28": {
+   "ko": "은말주유소",
+   "en": "Eunmal Gas"
+  },
+  "f006b8be51285f7d": {
+   "ko": "정이분식",
+   "en": "Jeongi Bunsik"
+  },
+  "7d845db07f74321c": {
+   "ko": "주곡마트",
+   "en": "Jugok Mart"
+  },
+  "fb2be67bbc7ee636": {
+   "ko": "주연횟집",
+   "en": "Juyeon Sashimi House"
+  },
+  "56bc50be8ec9b473": {
+   "ko": "청하횟집",
+   "en": "Cheongha Sashimi House"
+  },
+  "032a920bfcdb2610": {
+   "ko": "축산골마트",
+   "en": "Chuksan-gol Mart"
+  },
+  "d9f7cebbbbbee04f": {
+   "ko": "탑나인마트",
+   "en": "Top Nine Mart"
+  },
+  "697006a090f89bce": {
+   "ko": "탑나인 패밀리마트",
+   "en": "Top Nine Family Mart"
+  },
+  "50afb1efef4744c4": {
+   "ko": "팩토주유소",
+   "en": "Facto Gas"
+  },
+  "3b3585accd64a2c1": {
+   "ko": "피제이마트",
+   "en": "PJ Mart"
+  },
+  "938632e86666acc3": {
+   "ko": "하얀빨래방",
+   "en": "Hayan Laundry"
+  },
+  "fe61e83cecc5efe3": {
+   "ko": "할매네분식",
+   "en": "Halmae-ne Bunsik"
+  },
+  "beee04e9f50ca15b": {
+   "ko": "해동루",
+   "en": "Haedong-ru"
+  }
+ }
+}
