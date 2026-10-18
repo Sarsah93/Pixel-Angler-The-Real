@@ -20,7 +20,7 @@ OSM 가게 이름을 게임 상호(`name_alias.json` — 실제 상호를 조금
 - 분류: R 음식점 · C 카페/빵 · P 주점 · V 편의점/슈퍼 · M 마트 · H 약국 · L 숙박 · S 종묘사(238차 — OSM `shop=garden_centre`).
 - osmId는 음수(-(캡처번호 × 1000 + 순번)) — 거래처 키(`<region>:osm:<id>`)가 OSM과 겹치지 않는다.
 
-사용: python tools/merge_capture_pois.py [region=sokcho_v2]
+사용: python tools/merge_capture_pois.py [region=sokcho_v2]   (capture_pois.json이 없는 지역은 게임 상호만 적용 — 262차)
 """
 import hashlib
 import json
@@ -147,7 +147,8 @@ def main() -> None:
         ty = (lat1 - lat) * 111132 / tm
         return round(tx), round(ty)
 
-    src = json.load(open(SRC, encoding='utf-8'))
+    # 262차 — 캡처 파일이 없는 지역(새 지역)은 캡처 병합 없이 게임 상호만 적용한다
+    src = json.load(open(SRC, encoding='utf-8')) if os.path.exists(SRC) else {'pois': []}
     aliases: dict[str, dict] = json.load(open(ALIAS, encoding='utf-8'))['aliases'] if os.path.exists(ALIAS) else {}
     alias_values = {a['ko'] for a in aliases.values()}
     unknown: list[str] = []

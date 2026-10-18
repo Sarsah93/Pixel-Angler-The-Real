@@ -1,0 +1,101 @@
+# OSM 지역 수집 · 타일맵 굽기 — 262차. Overpass(OSM)를 러너가 받아 지역 타일맵 산출물을 **실행한 브랜치**에 커밋한다.
+#
+# 왜: 원격 작업 컨테이너의 네트워크 정책이 Overpass · OSM 미러를 모두 막아(403) `tools/fetch_region_osm.py`를
+#     그 안에서 돌릴 수 없다. GitHub Actions 러너는 밖으로 나갈 수 있으므로(KAMIS 스냅샷과 같은 방식)
+#     수집 · 빌드를 러너가 하고 결과(캐시 · 정본 · 런타임 JSON)를 같은 브랜치에 올린다.
+#
+# 쓰는 법: Actions → 「OSM 지역 수집」 → Run workflow → 브랜치 고르기 → regions(공백으로 여러 개 — `tools/regions_config.py`의 키).
+#   refetch = true 면 그 지역의 `pixelazed/_osmcache/<region>*` 를 지우고 다시 받는다(bbox를 바꿨을 때).
+#   끝나면 `git pull` 로 받는다. 이어서 손으로 할 것 = 게임 상호 표(`pixelazed/<region>/name_alias.json`) →
+#   `python tools/merge_capture_pois.py <region>` 다시 → core `SEAMLESS_REGIONS` · `REGION_AREA_NODES` 등록(스킬 `add-region`).
+#
+# 순서(스킬 `add-region` 과 같다): fetch → build_osm_tilemap(--no-raster — 래스터 보강은 별도 트랙) → build_region_maps
+#   → extract_osm_buildings → extract_lights → merge_capture_pois(캡처 파일 없는 지역은 게임 상호만 — 마지막이어야 한다).
+name: OSM 지역 수집
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: 지역 키 (공백으로 여러 개 — tools/regions_config.py)
+        required: true
+        default: busan_gamcheon
+      refetch:
+        description: 캐시를 지우고 다시 받기 (true/false)
+        required: false
+        default: 'false'
+
+# 실행한 브랜치에 산출물을 커밋하려면 쓰기 권한이 필요하다
+permissions:
+  contents: write
+
+concurrency:
+  group: osm-region-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 수집 · 굽기 · 브랜치 반영
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 파이썬 의존성 (terrain.png · 도달성 점검용)
+        run: python -m pip install --quiet pillow numpy
+
+      - name: 수집 · 타일맵 · 건물 · 등대 · 게임 상호
+        env:
+          REGIONS: ${{ inputs.regions }}
+          REFETCH: ${{ inputs.refetch }}
+        run: |
+          set -euo pipefail
+          for r in $REGIONS; do
+            echo "::group::$r"
+            if [ "$REFETCH" = "true" ]; then
+              rm -f pixelazed/_osmcache/"$r".part_*.json pixelazed/_osmcache/"$r"_boundary.json
+            fi
+            python tools/fetch_region_osm.py "$r"
+            python tools/build_osm_tilemap.py "$r" --no-raster
+            python tools/build_region_maps.py "$r"
+            python tools/extract_osm_buildings.py "$r"
+            python tools/extract_lights.py "$r"
+            python tools/merge_capture_pois.py "$r"
+            echo "::endgroup::"
+          done
+
+      - name: 산출물 요약
+        env:
+          REGIONS: ${{ inputs.regions }}
+        run: |
+          for r in $REGIONS; do
+            echo "== $r"
+            ls -la pixelazed/_osmcache/ | grep "$r" || true
+            ls -la "pixelazed/$r" "packages/client-pc/public/data/$r"
+            python - "$r" <<'PY'
+          import json, sys
+          r = sys.argv[1]
+          m = json.load(open(f'packages/client-pc/public/data/{r}/meta.json', encoding='utf-8'))
+          print('meta:', {k: m[k] for k in ('width', 'height', 'spawn', 'spawnName')})
+          PY
+          done
+
+      - name: 같은 브랜치에 커밋 · 푸시
+        env:
+          REGIONS: ${{ inputs.regions }}
+        run: |
+          set -euo pipefail
+          for r in $REGIONS; do
+            git add -A -- pixelazed/_osmcache "pixelazed/$r" "packages/client-pc/public/data/$r"
+          done
+          if git diff --cached --quiet; then
+            echo "바뀐 것 없음 — 커밋하지 않는다"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "OSM 지역 수집(Actions): ${REGIONS}"
+          git push -q origin "HEAD:${GITHUB_REF_NAME}"
