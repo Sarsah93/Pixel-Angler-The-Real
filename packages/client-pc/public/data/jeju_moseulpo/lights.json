@@ -1,0 +1,16 @@
+[
+{
+"tx": 455,
+"ty": 347,
+"colour": "white",
+"kind": "lighthouse",
+"name": "등대"
+},
+{
+"tx": 471,
+"ty": 424,
+"colour": "red",
+"kind": "lighthouse",
+"name": "모슬포항등대"
+}
+]

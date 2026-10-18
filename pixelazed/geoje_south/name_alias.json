@@ -1,0 +1,65 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "210d792d3f7c7d26": {
+   "ko": "해금겅호텔",
+   "en": "Haegeumgeong Hotel",
+   "auto": true
+  },
+  "2a47cac1098a4dff": {
+   "ko": "천년숭횟집",
+   "en": "Cheonnyeonsung Sashimi House",
+   "auto": true
+  },
+  "b159c4830e3f7e9d": {
+   "ko": "신선데횟집",
+   "en": "Sinseonde Sashimi House",
+   "auto": true
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU",
+   "auto": true
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine",
+   "auto": true
+  },
+  "0058a0243ae250dc": {
+   "ko": "엔젤리노스 커피",
+   "en": "Angelinos Keopi",
+   "auto": true
+  },
+  "c80593f5c105a3cb": {
+   "ko": "블루마우리조티호텔",
+   "en": "Beulrumaurijoti Hotel",
+   "auto": true
+  },
+  "a5955b77ac300083": {
+   "ko": "카페매튜시",
+   "en": "Kapemaetyusi",
+   "auto": true
+  },
+  "8d74e2ecf264ae96": {
+   "ko": "세화투아",
+   "en": "Sehwatua",
+   "auto": true
+  },
+  "87de1bf57eb992cc": {
+   "ko": "해금겅횟집",
+   "en": "Haegeumgeong Sashimi House",
+   "auto": true
+  },
+  "bd15342ab4271d8c": {
+   "ko": "SJ주유소",
+   "en": "SJ Gas",
+   "auto": true
+  },
+  "9fbe4009740d5794": {
+   "ko": "바람의언덕핫도기",
+   "en": "Baramuieondeokhatdogi",
+   "auto": true
+  }
+ }
+}

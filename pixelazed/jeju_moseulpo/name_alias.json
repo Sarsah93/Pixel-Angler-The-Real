@@ -1,0 +1,1830 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "68dd686434b24386": {
+   "ko": "제주감귤농햡",
+   "en": "Jejugamgyulnonghyap",
+   "auto": true
+  },
+  "2d48f383d8d26dd8": {
+   "ko": "대정농햡",
+   "en": "Daejeongnonghyap",
+   "auto": true
+  },
+  "4137649d8b914b2d": {
+   "ko": "세븐나인 서귀포대정점",
+   "en": "Seven-Nine Seogwipodaejeongjeom",
+   "auto": true
+  },
+  "79821cbbc890cae1": {
+   "ko": "GX24 제주대정점",
+   "en": "GX24 Jejudaejeongjeom",
+   "auto": true
+  },
+  "5304e4b85096fa8e": {
+   "ko": "삼별 약국",
+   "en": "Sambyeol Yakguk",
+   "auto": true
+  },
+  "d36117c996ebf8b1": {
+   "ko": "사이소 제주모슬포점",
+   "en": "Saiso Jejumoseulpojeom",
+   "auto": true
+  },
+  "39d86eb7f30199b1": {
+   "ko": "세븐나인 서귀포대정중앙점",
+   "en": "Seven-Nine Seogwipodaejeongjungangjeom",
+   "auto": true
+  },
+  "862fa76c046bc165": {
+   "ko": "대정신햡",
+   "en": "Daejeongsinhyap",
+   "auto": true
+  },
+  "52c42753a11fefbb": {
+   "ko": "루시드봉봉 게허",
+   "en": "Rusideubongbong Geheo",
+   "auto": true
+  },
+  "016efc36c1a774bd": {
+   "ko": "펠리컨치킨 모슬포점",
+   "en": "Pelican Chicken Moseulpojeom",
+   "auto": true
+  },
+  "da59a37dd3ae90fe": {
+   "ko": "디자인아로퍼",
+   "en": "Dijainaropeo",
+   "auto": true
+  },
+  "c49fef1271fc8898": {
+   "ko": "QU 모슬포점",
+   "en": "QU Moseulpojeom",
+   "auto": true
+  },
+  "ea2c5cce228b7018": {
+   "ko": "한양전자중구",
+   "en": "Hanyangjeonjajunggu",
+   "auto": true
+  },
+  "5be92a2a03e02414": {
+   "ko": "너는 나의 바더",
+   "en": "Neoneun Naui Badeo",
+   "auto": true
+  },
+  "661b61cd5f94ca75": {
+   "ko": "예쁜여오",
+   "en": "Yeppeunyeoo",
+   "auto": true
+  },
+  "344b902686238ba4": {
+   "ko": "모슬포포고식당",
+   "en": "Moseulpopogo Restaurant",
+   "auto": true
+  },
+  "2123d3193a613eda": {
+   "ko": "감성포차웃음꼬치필떼",
+   "en": "Gamseongpochauteumkkochipiltte",
+   "auto": true
+  },
+  "cd0522c15cc8c5be": {
+   "ko": "한끼식턱",
+   "en": "Hankkisikteok",
+   "auto": true
+  },
+  "25c180e1d1b45d7c": {
+   "ko": "52오카페",
+   "en": "52o Cafe",
+   "auto": true
+  },
+  "8df3f28967cc1ea1": {
+   "ko": "미쳐불아",
+   "en": "Michyeobula",
+   "auto": true
+  },
+  "76fa19eb2749c3d5": {
+   "ko": "하모어춘식당",
+   "en": "Hamoeochun Restaurant",
+   "auto": true
+  },
+  "b5402c59ee70c29b": {
+   "ko": "신국수이야그",
+   "en": "Singuksuiyageu",
+   "auto": true
+  },
+  "837ad0786ddeba04": {
+   "ko": "명동춘천닭갈비2호잠",
+   "en": "Myeongdongchuncheondak Galbi 2hojam",
+   "auto": true
+  },
+  "1bb0aba7c6eed7d9": {
+   "ko": "알뜨리",
+   "en": "Altteuri",
+   "auto": true
+  },
+  "48815a5f562cd141": {
+   "ko": "반찬이맛있는즙",
+   "en": "Banchanimatitneunjeup",
+   "auto": true
+  },
+  "48ee1cecddf136a2": {
+   "ko": "한솔도시락 제주대정점",
+   "en": "Hansol Dosirak Jejudaejeongjeom",
+   "auto": true
+  },
+  "4a34a5ec5b217e67": {
+   "ko": "교동치킨 대정점",
+   "en": "Gyodong Chicken Daejeongjeom",
+   "auto": true
+  },
+  "3aa7d41eade5e6aa": {
+   "ko": "동상수산",
+   "en": "Dongsangsusan",
+   "auto": true
+  },
+  "966948bb22fcc4ec": {
+   "ko": "덕싱식당",
+   "en": "Deoksing Restaurant",
+   "auto": true
+  },
+  "4551e6dd1afacc7f": {
+   "ko": "카푸치누",
+   "en": "Kapuchinu",
+   "auto": true
+  },
+  "3d56450ed75f5ca3": {
+   "ko": "아지티",
+   "en": "Ajiti",
+   "auto": true
+  },
+  "e44e325d862033f2": {
+   "ko": "대장국수",
+   "en": "Daejangguksu",
+   "auto": true
+  },
+  "0e91ea17ef8942ec": {
+   "ko": "노네음",
+   "en": "Noneeum",
+   "auto": true
+  },
+  "2cd0f096d6f09f36": {
+   "ko": "뚱이모내분식",
+   "en": "Ttungimonaebunsik",
+   "auto": true
+  },
+  "075e72b995af517f": {
+   "ko": "재클린디저트모슬포잠",
+   "en": "Jaekeulrindijeoteumoseulpojam",
+   "auto": true
+  },
+  "e1dee54916cfb764": {
+   "ko": "대정추어탕전몬",
+   "en": "Daejeongchueotangjeonmon",
+   "auto": true
+  },
+  "45586d9cb10aaacc": {
+   "ko": "명공식당",
+   "en": "Myeonggong Restaurant",
+   "auto": true
+  },
+  "5b5736c9a415cfcb": {
+   "ko": "포크앤나이피",
+   "en": "Pokeuaennaipi",
+   "auto": true
+  },
+  "50088a1d07253d2e": {
+   "ko": "리치풍냔식당",
+   "en": "Richipungnyan Restaurant",
+   "auto": true
+  },
+  "87596c0a5796c1fb": {
+   "ko": "동햔식당",
+   "en": "Donghyan Restaurant",
+   "auto": true
+  },
+  "f7d9c6c5989db26f": {
+   "ko": "숯불세뚜르",
+   "en": "Sutbulsettureu",
+   "auto": true
+  },
+  "0a99b987c68db3d4": {
+   "ko": "홍성벙",
+   "en": "Hongseongbeong",
+   "auto": true
+  },
+  "c26c896228a8e45a": {
+   "ko": "마푸식당",
+   "en": "Mapu Restaurant",
+   "auto": true
+  },
+  "51a92fedd0a592b1": {
+   "ko": "제2 덕싱",
+   "en": "Je2 Deoksing",
+   "auto": true
+  },
+  "2c2ca2635c5e3aee": {
+   "ko": "차룽",
+   "en": "Charung",
+   "auto": true
+  },
+  "1536fede9a66c25c": {
+   "ko": "바당올래",
+   "en": "Badangolrae",
+   "auto": true
+  },
+  "60fc8567b05f7836": {
+   "ko": "부선식당",
+   "en": "Buseon Restaurant",
+   "auto": true
+  },
+  "493d66bc9ba4b617": {
+   "ko": "몽생으",
+   "en": "Mongsaengeu",
+   "auto": true
+  },
+  "60cf984039332b11": {
+   "ko": "불란즈",
+   "en": "Bulranjeu",
+   "auto": true
+  },
+  "a9da412916618236": {
+   "ko": "제주콩순욱",
+   "en": "Jejukongsunuk",
+   "auto": true
+  },
+  "c069a409100b69c3": {
+   "ko": "버거리아 모슬포점",
+   "en": "Burgeria Moseulpojeom",
+   "auto": true
+  },
+  "95eaef8ef8f1a900": {
+   "ko": "엉카페",
+   "en": "Eong Cafe",
+   "auto": true
+  },
+  "a2a543408d6f1c8c": {
+   "ko": "모슬포올레중엉통닭",
+   "en": "Moseulpoolrejungeongtongdak",
+   "auto": true
+  },
+  "32becb7fe69319cb": {
+   "ko": "도꼭즈",
+   "en": "Dokkokjeu",
+   "auto": true
+  },
+  "efa2ca0f9fb0274a": {
+   "ko": "우리들천곡",
+   "en": "Urideulcheongok",
+   "auto": true
+  },
+  "1ff1f31abd8dd3af": {
+   "ko": "육형",
+   "en": "Yukhyeong",
+   "auto": true
+  },
+  "af6fa13d72751e45": {
+   "ko": "맘스키친 대정점",
+   "en": "Mom's Kitchen Daejeongjeom",
+   "auto": true
+  },
+  "d052ff93fffaa618": {
+   "ko": "하츠돈카치",
+   "en": "Hacheudonkachi",
+   "auto": true
+  },
+  "e1bf78427bf751ad": {
+   "ko": "덕고상회",
+   "en": "Deokgosanghoe",
+   "auto": true
+  },
+  "0ca44de07582bca3": {
+   "ko": "끼니공벙",
+   "en": "Kkinigongbeong",
+   "auto": true
+  },
+  "e4927a89023744f1": {
+   "ko": "하와이카으",
+   "en": "Hawaikaeu",
+   "auto": true
+  },
+  "2ffb9aa622a0b4b6": {
+   "ko": "우사므",
+   "en": "Usameu",
+   "auto": true
+  },
+  "4c2aae23c1ec0647": {
+   "ko": "작인식당",
+   "en": "Jakin Restaurant",
+   "auto": true
+  },
+  "e79a84d68191f468": {
+   "ko": "대정물선",
+   "en": "Daejeongmulseon",
+   "auto": true
+  },
+  "b0065e46c26b71aa": {
+   "ko": "데아(THERE)",
+   "en": "Dea(THERE)",
+   "auto": true
+  },
+  "8122ab2cdd5c9c56": {
+   "ko": "내내치킨 대정점",
+   "en": "Naenae Chicken Daejeongjeom",
+   "auto": true
+  },
+  "5dd348f4854fb102": {
+   "ko": "대넝굴",
+   "en": "Daeneonggul",
+   "auto": true
+  },
+  "2e05c347b9f712ff": {
+   "ko": "마라도고레",
+   "en": "Maradogore",
+   "auto": true
+  },
+  "15b7bec6301eae35": {
+   "ko": "요망진밥성",
+   "en": "Yomangjinbapseong",
+   "auto": true
+  },
+  "7e10dd59f1aeb13a": {
+   "ko": "국수광정",
+   "en": "Guksugwangjeong",
+   "auto": true
+  },
+  "7dd2b443d289d017": {
+   "ko": "카페멘도룽",
+   "en": "Kapemendorung",
+   "auto": true
+  },
+  "d51bf162c1deabd3": {
+   "ko": "모슬포2호탤식당",
+   "en": "Moseulpo2hotael Restaurant",
+   "auto": true
+  },
+  "62c9d99dcefde58a": {
+   "ko": "콜트레은",
+   "en": "Kolteureeun",
+   "auto": true
+  },
+  "466c6a976e62518d": {
+   "ko": "우리자메식당",
+   "en": "Urijame Restaurant",
+   "auto": true
+  },
+  "de928d2a1cba2054": {
+   "ko": "용몬",
+   "en": "Yongmon",
+   "auto": true
+  },
+  "109195799749a48e": {
+   "ko": "오븐에빠진닭모슬포잠",
+   "en": "Obeuneppajindakmoseulpojam",
+   "auto": true
+  },
+  "af1883d1cbaf0d02": {
+   "ko": "밥도독",
+   "en": "Bapdodok",
+   "auto": true
+  },
+  "0b434abc5681ae81": {
+   "ko": "통퉁",
+   "en": "Tongtung",
+   "auto": true
+  },
+  "3e16ae118f9a2e22": {
+   "ko": "산방흑돼지순대영어교육도시잠",
+   "en": "Sanbangheukdwaejisundaeyeongeogyoyukdosijam",
+   "auto": true
+  },
+  "8f9058d12e44038e": {
+   "ko": "대장족발",
+   "en": "Daejang Jokbal",
+   "auto": true
+  },
+  "1c0fe9acd11a6489": {
+   "ko": "보스쿠",
+   "en": "Boseuku",
+   "auto": true
+  },
+  "c4a9254678508e24": {
+   "ko": "돈치킨서귀포시모슬포잠",
+   "en": "Donchikinseogwiposimoseulpojam",
+   "auto": true
+  },
+  "2bd0b5bf81e4cdc6": {
+   "ko": "비행접스",
+   "en": "Bihaengjeopseu",
+   "auto": true
+  },
+  "304dfb1f27ab2754": {
+   "ko": "마슬",
+   "en": "Maseul",
+   "auto": true
+  },
+  "45723845015097ea": {
+   "ko": "본죽제주영어마을잠",
+   "en": "Bonjukjejuyeongeo Village Jam",
+   "auto": true
+  },
+  "7162f3c5ba2fba46": {
+   "ko": "토니버거제주영어교육도시잠",
+   "en": "Tonibeogeojejuyeongeogyoyukdosijam",
+   "auto": true
+  },
+  "cef11de54f4ac004": {
+   "ko": "로지",
+   "en": "Roji",
+   "auto": true
+  },
+  "0b03e8e6c6b37a99": {
+   "ko": "대정족발영어교육도시잠",
+   "en": "Daejeong Jokbal Yeongeogyoyukdosijam",
+   "auto": true
+  },
+  "43e791821d96b677": {
+   "ko": "해영식당",
+   "en": "Haeyeong Restaurant",
+   "auto": true
+  },
+  "7073c99158341eed": {
+   "ko": "아내의쉐피",
+   "en": "Anaeuiswepi",
+   "auto": true
+  },
+  "04bb2433618ae9a1": {
+   "ko": "아크로뵤",
+   "en": "Akeurobyo",
+   "auto": true
+  },
+  "72d35c1d73a4fa66": {
+   "ko": "갑부순대곡",
+   "en": "Gapbusundaegok",
+   "auto": true
+  },
+  "42e84b9d6e8e8c03": {
+   "ko": "벤또룽",
+   "en": "Benttorung",
+   "auto": true
+  },
+  "16dde47a71376290": {
+   "ko": "낙지올레",
+   "en": "Nakjiolre",
+   "auto": true
+  },
+  "8087c2c81cdaf2f9": {
+   "ko": "너오누으",
+   "en": "Neoonueu",
+   "auto": true
+  },
+  "3a95a82d21e7d7e8": {
+   "ko": "꼬끼오옛널통닭",
+   "en": "Kkokkioyetneoltongdak",
+   "auto": true
+  },
+  "d3c2ac5aac2c7824": {
+   "ko": "짬뿡상회",
+   "en": "Jjamppungsanghoe",
+   "auto": true
+  },
+  "9c1ca1dd89b8e5d4": {
+   "ko": "꼬지사께모슬포잠",
+   "en": "Kkojisakkemoseulpojam",
+   "auto": true
+  },
+  "b055e37d0b1eb29c": {
+   "ko": "거멍흑돼지&장어하로",
+   "en": "Geomeongheukdwaeji&jangeoharo",
+   "auto": true
+  },
+  "db89140d990ef0aa": {
+   "ko": "까사밍고키친모슬포잠",
+   "en": "Kkasaminggokichinmoseulpojam",
+   "auto": true
+  },
+  "98614469dbdee1ca": {
+   "ko": "미풍해장국모슬포잠",
+   "en": "Mipung Haejangguk Moseulpojam",
+   "auto": true
+  },
+  "0c043db9164fe148": {
+   "ko": "제주바더",
+   "en": "Jejubadeo",
+   "auto": true
+  },
+  "0427546794f5e08c": {
+   "ko": "동두찬국수",
+   "en": "Dongduchanguksu",
+   "auto": true
+  },
+  "8f1471cd9614e69c": {
+   "ko": "팔팔야슥",
+   "en": "Palpalyaseuk",
+   "auto": true
+  },
+  "534d876926f025e4": {
+   "ko": "투다르식당",
+   "en": "Tudareu Restaurant",
+   "auto": true
+  },
+  "759092a40c9a1ac8": {
+   "ko": "상원가딘",
+   "en": "Sangwongadin",
+   "auto": true
+  },
+  "822ebc1b7c7203ca": {
+   "ko": "돈방석모슬포8호잠",
+   "en": "Donbangseokmoseulpo8hojam",
+   "auto": true
+  },
+  "99fba2bc2c7d216c": {
+   "ko": "가마숱국밥",
+   "en": "Gamasut Gukbap",
+   "auto": true
+  },
+  "fbb73f9aa7f5b756": {
+   "ko": "화은",
+   "en": "Hwaeun",
+   "auto": true
+  },
+  "64dcbd2ba0cf1329": {
+   "ko": "통족모슬포잠",
+   "en": "Tongjokmoseulpojam",
+   "auto": true
+  },
+  "d624cca1ca6004c5": {
+   "ko": "글라글라하와으",
+   "en": "Geulrageulrahawaeu",
+   "auto": true
+  },
+  "3a8e614f8420475b": {
+   "ko": "바람이불어오는굿",
+   "en": "Baramibuleooneungut",
+   "auto": true
+  },
+  "dd80849180ae40f6": {
+   "ko": "메옹으",
+   "en": "Meongeu",
+   "auto": true
+  },
+  "e5ec3240159a9b0a": {
+   "ko": "가온누리정슥",
+   "en": "Gaonnurijeongseuk",
+   "auto": true
+  },
+  "73da4dcab3c76810": {
+   "ko": "놈.놈.놈.대정잠",
+   "en": "Nom.nom.nom.daejeongjam",
+   "auto": true
+  },
+  "045bdde004b891ac": {
+   "ko": "와투커피",
+   "en": "Watu Coffee",
+   "auto": true
+  },
+  "bd160b8de7ab3c5a": {
+   "ko": "모드락치킨모슬포잠",
+   "en": "Modeurakchikinmoseulpojam",
+   "auto": true
+  },
+  "969312a7af0ab7ac": {
+   "ko": "투스푼플레이스 제주모슬포점",
+   "en": "Two Spoon Place Jejumoseulpojeom",
+   "auto": true
+  },
+  "32405bafe0372a1b": {
+   "ko": "이디",
+   "en": "Idi",
+   "auto": true
+  },
+  "6e031a8435a54b9b": {
+   "ko": "영원헌식당",
+   "en": "Yeongwonheon Restaurant",
+   "auto": true
+  },
+  "561a743442672412": {
+   "ko": "본전돼즈국밥",
+   "en": "Bonjeondwaejeu Gukbap",
+   "auto": true
+  },
+  "af3ce4f0dd79f320": {
+   "ko": "힐릉포차",
+   "en": "Hilreung Pocha",
+   "auto": true
+  },
+  "cc22463ea39387d8": {
+   "ko": "모슬포동태텅",
+   "en": "Moseulpodongtaeteong",
+   "auto": true
+  },
+  "7c9d7bc9db92f3cc": {
+   "ko": "못난으식당",
+   "en": "Motnaneu Restaurant",
+   "auto": true
+  },
+  "ece86dc9c4d66a80": {
+   "ko": "느영나영혼듸모양",
+   "en": "Neuyeongnayeonghonduimoyang",
+   "auto": true
+  },
+  "2141fae2e0d776ac": {
+   "ko": "노랑꼬르",
+   "en": "Norangkkoreu",
+   "auto": true
+  },
+  "01205578bfdef527": {
+   "ko": "잇뿡스시",
+   "en": "Itppungseusi",
+   "auto": true
+  },
+  "29319db9e4cedc2e": {
+   "ko": "물꾸락식당",
+   "en": "Mulkkurak Restaurant",
+   "auto": true
+  },
+  "d420a32cd5639616": {
+   "ko": "낙완식당",
+   "en": "Nakwan Restaurant",
+   "auto": true
+  },
+  "74379cb9def512e5": {
+   "ko": "영헤식당",
+   "en": "Yeonghe Restaurant",
+   "auto": true
+  },
+  "5ca4ea3f21faa1f4": {
+   "ko": "영상식당",
+   "en": "Yeongsang Restaurant",
+   "auto": true
+  },
+  "fb9669ce11e797f7": {
+   "ko": "해냐식당",
+   "en": "Haenya Restaurant",
+   "auto": true
+  },
+  "cd173a135f900de2": {
+   "ko": "자존심전문음식잠",
+   "en": "Jajonsimjeonmuneumsikjam",
+   "auto": true
+  },
+  "2a0d57f0d4413c5f": {
+   "ko": "최남단일박이을",
+   "en": "Choenamdanilbakieul",
+   "auto": true
+  },
+  "296940a7537955b4": {
+   "ko": "날으는활아식당",
+   "en": "Naleuneunhwala Restaurant",
+   "auto": true
+  },
+  "e9b6cfb172b06584": {
+   "ko": "난타5000모슬포잠",
+   "en": "Nanta5000moseulpojam",
+   "auto": true
+  },
+  "76e79c88462dd512": {
+   "ko": "부가부가부가네얼큰이모슬포잠",
+   "en": "Bugabugabuganeeolkeunimoseulpojam",
+   "auto": true
+  },
+  "672261d9704bb448": {
+   "ko": "맨날술이여",
+   "en": "Maennalsuliyeo",
+   "auto": true
+  },
+  "00b728ca55fba11e": {
+   "ko": "탐라소덤",
+   "en": "Tamrasodeom",
+   "auto": true
+  },
+  "917c972c2c0e48df": {
+   "ko": "동일리어망식당",
+   "en": "Dongilrieomang Restaurant",
+   "auto": true
+  },
+  "6311a1ab63531035": {
+   "ko": "노일카페",
+   "en": "Noil Cafe",
+   "auto": true
+  },
+  "63e3fd06c7a5bea3": {
+   "ko": "뽀끼쿠치너",
+   "en": "Ppokkikuchineo",
+   "auto": true
+  },
+  "dfe1028c6949ca88": {
+   "ko": "갈비에제웡",
+   "en": "Galbi Ejewong",
+   "auto": true
+  },
+  "d2533526d9bc3da1": {
+   "ko": "대순이와차돌으",
+   "en": "Daesuniwachadoleu",
+   "auto": true
+  },
+  "94e4de3a7cdaccf7": {
+   "ko": "보말과풍걍",
+   "en": "Bomalgwapunggyang",
+   "auto": true
+  },
+  "38d2069f6946a03f": {
+   "ko": "동아리대정잠",
+   "en": "Dongaridaejeongjam",
+   "auto": true
+  },
+  "61ac2cf011db2a63": {
+   "ko": "춘범이네흑둔",
+   "en": "Chunbeomineheukdun",
+   "auto": true
+  },
+  "23ccda9a1127564a": {
+   "ko": "아랑졸뜨",
+   "en": "Arangjoltteu",
+   "auto": true
+  },
+  "6975b8a9dee90154": {
+   "ko": "명성수다띨",
+   "en": "Myeongseongsudattil",
+   "auto": true
+  },
+  "47d539ca9b0a41b5": {
+   "ko": "제주보물삼",
+   "en": "Jejubomulsam",
+   "auto": true
+  },
+  "407155b890b3f807": {
+   "ko": "신미영이내",
+   "en": "Sinmiyeonginae",
+   "auto": true
+  },
+  "f5df4812f0b62183": {
+   "ko": "신호딩",
+   "en": "Sinhoding",
+   "auto": true
+  },
+  "569cdecfc097913c": {
+   "ko": "제주만닥회센터",
+   "en": "Jejumandakhoesenteo",
+   "auto": true
+  },
+  "c2fb465e23b446fc": {
+   "ko": "소담알꼬리쯤",
+   "en": "Sodamalkkorijjeum",
+   "auto": true
+  },
+  "2901c6458f312889": {
+   "ko": "바람꿏",
+   "en": "Baramkkut",
+   "auto": true
+  },
+  "d348ecfe0e8ba295": {
+   "ko": "마눙삼계탕",
+   "en": "Manungsamgyetang",
+   "auto": true
+  },
+  "01b9aacd83e6027b": {
+   "ko": "굽내치킨 모슬포점",
+   "en": "Gupnae Chicken Moseulpojeom",
+   "auto": true
+  },
+  "4903383861a0b8e3": {
+   "ko": "플",
+   "en": "Peul",
+   "auto": true
+  },
+  "b5ef2398cedc3374": {
+   "ko": "너는나의바더",
+   "en": "Neoneunnauibadeo",
+   "auto": true
+  },
+  "b626b39dd8b18d9a": {
+   "ko": "서산아지메",
+   "en": "Seosanajime",
+   "auto": true
+  },
+  "a46afecc8cb70ad1": {
+   "ko": "(주)제주마켓물류센타킹마트모슬포지잠",
+   "en": "(ju)jejumaketmulryusentakingmateumoseulpojijam",
+   "auto": true
+  },
+  "a76f43ad727e11a0": {
+   "ko": "사걔짬뽕",
+   "en": "Sagyae Jjamppong",
+   "auto": true
+  },
+  "dafdc7f9c818c10b": {
+   "ko": "동성수산별권",
+   "en": "Dongseongsusanbyeolgwon",
+   "auto": true
+  },
+  "a5fccdda2646df60": {
+   "ko": "영퐁해장국",
+   "en": "Yeongpong Haejangguk",
+   "auto": true
+  },
+  "7e388fd496b29bc0": {
+   "ko": "모메든식당모슬포잠",
+   "en": "Momedeunsikdangmoseulpojam",
+   "auto": true
+  },
+  "e306c7472ac47450": {
+   "ko": "모슬포일번지가딘",
+   "en": "Moseulpoilbeonjigadin",
+   "auto": true
+  },
+  "806f94658fb4eaca": {
+   "ko": "모슬포한라전북",
+   "en": "Moseulpohanrajeonbuk",
+   "auto": true
+  },
+  "731dd68f045e79b6": {
+   "ko": "평진욱",
+   "en": "Pyeongjinuk",
+   "auto": true
+  },
+  "5db6688be771a820": {
+   "ko": "박금식당",
+   "en": "Bakgeum Restaurant",
+   "auto": true
+  },
+  "a8f4ec2c72548716": {
+   "ko": "대정뚱이네영곱창",
+   "en": "Daejeongttungineyeonggopchang",
+   "auto": true
+  },
+  "4931eac7b86bd018": {
+   "ko": "올댓비아",
+   "en": "Oldaetbia",
+   "auto": true
+  },
+  "a95cc24b1292ae17": {
+   "ko": "마라도포장마처",
+   "en": "Maradopojangmacheo",
+   "auto": true
+  },
+  "e4409c12f08a0b4f": {
+   "ko": "AQ치킨",
+   "en": "AQchikin",
+   "auto": true
+  },
+  "f507458b891803a9": {
+   "ko": "동수네횟즙수산",
+   "en": "Dongsunehoetjeupsusan",
+   "auto": true
+  },
+  "18b769f51bb404f8": {
+   "ko": "오일정반점",
+   "en": "Oiljeongbanjeom",
+   "auto": true
+  },
+  "bdec7f61075f3b66": {
+   "ko": "현믄갈비",
+   "en": "Hyeonmeun Galbi",
+   "auto": true
+  },
+  "e5a4bc7461a3664d": {
+   "ko": "돼지음식잠",
+   "en": "Dwaejieumsikjam",
+   "auto": true
+  },
+  "a5f3f0db8fa48d19": {
+   "ko": "흑돈이랑장어렁",
+   "en": "Heukdonirangjangeoreong",
+   "auto": true
+  },
+  "6167e2a9f85a3978": {
+   "ko": "우부식당",
+   "en": "Ubu Restaurant",
+   "auto": true
+  },
+  "19ccfe78a950bed9": {
+   "ko": "안너식당",
+   "en": "Anneo Restaurant",
+   "auto": true
+  },
+  "7d0ab4cfcfeaa1cf": {
+   "ko": "대박이내국밥",
+   "en": "Daebakinae Gukbap",
+   "auto": true
+  },
+  "d0efc50156b51101": {
+   "ko": "고향즙",
+   "en": "Gohyangjeup",
+   "auto": true
+  },
+  "d40943dcd890d8dd": {
+   "ko": "정원야건회센타",
+   "en": "Jeongwonyageonhoesenta",
+   "auto": true
+  },
+  "963b7398a537707c": {
+   "ko": "삼남메",
+   "en": "Samnamme",
+   "auto": true
+  },
+  "9320c7b6b0afb26e": {
+   "ko": "장충동B&F왕족발보쌈대정잠",
+   "en": "JangchungdongB&Fwang Jokbal Bossamdaejeongjam",
+   "auto": true
+  },
+  "6289aa623151a2bc": {
+   "ko": "와워식당",
+   "en": "Wawo Restaurant",
+   "auto": true
+  },
+  "cc6b29c42305a216": {
+   "ko": "앤모슬포잠",
+   "en": "Aenmoseulpojam",
+   "auto": true
+  },
+  "cfde55bf404d7166": {
+   "ko": "오름행복헌식당",
+   "en": "Oreumhaengbokheon Restaurant",
+   "auto": true
+  },
+  "5f1808bd343b09ef": {
+   "ko": "부아치킨 대정점",
+   "en": "Buachikin Daejeongjeom",
+   "auto": true
+  },
+  "829d394709ce7b46": {
+   "ko": "스페샬 대정점",
+   "en": "Seupesyal Daejeongjeom",
+   "auto": true
+  },
+  "08003ebb92f12881": {
+   "ko": "돈길으",
+   "en": "Dongileu",
+   "auto": true
+  },
+  "68965cc82a771caa": {
+   "ko": "옥자네 매운조름",
+   "en": "Okjane Maeunjoreum",
+   "auto": true
+  },
+  "120151491a138ca1": {
+   "ko": "서울왕십르곱창",
+   "en": "Seoulwangsipreugopchang",
+   "auto": true
+  },
+  "f61302d91fd6842d": {
+   "ko": "안마덩",
+   "en": "Anmadeong",
+   "auto": true
+  },
+  "0b7618c2318c4f25": {
+   "ko": "성슨",
+   "en": "Seongseun",
+   "auto": true
+  },
+  "7d165a34a293fb50": {
+   "ko": "거재아구찜",
+   "en": "Geojaeagujjim",
+   "auto": true
+  },
+  "ff779451f034e336": {
+   "ko": "수눌임",
+   "en": "Sunulim",
+   "auto": true
+  },
+  "a530b6fe12ba1ec0": {
+   "ko": "본초불닭발대정잠",
+   "en": "Bonchobuldakbaldaejeongjam",
+   "auto": true
+  },
+  "9985d501b8fc9423": {
+   "ko": "명품한우전몬",
+   "en": "Myeongpum Hanu Jeonmon",
+   "auto": true
+  },
+  "259037a414870dd5": {
+   "ko": "대북",
+   "en": "Daebuk",
+   "auto": true
+  },
+  "ee046b04c51ad322": {
+   "ko": "이영손해장국",
+   "en": "Iyeongson Haejangguk",
+   "auto": true
+  },
+  "779323ec3f866d25": {
+   "ko": "만산식당",
+   "en": "Mansan Restaurant",
+   "auto": true
+  },
+  "bddff6e0942d5eb5": {
+   "ko": "피자리어",
+   "en": "Pijarieo",
+   "auto": true
+  },
+  "27b7901cac6ab1de": {
+   "ko": "예솔",
+   "en": "Yesol",
+   "auto": true
+  },
+  "2b98b1b8c18e04fc": {
+   "ko": "코시롱화닥피자",
+   "en": "Kosironghwadakpija",
+   "auto": true
+  },
+  "c4c4c3264b64c09a": {
+   "ko": "북걍반점",
+   "en": "Bukgyangbanjeom",
+   "auto": true
+  },
+  "e5429342234a60e1": {
+   "ko": "대정웰븡식당",
+   "en": "Daejeongwelbeung Restaurant",
+   "auto": true
+  },
+  "0a2e9de14591289e": {
+   "ko": "시굴곰탕",
+   "en": "Sigul Gomtang",
+   "auto": true
+  },
+  "43fe2d764556817b": {
+   "ko": "왕손가딘",
+   "en": "Wangsongadin",
+   "auto": true
+  },
+  "e445f2a84ac91c85": {
+   "ko": "어두",
+   "en": "Eodu",
+   "auto": true
+  },
+  "a407d1a36521899f": {
+   "ko": "하르방밀먄",
+   "en": "Hareubangmilmyan",
+   "auto": true
+  },
+  "9907c7f79319096f": {
+   "ko": "리치망구(Rich Mango) 대정점",
+   "en": "Richimanggu(Rich Mango) Daejeongjeom",
+   "auto": true
+  },
+  "ee538346de028574": {
+   "ko": "하무식당",
+   "en": "Hamu Restaurant",
+   "auto": true
+  },
+  "f4b145b5e4af7741": {
+   "ko": "엄마순식당",
+   "en": "Eommasun Restaurant",
+   "auto": true
+  },
+  "8b045053563e8719": {
+   "ko": "생방송모슬포잠",
+   "en": "Saengbangsongmoseulpojam",
+   "auto": true
+  },
+  "44a1d2f22baf7e45": {
+   "ko": "모슬포명가숯불화로구으",
+   "en": "Moseulpomyeonggasutbulhwarogueu",
+   "auto": true
+  },
+  "a854e56e5f6342eb": {
+   "ko": "홍탁즙",
+   "en": "Hongtakjeup",
+   "auto": true
+  },
+  "5511f93ffe9e09c2": {
+   "ko": "까투리모슬포잠",
+   "en": "Kkaturimoseulpojam",
+   "auto": true
+  },
+  "a301315de96db22f": {
+   "ko": "전복마일",
+   "en": "Jeonbokmail",
+   "auto": true
+  },
+  "ac07216a13dac0de": {
+   "ko": "강가내",
+   "en": "Gangganae",
+   "auto": true
+  },
+  "1e051e71c691dc2c": {
+   "ko": "오리천곡",
+   "en": "Oricheongok",
+   "auto": true
+  },
+  "1feada48de8d42f2": {
+   "ko": "묵찌뻐분식",
+   "en": "Mukjjippeobunsik",
+   "auto": true
+  },
+  "7b3220edac8a7f45": {
+   "ko": "명원장",
+   "en": "Myeongwonjang",
+   "auto": true
+  },
+  "f8ab3be439bb9197": {
+   "ko": "한우르",
+   "en": "Hanu Reu",
+   "auto": true
+  },
+  "075a556d9058b7ef": {
+   "ko": "멕시칸치킨 앤시카고피자",
+   "en": "Mexican Chicken Aensikagopija",
+   "auto": true
+  },
+  "22ad5dee71ba96ed": {
+   "ko": "버드나무가딘",
+   "en": "Beodeunamugadin",
+   "auto": true
+  },
+  "04d9b71221f6ebd0": {
+   "ko": "으랏차처",
+   "en": "Euratchacheo",
+   "auto": true
+  },
+  "dec7afb0b46b0dc8": {
+   "ko": "마산할메아구찜",
+   "en": "Masanhalmeagujjim",
+   "auto": true
+  },
+  "c351daff7529aa16": {
+   "ko": "진화내",
+   "en": "Jinhwanae",
+   "auto": true
+  },
+  "eabb8909d7648fad": {
+   "ko": "제주인의밥성",
+   "en": "Jejuinuibapseong",
+   "auto": true
+  },
+  "26fcf1fcfa2a90dc": {
+   "ko": "쉐프이포차",
+   "en": "Swepeui Pocha",
+   "auto": true
+  },
+  "14ab76513831a56b": {
+   "ko": "가파도별므식당",
+   "en": "Gapadobyeolmeu Restaurant",
+   "auto": true
+  },
+  "b9756d7635647a91": {
+   "ko": "경해로",
+   "en": "Gyeonghaero",
+   "auto": true
+  },
+  "a69fe91c19acf136": {
+   "ko": "원샷야슥",
+   "en": "Wonsyatyaseuk",
+   "auto": true
+  },
+  "77e19da1013761da": {
+   "ko": "받거니주거느",
+   "en": "Batgeonijugeoneu",
+   "auto": true
+  },
+  "60a4d238fa4f5f10": {
+   "ko": "다오포차",
+   "en": "Dao Pocha",
+   "auto": true
+  },
+  "05bb6291e128fe1c": {
+   "ko": "꽃딜",
+   "en": "Kkotdil",
+   "auto": true
+  },
+  "9a210cf6110e06c4": {
+   "ko": "돈장곤",
+   "en": "Donjanggon",
+   "auto": true
+  },
+  "a0be9ba25399ba98": {
+   "ko": "미름",
+   "en": "Mireum",
+   "auto": true
+  },
+  "abe1febdaadd234c": {
+   "ko": "잔치즙국수",
+   "en": "Janchijeupguksu",
+   "auto": true
+  },
+  "f373b99da3b395f1": {
+   "ko": "동상식당",
+   "en": "Dongsang Restaurant",
+   "auto": true
+  },
+  "a411efc95ba4f175": {
+   "ko": "대정신양식당",
+   "en": "Daejeongsinyang Restaurant",
+   "auto": true
+  },
+  "34a9e777c7824be1": {
+   "ko": "신산식당",
+   "en": "Sinsan Restaurant",
+   "auto": true
+  },
+  "bd2ed1d0701c5bf5": {
+   "ko": "에뜨랑재",
+   "en": "Etteurangjae",
+   "auto": true
+  },
+  "7cb4e0fa02e0d9eb": {
+   "ko": "장보고 민몰장어",
+   "en": "Jangbogo Minmoljangeo",
+   "auto": true
+  },
+  "b367dfb28078c19b": {
+   "ko": "놀부내장텅",
+   "en": "Nolbunaejangteong",
+   "auto": true
+  },
+  "f3dd8edace0ff8e7": {
+   "ko": "엄느식당",
+   "en": "Eomneu Restaurant",
+   "auto": true
+  },
+  "cb76cd75eaba67f3": {
+   "ko": "우상식당",
+   "en": "Usang Restaurant",
+   "auto": true
+  },
+  "1a031c3cee17c7bb": {
+   "ko": "대정쌍둥으식당",
+   "en": "Daejeongssangdungeu Restaurant",
+   "auto": true
+  },
+  "25516376570e95cb": {
+   "ko": "세완식당",
+   "en": "Sewan Restaurant",
+   "auto": true
+  },
+  "de39458ee1c7afde": {
+   "ko": "유걍분식",
+   "en": "Yugyangbunsik",
+   "auto": true
+  },
+  "38482b3b767ff22b": {
+   "ko": "돈즈식당",
+   "en": "Donjeu Restaurant",
+   "auto": true
+  },
+  "18e07eda778015de": {
+   "ko": "김밥낙원",
+   "en": "Gimbap Nagwon",
+   "auto": true
+  },
+  "52c616e62f1c1504": {
+   "ko": "돌구들장오겹설",
+   "en": "Dolgudeuljangogyeopseol",
+   "auto": true
+  },
+  "3b6d36dbcedc7f6a": {
+   "ko": "수장식당",
+   "en": "Sujang Restaurant",
+   "auto": true
+  },
+  "dcbdbdc294eb7226": {
+   "ko": "항고식당",
+   "en": "Hanggo Restaurant",
+   "auto": true
+  },
+  "3cc658e5f1f5f389": {
+   "ko": "김서방연탄구으",
+   "en": "Gimseobangyeontangueu",
+   "auto": true
+  },
+  "d85205e279c37296": {
+   "ko": "멕시코니양냠통닭",
+   "en": "Meksikoniyangnyamtongdak",
+   "auto": true
+  },
+  "a61453a193592251": {
+   "ko": "담다드분식",
+   "en": "Damdadeubunsik",
+   "auto": true
+  },
+  "da1bc0dbb3ee1182": {
+   "ko": "피로회북",
+   "en": "Pirohoebuk",
+   "auto": true
+  },
+  "98979559c7b574b0": {
+   "ko": "행운가딘",
+   "en": "Haengungadin",
+   "auto": true
+  },
+  "0bf3420782650c3e": {
+   "ko": "선요",
+   "en": "Seonyo",
+   "auto": true
+  },
+  "6fe7bd3c3779ac77": {
+   "ko": "고사리키츤",
+   "en": "Gosarikicheun",
+   "auto": true
+  },
+  "1cb02161cc36e826": {
+   "ko": "최남던식당",
+   "en": "Choenamdeon Restaurant",
+   "auto": true
+  },
+  "3764c44a8e6930e0": {
+   "ko": "스시형",
+   "en": "Seusihyeong",
+   "auto": true
+  },
+  "0e35a16d3ab4c9be": {
+   "ko": "신태백권",
+   "en": "Sintaebaekgwon",
+   "auto": true
+  },
+  "7117ca798af45787": {
+   "ko": "옥둠식당",
+   "en": "Okdum Restaurant",
+   "auto": true
+  },
+  "9982605cee44e5ae": {
+   "ko": "올랭이와물꾸락",
+   "en": "Olraengiwamulkkurak",
+   "auto": true
+  },
+  "6e6b271a4e9c9164": {
+   "ko": "부도식당",
+   "en": "Budo Restaurant",
+   "auto": true
+  },
+  "1a1d5f6fb0b95021": {
+   "ko": "미향해장국모슬포잠",
+   "en": "Mihyang Haejangguk Moseulpojam",
+   "auto": true
+  },
+  "d620af9df5b58e80": {
+   "ko": "풍천민몰장어",
+   "en": "Pungcheonminmoljangeo",
+   "auto": true
+  },
+  "ba1f7fb19ad0dc3c": {
+   "ko": "모이세해장국모슬포잠",
+   "en": "Moise Haejangguk Moseulpojam",
+   "auto": true
+  },
+  "22bc48799f22b957": {
+   "ko": "카페달쿵",
+   "en": "Kapedalkung",
+   "auto": true
+  },
+  "254d1d7a3e61fd31": {
+   "ko": "청저다방",
+   "en": "Cheongjeo Dabang",
+   "auto": true
+  },
+  "219d0919d740b231": {
+   "ko": "아러다방",
+   "en": "Areo Dabang",
+   "auto": true
+  },
+  "bdda1e9897cc0c07": {
+   "ko": "러브하우시",
+   "en": "Reobeuhausi",
+   "auto": true
+  },
+  "5f079e11155e957e": {
+   "ko": "제주킹마트모슬포잠",
+   "en": "Jejukingmateumoseulpojam",
+   "auto": true
+  },
+  "564272604c5aa52b": {
+   "ko": "초완다방",
+   "en": "Chowan Dabang",
+   "auto": true
+  },
+  "83786b5b2fe8c345": {
+   "ko": "양즈다방",
+   "en": "Yangjeu Dabang",
+   "auto": true
+  },
+  "f8824657ae20430e": {
+   "ko": "제을다방",
+   "en": "Jeeul Dabang",
+   "auto": true
+  },
+  "ac2c49ae12f39d1f": {
+   "ko": "이번다방",
+   "en": "Ibeon Dabang",
+   "auto": true
+  },
+  "fa532ac2582bed7a": {
+   "ko": "은상",
+   "en": "Eunsang",
+   "auto": true
+  },
+  "4e1190f31d9dde35": {
+   "ko": "수공다방",
+   "en": "Sugong Dabang",
+   "auto": true
+  },
+  "c121813746eb6612": {
+   "ko": "중엉다방",
+   "en": "Jungeong Dabang",
+   "auto": true
+  },
+  "e612a600e6fe00a3": {
+   "ko": "철수와영히분식",
+   "en": "Cheolsuwayeonghibunsik",
+   "auto": true
+  },
+  "e954645f3fd05e2e": {
+   "ko": "금훠다방",
+   "en": "Geumhwo Dabang",
+   "auto": true
+  },
+  "494544ed6716282f": {
+   "ko": "이데아커피 송악산점",
+   "en": "Idea Coffee Songaksanjeom",
+   "auto": true
+  },
+  "6b2508d34b7837c8": {
+   "ko": "오케으다방",
+   "en": "Okeeu Dabang",
+   "auto": true
+  },
+  "5a85544517aa868e": {
+   "ko": "촐레",
+   "en": "Cholre",
+   "auto": true
+  },
+  "4d15bbf41b016fac": {
+   "ko": "제주흑돈만두대정잠",
+   "en": "Jejuheukdon Mandu Daejeongjam",
+   "auto": true
+  },
+  "a51660f83437951d": {
+   "ko": "모슬포3호텔커피슙",
+   "en": "Moseulpo3hotel Coffee Syup",
+   "auto": true
+  },
+  "ab3a36fdb0f571bc": {
+   "ko": "수더",
+   "en": "Sudeo",
+   "auto": true
+  },
+  "060f9577ee25b97a": {
+   "ko": "세븐나인 대정주공점",
+   "en": "Seven-Nine Daejeongjugongjeom",
+   "auto": true
+  },
+  "7bbb35c18ef0450f": {
+   "ko": "GX24 대정상모점",
+   "en": "GX24 Daejeongsangmojeom",
+   "auto": true
+  },
+  "01d8a354283ffc0f": {
+   "ko": "QU 서귀대정태화점",
+   "en": "QU Seogwidaejeongtaehwajeom",
+   "auto": true
+  },
+  "2acd22884e84ed7a": {
+   "ko": "친구내분식",
+   "en": "Chingunaebunsik",
+   "auto": true
+  },
+  "4fabba7e6c2587b7": {
+   "ko": "신장므다방",
+   "en": "Sinjangmeu Dabang",
+   "auto": true
+  },
+  "8809c92519359dc8": {
+   "ko": "설렁탕빠진전북",
+   "en": "Seolreongtangppajinjeonbuk",
+   "auto": true
+  },
+  "6cb528d51495086a": {
+   "ko": "수즈다방",
+   "en": "Sujeu Dabang",
+   "auto": true
+  },
+  "830508a84b54b382": {
+   "ko": "즌다방",
+   "en": "Jeun Dabang",
+   "auto": true
+  },
+  "53da5dbe7cf43298": {
+   "ko": "도나도넛제주본잠",
+   "en": "Donadoneotjejubonjam",
+   "auto": true
+  },
+  "ffa2883d4f9ddd7f": {
+   "ko": "제주설심당모슬포잠",
+   "en": "Jejuseolsimdangmoseulpojam",
+   "auto": true
+  },
+  "c7569e9b165faf87": {
+   "ko": "QU 서귀최남단해안로점",
+   "en": "QU Seogwichoenamdanhaeanrojeom",
+   "auto": true
+  },
+  "010107f19715d169": {
+   "ko": "더덜",
+   "en": "Deodeol",
+   "auto": true
+  },
+  "897c5fd0a892a6ff": {
+   "ko": "GX24 서귀운진항점",
+   "en": "GX24 Seogwiunjinhangjeom",
+   "auto": true
+  },
+  "fcff87074af631d1": {
+   "ko": "햔다방",
+   "en": "Hyan Dabang",
+   "auto": true
+  },
+  "0704d98d8548e6e2": {
+   "ko": "흔한남자의커피이야그",
+   "en": "Heunhannamjaui Coffee Iyageu",
+   "auto": true
+  },
+  "ecd94bcc2bad180f": {
+   "ko": "서올다방",
+   "en": "Seool Dabang",
+   "auto": true
+  },
+  "983a4fa4110f19b1": {
+   "ko": "나비정완",
+   "en": "Nabijeongwan",
+   "auto": true
+  },
+  "721ebae40f0b6d7e": {
+   "ko": "기완다방",
+   "en": "Giwan Dabang",
+   "auto": true
+  },
+  "6a3be35519095a99": {
+   "ko": "바리스타손설옹",
+   "en": "Bariseutasonseolong",
+   "auto": true
+  },
+  "e824199cec34ed31": {
+   "ko": "QU 제주대정하모리점",
+   "en": "QU Jejudaejeonghamorijeom",
+   "auto": true
+  },
+  "9970d1f8967d80dc": {
+   "ko": "홈메이디김밥",
+   "en": "Hommeidi Gimbap",
+   "auto": true
+  },
+  "a81f78bd0226ce8b": {
+   "ko": "빙그레제과잠",
+   "en": "Binggeurejegwajam",
+   "auto": true
+  },
+  "0ce323fa1f45e375": {
+   "ko": "달콤헤",
+   "en": "Dalkomhe",
+   "auto": true
+  },
+  "0c67cd277e2df2aa": {
+   "ko": "파리베이커 대정점",
+   "en": "Paris Baker Daejeongjeom",
+   "auto": true
+  },
+  "e6de745529cef4e6": {
+   "ko": "중엉베이커리",
+   "en": "Jungeong Bakery",
+   "auto": true
+  },
+  "68f166ea7c3120a1": {
+   "ko": "신세걔제과",
+   "en": "Sinsegyaejegwa",
+   "auto": true
+  },
+  "b170b24cdddaa639": {
+   "ko": "Glagla Hawaiy",
+   "en": "Glagla Hawaiy",
+   "auto": true
+  },
+  "a5d6702d63b1cf97": {
+   "ko": "환히김치",
+   "en": "Hwanhigimchi",
+   "auto": true
+  },
+  "8679bffa69551279": {
+   "ko": "순훠김치",
+   "en": "Sunhwogimchi",
+   "auto": true
+  },
+  "c833db86672a2515": {
+   "ko": "港古",
+   "en": "港古",
+   "auto": true
+  },
+  "43f6d27545c2b330": {
+   "ko": "모닝글로르",
+   "en": "Moninggeulroreu",
+   "auto": true
+  },
+  "259b03878705fe01": {
+   "ko": "엔",
+   "en": "En",
+   "auto": true
+  },
+  "2a8115ee7949010f": {
+   "ko": "와플컨",
+   "en": "Wapeulkeon",
+   "auto": true
+  },
+  "52ecdfdc8d540676": {
+   "ko": "약초종거",
+   "en": "Yakchojonggeo",
+   "auto": true
+  },
+  "b36298378d3dbdbd": {
+   "ko": "대장건강원",
+   "en": "Daejanggeongangwon",
+   "auto": true
+  },
+  "bc5ed1613d255ad6": {
+   "ko": "붕분식",
+   "en": "Bungbunsik",
+   "auto": true
+  },
+  "8082bdfacb4677fc": {
+   "ko": "그래듀알",
+   "en": "Geuraedyual",
+   "auto": true
+  },
+  "008c7b0216055ad1": {
+   "ko": "Hotal 52",
+   "en": "Hotal 52",
+   "auto": true
+  },
+  "8e69e4ca1fe34dde": {
+   "ko": "모슬푸약국",
+   "en": "Moseulpu Pharmacy",
+   "auto": true
+  },
+  "7228d5b175fbac83": {
+   "ko": "대정온누르약국",
+   "en": "Daejeongonnureu Pharmacy",
+   "auto": true
+  },
+  "5cbe1ee1ba2bc6ae": {
+   "ko": "메디팜현데약국",
+   "en": "Medipamhyeonde Pharmacy",
+   "auto": true
+  },
+  "336710ff08948513": {
+   "ko": "대정숭약국",
+   "en": "Daejeongsung Pharmacy",
+   "auto": true
+  },
+  "5f151aa48e8bfaaf": {
+   "ko": "프라저약국",
+   "en": "Peurajeo Pharmacy",
+   "auto": true
+  },
+  "cc1ed4e8b3fb2d49": {
+   "ko": "건겅약국",
+   "en": "Geongeong Pharmacy",
+   "auto": true
+  },
+  "11cc59283546f726": {
+   "ko": "시계텁약국",
+   "en": "Sigyeteop Pharmacy",
+   "auto": true
+  },
+  "61de111d2a733e2e": {
+   "ko": "흙헌약국",
+   "en": "Heukheon Pharmacy",
+   "auto": true
+  },
+  "7ee8deba6f408848": {
+   "ko": "하무게스트하우스",
+   "en": "Hamu Guesthouse",
+   "auto": true
+  },
+  "996e76c405edba0f": {
+   "ko": "해안도루식당",
+   "en": "Haeandoru Restaurant",
+   "auto": true
+  },
+  "86eac89846e759e8": {
+   "ko": "점게스트하우스",
+   "en": "Jeom Guesthouse",
+   "auto": true
+  },
+  "c19785f7a796a82b": {
+   "ko": "하모식덩수산",
+   "en": "Hamosikdeongsusan",
+   "auto": true
+  },
+  "c12b28c827f11ca5": {
+   "ko": "아크로뵤호텔",
+   "en": "Akeurobyo Hotel",
+   "auto": true
+  },
+  "295fdd9732754abd": {
+   "ko": "소말똑",
+   "en": "Somalttok",
+   "auto": true
+  },
+  "361bbf3cf4c9036b": {
+   "ko": "먹세식당",
+   "en": "Meokse Restaurant",
+   "auto": true
+  },
+  "71ca48bde544e366": {
+   "ko": "수놀임",
+   "en": "Sunolim",
+   "auto": true
+  },
+  "28f7b77f001ad965": {
+   "ko": "우르식당",
+   "en": "Ureu Restaurant",
+   "auto": true
+  },
+  "b8856f7a667cb62c": {
+   "ko": "모슬포 포고식당",
+   "en": "Moseulpo Pogo Restaurant",
+   "auto": true
+  },
+  "11aec9ccfcc518fa": {
+   "ko": "젬마제주 농수산직판정",
+   "en": "Jemmajeju Nongsusanjikpanjeong",
+   "auto": true
+  },
+  "6a21158666001633": {
+   "ko": "바더편의점",
+   "en": "Badeo Convenience Store",
+   "auto": true
+  },
+  "cb04a01d2583decc": {
+   "ko": "레몬트르게스트하우스",
+   "en": "Remonteureu Guesthouse",
+   "auto": true
+  },
+  "e6cdc07b18196335": {
+   "ko": "훙마트 모슬포점",
+   "en": "Hung Mart Moseulpojeom",
+   "auto": true
+  },
+  "b77e969ba0b9eaf9": {
+   "ko": "거제아구찜전문잠",
+   "en": "Geojeagujjimjeonmunjam",
+   "auto": true
+  },
+  "7eab70e8a676c14a": {
+   "ko": "선요횟집",
+   "en": "Seonyo Sashimi House",
+   "auto": true
+  },
+  "0182d548e75d69eb": {
+   "ko": "QU 대정하모리점",
+   "en": "QU Daejeonghamorijeom",
+   "auto": true
+  },
+  "605b49d2ecf4f372": {
+   "ko": "25스해장국",
+   "en": "25seu Haejangguk",
+   "auto": true
+  },
+  "58750c0306d5fdab": {
+   "ko": "현지24스편의점",
+   "en": "Hyeonji24seu Convenience Store",
+   "auto": true
+  },
+  "86e0713d8d96691a": {
+   "ko": "SH써느호텔",
+   "en": "SHsseoneu Hotel",
+   "auto": true
+  },
+  "71f19395a272dbfa": {
+   "ko": "장마트",
+   "en": "Jang Mart",
+   "auto": true
+  },
+  "7a28e4d2e4266a68": {
+   "ko": "코저호텔",
+   "en": "Kojeo Hotel",
+   "auto": true
+  },
+  "28e36942f980b9d2": {
+   "ko": "해담은 레지던시호텔",
+   "en": "Haedameun Rejideonsi Hotel",
+   "auto": true
+  },
+  "d4b4cc2463b1db58": {
+   "ko": "어나더페이즈",
+   "en": "Eonadeopeijeu",
+   "auto": true
+  },
+  "2e11b6dbee3661de": {
+   "ko": "산벙식당",
+   "en": "Sanbeong Restaurant",
+   "auto": true
+  },
+  "44c922f5074b6169": {
+   "ko": "온누르베이커리",
+   "en": "Onnureu Bakery",
+   "auto": true
+  },
+  "c350354c99c9dbd5": {
+   "ko": "한국마트모슬포잠",
+   "en": "Hangukmateumoseulpojam",
+   "auto": true
+  }
+ }
+}

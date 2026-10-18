@@ -1,0 +1,1040 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "a8788394cf8f571b": {
+   "ko": "방어진농햡",
+   "en": "Bangeojinnonghyap",
+   "auto": true
+  },
+  "12ca8df1d97050ac": {
+   "ko": "하너마트",
+   "en": "Haneo Mart",
+   "auto": true
+  },
+  "df5ff31ee651f7b5": {
+   "ko": "드름마트",
+   "en": "Deureum Mart",
+   "auto": true
+  },
+  "443ba5e1ab23d44b": {
+   "ko": "우르마트",
+   "en": "Ureu Mart",
+   "auto": true
+  },
+  "db329eaca1334e36": {
+   "ko": "우워마트",
+   "en": "Uwo Mart",
+   "auto": true
+  },
+  "18a18e3d5e004acd": {
+   "ko": "세으마트",
+   "en": "Seeu Mart",
+   "auto": true
+  },
+  "391eca6df5b5a52a": {
+   "ko": "한마임마트",
+   "en": "Hanmaim Mart",
+   "auto": true
+  },
+  "ca943dc353a09f6c": {
+   "ko": "태평영마트",
+   "en": "Taepyeongyeong Mart",
+   "auto": true
+  },
+  "9b9efdbe2aed6452": {
+   "ko": "늘푸린마트",
+   "en": "Neulpurin Mart",
+   "auto": true
+  },
+  "f3faf7f107ff74ae": {
+   "ko": "모여라할은마트",
+   "en": "Moyeorahaleun Mart",
+   "auto": true
+  },
+  "a1a0f510b58b7eae": {
+   "ko": "탑후레쇠마트",
+   "en": "Taphuresoe Mart",
+   "auto": true
+  },
+  "7d88457082f7ddf5": {
+   "ko": "우리동내마트",
+   "en": "Uridongnae Mart",
+   "auto": true
+  },
+  "a0f50e5fe53e3695": {
+   "ko": "디스카운티마트",
+   "en": "Diseukaunti Mart",
+   "auto": true
+  },
+  "b068f37ebc0622c8": {
+   "ko": "일선주유소",
+   "en": "Ilseon Gas Station",
+   "auto": true
+  },
+  "a05524aeaf8de6dc": {
+   "ko": "무지게주유소",
+   "en": "Mujige Gas Station",
+   "auto": true
+  },
+  "26aaa3e2adb7f496": {
+   "ko": "한마임주유소",
+   "en": "Hanmaim Gas Station",
+   "auto": true
+  },
+  "c048d6725dad01c3": {
+   "ko": "아카데므주유소",
+   "en": "Akademeu Gas Station",
+   "auto": true
+  },
+  "ebe12fbb3aa31317": {
+   "ko": "대송세턱편의점",
+   "en": "Daesongseteok Convenience Store",
+   "auto": true
+  },
+  "2fcb8668b3a223ad": {
+   "ko": "홍익 육개정",
+   "en": "Hongik Yukgaejeong",
+   "auto": true
+  },
+  "6a0e2f71ed88b24b": {
+   "ko": "바닷거횟집",
+   "en": "Badatgeo Sashimi House",
+   "auto": true
+  },
+  "7f07d06ed934a0de": {
+   "ko": "강원두횟집",
+   "en": "Gangwondu Sashimi House",
+   "auto": true
+  },
+  "94253e234c0b928a": {
+   "ko": "울선횟집",
+   "en": "Ulseon Sashimi House",
+   "auto": true
+  },
+  "75a62f706e91658f": {
+   "ko": "산후횟집",
+   "en": "Sanhu Sashimi House",
+   "auto": true
+  },
+  "76062e78b0519663": {
+   "ko": "경복횟집",
+   "en": "Gyeongbok Sashimi House",
+   "auto": true
+  },
+  "fb4e631d5499ed25": {
+   "ko": "섬낕횟집",
+   "en": "Seomkkit Sashimi House",
+   "auto": true
+  },
+  "65dc8d13b6f44bea": {
+   "ko": "향므횟집",
+   "en": "Hyangmeu Sashimi House",
+   "auto": true
+  },
+  "17c65a9c5b294dc1": {
+   "ko": "수름횟집",
+   "en": "Sureum Sashimi House",
+   "auto": true
+  },
+  "21d97d90cee26e77": {
+   "ko": "후푸횟집",
+   "en": "Hupu Sashimi House",
+   "auto": true
+  },
+  "5b1b43eb427f17e5": {
+   "ko": "진조횟집",
+   "en": "Jinjo Sashimi House",
+   "auto": true
+  },
+  "507cf4f61b792ae6": {
+   "ko": "만산횟집",
+   "en": "Mansan Sashimi House",
+   "auto": true
+  },
+  "b262e8ce0b826999": {
+   "ko": "대잔횟집",
+   "en": "Daejan Sashimi House",
+   "auto": true
+  },
+  "77a5b33d5a6c246e": {
+   "ko": "경조횟집",
+   "en": "Gyeongjo Sashimi House",
+   "auto": true
+  },
+  "0763431d031cee40": {
+   "ko": "곤푸횟집",
+   "en": "Gonpu Sashimi House",
+   "auto": true
+  },
+  "433fea3f3e60e00b": {
+   "ko": "어보횟집",
+   "en": "Eobo Sashimi House",
+   "auto": true
+  },
+  "bfd15bfdccb95345": {
+   "ko": "황재횟집",
+   "en": "Hwangjae Sashimi House",
+   "auto": true
+  },
+  "54f68c34593b5ee7": {
+   "ko": "선청횟집",
+   "en": "Seoncheong Sashimi House",
+   "auto": true
+  },
+  "af026a0376cb3cb2": {
+   "ko": "남삭횟집",
+   "en": "Namsak Sashimi House",
+   "auto": true
+  },
+  "495146ef7f2e6a7c": {
+   "ko": "남헤횟집",
+   "en": "Namhe Sashimi House",
+   "auto": true
+  },
+  "ef8138b86d71e919": {
+   "ko": "진허횟집",
+   "en": "Jinheo Sashimi House",
+   "auto": true
+  },
+  "38813212d375f6b8": {
+   "ko": "송욱횟집",
+   "en": "Songuk Sashimi House",
+   "auto": true
+  },
+  "60e9581a88ecd755": {
+   "ko": "엄즈횟집",
+   "en": "Eomjeu Sashimi House",
+   "auto": true
+  },
+  "582a50632a909f64": {
+   "ko": "만포정횟집",
+   "en": "Manpojeong Sashimi House",
+   "auto": true
+  },
+  "3589345aea13eb5a": {
+   "ko": "태평영횟집",
+   "en": "Taepyeongyeong Sashimi House",
+   "auto": true
+  },
+  "e097ed85e2de4735": {
+   "ko": "소나모횟집",
+   "en": "Sonamo Sashimi House",
+   "auto": true
+  },
+  "f468dd90030c93ae": {
+   "ko": "김서벙횟집",
+   "en": "Gimseobeong Sashimi House",
+   "auto": true
+  },
+  "66b0360508320ba8": {
+   "ko": "삼천푸횟집",
+   "en": "Samcheonpu Sashimi House",
+   "auto": true
+  },
+  "24364d1c80e71de5": {
+   "ko": "청와데횟집",
+   "en": "Cheongwade Sashimi House",
+   "auto": true
+  },
+  "558da4803eb04175": {
+   "ko": "사랑두횟집",
+   "en": "Sarangdu Sashimi House",
+   "auto": true
+  },
+  "68895587db84c16e": {
+   "ko": "감자바오횟집",
+   "en": "Gamjabao Sashimi House",
+   "auto": true
+  },
+  "f606631778b72535": {
+   "ko": "방어진정저횟집",
+   "en": "Bangeojinjeongjeo Sashimi House",
+   "auto": true
+  },
+  "ae349dd58877be3d": {
+   "ko": "방어진진조횟집",
+   "en": "Bangeojinjinjo Sashimi House",
+   "auto": true
+  },
+  "5b3d585e6848a27b": {
+   "ko": "꽃바위동헤횟집",
+   "en": "Kkotbawidonghe Sashimi House",
+   "auto": true
+  },
+  "13d91de408b61388": {
+   "ko": "푸짐한해숙으횟집",
+   "en": "Pujimhanhaesukeu Sashimi House",
+   "auto": true
+  },
+  "ca905648788c6f85": {
+   "ko": "바더횟집",
+   "en": "Badeo Sashimi House",
+   "auto": true
+  },
+  "bd59177402a8f408": {
+   "ko": "미니스툽 화암점",
+   "en": "Miniseutup Hwaamjeom",
+   "auto": true
+  },
+  "7ba264e3ee241c22": {
+   "ko": "TOOST",
+   "en": "TOOST",
+   "auto": true
+  },
+  "2460fa5b1afd57e4": {
+   "ko": "옥으마트",
+   "en": "Okeu Mart",
+   "auto": true
+  },
+  "7a7f334201245dc6": {
+   "ko": "새마루금고",
+   "en": "Saemaru Credit Union",
+   "auto": true
+  },
+  "bc9379b0614ec7b2": {
+   "ko": "모능마트",
+   "en": "Moneung Mart",
+   "auto": true
+  },
+  "5456edb8c409d972": {
+   "ko": "스카으마트",
+   "en": "Seukaeu Mart",
+   "auto": true
+  },
+  "2d88b94bf0eb721f": {
+   "ko": "The Golden Eaglas",
+   "en": "The Golden Eaglas",
+   "auto": true
+  },
+  "944deef74eeda575": {
+   "ko": "춘찬상회",
+   "en": "Chunchansanghoe",
+   "auto": true
+  },
+  "49c2b39f2ef79401": {
+   "ko": "은븣해물",
+   "en": "Eunbeuthaemul",
+   "auto": true
+  },
+  "5dde05a74c39c32c": {
+   "ko": "조운어바웃플랜치",
+   "en": "Jouneobautpeulraenchi",
+   "auto": true
+  },
+  "324f9f09f0195bf8": {
+   "ko": "행복도시럭",
+   "en": "Haengbokdosireok",
+   "auto": true
+  },
+  "5e1f8e72956ca452": {
+   "ko": "태평영약국",
+   "en": "Taepyeongyeong Pharmacy",
+   "auto": true
+  },
+  "b6a5290118823c98": {
+   "ko": "SJ-LPG 동구충전소",
+   "en": "SJ-LPG Dongguchungjeonso",
+   "auto": true
+  },
+  "ab500d5bf3fc2321": {
+   "ko": "QU 정자스민점(CU Convenience Store)",
+   "en": "QU Jeongjaseuminjeom(CU Convenience Store)",
+   "auto": true
+  },
+  "ae23da3f6c2d10f7": {
+   "ko": "일산새마을금고 번덕지잠(MG Sae-ma-ul-gum-go)",
+   "en": "Ilsansae Village Geumgo Beondeokjijam(MG Sae-ma-ul-gum-go)",
+   "auto": true
+  },
+  "4ccf1b9f83d70643": {
+   "ko": "삼별 디지털프라자 울산동구점(Samsung Digital Plaza)",
+   "en": "Sambyeol Dijiteolpeuraja Ulsandonggujeom(Samsung Digital Plaza)",
+   "auto": true
+  },
+  "b53b99baf30962c1": {
+   "ko": "아이디어 울산동구점(Eider)",
+   "en": "Idea Outdoor Ulsandonggujeom(Eider)",
+   "auto": true
+  },
+  "539d5d5290465144": {
+   "ko": "신화장여권(Sin-hwa Jang Yu-gwan Motel)",
+   "en": "Sinhwajangyeogwon(Sin-hwa Jang Yu-gwan Motel)",
+   "auto": true
+  },
+  "2508b7bed51b1aa3": {
+   "ko": "홈플랫 울산동구점(Homeplus Ulsan Dong-gu)",
+   "en": "Home Flat Ulsandonggujeom(Homeplus Ulsan Dong-gu)",
+   "auto": true
+  },
+  "a527e81f6d1a0b5d": {
+   "ko": "맘스키친 일산점",
+   "en": "Mom's Kitchen Ilsanjeom",
+   "auto": true
+  },
+  "3a63d512ebd80911": {
+   "ko": "일산새마을금구(MG Sae-ma-ul-gum-go Bank)",
+   "en": "Ilsansae Village Geumgu(MG Sae-ma-ul-gum-go Bank)",
+   "auto": true
+  },
+  "71ba7c9ca5060611": {
+   "ko": "방어진농협화정지잠(Nonghyup Bank)",
+   "en": "Bangeojinnonghyeophwajeongjijam(Nonghyup Bank)",
+   "auto": true
+  },
+  "9d4a091256bcafcd": {
+   "ko": "프로미카월드울산일산잠(Promy Car Repair)",
+   "en": "Peuromikawoldeuulsanilsanjam(Promy Car Repair)",
+   "auto": true
+  },
+  "6b96cb679b7c3460": {
+   "ko": "드림마티(Dream Mart)",
+   "en": "Deurimmati(Dream Mart)",
+   "auto": true
+  },
+  "ae99e6b209fd45ed": {
+   "ko": "세계로마티(Segyero Mart)",
+   "en": "Segyeromati(Segyero Mart)",
+   "auto": true
+  },
+  "67a31318f56fdb74": {
+   "ko": "성실카서비시(Songsil Car Repair)",
+   "en": "Seongsilkaseobisi(Songsil Car Repair)",
+   "auto": true
+  },
+  "c1be1be7f50560a9": {
+   "ko": "농수산물유통센터(Nong-susan-mul-yu-tong Agricultural&Fisheries Center)",
+   "en": "Nongsusanmulyutongsenteo(Nong-susan-mul-yu-tong Agricultural&Fisheries Center)",
+   "auto": true
+  },
+  "7da63821d82cb374": {
+   "ko": "방어진농협대송지잠(Nonghyup Bank)",
+   "en": "Bangeojinnonghyeopdaesongjijam(Nonghyup Bank)",
+   "auto": true
+  },
+  "0b7c0ea0d1e06d69": {
+   "ko": "한마음새마을금고본잠(MG Sae-ma-ul-gum-go Bank)",
+   "en": "Hanmaeumsae Village Geumgobonjam(MG Sae-ma-ul-gum-go Bank)",
+   "auto": true
+  },
+  "a6e3e9fe7f0dba6b": {
+   "ko": "럭키전자 전자베스트샵 동울산점(LG-electronics Best Shop)",
+   "en": "Lucky Electronics Jeonjabeseuteusyap Dongulsanjeom(LG-electronics Best Shop)",
+   "auto": true
+  },
+  "0ffd42b724192367": {
+   "ko": "하이일렉트로 동구일산점(Hi-mart)",
+   "en": "Hi-Electro Dongguilsanjeom(Hi-mart)",
+   "auto": true
+  },
+  "577c7c39f7227a3b": {
+   "ko": "아리아순두보(Aria Tofu)",
+   "en": "Ariasundubo(Aria Tofu)",
+   "auto": true
+  },
+  "c0067a09d7204436": {
+   "ko": "일선쭈꾸미",
+   "en": "Ilseonjjukkumi",
+   "auto": true
+  },
+  "92f86c6d4c13accc": {
+   "ko": "놀부보쌈과돌솥밥 방어진잠(Nolboo-bossam)",
+   "en": "Nolbubossamgwadolsotbap Bangeojinjam(Nolboo-bossam)",
+   "auto": true
+  },
+  "22c33f3dbe526853": {
+   "ko": "사이소 울산일산점(daiso)",
+   "en": "Saiso Ulsanilsanjeom(daiso)",
+   "auto": true
+  },
+  "d2b3f4c17423d9f0": {
+   "ko": "24시압구정한오국밥",
+   "en": "24siapgujeonghano Gukbap",
+   "auto": true
+  },
+  "3724ad88c0fa8810": {
+   "ko": "금모래삼(Gum-morae-sum)",
+   "en": "Geummoraesam(Gum-morae-sum)",
+   "auto": true
+  },
+  "06846345b601b38b": {
+   "ko": "어춘포차",
+   "en": "Eochun Pocha",
+   "auto": true
+  },
+  "4af5a4510b3744fa": {
+   "ko": "신사동보썸&족발",
+   "en": "Sinsadongbosseom& Jokbal",
+   "auto": true
+  },
+  "1d91a5f7f6c18a0d": {
+   "ko": "밥즙",
+   "en": "Bapjeup",
+   "auto": true
+  },
+  "c84e6433bfd07754": {
+   "ko": "생선구이생셍",
+   "en": "Saengseongui Saengseng",
+   "auto": true
+  },
+  "b0364209619695f3": {
+   "ko": "더카패(The Cafe)",
+   "en": "Deokapae(The Cafe)",
+   "auto": true
+  },
+  "c25736d560922a3e": {
+   "ko": "녹색의향그(Nok-saek-ui-hyang-gi)",
+   "en": "Noksaekuihyanggeu(Nok-saek-ui-hyang-gi)",
+   "auto": true
+  },
+  "0e766f37c2e88fb7": {
+   "ko": "외식중공압",
+   "en": "Oesikjunggongap",
+   "auto": true
+  },
+  "3ddc7f90ec8f2071": {
+   "ko": "채선당플러시+",
+   "en": "Chaeseondangpeulreosi+",
+   "auto": true
+  },
+  "efed2d27ee5cdb60": {
+   "ko": "일산수산물판매센타(Ilsan Fisheries Market)",
+   "en": "Ilsansusanmulpanmaesenta(Ilsan Fisheries Market)",
+   "auto": true
+  },
+  "7ba7f0ae7b75cc83": {
+   "ko": "위드므(Withme)",
+   "en": "Wideumeu(Withme)",
+   "auto": true
+  },
+  "944318202d67e710": {
+   "ko": "울산원예농협동부지잠(Nonghyup Bank)",
+   "en": "Ulsanwonyenonghyeopdongbujijam(Nonghyup Bank)",
+   "auto": true
+  },
+  "ce4500fe9cbde184": {
+   "ko": "한올약국",
+   "en": "Hanol Pharmacy",
+   "auto": true
+  },
+  "57c017cfd19e1222": {
+   "ko": "신세계약곡(Sin-segye Pharmacy)",
+   "en": "Sinsegyeyakgok(Sin-segye Pharmacy)",
+   "auto": true
+  },
+  "2354968d0a8a7454": {
+   "ko": "연변양꼬치구으(Chinese Food Club)",
+   "en": "Yeonbyeonyangkkochigueu(Chinese Food Club)",
+   "auto": true
+  },
+  "c2816b0d7a6161b3": {
+   "ko": "대한민국타이어아울랫(Tire Outlet)",
+   "en": "Daehanminguktaieoaulraet(Tire Outlet)",
+   "auto": true
+  },
+  "436e851d20f1e3f8": {
+   "ko": "넥센타이어테키(NEXEN Tire Tech)",
+   "en": "Neksentaieoteki(NEXEN Tire Tech)",
+   "auto": true
+  },
+  "dde1fe6d825ac4de": {
+   "ko": "하이마캣(Hi Market)",
+   "en": "Haimakaet(Hi Market)",
+   "auto": true
+  },
+  "1b52d06b83d79d9d": {
+   "ko": "대왕카공업서(Daewang Car Repair)",
+   "en": "Daewangkagongeopseo(Daewang Car Repair)",
+   "auto": true
+  },
+  "1f699181ad895b37": {
+   "ko": "삼경약곡(Samgyung Drug Store)",
+   "en": "Samgyeongyakgok(Samgyung Drug Store)",
+   "auto": true
+  },
+  "cc92496cbed5aa4b": {
+   "ko": "생활용품DC랜디(DC Land)",
+   "en": "SaenghwalyongpumDCraendi(DC Land)",
+   "auto": true
+  },
+  "468d30c45e51af1b": {
+   "ko": "밀레 (MILLET)",
+   "en": "Mille (MILLET)",
+   "auto": true
+  },
+  "cfd716a1c8382ffd": {
+   "ko": "머렐울산동구잠(MURRELL)",
+   "en": "Meorelulsandonggujam(MURRELL)",
+   "auto": true
+  },
+  "3564ce1d145de328": {
+   "ko": "레저타운낚시캠픙(Leisure Town)",
+   "en": "Rejeotaunnaksikaempeung(Leisure Town)",
+   "auto": true
+  },
+  "cab0e5b7cc0dbab8": {
+   "ko": "한빛재활융(Hanbit Second-hand Furniture)",
+   "en": "Hanbitjaehwalyung(Hanbit Second-hand Furniture)",
+   "auto": true
+  },
+  "36d5b86b768d2312": {
+   "ko": "동구재활용센터(Dong-gu Jae-hwal-yong Second-hand Furniture)",
+   "en": "Donggujaehwalyongsenteo(Dong-gu Jae-hwal-yong Second-hand Furniture)",
+   "auto": true
+  },
+  "75237427630f9863": {
+   "ko": "마들렌상잠(Madleneine Furniture Shop)",
+   "en": "Madeulrensangjam(Madleneine Furniture Shop)",
+   "auto": true
+  },
+  "e464eaf1ab0550f5": {
+   "ko": "삼천길자전거 (Samcheonli Bicycle)",
+   "en": "Samcheongil Bicycle (Samcheonli Bicycle)",
+   "auto": true
+  },
+  "454edb82cd4c062d": {
+   "ko": "현대블루핸지(Hyundai BlueHands Car Repair)",
+   "en": "Hyeondaebeulruhaenji(Hyundai BlueHands Car Repair)",
+   "auto": true
+  },
+  "09312e3a82e5fe57": {
+   "ko": "서울정MOTEL(Seoul-jang)",
+   "en": "SeouljeongMOTEL(Seoul-jang)",
+   "auto": true
+  },
+  "bd974c0f429fd5ac": {
+   "ko": "영화정MOTEL(Yunghwa-jang)",
+   "en": "YeonghwajeongMOTEL(Yunghwa-jang)",
+   "auto": true
+  },
+  "d66641d3191c4cd4": {
+   "ko": "풍화장모탤(Punghwa-jang Motel)",
+   "en": "Punghwajangmotael(Punghwa-jang Motel)",
+   "auto": true
+  },
+  "625185315ce016d7": {
+   "ko": "QU 화정원룸점",
+   "en": "QU Hwajeongwonrumjeom",
+   "auto": true
+  },
+  "bb98def22e61a6bd": {
+   "ko": "두리방이불커탠(Dooribang)",
+   "en": "Duribangibulkeotaen(Dooribang)",
+   "auto": true
+  },
+  "f464bcb73444bad9": {
+   "ko": "송정세탁소&수산(Songjung Dry&Fix)",
+   "en": "Songjeongsetakso&susan(Songjung Dry&Fix)",
+   "auto": true
+  },
+  "d6594ae65410c97a": {
+   "ko": "구제보물삼",
+   "en": "Gujebomulsam",
+   "auto": true
+  },
+  "a898686196f03a96": {
+   "ko": "고기마을식육잠(Gogi-ma-ul Meat)",
+   "en": "Gogi Village Sikyukjam(Gogi-ma-ul Meat)",
+   "auto": true
+  },
+  "57a99099e9316862": {
+   "ko": "CM종헙상사",
+   "en": "CMjongheopsangsa",
+   "auto": true
+  },
+  "5826d927350de5e7": {
+   "ko": "노바캐주알(Nova Casual Man's wear)",
+   "en": "Nobakaejual(Nova Casual Man's Wear)",
+   "auto": true
+  },
+  "85cdc692384a5f21": {
+   "ko": "화정D.C.마티(Hwajung D.C.Mart)",
+   "en": "HwajeongD.C.mati(Hwajung D.C.Mart)",
+   "auto": true
+  },
+  "07147c80453c5e3a": {
+   "ko": "동울산할인마티(Dong-Ulsan Hal-in Supermarket)",
+   "en": "Dongulsanhalinmati(Dong-Ulsan Hal-in Supermarket)",
+   "auto": true
+  },
+  "1afbdac24df825a1": {
+   "ko": "월성패샨(Wolsung Fashion)",
+   "en": "Wolseongpaesyan(Wolsung Fashion)",
+   "auto": true
+  },
+  "7b1d4f61bc8a29e5": {
+   "ko": "한일컴퓨터세턱(Hanil Laundry)",
+   "en": "Hanilkeompyuteoseteok(Hanil Laundry)",
+   "auto": true
+  },
+  "26a8950d21818551": {
+   "ko": "스마트폰아울렛매정(Smart Phone Outlet)",
+   "en": "Seumateuponaulretmaejeong(Smart Phone Outlet)",
+   "auto": true
+  },
+  "cefc47a4633e6801": {
+   "ko": "성창타을(Sungchang Bathroom)",
+   "en": "Seongchangtaeul(Sungchang Bathroom)",
+   "auto": true
+  },
+  "fc2ac3e574c40cf3": {
+   "ko": "시크릿가고(Secret-gagu Furniture)",
+   "en": "Sikeuritgago(Secret-gagu Furniture)",
+   "auto": true
+  },
+  "69302d8c0a7ed405": {
+   "ko": "레이디가고(Lady-gagu Furniture)",
+   "en": "Reidigago(Lady-gagu Furniture)",
+   "auto": true
+  },
+  "3e4dca07b8ef5af3": {
+   "ko": "현대가구판매잠(Hyeondae-gagu-panmae Furniture)",
+   "en": "Hyeondaegagupanmaejam(Hyeondae-gagu-panmae Furniture)",
+   "auto": true
+  },
+  "37e07bd6dd1b3fc3": {
+   "ko": "베네치아가구갤러르(Benecia-gagu Gallery Furniture)",
+   "en": "Benechiagagugaelreoreu(Benecia-gagu Gallery Furniture)",
+   "auto": true
+  },
+  "57297404d63d20bf": {
+   "ko": "지샌(zishen)",
+   "en": "Jisaen(zishen)",
+   "auto": true
+  },
+  "9c586365f8570ca1": {
+   "ko": "오션뷰호탤(Hotel Ocean View)",
+   "en": "Osyeonbyuhotael(Hotel Ocean View)",
+   "auto": true
+  },
+  "50bcff3c5d0841f5": {
+   "ko": "티롤모탤(T-roll Motel)",
+   "en": "Tirolmotael(T-roll Motel)",
+   "auto": true
+  },
+  "71d4d5a94e2c3dd5": {
+   "ko": "GX24 울산일산점",
+   "en": "GX24 Ulsanilsanjeom",
+   "auto": true
+  },
+  "76fabe969aa20b82": {
+   "ko": "고향의봄제주흑둔(Gohyang-ui-bom Jeju Pork)",
+   "en": "Gohyanguibomjejuheukdun(Gohyang-ui-bom Jeju Pork)",
+   "auto": true
+  },
+  "bc6f286011a505ea": {
+   "ko": "고향의봄한우셀프식육식덩(Gohyang-ui-bom Korean Cow Meat Barbecue)",
+   "en": "Gohyanguibom Hanu Selpeusikyuksikdeong(Gohyang-ui-bom Korean Cow Meat Barbecue)",
+   "auto": true
+  },
+  "3f1db90854deef83": {
+   "ko": "안양해물텅(Anyang Haemul-tang Seefood Soup)",
+   "en": "Anyanghaemulteong(Anyang Haemul-tang Seefood Soup)",
+   "auto": true
+  },
+  "c148db4986bdab2b": {
+   "ko": "i-motal",
+   "en": "I-motal",
+   "auto": true
+  },
+  "ea6d5b89f774cf83": {
+   "ko": "킹모탤(King Motel)",
+   "en": "Kingmotael(King Motel)",
+   "auto": true
+  },
+  "cf50443d13783bb9": {
+   "ko": "쿡모탤(Qook Motel)",
+   "en": "Kukmotael(Qook Motel)",
+   "auto": true
+  },
+  "1b8508dd85b063a1": {
+   "ko": "비즈모탤(Biz Motel)",
+   "en": "Bijeumotael(Biz Motel)",
+   "auto": true
+  },
+  "caf57f3790000f7f": {
+   "ko": "스카이모탤(Sky Motel)",
+   "en": "Seukaimotael(Sky Motel)",
+   "auto": true
+  },
+  "fa15c24f2be1a8b1": {
+   "ko": "Show모탤(Motel Show)",
+   "en": "Showmotael(Motel Show)",
+   "auto": true
+  },
+  "51d2d67c8af41213": {
+   "ko": "폼모탤(Pomm Motel)",
+   "en": "Pommotael(Pomm Motel)",
+   "auto": true
+  },
+  "298ce04388f2223a": {
+   "ko": "그리스모탤(Greece Motel)",
+   "en": "Geuriseumotael(Greece Motel)",
+   "auto": true
+  },
+  "7949cbb5af3e4d18": {
+   "ko": "21세그모텔",
+   "en": "21segeu Motel",
+   "auto": true
+  },
+  "ae50401735a22951": {
+   "ko": "샤브향울산일산잠(Shabu Hyang)",
+   "en": "Syabeuhyangulsanilsanjam(Shabu Hyang)",
+   "auto": true
+  },
+  "8a688a18135a3ebf": {
+   "ko": "하림걱(Harimgak Chinese Food)",
+   "en": "Harimgeok(Harimgak Chinese Food)",
+   "auto": true
+  },
+  "1a62ddf1f462c39e": {
+   "ko": "동대구막청(Dong-Daegu Makchang)",
+   "en": "Dongdaegumakcheong(Dong-Daegu Makchang)",
+   "auto": true
+  },
+  "24daffeb6f0d0dd8": {
+   "ko": "마굿간바다장아(Magutgan Seafood)",
+   "en": "Magutganbadajanga(Magutgan Seafood)",
+   "auto": true
+  },
+  "aed984e011178d30": {
+   "ko": "덕수궁유황오르(Duksu-gung)",
+   "en": "Deoksugungyuhwangoreu(Duksu-gung)",
+   "auto": true
+  },
+  "5e69d0c8c6032472": {
+   "ko": "강남회센터(Gangnam Sashimi Center)",
+   "en": "Gangnamhoesenteo(Gangnam Sashimi Center)",
+   "auto": true
+  },
+  "a77188a32d311966": {
+   "ko": "QU 일산바다점",
+   "en": "QU Ilsanbadajeom",
+   "auto": true
+  },
+  "709efdbf78c8d418": {
+   "ko": "Tom n Toms Coffa",
+   "en": "Tom N Toms Coffa",
+   "auto": true
+  },
+  "741cc9f61551688c": {
+   "ko": "일산활어회센터(Ilsan Seafood Center)",
+   "en": "Ilsanhwaleohoesenteo(Ilsan Seafood Center)",
+   "auto": true
+  },
+  "7e06c933d8442873": {
+   "ko": "바보형제쭈꾸므(Babo-hyungje Octopus)",
+   "en": "Babohyeongjejjukkumeu(Babo-hyungje Octopus)",
+   "auto": true
+  },
+  "793b687470889b13": {
+   "ko": "모비득(MobyDick)",
+   "en": "Mobideuk(MobyDick)",
+   "auto": true
+  },
+  "bdafc5a8b6e9c25e": {
+   "ko": "하이로(Hiru)",
+   "en": "Hairo(Hiru)",
+   "auto": true
+  },
+  "b2a6674249b6c019": {
+   "ko": "아이스빈일산잠(Ice bean)",
+   "en": "Aiseubinilsanjam(Ice Bean)",
+   "auto": true
+  },
+  "fe2d9084a8fbe284": {
+   "ko": "엔젤리노스 울산일산점Angelinus",
+   "en": "Angelinos UlsanilsanjeomAngelinus",
+   "auto": true
+  },
+  "94dcc13518dfafb3": {
+   "ko": "종로쭈꾸므(Jongro Octopus)",
+   "en": "Jongrojjukkumeu(Jongro Octopus)",
+   "auto": true
+  },
+  "b885ee150cfccf67": {
+   "ko": "탤MVG(Hotel MVG)",
+   "en": "TaelMVG(Hotel MVG)",
+   "auto": true
+  },
+  "f645fd23a155e741": {
+   "ko": "V Motal",
+   "en": "V Motal",
+   "auto": true
+  },
+  "f478bd37c79fdc77": {
+   "ko": "유원꽃센터(Yuwon KKot Flower Center)",
+   "en": "Yuwonkkotsenteo(Yuwon KKot Flower Center)",
+   "auto": true
+  },
+  "5b62bb0acd9a2821": {
+   "ko": "칠향계완(Chil-hyang-gye-won Chicken Soup)",
+   "en": "Chilhyanggyewan(Chil-hyang-gye-won Chicken Soup)",
+   "auto": true
+  },
+  "802ba8033f4b8e32": {
+   "ko": "쉴모탤(Shil Motel)",
+   "en": "Swilmotael(Shil Motel)",
+   "auto": true
+  },
+  "7bac2575fb0718ea": {
+   "ko": "수종어어종은(Sujonga Ur-jongin Seafood)",
+   "en": "Sujongeoeojongeun(Sujonga Ur-jongin Seafood)",
+   "auto": true
+  },
+  "c98513ee24a40311": {
+   "ko": "등화어럭(Dunghwa-errak Seafood)",
+   "en": "Deunghwaeoreok(Dunghwa-errak Seafood)",
+   "auto": true
+  },
+  "6278611e1dccac1f": {
+   "ko": "시골에(Sigol-ae Octopus)",
+   "en": "Sigole(Sigol-ae Octopus)",
+   "auto": true
+  },
+  "102ecbe6b0170de6": {
+   "ko": "상록원원기텅(Sangrok-won)",
+   "en": "Sangrokwonwongiteong(Sangrok-won)",
+   "auto": true
+  },
+  "d233446915efbe3a": {
+   "ko": "씨모탤(Hotel Sea)",
+   "en": "Ssimotael(Hotel Sea)",
+   "auto": true
+  },
+  "40786afabe6628d4": {
+   "ko": "오페러모텔",
+   "en": "Opereo Motel",
+   "auto": true
+  },
+  "dd277463f3830b07": {
+   "ko": "명품코보시(Kobos Motel)",
+   "en": "Myeongpumkobosi(Kobos Motel)",
+   "auto": true
+  },
+  "24fd01cec52e98d7": {
+   "ko": "가이아모탤(Gaia Motel)",
+   "en": "Gaiamotael(Gaia Motel)",
+   "auto": true
+  },
+  "096856d0d2e8eee1": {
+   "ko": "스페샬모텔",
+   "en": "Seupesyal Motel",
+   "auto": true
+  },
+  "929c15ce399fbe8d": {
+   "ko": "올레모탤(Olleh Motel)",
+   "en": "Olremotael(Olleh Motel)",
+   "auto": true
+  },
+  "200f4f903a1e0dca": {
+   "ko": "모나리자모탤(Motel Monalisa)",
+   "en": "Monarijamotael(Motel Monalisa)",
+   "auto": true
+  },
+  "cf51f3a3f2ff747d": {
+   "ko": "타임모탤(Time Motel)",
+   "en": "Taimmotael(Time Motel)",
+   "auto": true
+  },
+  "20fd298ea41eabf2": {
+   "ko": "슬도활어직판정(Seuldo Seafood Shop)",
+   "en": "Seuldohwaleojikpanjeong(Seuldo Seafood Shop)",
+   "auto": true
+  },
+  "438eb2d7f24a9327": {
+   "ko": "앙드레안경잠(Andre Glasses)",
+   "en": "Angdeureangyeongjam(Andre Glasses)",
+   "auto": true
+  },
+  "caed73b1966121d4": {
+   "ko": "KB손해보험매직커(KBinsurance Magic Car)",
+   "en": "KBsonhaeboheommaejikkeo(KBinsurance Magic Car)",
+   "auto": true
+  },
+  "1cac1329200b55b0": {
+   "ko": "한국정브(Han-guk Car Repair)",
+   "en": "Hangukjeongbeu(Han-guk Car Repair)",
+   "auto": true
+  },
+  "ee71c2f226fb40cf": {
+   "ko": "수경화훼전시판매정(Sukyung Hwahwe Flowers)",
+   "en": "Sugyeonghwahwejeonsipanmaejeong(Sukyung Hwahwe Flowers)",
+   "auto": true
+  },
+  "bc00556040768058": {
+   "ko": "아송숯불갈브(Asong Galbi)",
+   "en": "Asongsutbulgalbeu(Asong Galbi)",
+   "auto": true
+  },
+  "1497c6096b20de68": {
+   "ko": "카잰(Carzen Car Repair)",
+   "en": "Kajaen(Carzen Car Repair)",
+   "auto": true
+  },
+  "fb344fd035d8e501": {
+   "ko": "하이카프라저(Hi-car Repair Service)",
+   "en": "Haikapeurajeo(Hi-car Repair Service)",
+   "auto": true
+  },
+  "2203de7bed891f90": {
+   "ko": "한양마티(Hanyang Supermarket)",
+   "en": "Hanyangmati(Hanyang Supermarket)",
+   "auto": true
+  },
+  "656b114532ceec6d": {
+   "ko": "GX24 울산봉수로점",
+   "en": "GX24 Ulsanbongsurojeom",
+   "auto": true
+  },
+  "b275029853590806": {
+   "ko": "탑세을마트",
+   "en": "Tapseeul Mart",
+   "auto": true
+  },
+  "0d4ffba7c43cd629": {
+   "ko": "타이어프루 동구점",
+   "en": "Taieopeuru Donggujeom",
+   "auto": true
+  },
+  "b9f1b68ece508ed6": {
+   "ko": "둥주유소",
+   "en": "Dung Gas Station",
+   "auto": true
+  },
+  "8872ae3096e6b436": {
+   "ko": "쉐브릿자동차 동구방어서비스(CHEVROLET)",
+   "en": "Chevrit Motors Donggubangeoseobiseu(CHEVROLET)",
+   "auto": true
+  },
+  "0cca5edec0596024": {
+   "ko": "현재자동차 병원(MICHELIN)",
+   "en": "Hyeonjae Motors Byeongwon(MICHELIN)",
+   "auto": true
+  },
+  "190ea759b80daeb6": {
+   "ko": "크리스탈의상슬(Crystal Repair)",
+   "en": "Keuriseutaluisangseul(Crystal Repair)",
+   "auto": true
+  },
+  "dd7eebfcede2cc4a": {
+   "ko": "목원장(Mok-won-jung)",
+   "en": "Mokwonjang(Mok-won-jung)",
+   "auto": true
+  },
+  "6c11456a2221e3a0": {
+   "ko": "Best 모터시(BestMotors Repair)",
+   "en": "Best Moteosi(BestMotors Repair)",
+   "auto": true
+  },
+  "8b1176426432fdb2": {
+   "ko": "현대참한우식육잠(Hyundae Cham Hanwoo)",
+   "en": "Hyeondaecham Hanu Sikyukjam(Hyundae Cham Hanwoo)",
+   "auto": true
+  },
+  "27626bbec557546b": {
+   "ko": "마트루",
+   "en": "Mateuru",
+   "auto": true
+  }
+ }
+}

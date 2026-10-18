@@ -1,0 +1,385 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "1a5ecdc36fb132bd": {
+   "ko": "램피마트",
+   "en": "Raempi Mart",
+   "auto": true
+  },
+  "e50e03174cd0a8a6": {
+   "ko": "라이피마트",
+   "en": "Raipi Mart",
+   "auto": true
+  },
+  "8729d97bdcd8fcf5": {
+   "ko": "현데마트",
+   "en": "Hyeonde Mart",
+   "auto": true
+  },
+  "de3ae9de05151369": {
+   "ko": "신세걔마트",
+   "en": "Sinsegyae Mart",
+   "auto": true
+  },
+  "60463caab5dac71b": {
+   "ko": "연안할은마트",
+   "en": "Yeonanhaleun Mart",
+   "auto": true
+  },
+  "f8388fecb8aafaba": {
+   "ko": "성지수산활어휘마트",
+   "en": "Seongjisusanhwaleohwi Mart",
+   "auto": true
+  },
+  "0ebfdf8411832f8d": {
+   "ko": "비발드찜질방",
+   "en": "Bibaldeujjimjilbang",
+   "auto": true
+  },
+  "dc7eb8a618294e17": {
+   "ko": "우람은행",
+   "en": "Uram Bank",
+   "auto": true
+  },
+  "9664a256c7d44222": {
+   "ko": "덕헹주유소",
+   "en": "Deokheng Gas Station",
+   "auto": true
+  },
+  "598e0e942810f8eb": {
+   "ko": "사둥주유소",
+   "en": "Sadung Gas Station",
+   "auto": true
+  },
+  "d18f89b1169feee4": {
+   "ko": "오장주유소",
+   "en": "Ojang Gas Station",
+   "auto": true
+  },
+  "e4c380d0dbb1a48b": {
+   "ko": "영즌주유소",
+   "en": "Yeongjeun Gas Station",
+   "auto": true
+  },
+  "e61c218c64987bce": {
+   "ko": "동상주유소",
+   "en": "Dongsang Gas Station",
+   "auto": true
+  },
+  "1e405033b1ff3119": {
+   "ko": "삼슴주유소",
+   "en": "Samseum Gas Station",
+   "auto": true
+  },
+  "f317f9caf633471e": {
+   "ko": "남헝주유소",
+   "en": "Namheong Gas Station",
+   "auto": true
+  },
+  "07decc1453fd03be": {
+   "ko": "한곡주유소",
+   "en": "Hangok Gas Station",
+   "auto": true
+  },
+  "136eb5520130ced0": {
+   "ko": "백년텁주유소",
+   "en": "Baeknyeonteop Gas Station",
+   "auto": true
+  },
+  "57cc94143aa104c7": {
+   "ko": "새천냔주유소",
+   "en": "Saecheonnyan Gas Station",
+   "auto": true
+  },
+  "8b42330c86de47a4": {
+   "ko": "한국재2주유소",
+   "en": "Hangukjae2 Gas Station",
+   "auto": true
+  },
+  "d7a7eb62d30079a4": {
+   "ko": "기름나러주유소",
+   "en": "Gireumnareo Gas Station",
+   "auto": true
+  },
+  "d79d5fba2f07fe87": {
+   "ko": "태광이둥주유소",
+   "en": "Taegwangidung Gas Station",
+   "auto": true
+  },
+  "c91aaef485616858": {
+   "ko": "만남의광정주유소",
+   "en": "Mannamuigwangjeong Gas Station",
+   "auto": true
+  },
+  "634e97b00241fe2b": {
+   "ko": "(주)인천헝주유소",
+   "en": "(ju)incheonheong Gas Station",
+   "auto": true
+  },
+  "abc0629aebab5c1a": {
+   "ko": "(주)랜스타직영항둥주유소",
+   "en": "(ju)raenseutajikyeonghangdung Gas Station",
+   "auto": true
+  },
+  "ab52164b9f911de3": {
+   "ko": "(주)태평석유직영태퍙주유소",
+   "en": "(ju)taepyeongseokyujikyeongtaepyang Gas Station",
+   "auto": true
+  },
+  "7e6a39a6efdef8ed": {
+   "ko": "이츠관궝호텔",
+   "en": "Icheugwangwong Hotel",
+   "auto": true
+  },
+  "23c45dc87d0d30c9": {
+   "ko": "대후회집",
+   "en": "Daehu Sashimi House",
+   "auto": true
+  },
+  "1ed97b69204810b5": {
+   "ko": "서올회집",
+   "en": "Seool Sashimi House",
+   "auto": true
+  },
+  "f7aae5993ed5474f": {
+   "ko": "강훠회집",
+   "en": "Ganghwo Sashimi House",
+   "auto": true
+  },
+  "a3356ddeeeac3a46": {
+   "ko": "충청두회집",
+   "en": "Chungcheongdu Sashimi House",
+   "auto": true
+  },
+  "2addf80cb28f6ca3": {
+   "ko": "일억주회집",
+   "en": "Ileokju Sashimi House",
+   "auto": true
+  },
+  "ee2b5c60bd838043": {
+   "ko": "제물푸회집",
+   "en": "Jemulpu Sashimi House",
+   "auto": true
+  },
+  "bf3fa903a8e48348": {
+   "ko": "만리포모밤회집",
+   "en": "Manripomobam Sashimi House",
+   "auto": true
+  },
+  "d396649e6d7864cf": {
+   "ko": "전라도목포신언회집",
+   "en": "Jeonradomokposineon Sashimi House",
+   "auto": true
+  },
+  "223227c46f4074dc": {
+   "ko": "충청두횟집",
+   "en": "Chungcheongdu Sashimi House",
+   "auto": true
+  },
+  "325b500cbeda927f": {
+   "ko": "성인횟집",
+   "en": "Seongin Sashimi House",
+   "auto": true
+  },
+  "76062e78b0519663": {
+   "ko": "경복횟집",
+   "en": "Gyeongbok Sashimi House",
+   "auto": true
+  },
+  "c11fa89317fcdaa7": {
+   "ko": "서올횟집",
+   "en": "Seool Sashimi House",
+   "auto": true
+  },
+  "f43a106a667036d5": {
+   "ko": "단굴횟집",
+   "en": "Dangul Sashimi House",
+   "auto": true
+  },
+  "6245ad546d6af9c3": {
+   "ko": "우르횟집",
+   "en": "Ureu Sashimi House",
+   "auto": true
+  },
+  "c3f9913071afb155": {
+   "ko": "명둥횟집",
+   "en": "Myeongdung Sashimi House",
+   "auto": true
+  },
+  "6ec7850c6de6b34a": {
+   "ko": "월미두횟집",
+   "en": "Wolmidu Sashimi House",
+   "auto": true
+  },
+  "13ec06817b5c6396": {
+   "ko": "일억주횟집",
+   "en": "Ileokju Sashimi House",
+   "auto": true
+  },
+  "c329e36a63d7b3ac": {
+   "ko": "부산항고횟집",
+   "en": "Busanhanggo Sashimi House",
+   "auto": true
+  },
+  "98d55f3d84a4599d": {
+   "ko": "전라여소횟집",
+   "en": "Jeonrayeoso Sashimi House",
+   "auto": true
+  },
+  "61c61ae733998cb3": {
+   "ko": "진짜전라두횟집",
+   "en": "Jinjjajeonradu Sashimi House",
+   "auto": true
+  },
+  "6d0a7b8238ce3ccf": {
+   "ko": "부산오륙두횟집",
+   "en": "Busanoryukdu Sashimi House",
+   "auto": true
+  },
+  "f06b05d4e6a10251": {
+   "ko": "맘모스회센터28호고형횟집",
+   "en": "Mammoseuhoesenteo28hogohyeong Sashimi House",
+   "auto": true
+  },
+  "05c9f88f90d5fb5f": {
+   "ko": "Citibonk",
+   "en": "Citibonk",
+   "auto": true
+  },
+  "ec6829e4f62c7123": {
+   "ko": "인천항신햡",
+   "en": "Incheonhangsinhyap",
+   "auto": true
+  },
+  "cc2fa0195adb1a1e": {
+   "ko": "맥스버거",
+   "en": "Max's Burger",
+   "auto": true
+  },
+  "4dcfd54b2e9951a2": {
+   "ko": "전자랜디 동인천점",
+   "en": "Jeonjaraendi Dongincheonjeom",
+   "auto": true
+  },
+  "c47ba642a846a075": {
+   "ko": "럭키전자 베스트샵 동인천점",
+   "en": "Lucky Electronics Beseuteusyap Dongincheonjeom",
+   "auto": true
+  },
+  "2470dca59588f4db": {
+   "ko": "켄치킨",
+   "en": "Ken Chicken",
+   "auto": true
+  },
+  "d85867bd3c10017f": {
+   "ko": "농민은행",
+   "en": "Farmers Bank",
+   "auto": true
+  },
+  "48b19dbafd01105c": {
+   "ko": "일식즙",
+   "en": "Ilsikjeup",
+   "auto": true
+  },
+  "9833517bf0394885": {
+   "ko": "육통량",
+   "en": "Yuktongryang",
+   "auto": true
+  },
+  "08124f40095f4d79": {
+   "ko": "아서완",
+   "en": "Aseowan",
+   "auto": true
+  },
+  "244d8255dd0c1302": {
+   "ko": "백두산 숯볼갈비",
+   "en": "Baekdusan Sutbol Galbi",
+   "auto": true
+  },
+  "7cc6193c8baac5d2": {
+   "ko": "백령두횟집",
+   "en": "Baekryeongdu Sashimi House",
+   "auto": true
+  },
+  "18005d81132ad1de": {
+   "ko": "화착",
+   "en": "Hwachak",
+   "auto": true
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine",
+   "auto": true
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU",
+   "auto": true
+  },
+  "fce862f0c1e07312": {
+   "ko": "한빛국민은행",
+   "en": "Hanbit Kookmin Bank",
+   "auto": true
+  },
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24",
+   "auto": true
+  },
+  "6c0a728e91b28dd8": {
+   "ko": "신성루-삼선고초짬뽕",
+   "en": "Sinseongru-samseongocho Jjamppong",
+   "auto": true
+  },
+  "e2887bfb641003e0": {
+   "ko": "Circle Hotel Incheun",
+   "en": "Circle Hotel Incheun",
+   "auto": true
+  },
+  "842e4732050b92dd": {
+   "ko": "My Mort",
+   "en": "My Mort",
+   "auto": true
+  },
+  "91ed4972e1dc078f": {
+   "ko": "대한통운인찬주유소",
+   "en": "Daehantonguninchan Gas Station",
+   "auto": true
+  },
+  "7e7f8b1a193e2b58": {
+   "ko": "신흥CNG충전수",
+   "en": "SinheungCNGchungjeonsu",
+   "auto": true
+  },
+  "36ce4c49cec1dd90": {
+   "ko": "Sonu",
+   "en": "Sonu",
+   "auto": true
+  },
+  "c305e34ad175936f": {
+   "ko": "SO주유소",
+   "en": "SO Gas",
+   "auto": true
+  },
+  "f4077ea648b16993": {
+   "ko": "오마트",
+   "en": "O-Mart",
+   "auto": true
+  },
+  "eb744a147ab30da8": {
+   "ko": "유니클루",
+   "en": "Yunikeulru",
+   "auto": true
+  },
+  "39d6f40a67f84895": {
+   "ko": "한국은행 인천본보",
+   "en": "Hangukeunhaeng Incheonbonbo",
+   "auto": true
+  },
+  "be523c99a8745600": {
+   "ko": "롯데하으마트 동인천점",
+   "en": "Rotdehaeu Mart Dongincheonjeom",
+   "auto": true
+  }
+ }
+}

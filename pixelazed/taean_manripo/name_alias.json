@@ -1,0 +1,65 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "bb4997c632432abc": {
+   "ko": "송도오샨리조트",
+   "en": "Songdoosyanrijoteu",
+   "auto": true
+  },
+  "6a2ebdcf4d9356a8": {
+   "ko": "터틀베으리조트",
+   "en": "Teoteulbeeurijoteu",
+   "auto": true
+  },
+  "e7f3f31b9373fc19": {
+   "ko": "돌삼횟집",
+   "en": "Dolsam Sashimi House",
+   "auto": true
+  },
+  "13b2476dfc08099e": {
+   "ko": "만리포황투펜션",
+   "en": "Manripohwangtu Pension",
+   "auto": true
+  },
+  "647bf9e95e3a288f": {
+   "ko": "해당훠펜션",
+   "en": "Haedanghwo Pension",
+   "auto": true
+  },
+  "6e8510c214c64986": {
+   "ko": "모드느펜션",
+   "en": "Modeuneu Pension",
+   "auto": true
+  },
+  "c5491a88fb34b0a2": {
+   "ko": "꼴라브펜션",
+   "en": "Kkolrabeu Pension",
+   "auto": true
+  },
+  "2a9ba15dc88825fd": {
+   "ko": "맘마미어펜션",
+   "en": "Mammamieo Pension",
+   "auto": true
+  },
+  "71b8a89638428a2c": {
+   "ko": "파도소르",
+   "en": "Padosoreu",
+   "auto": true
+  },
+  "e9b4bcfb0de9f1a3": {
+   "ko": "바다지우펜션",
+   "en": "Badajiu Pension",
+   "auto": true
+  },
+  "15cb5b2b66debb1e": {
+   "ko": "피노키우펜션",
+   "en": "Pinokiu Pension",
+   "auto": true
+  },
+  "7184d9fb236b8011": {
+   "ko": "Chollipo Arboretim",
+   "en": "Chollipo Arboretim",
+   "auto": true
+  }
+ }
+}

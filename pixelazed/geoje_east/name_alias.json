@@ -1,0 +1,180 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "6f39228146c6aa26": {
+   "ko": "대박낚스마트",
+   "en": "Daebaknakseu Mart",
+   "auto": true
+  },
+  "76d51ade112bd650": {
+   "ko": "지세푸횟집",
+   "en": "Jisepu Sashimi House",
+   "auto": true
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine",
+   "auto": true
+  },
+  "268e9668e9166f10": {
+   "ko": "당쿰커피",
+   "en": "Dangkum Coffee",
+   "auto": true
+  },
+  "63dbf58092c47f97": {
+   "ko": "소노캄 거재",
+   "en": "Sonokam Geojae",
+   "auto": true
+  },
+  "02ba75d2cb9bd723": {
+   "ko": "스타빈스",
+   "en": "Starbeans",
+   "auto": true
+  },
+  "109d429b8b686266": {
+   "ko": "나들가개",
+   "en": "Nadeulgagae",
+   "auto": true
+  },
+  "8183d8ba1d51dad9": {
+   "ko": "투스푼플레이스",
+   "en": "Two Spoon Place",
+   "auto": true
+  },
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24",
+   "auto": true
+  },
+  "5456edb8c409d972": {
+   "ko": "스카으마트",
+   "en": "Seukaeu Mart",
+   "auto": true
+  },
+  "3ba7774e82a31780": {
+   "ko": "더타이어슙",
+   "en": "Deotaieosyup",
+   "auto": true
+  },
+  "fa001d151b38734e": {
+   "ko": "농햡",
+   "en": "Nonghyap",
+   "auto": true
+  },
+  "db8f8f218279a552": {
+   "ko": "하나루마트",
+   "en": "Hanaru Mart",
+   "auto": true
+  },
+  "899ccd97a54acac1": {
+   "ko": "신을슈퍼",
+   "en": "Sineul Super",
+   "auto": true
+  },
+  "5c099e6d88d2371a": {
+   "ko": "금후타이어",
+   "en": "Geumhutaieo",
+   "auto": true
+  },
+  "45af788e8e8017f4": {
+   "ko": "피자마로",
+   "en": "Pijamaro",
+   "auto": true
+  },
+  "9e54ca17f71c8685": {
+   "ko": "내내치킨",
+   "en": "Naenae Chicken",
+   "auto": true
+  },
+  "df43d6fa1282ac42": {
+   "ko": "멕시칸치킨",
+   "en": "Mexican Chicken",
+   "auto": true
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU",
+   "auto": true
+  },
+  "73db9bc38198f07b": {
+   "ko": "조인약국",
+   "en": "Join Pharmacy",
+   "auto": true
+  },
+  "697006a090f89bce": {
+   "ko": "탑훼밀르마트",
+   "en": "Taphwemilreu Mart",
+   "auto": true
+  },
+  "2785ecc40b511a71": {
+   "ko": "카페알프레두",
+   "en": "Kapealpeuredu",
+   "auto": true
+  },
+  "3ae54b797d9aaf15": {
+   "ko": "둠호텔",
+   "en": "Dum Hotel",
+   "auto": true
+  },
+  "b29b2439d990a73f": {
+   "ko": "도여호텔",
+   "en": "Doyeo Hotel",
+   "auto": true
+  },
+  "397aacb99c94ca22": {
+   "ko": "프래밀리풀빌러호텔",
+   "en": "Peuraemilripulbilreo Hotel",
+   "auto": true
+  },
+  "769f8e6d002744cf": {
+   "ko": "Jungin Housa",
+   "en": "Jungin Housa",
+   "auto": true
+  },
+  "d0aae6061b5dd025": {
+   "ko": "해뜨는즙",
+   "en": "Haetteuneunjeup",
+   "auto": true
+  },
+  "5061ad87674e97b4": {
+   "ko": "고풍쌈법",
+   "en": "Gopungssambeop",
+   "auto": true
+  },
+  "213983b437c2729a": {
+   "ko": "카페 프로미시",
+   "en": "Cafe Peuromisi",
+   "auto": true
+  },
+  "2616915456b8e3a8": {
+   "ko": "상상속의여헹",
+   "en": "Sangsangsokuiyeoheng",
+   "auto": true
+  },
+  "cc405ebddf6d764b": {
+   "ko": "동백관궝",
+   "en": "Dongbaekgwangwong",
+   "auto": true
+  },
+  "bf96fce213a8b7cb": {
+   "ko": "거제 외도펠리시펜션",
+   "en": "Geoje Oedopelrisi Pension",
+   "auto": true
+  },
+  "7d87c015b46a85bc": {
+   "ko": "라마다 스위츠 거재",
+   "en": "Ramada Seuwicheu Geojae",
+   "auto": true
+  },
+  "7d7733e0006c6d08": {
+   "ko": "현재오일",
+   "en": "Hyeonjae Oil",
+   "auto": true
+  },
+  "24f5985d277c5e67": {
+   "ko": "SO주유소",
+   "en": "SO Gas",
+   "auto": true
+  }
+ }
+}

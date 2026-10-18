@@ -1,0 +1,27 @@
+[
+{
+"tx": 880,
+"ty": 103,
+"colour": "red",
+"kind": "lighthouse"
+},
+{
+"tx": 765,
+"ty": 355,
+"colour": "white",
+"kind": "lighthouse",
+"name": "사라말등대"
+},
+{
+"tx": 590,
+"ty": 472,
+"colour": "white",
+"kind": "lighthouse"
+},
+{
+"tx": 636,
+"ty": 475,
+"colour": "white",
+"kind": "lighthouse"
+}
+]

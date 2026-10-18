@@ -1,0 +1,360 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "f060aab191e44070": {
+   "ko": "제주시농햡",
+   "en": "Jejusinonghyap",
+   "auto": true
+  },
+  "65ac2e29c68a15de": {
+   "ko": "노밸리조트",
+   "en": "Nobaelrijoteu",
+   "auto": true
+  },
+  "e62721c78f848ac3": {
+   "ko": "도두코서마트",
+   "en": "Dodukoseo Mart",
+   "auto": true
+  },
+  "32859d3061c280f9": {
+   "ko": "행온주유소",
+   "en": "Haengon Gas Station",
+   "auto": true
+  },
+  "8579d31c827d6661": {
+   "ko": "하이웨으주유소",
+   "en": "Haiweeu Gas Station",
+   "auto": true
+  },
+  "6456ecb9e70f3ad6": {
+   "ko": "전조횟집",
+   "en": "Jeonjo Sashimi House",
+   "auto": true
+  },
+  "27a740ca62a99f12": {
+   "ko": "길춘횟집",
+   "en": "Gilchun Sashimi House",
+   "auto": true
+  },
+  "b2dc9793a74f968e": {
+   "ko": "도도횟집",
+   "en": "Dodo Sashimi House",
+   "auto": true
+  },
+  "41bf1e288ce81c35": {
+   "ko": "이후횟집",
+   "en": "Ihu Sashimi House",
+   "auto": true
+  },
+  "8fc2809f39563c37": {
+   "ko": "물상횟집",
+   "en": "Mulsang Sashimi House",
+   "auto": true
+  },
+  "dc8f37d923222efa": {
+   "ko": "도양횟집",
+   "en": "Doyang Sashimi House",
+   "auto": true
+  },
+  "688b627dca4e8dd9": {
+   "ko": "칠십르횟집",
+   "en": "Chilsipreu Sashimi House",
+   "auto": true
+  },
+  "3671f98f4bf9a76a": {
+   "ko": "삼번즈횟집",
+   "en": "Sambeonjeu Sashimi House",
+   "auto": true
+  },
+  "88b6a2e645093899": {
+   "ko": "돈지게횟집",
+   "en": "Donjige Sashimi House",
+   "auto": true
+  },
+  "94f8bebc9c11d220": {
+   "ko": "사수해냐횟집",
+   "en": "Sasuhaenya Sashimi House",
+   "auto": true
+  },
+  "28803c0f8147472e": {
+   "ko": "내도바덩횟집",
+   "en": "Naedobadeong Sashimi House",
+   "auto": true
+  },
+  "a1bd6ca03d947ef3": {
+   "ko": "백숭횟집",
+   "en": "Baeksung Sashimi House",
+   "auto": true
+  },
+  "3623e26be950a1a4": {
+   "ko": "토끼와 거북으",
+   "en": "Tokkiwa Geobukeu",
+   "auto": true
+  },
+  "1ad8d7317ff4257b": {
+   "ko": "닐모리동둥",
+   "en": "Nilmoridongdung",
+   "auto": true
+  },
+  "032a8b9f1e0cc2be": {
+   "ko": "Jeju 5 Day Markat",
+   "en": "Jeju 5 Day Markat",
+   "auto": true
+  },
+  "6d6536086be759b4": {
+   "ko": "바당좀녀즙",
+   "en": "Badangjomnyeojeup",
+   "auto": true
+  },
+  "d937229561eb685c": {
+   "ko": "Fish & Chyps",
+   "en": "Fish & Chyps",
+   "auto": true
+  },
+  "b364c22189b8a116": {
+   "ko": "Sea Food Pib",
+   "en": "Sea Food Pib",
+   "auto": true
+  },
+  "ec0bc90ffe74804d": {
+   "ko": "Sunset Hill Free Cofé",
+   "en": "Sunset Hill Free Cofé",
+   "auto": true
+  },
+  "e1c435dd68d92765": {
+   "ko": "버거리아",
+   "en": "Burgeria",
+   "auto": true
+  },
+  "c833db86672a2515": {
+   "ko": "港古",
+   "en": "港古",
+   "auto": true
+  },
+  "b97a85dfa82c0565": {
+   "ko": "jamae Guksu nu 2",
+   "en": "Jamae Guksu Nu 2",
+   "auto": true
+  },
+  "f30264219f03cd6d": {
+   "ko": "소풍렌트카 편의잡",
+   "en": "Sopungrenteuka Pyeonuijap",
+   "auto": true
+  },
+  "b771f66880f7b1ec": {
+   "ko": "365오약국",
+   "en": "365o Pharmacy",
+   "auto": true
+  },
+  "92806e2d1a50efd9": {
+   "ko": "제주공헝약국",
+   "en": "Jejugongheong Pharmacy",
+   "auto": true
+  },
+  "4c13ce3e83d7c994": {
+   "ko": "기가커피",
+   "en": "Giga Coffee",
+   "auto": true
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU",
+   "auto": true
+  },
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24",
+   "auto": true
+  },
+  "ccaa385a035f0abb": {
+   "ko": "폴 바셋트",
+   "en": "Paul Bassette",
+   "auto": true
+  },
+  "69b7f1fb4c5e81ff": {
+   "ko": "할로스커피",
+   "en": "Hallos Coffee",
+   "auto": true
+  },
+  "4f39c8c7bf829dcc": {
+   "ko": "예스존게스트하우스",
+   "en": "Yeseujon Guesthouse",
+   "auto": true
+  },
+  "279900afc47d0007": {
+   "ko": "해변의즙펜션",
+   "en": "Haebyeonuijeup Pension",
+   "auto": true
+  },
+  "02e02c5fe12678b7": {
+   "ko": "미래하우시펜션",
+   "en": "Miraehausi Pension",
+   "auto": true
+  },
+  "360c526efbcb97f3": {
+   "ko": "탠저브 도두점",
+   "en": "Taenjeobeu Dodujeom",
+   "auto": true
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine",
+   "auto": true
+  },
+  "9f19793aaf69ee68": {
+   "ko": "바다글횟집",
+   "en": "Badageul Sashimi House",
+   "auto": true
+  },
+  "ca2de0b0d0791303": {
+   "ko": "아란치우",
+   "en": "Aranchiu",
+   "auto": true
+  },
+  "1acbc6c00a2dfddd": {
+   "ko": "삼횟집",
+   "en": "Sam Sashimi House",
+   "auto": true
+  },
+  "721e03769c9935f7": {
+   "ko": "카페나모나무",
+   "en": "Kapenamonamu",
+   "auto": true
+  },
+  "c69637c72f8cec87": {
+   "ko": "정돼즈식당",
+   "en": "Jeongdwaejeu Restaurant",
+   "auto": true
+  },
+  "ea551b2b6264b983": {
+   "ko": "마니조펜션",
+   "en": "Manijo Pension",
+   "auto": true
+  },
+  "6cef32423cb58b50": {
+   "ko": "도두항포고횟집",
+   "en": "Doduhangpogo Sashimi House",
+   "auto": true
+  },
+  "62aaee17e4e86608": {
+   "ko": "해녀와바더",
+   "en": "Haenyeowabadeo",
+   "auto": true
+  },
+  "45e81663fe9bb7e1": {
+   "ko": "ㅏ폴리아 편의잠ㄴ",
+   "en": "ㅏpolria Pyeonuijamㄴ",
+   "auto": true
+  },
+  "0dd2e6309ec81629": {
+   "ko": "등대와바덩",
+   "en": "Deungdaewabadeong",
+   "auto": true
+  },
+  "843031374f5e6764": {
+   "ko": "SJ주유소",
+   "en": "SJ Gas",
+   "auto": true
+  },
+  "c5fb3f8feb72b9ac": {
+   "ko": "SJ-LPG",
+   "en": "SJ-LPG",
+   "auto": true
+  },
+  "07d34d28651061b1": {
+   "ko": "시마에스프레수",
+   "en": "Simaeseupeuresu",
+   "auto": true
+  },
+  "433e52a8d5c5eec6": {
+   "ko": "QU 제주뉘메로점",
+   "en": "QU Jejunwimerojeom",
+   "auto": true
+  },
+  "bba52cdcbd09e450": {
+   "ko": "제이제으",
+   "en": "Jeijeeu",
+   "auto": true
+  },
+  "d1c264d4ae44c0f6": {
+   "ko": "다오라눙수산",
+   "en": "Daoranungsusan",
+   "auto": true
+  },
+  "7285e7cd3f33ef8e": {
+   "ko": "쌍얼횟집",
+   "en": "Ssangeol Sashimi House",
+   "auto": true
+  },
+  "980603169f2a9554": {
+   "ko": "외가즙",
+   "en": "Oegajeup",
+   "auto": true
+  },
+  "b0941f20f5569248": {
+   "ko": "지중헤펜션",
+   "en": "Jijunghe Pension",
+   "auto": true
+  },
+  "0d82bc22ec1f109f": {
+   "ko": "해변콘서티",
+   "en": "Haebyeonkonseoti",
+   "auto": true
+  },
+  "855196e73836d4b8": {
+   "ko": "노블하우시",
+   "en": "Nobeulhausi",
+   "auto": true
+  },
+  "ab6be32a389df2b4": {
+   "ko": "마린보으횟집",
+   "en": "Marinboeu Sashimi House",
+   "auto": true
+  },
+  "9910aab782ed002a": {
+   "ko": "해변풍걍횟집",
+   "en": "Haebyeonpunggyang Sashimi House",
+   "auto": true
+  },
+  "53438a414bdba612": {
+   "ko": "부래욱",
+   "en": "Buraeuk",
+   "auto": true
+  },
+  "1fce2ca1768bc718": {
+   "ko": "쌍붕냉면",
+   "en": "Ssangbung Naengmyeon",
+   "auto": true
+  },
+  "ce72edde76aba473": {
+   "ko": "선먕횟집",
+   "en": "Seonmyang Sashimi House",
+   "auto": true
+  },
+  "760f97c38e4d1406": {
+   "ko": "융갈비",
+   "en": "Yung Galbi",
+   "auto": true
+  },
+  "eed5d43c50f03c25": {
+   "ko": "순옥이네명거",
+   "en": "Sunokinemyeonggeo",
+   "auto": true
+  },
+  "36b1d477da091eab": {
+   "ko": "올레어춘",
+   "en": "Olreeochun",
+   "auto": true
+  },
+  "aaaad38becd1d57d": {
+   "ko": "제주이호바덩",
+   "en": "Jejuihobadeong",
+   "auto": true
+  },
+  "9b2a395c2d83b137": {
+   "ko": "금빛다훠",
+   "en": "Geumbitdahwo",
+   "auto": true
+  }
+ }
+}

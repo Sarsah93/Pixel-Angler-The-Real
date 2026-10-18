@@ -1,0 +1,1066 @@
+[
+ {
+  "type": "bank",
+  "name": "제주시농햡",
+  "nameEn": "Jejusinonghyap",
+  "tx": 338,
+  "ty": 592,
+  "osmId": 368645807
+ },
+ {
+  "type": "lodging",
+  "name": "노밸리조트",
+  "nameEn": "Nobaelrijoteu",
+  "tx": 508,
+  "ty": 506,
+  "osmId": 368664163
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "도두코서마트",
+  "nameEn": "Dodukoseo Mart",
+  "tx": 472,
+  "ty": 479,
+  "osmId": 368698335
+ },
+ {
+  "type": "hospital",
+  "name": "공항의원",
+  "nameEn": "Airport Clinic",
+  "tx": 982,
+  "ty": 394,
+  "osmId": 368850586
+ },
+ {
+  "type": "fuel",
+  "name": "행온주유소",
+  "nameEn": "Haengon Gas Station",
+  "tx": 304,
+  "ty": 597,
+  "osmId": 368918430
+ },
+ {
+  "type": "fuel",
+  "name": "하이웨으주유소",
+  "nameEn": "Haiweeu Gas Station",
+  "tx": 469,
+  "ty": 485,
+  "osmId": 368918608
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "공원편의점",
+  "nameEn": "Gongwon Convenience Store",
+  "tx": 1102,
+  "ty": 150,
+  "osmId": 368950151
+ },
+ {
+  "type": "restaurant",
+  "name": "전조횟집",
+  "nameEn": "Jeonjo Sashimi House",
+  "tx": 1053,
+  "ty": 121,
+  "osmId": 368970928
+ },
+ {
+  "type": "restaurant",
+  "name": "길춘횟집",
+  "nameEn": "Gilchun Sashimi House",
+  "tx": 463,
+  "ty": 427,
+  "osmId": 368971004
+ },
+ {
+  "type": "restaurant",
+  "name": "도도횟집",
+  "nameEn": "Dodo Sashimi House",
+  "tx": 507,
+  "ty": 476,
+  "osmId": 368971022
+ },
+ {
+  "type": "restaurant",
+  "name": "이후횟집",
+  "nameEn": "Ihu Sashimi House",
+  "tx": 223,
+  "ty": 634,
+  "osmId": 368971030
+ },
+ {
+  "type": "restaurant",
+  "name": "물상횟집",
+  "nameEn": "Mulsang Sashimi House",
+  "tx": 821,
+  "ty": 295,
+  "osmId": 368971037
+ },
+ {
+  "type": "restaurant",
+  "name": "도양횟집",
+  "nameEn": "Doyang Sashimi House",
+  "tx": 444,
+  "ty": 447,
+  "osmId": 368971092
+ },
+ {
+  "type": "restaurant",
+  "name": "칠십르횟집",
+  "nameEn": "Chilsipreu Sashimi House",
+  "tx": 785,
+  "ty": 326,
+  "osmId": 368971124
+ },
+ {
+  "type": "restaurant",
+  "name": "삼번즈횟집",
+  "nameEn": "Sambeonjeu Sashimi House",
+  "tx": 791,
+  "ty": 325,
+  "osmId": 368971176
+ },
+ {
+  "type": "restaurant",
+  "name": "돈지게횟집",
+  "nameEn": "Donjige Sashimi House",
+  "tx": 436,
+  "ty": 478,
+  "osmId": 368971279
+ },
+ {
+  "type": "restaurant",
+  "name": "사수해냐횟집",
+  "nameEn": "Sasuhaenya Sashimi House",
+  "tx": 711,
+  "ty": 347,
+  "osmId": 368971312
+ },
+ {
+  "type": "restaurant",
+  "name": "내도바덩횟집",
+  "nameEn": "Naedobadeong Sashimi House",
+  "tx": 6,
+  "ty": 647,
+  "osmId": 368971355
+ },
+ {
+  "type": "restaurant",
+  "name": "백숭횟집",
+  "nameEn": "Baeksung Sashimi House",
+  "tx": 793,
+  "ty": 324,
+  "osmId": 368971855
+ },
+ {
+  "type": "lighthouse",
+  "name": "",
+  "nameEn": "",
+  "tx": 457,
+  "ty": 341,
+  "osmId": 2796638396
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 1102,
+  "ty": 151,
+  "osmId": 3759222248
+ },
+ {
+  "type": "restaurant",
+  "name": "토끼와 거북으",
+  "nameEn": "Tokkiwa Geobukeu",
+  "tx": 972,
+  "ty": 138,
+  "osmId": 3786965939
+ },
+ {
+  "type": "cafe",
+  "name": "닐모리동둥",
+  "nameEn": "Nilmoridongdung",
+  "tx": 888,
+  "ty": 160,
+  "osmId": 3786966022
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 248,
+  "ty": 602,
+  "osmId": 3786969145
+ },
+ {
+  "type": "shop",
+  "shopKind": "greengrocer",
+  "name": "Jeju 5 Day Markat",
+  "nameEn": "Jeju 5 Day Markat",
+  "tx": 646,
+  "ty": 621,
+  "osmId": 4588754792
+ },
+ {
+  "type": "restaurant",
+  "name": "바당좀녀즙",
+  "nameEn": "Badangjomnyeojeup",
+  "tx": 930,
+  "ty": 133,
+  "osmId": 4928243121
+ },
+ {
+  "type": "restaurant",
+  "name": "Fish & Chyps",
+  "nameEn": "Fish & Chyps",
+  "tx": 1020,
+  "ty": 108,
+  "osmId": 5512662122
+ },
+ {
+  "type": "restaurant",
+  "name": "Sea Food Pib",
+  "nameEn": "Sea Food Pib",
+  "tx": 1113,
+  "ty": 140,
+  "osmId": 5512663322
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 526,
+  "ty": 377,
+  "osmId": 5512884121
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 30,
+  "ty": 627,
+  "osmId": 6185439185
+ },
+ {
+  "type": "cafe",
+  "name": "Sunset Hill Free Cofé",
+  "nameEn": "Sunset Hill Free Cofé",
+  "tx": 797,
+  "ty": 321,
+  "osmId": 7083783985
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 884,
+  "ty": 148,
+  "osmId": 7106360685
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 279,
+  "ty": 553,
+  "osmId": 7106473485
+ },
+ {
+  "type": "info",
+  "name": "제주공항",
+  "nameEn": "",
+  "tx": 959,
+  "ty": 421,
+  "osmId": 7260086585
+ },
+ {
+  "type": "info",
+  "name": "제주공항",
+  "nameEn": "",
+  "tx": 1017,
+  "ty": 432,
+  "osmId": 7260086685
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 1029,
+  "ty": 401,
+  "osmId": 9813530783
+ },
+ {
+  "type": "restaurant",
+  "name": "버거리아",
+  "nameEn": "Burgeria",
+  "tx": 1013,
+  "ty": 400,
+  "osmId": 9813550151
+ },
+ {
+  "type": "shop",
+  "shopKind": "boat",
+  "name": "港古",
+  "nameEn": "港古",
+  "tx": 721,
+  "ty": 326,
+  "osmId": 10258985650
+ },
+ {
+  "type": "shop",
+  "shopKind": "boat",
+  "name": "港古",
+  "nameEn": "港古",
+  "tx": 721,
+  "ty": 335,
+  "osmId": 10258990287
+ },
+ {
+  "type": "shop",
+  "shopKind": "boat",
+  "name": "港古",
+  "nameEn": "港古",
+  "tx": 177,
+  "ty": 606,
+  "osmId": 10258990290
+ },
+ {
+  "type": "restaurant",
+  "name": "jamae Guksu nu 2",
+  "nameEn": "Jamae Guksu Nu 2",
+  "tx": 349,
+  "ty": 583,
+  "osmId": 10536925609
+ },
+ {
+  "type": "toilet",
+  "name": "현사어촌정주어항",
+  "nameEn": "",
+  "tx": 180,
+  "ty": 611,
+  "osmId": 10694695988
+ },
+ {
+  "type": "toilet",
+  "name": "제주정지(2층 포함)",
+  "nameEn": "",
+  "tx": 936,
+  "ty": 129,
+  "osmId": 10694705165
+ },
+ {
+  "type": "toilet",
+  "name": "제주시농협 서부지점",
+  "nameEn": "",
+  "tx": 341,
+  "ty": 591,
+  "osmId": 10694705175
+ },
+ {
+  "type": "toilet",
+  "name": "이호테우해변(상황실1층)",
+  "nameEn": "",
+  "tx": 240,
+  "ty": 610,
+  "osmId": 10694705209
+ },
+ {
+  "type": "toilet",
+  "name": "이호비치",
+  "nameEn": "",
+  "tx": 277,
+  "ty": 553,
+  "osmId": 10694705211
+ },
+ {
+  "type": "toilet",
+  "name": "이호리조트",
+  "nameEn": "",
+  "tx": 435,
+  "ty": 567,
+  "osmId": 10694705212
+ },
+ {
+  "type": "toilet",
+  "name": "용담체육공원",
+  "nameEn": "",
+  "tx": 1100,
+  "ty": 151,
+  "osmId": 10694705235
+ },
+ {
+  "type": "toilet",
+  "name": "어영공원",
+  "nameEn": "",
+  "tx": 884,
+  "ty": 149,
+  "osmId": 10694705258
+ },
+ {
+  "type": "toilet",
+  "name": "신사수항",
+  "nameEn": "",
+  "tx": 700,
+  "ty": 342,
+  "osmId": 10694705280
+ },
+ {
+  "type": "toilet",
+  "name": "백포어촌정주어항",
+  "nameEn": "",
+  "tx": 379,
+  "ty": 464,
+  "osmId": 10694705336
+ },
+ {
+  "type": "toilet",
+  "name": "민속오일시장C(주차장 P3)",
+  "nameEn": "",
+  "tx": 675,
+  "ty": 623,
+  "osmId": 10694705340
+ },
+ {
+  "type": "toilet",
+  "name": "민속오일시장B(문화광장)",
+  "nameEn": "",
+  "tx": 650,
+  "ty": 609,
+  "osmId": 10694705341
+ },
+ {
+  "type": "toilet",
+  "name": "민속오일시장A(대장간 옆)",
+  "nameEn": "",
+  "tx": 641,
+  "ty": 630,
+  "osmId": 10694705342
+ },
+ {
+  "type": "toilet",
+  "name": "민속오일시장 오일시장E(8번 주차장 옆)",
+  "nameEn": "",
+  "tx": 629,
+  "ty": 633,
+  "osmId": 10694705343
+ },
+ {
+  "type": "toilet",
+  "name": "민속오일시장 오일시장D(농협 좌측)",
+  "nameEn": "",
+  "tx": 658,
+  "ty": 645,
+  "osmId": 10694705344
+ },
+ {
+  "type": "toilet",
+  "name": "마트클럽",
+  "nameEn": "",
+  "tx": 500,
+  "ty": 493,
+  "osmId": 10694705363
+ },
+ {
+  "type": "toilet",
+  "name": "도두봉공원",
+  "nameEn": "",
+  "tx": 505,
+  "ty": 403,
+  "osmId": 10694705381
+ },
+ {
+  "type": "toilet",
+  "name": "도두봉 섬머리",
+  "nameEn": "",
+  "tx": 539,
+  "ty": 421,
+  "osmId": 10694705382
+ },
+ {
+  "type": "toilet",
+  "name": "도두대경(2층 포함)",
+  "nameEn": "",
+  "tx": 642,
+  "ty": 349,
+  "osmId": 10694705383
+ },
+ {
+  "type": "toilet",
+  "name": "도두 오래물",
+  "nameEn": "",
+  "tx": 497,
+  "ty": 458,
+  "osmId": 10694705384
+ },
+ {
+  "type": "toilet",
+  "name": "내도운동장",
+  "nameEn": "",
+  "tx": 29,
+  "ty": 626,
+  "osmId": 10694705409
+ },
+ {
+  "type": "toilet",
+  "name": "내도바당횟집",
+  "nameEn": "",
+  "tx": 6,
+  "ty": 648,
+  "osmId": 10694705410
+ },
+ {
+  "type": "toilet",
+  "name": "공항입구주차장",
+  "nameEn": "",
+  "tx": 1032,
+  "ty": 474,
+  "osmId": 10694705458
+ },
+ {
+  "type": "lighthouse",
+  "name": "",
+  "nameEn": "",
+  "tx": 461,
+  "ty": 363,
+  "osmId": 11106118833
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "소풍렌트카 편의잡",
+  "nameEn": "Sopungrenteuka Pyeonuijap",
+  "tx": 797,
+  "ty": 640,
+  "osmId": 12035271997
+ },
+ {
+  "type": "shop",
+  "shopKind": "bakery",
+  "name": "",
+  "nameEn": "",
+  "tx": 981,
+  "ty": 403,
+  "osmId": 12082306874
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 981,
+  "ty": 404,
+  "osmId": 12082306875
+ },
+ {
+  "type": "shop",
+  "shopKind": "variety_store",
+  "name": "",
+  "nameEn": "",
+  "tx": 982,
+  "ty": 403,
+  "osmId": 12082306876
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "",
+  "nameEn": "",
+  "tx": 986,
+  "ty": 402,
+  "osmId": 12082306878
+ },
+ {
+  "type": "cafe",
+  "name": "",
+  "nameEn": "",
+  "tx": 984,
+  "ty": 402,
+  "osmId": 12082306879
+ },
+ {
+  "type": "shop",
+  "shopKind": "gift",
+  "name": "",
+  "nameEn": "",
+  "tx": 987,
+  "ty": 401,
+  "osmId": 12082306880
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 988,
+  "ty": 399,
+  "osmId": 12082306882
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 1012,
+  "ty": 400,
+  "osmId": 12082306883
+ },
+ {
+  "type": "shop",
+  "shopKind": "gift",
+  "name": "",
+  "nameEn": "",
+  "tx": 1014,
+  "ty": 400,
+  "osmId": 12082306884
+ },
+ {
+  "type": "shop",
+  "shopKind": "variety_store",
+  "name": "",
+  "nameEn": "",
+  "tx": 1003,
+  "ty": 401,
+  "osmId": 12082306885
+ },
+ {
+  "type": "shop",
+  "shopKind": "variety_store",
+  "name": "",
+  "nameEn": "",
+  "tx": 1023,
+  "ty": 401,
+  "osmId": 12082306886
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 1019,
+  "ty": 402,
+  "osmId": 12082306887
+ },
+ {
+  "type": "cafe",
+  "name": "",
+  "nameEn": "",
+  "tx": 1025,
+  "ty": 403,
+  "osmId": 12082306889
+ },
+ {
+  "type": "pharmacy",
+  "name": "365오약국",
+  "nameEn": "365o Pharmacy",
+  "tx": 483,
+  "ty": 466,
+  "osmId": 12462017318
+ },
+ {
+  "type": "pharmacy",
+  "name": "제주공헝약국",
+  "nameEn": "Jejugongheong Pharmacy",
+  "tx": 1012,
+  "ty": 401,
+  "osmId": 12462017345
+ },
+ {
+  "type": "hospital",
+  "name": "임대웅한의원",
+  "nameEn": "",
+  "tx": 476,
+  "ty": 474,
+  "osmId": 12492135985
+ },
+ {
+  "type": "cafe",
+  "name": "기가커피",
+  "nameEn": "Giga Coffee",
+  "tx": 328,
+  "ty": 650,
+  "osmId": 13119111857
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 197,
+  "ty": 664,
+  "osmId": 13119111858
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 186,
+  "ty": 665,
+  "osmId": 13119111859
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "",
+  "nameEn": "",
+  "tx": 235,
+  "ty": 516,
+  "osmId": 13826263724
+ },
+ {
+  "type": "shop",
+  "shopKind": "gift",
+  "name": "",
+  "nameEn": "",
+  "tx": 235,
+  "ty": 515,
+  "osmId": 13826263725
+ },
+ {
+  "type": "cafe",
+  "name": "폴 바셋트",
+  "nameEn": "Paul Bassette",
+  "tx": 977,
+  "ty": 392,
+  "osmId": 13830055813
+ },
+ {
+  "type": "cafe",
+  "name": "할로스커피",
+  "nameEn": "Hallos Coffee",
+  "tx": 610,
+  "ty": 354,
+  "osmId": 14236138497
+ },
+ {
+  "type": "cafe",
+  "name": "기가커피",
+  "nameEn": "Giga Coffee",
+  "tx": 585,
+  "ty": 356,
+  "osmId": 14236174922
+ },
+ {
+  "type": "lodging",
+  "name": "예스존게스트하우스",
+  "nameEn": "Yeseujon Guesthouse",
+  "tx": 570,
+  "ty": 367,
+  "osmId": 14236175049
+ },
+ {
+  "type": "lodging",
+  "name": "해변의즙펜션",
+  "nameEn": "Haebyeonuijeup Pension",
+  "tx": 571,
+  "ty": 370,
+  "osmId": 14236175050
+ },
+ {
+  "type": "lodging",
+  "name": "미래하우시펜션",
+  "nameEn": "Miraehausi Pension",
+  "tx": 577,
+  "ty": 375,
+  "osmId": 14236175051
+ },
+ {
+  "type": "shop",
+  "shopKind": "gift",
+  "name": "탠저브 도두점",
+  "nameEn": "Taenjeobeu Dodujeom",
+  "tx": 566,
+  "ty": 368,
+  "osmId": 14236175052
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "세븐나인",
+  "nameEn": "Seven-Nine",
+  "tx": 564,
+  "ty": 371,
+  "osmId": 14236175053
+ },
+ {
+  "type": "restaurant",
+  "name": "바다글횟집",
+  "nameEn": "Badageul Sashimi House",
+  "tx": 566,
+  "ty": 375,
+  "osmId": 14236175054
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 556,
+  "ty": 393,
+  "osmId": 14236175055
+ },
+ {
+  "type": "restaurant",
+  "name": "아란치우",
+  "nameEn": "Aranchiu",
+  "tx": 573,
+  "ty": 364,
+  "osmId": 14236175057
+ },
+ {
+  "type": "restaurant",
+  "name": "삼횟집",
+  "nameEn": "Sam Sashimi House",
+  "tx": 588,
+  "ty": 361,
+  "osmId": 14236175058
+ },
+ {
+  "type": "cafe",
+  "name": "카페나모나무",
+  "nameEn": "Kapenamonamu",
+  "tx": 592,
+  "ty": 356,
+  "osmId": 14236175086
+ },
+ {
+  "type": "restaurant",
+  "name": "정돼즈식당",
+  "nameEn": "Jeongdwaejeu Restaurant",
+  "tx": 598,
+  "ty": 356,
+  "osmId": 14236175087
+ },
+ {
+  "type": "lodging",
+  "name": "마니조펜션",
+  "nameEn": "Manijo Pension",
+  "tx": 598,
+  "ty": 359,
+  "osmId": 14236175088
+ },
+ {
+  "type": "restaurant",
+  "name": "도두항포고횟집",
+  "nameEn": "Doduhangpogo Sashimi House",
+  "tx": 478,
+  "ty": 409,
+  "osmId": 274998487
+ },
+ {
+  "type": "restaurant",
+  "name": "해녀와바더",
+  "nameEn": "Haenyeowabadeo",
+  "tx": 471,
+  "ty": 409,
+  "osmId": 274998494
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "ㅏ폴리아 편의잠ㄴ",
+  "nameEn": "ㅏpolria Pyeonuijamㄴ",
+  "tx": 443,
+  "ty": 413,
+  "osmId": 274998555
+ },
+ {
+  "type": "restaurant",
+  "name": "등대와바덩",
+  "nameEn": "Deungdaewabadeong",
+  "tx": 455,
+  "ty": 418,
+  "osmId": 274998557
+ },
+ {
+  "type": "market",
+  "name": "제주시 민속오일시장",
+  "nameEn": "",
+  "tx": 650,
+  "ty": 628,
+  "osmId": 371636248
+ },
+ {
+  "type": "fuel",
+  "name": "SJ주유소",
+  "nameEn": "SJ Gas",
+  "tx": 1067,
+  "ty": 443,
+  "osmId": 372274423
+ },
+ {
+  "type": "fuel",
+  "name": "SJ-LPG",
+  "nameEn": "SJ-LPG",
+  "tx": 1098,
+  "ty": 452,
+  "osmId": 372274427
+ },
+ {
+  "type": "market",
+  "name": "신오일장농수산물",
+  "nameEn": "",
+  "tx": 645,
+  "ty": 599,
+  "osmId": 375324661
+ },
+ {
+  "type": "cafe",
+  "name": "시마에스프레수",
+  "nameEn": "Simaeseupeuresu",
+  "tx": 1007,
+  "ty": 113,
+  "osmId": 375326311
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU 제주뉘메로점",
+  "nameEn": "QU Jejunwimerojeom",
+  "tx": 1004,
+  "ty": 116,
+  "osmId": 375326312
+ },
+ {
+  "type": "cafe",
+  "name": "제이제으",
+  "nameEn": "Jeijeeu",
+  "tx": 995,
+  "ty": 121,
+  "osmId": 375326314
+ },
+ {
+  "type": "shop",
+  "shopKind": "supermarket",
+  "name": "다오라눙수산",
+  "nameEn": "Daoranungsusan",
+  "tx": 990,
+  "ty": 120,
+  "osmId": 375326315
+ },
+ {
+  "type": "restaurant",
+  "name": "쌍얼횟집",
+  "nameEn": "Ssangeol Sashimi House",
+  "tx": 973,
+  "ty": 124,
+  "osmId": 375326316
+ },
+ {
+  "type": "restaurant",
+  "name": "외가즙",
+  "nameEn": "Oegajeup",
+  "tx": 963,
+  "ty": 126,
+  "osmId": 375326319
+ },
+ {
+  "type": "lodging",
+  "name": "지중헤펜션",
+  "nameEn": "Jijunghe Pension",
+  "tx": 967,
+  "ty": 137,
+  "osmId": 375326323
+ },
+ {
+  "type": "restaurant",
+  "name": "해변콘서티",
+  "nameEn": "Haebyeonkonseoti",
+  "tx": 956,
+  "ty": 131,
+  "osmId": 375326326
+ },
+ {
+  "type": "restaurant",
+  "name": "노블하우시",
+  "nameEn": "Nobeulhausi",
+  "tx": 935,
+  "ty": 135,
+  "osmId": 375326334
+ },
+ {
+  "type": "restaurant",
+  "name": "마린보으횟집",
+  "nameEn": "Marinboeu Sashimi House",
+  "tx": 924,
+  "ty": 135,
+  "osmId": 375326336
+ },
+ {
+  "type": "restaurant",
+  "name": "해변풍걍횟집",
+  "nameEn": "Haebyeonpunggyang Sashimi House",
+  "tx": 918,
+  "ty": 138,
+  "osmId": 375326339
+ },
+ {
+  "type": "restaurant",
+  "name": "부래욱",
+  "nameEn": "Buraeuk",
+  "tx": 915,
+  "ty": 138,
+  "osmId": 375326340
+ },
+ {
+  "type": "restaurant",
+  "name": "쌍붕냉면",
+  "nameEn": "Ssangbung Naengmyeon",
+  "tx": 914,
+  "ty": 144,
+  "osmId": 375326341
+ },
+ {
+  "type": "restaurant",
+  "name": "선먕횟집",
+  "nameEn": "Seonmyang Sashimi House",
+  "tx": 905,
+  "ty": 144,
+  "osmId": 375326342
+ },
+ {
+  "type": "restaurant",
+  "name": "융갈비",
+  "nameEn": "Yung Galbi",
+  "tx": 898,
+  "ty": 153,
+  "osmId": 375326344
+ },
+ {
+  "type": "restaurant",
+  "name": "순옥이네명거",
+  "nameEn": "Sunokinemyeonggeo",
+  "tx": 463,
+  "ty": 433,
+  "osmId": 375326624
+ },
+ {
+  "type": "restaurant",
+  "name": "올레어춘",
+  "nameEn": "Olreeochun",
+  "tx": 213,
+  "ty": 626,
+  "osmId": 375326627
+ },
+ {
+  "type": "restaurant",
+  "name": "제주이호바덩",
+  "nameEn": "Jejuihobadeong",
+  "tx": 206,
+  "ty": 627,
+  "osmId": 375326629
+ },
+ {
+  "type": "restaurant",
+  "name": "내도바덩횟집",
+  "nameEn": "Naedobadeong Sashimi House",
+  "tx": 6,
+  "ty": 648,
+  "osmId": 375326796
+ },
+ {
+  "type": "cafe",
+  "name": "금빛다훠",
+  "nameEn": "Geumbitdahwo",
+  "tx": 22,
+  "ty": 640,
+  "osmId": 375326797
+ }
+]

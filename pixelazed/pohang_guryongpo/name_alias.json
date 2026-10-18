@@ -1,0 +1,45 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "60d9a45929bc8a95": {
+   "ko": "구룡푸주유소",
+   "en": "Guryongpu Gas Station",
+   "auto": true
+  },
+  "b8cef7efd7fe524b": {
+   "ko": "자연선횟집",
+   "en": "Jayeonseon Sashimi House",
+   "auto": true
+  },
+  "f717a8f50059a45d": {
+   "ko": "횟집즌",
+   "en": "Hoetjipjeun",
+   "auto": true
+  },
+  "a138fbb7550f19d3": {
+   "ko": "컴퍼스커피",
+   "en": "Compass Coffee",
+   "auto": true
+  },
+  "a3f831cb37ed4309": {
+   "ko": "모어슈퍼",
+   "en": "Moeo Super",
+   "auto": true
+  },
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24",
+   "auto": true
+  },
+  "5ffb8c904a489d7f": {
+   "ko": "세븐나인",
+   "en": "Seven-Nine",
+   "auto": true
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU",
+   "auto": true
+  }
+ }
+}

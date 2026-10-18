@@ -1,0 +1,15 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "597c1ce9eadbfb19": {
+   "ko": "예완콘도",
+   "en": "Yewankondo",
+   "auto": true
+  },
+  "29d7a25b6fb71f1c": {
+   "ko": "서해바더횟집",
+   "en": "Seohaebadeo Sashimi House",
+   "auto": true
+  }
+ }
+}
