@@ -76,7 +76,8 @@
   `build_osm_tilemap.py` 바다 = 해안선 방향 투표(성분별 다수결 — 가장자리 시드 침수 지세포 99% 해결) · `merge_capture_pois.py --auto`(게임 상호 자동 변환 3,516곳 · `auto: true`) ·
   위키 「출조 지역」 탭 · 해금강 스폰 보정(설정 좌표가 바다 → 도장포 유람선 터미널 POI 실측 칸) ·
   하네스 17/17(걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 해금강 1 · 나머지 0) · 빌드 3/3 · core 322/322 · 아티팩트 4개(위키 59 · 셋 Version 4).
-  **다음 = 사용자 육안(새 지역 12곳 terrain · 전국 지도 핀) · 자동 변환 상호 검토 · 인물 좌표 · 감천 투표 재굽기 · main 반영 · 80차 배포(요청 시)(백로그 CJ)**.
+  main 빨리 감기(`6851660`) · 「테스트 배포」 80차(gh-pages `dbb11ac` — 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
+  **다음 = 사용자 육안(80차 배포본 — 새 지역 12곳 terrain · 전국 지도 핀) · 자동 변환 상호 검토 · 인물 좌표 · 감천 투표 재굽기(요청 파일 `busan_gamcheon`)(백로그 CJ)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md`.
 - **261차**: **구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남** —
   사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만 … 표지판이 있는 위치가 해당 상가 건물들」 「냉동 오징어 2개를 팔았는데 … 하나 더 생겨져 있음」
@@ -188,7 +189,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon` · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 79차 배포 2026-10-16 = 259차까지 포함** — 257~259는 79차에 처음 실렸다).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 80차 배포 2026-10-18 = 262차까지 포함** — 260~262는 80차에 처음 실렸다 · main `6851660`).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 59 = 262차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):

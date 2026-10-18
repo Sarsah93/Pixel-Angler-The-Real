@@ -5,7 +5,7 @@
 | **날짜** | 2026-10-18 |
 | **시스템** | `지도` `필드` `도구` `인프라` `위키` `문서` |
 | **트리거** | 사용자 지시 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘.」 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — `8328095` · `2fbc59b` · `a971e74` · `c6f30a2` · `b3aa996` + 러너 커밋(`89f4d29` 부산 · `3a9a34c` 요청 3의 11지역) + 마무리 커밋(해금강 스폰 · 문서 · 아티팩트) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — `8328095` · `2fbc59b` · `a971e74` · `c6f30a2` · `b3aa996` + 러너 커밋(`89f4d29` 부산 · `3a9a34c` 요청 3의 11지역) + 마무리 커밋 `6851660`(해금강 스폰 · 문서 · 아티팩트) → main 빨리 감기 · 80차 배포(gh-pages `dbb11ac`) |
 | **빌드·타입체크** | 3/3 · 0 오류 · core 시험 322/322 |
 
 ---
@@ -113,6 +113,11 @@ bbox는 전부 속초 크기(67만~90만 타일). 바다 비율은 해안선 방
   여수는 씨앗 (255,445)가 8px 격자에서 막혀 미측정(씬 `isWalkable`은 참 — 건물 '#' 줄 사이 보도).
 - 빌드 3/3 · typecheck 0 · core 시험 322/322(마무리 커밋에서 다시 확인 — §8).
 - 워크플로 3회: 요청 1(부산 2 · 2분) 성공 · 요청 2(11지역) 모슬포 Overpass 5xx로 실패 · 요청 3(지역별 이어 가기) 성공 — 11지역 약 20분.
+- **main 반영 · 80차 배포**(사용자 지시 「main 반영하고 80차 배포해줘」): main 빨리 감기 `7c7416d` → `6851660`(11커밋) · 「테스트 배포」 run 9(workflow_dispatch · ref main · 71초) 성공 →
+  gh-pages `dbb11ac`(「Deploy: 80차 테스트 빌드 (2026-10-18) — main@6851660 …」). 정적 파일 대조 = 1,923 ↔ 1,923 · 같음 1,921 · 소스맵 0 ·
+  다름 2 = `index.html` + 본 번들 해시(러너는 저장소 비밀값 `VITE_DATA_GO_KR_API_KEY`가 빈 문자열로 `import.meta.env`에 들어간다 — `envKey`가 빈 문자열을 없음으로 봐 Mock 폴백 · 기능 차이 없음).
+  하위 경로 기동(`live80.cjs` · `live80en.cjs` — `/Pixel-Angler-The-Real/` 아래 정적 서빙): 메뉴 9.2초(영어 10.0초) · 4xx = KAMIS 스냅샷 404 하나(키 미발급) · pageerror 0 ·
+  영어 저장 설정(`pixelAngler_settings` `language: en`)으로 부팅 시 메뉴 글자 20 중 한글 잔존 1 = 날씨 띠 끝 낚시 적합도 「양호」(번역 사전에 없는 등급 단어 — 262 전부터 · §6).
 
 ## 6. 잔여 — 이번에 안 한 것
 
@@ -131,6 +136,7 @@ bbox는 전부 속초 크기(67만~90만 타일). 바다 비율은 해안선 방
 - **워크플로 main 반영** — `osm-region.yml`이 main에 들어가면 Actions 탭 「Run workflow」 · API dispatch가 된다(지금은 요청 파일 푸시).
   환경 네트워크 정책에 `overpass-api.de` · `overpass.kumi.systems`를 허용하면 컨테이너에서도 직접 수집할 수 있다(사용자 설정).
 - **울릉 · 독도** — `access: 'boat'`, 배 출조 콘텐츠 뒤.
+- **메인 메뉴 날씨 띠 「양호」 미번역** — 영어 부팅에서 낚시 적합도 등급 단어 하나가 한글로 남는다(80차 배포본 점검에서 발견 · 262 전부터). 다음 영어 스캔 차수에 사전 한 줄.
 - **main 반영 · 80차 배포** — 사용자 요청 시.
 
 ## 7. 위험·부작용
@@ -153,3 +159,4 @@ bbox는 전부 속초 크기(67만~90만 타일). 바다 비율은 해안선 방
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 Version 4 · 채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 Version 4(「262차 기준」 줄만) ·
   전체 위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c Version 59(「출조 지역」 탭 — 그림 변화 없음 · HTML만) · 주소표 `docs/artifacts/README.md`
 - [x] 검증 재실행(마무리 커밋) — 빌드 3/3 · typecheck 0 · core 322/322 · 해금강 하네스 dist 1.4
+- [x] main 반영(`6851660` 빨리 감기) · 「테스트 배포」 80차(gh-pages `dbb11ac`) · 하위 경로 기동 점검 한 · 영 — 사용자 지시

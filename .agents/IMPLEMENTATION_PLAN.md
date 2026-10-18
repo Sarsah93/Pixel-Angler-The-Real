@@ -59,7 +59,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 
 - **262차**: 새 데이터 지역 12곳 사용자 육안(terrain · 핀) · 자동 변환 상호 3,516곳 검토 · 속초 밖 인물 좌표 · 감천 투표 방식 재굽기(요청 파일 `busan_gamcheon`) ·
   감천 서방파제 피복 · 해금강 잃은 문 1 · 여수 도달성 씨앗 · 새 지역 래스터 · 어장 없음 · 여수 밀도 실플레이 · 워크플로 main 반영 · Overpass 네트워크 허용(사용자) ·
-  main 반영 · 80차 배포(요청 시) — [백로그 CJ](../docs/wiki/04-BACKLOG.md) · [262 §6](../docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md)
+  80차 배포본 라이브 확인(사용자 — 컨테이너 프록시가 github.io를 막는다) — [백로그 CJ](../docs/wiki/04-BACKLOG.md) · [262 §6](../docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md)
 - **261차**: 합성 발자국 자리 없음 6(관광수산시장 골목 — 간판만) · 종류별 크기 · 층수 표 · 좌판 차양 조율(사용자 육안) · 문이 차도 위인 가게 50(지도 트랙) ·
   편집기 뒤 문 분배(dev) · 레거시 20px 건물 작음 · 배경 음악 실청취(곡 · 음량 · 밤 곡) · 구 건물 PNG 98장 정리(사용자 결정) · main 반영 · 80차 배포(요청 시) —
   [백로그 CI](../docs/wiki/04-BACKLOG.md).
@@ -170,7 +170,8 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 - core: `SEAMLESS_AREA_REGIONS`(구역 fieldMapId → 데이터 지역) · `seamlessRegionOf(region, mapId)` · `RegionAreaNode.spawnLatLon`(구역별 내리는 자리 — 필드가 bbox 등장방형 → `nearestWalkable`) ·
   새 구역 노드 11 · 조행록 areaKey · 위키 「출조 지역」 탭. 파이프라인: 바다 = 해안선 방향 투표(가장자리 시드 침수 99% 해결) · 게임 상호 `--auto`(3,516곳 · `auto: true`).
 - 검증: 하네스 17/17(전 구역 걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 — 해금강 1 · 나머지 0) · 빌드 3/3 · typecheck 0 · core 322/322 ·
-  해금강 스폰 보정(도장포 유람선 터미널 — 설정 좌표가 바다였다) · 아티팩트 4개(위키 59 · 셋 Version 4).
+  해금강 스폰 보정(도장포 유람선 터미널 — 설정 좌표가 바다였다) · 아티팩트 4개(위키 59 · 셋 Version 4) ·
+  main 빨리 감기(`6851660`) · 「테스트 배포」 80차(gh-pages `dbb11ac` — 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
 - 상세: [워크로그 262](../docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md)
 
 ### 261차 (2026-10-18) — 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남
