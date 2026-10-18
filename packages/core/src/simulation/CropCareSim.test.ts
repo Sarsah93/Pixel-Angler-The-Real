@@ -194,7 +194,7 @@ describe('238차 — 늦서리 · 첫서리', () => {
     const t0 = kst(2026, 8, 20);
     const plot = plantedAt('chili', 'seedling', t0);
     const cell = plot.cells[0];
-    let t = runDays(plot, t0, 60, alwaysRain);   // 비 = 물 · 60일이면 첫 수확
+    runDays(plot, t0, 60, alwaysRain);   // 비 = 물 · 60일이면 첫 수확
     expect(cellReady(cell)).toBe(true);
     const frostMs = ff * DAY - KST + 12 * H;
     advanceCell(plot, 0, frostMs, alwaysRain);
@@ -204,7 +204,7 @@ describe('238차 — 늦서리 · 첫서리', () => {
     expect(cell.cropId).toBeNull();
     // 안 거두면 사흘 뒤 칸이 빈다
     const plot2 = plantedAt('chili', 'seedling', t0);
-    t = runDays(plot2, t0, 60, alwaysRain);
+    runDays(plot2, t0, 60, alwaysRain);
     advanceCell(plot2, 0, frostMs, alwaysRain);
     expect(plot2.cells[0].frostedAt).toBeTruthy();
     advanceCell(plot2, 0, frostMs + (CARE_TUNING.frostGraceH + 2) * H, alwaysRain);
