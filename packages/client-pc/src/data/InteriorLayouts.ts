@@ -97,7 +97,7 @@ export interface InteriorLayout {
 export const FLOOR_TOP = 2;
 
 /** 수협 위판장으로 볼 직판장 이름 (나머지 직판장은 낚시점 틀) */
-const AUCTION_NAME = /수협|위판|활어\s*센터|어판장|공판장/;
+const AUCTION_NAME = /수협|위판|활어\s*센터|어판장|공판장|공동어시장/;   // 263차 — 부산공동어시장(남항) = 위판장
 
 /** 건물 종류 + 상호 → 실내 틀 */
 export function interiorTemplateOf(kind: BuildingKind, name: string): InteriorTemplate {

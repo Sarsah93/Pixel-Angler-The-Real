@@ -1086,7 +1086,7 @@ const regions = core.WORLD_NODE_DATABASE.map((n) => {
   }
   return {
     id: rid, name: n.name, nameEn: n.nameEn, short: n.shortName, sido: n.region, sea: rid === 'jeju' ? '제주' : (SEA_KO[seaKey] ?? ''),
-    open: areas.length > 0, boat: ['ulleungdo', 'dokdo'].includes(rid),
+    open: areas.length > 0, boat: ['ulleungdo', 'dokdo'].includes(rid), chapter: core.chapterOfRegion ? (core.chapterOfRegion(rid) ?? null) : null,   // 263차 — 이 지역을 여는 장
     areas: areas.map((a) => {
       const def = core.seamlessRegionOf(rid, a.fieldMapId);
       return {

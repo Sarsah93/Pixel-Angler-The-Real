@@ -65,7 +65,7 @@ export const CINE_M1_ICE_DROP: CineScript = {
 };
 
 /**
- * N18-6 ① 도매시장 후문 — 인계 장면 목격 (167차 — 사용자 각본 그대로)
+ * N18-6 ① 도매시장 후문 — 인계 장면 목격 (167차 — 사용자 각본 그대로 · 263차 무대 = 인천 연안부두 종합어시장 동쪽 벽(`incheon_yeonan` 480,354 — 각본 칸은 그 벽 기준))
  *
  * 무대(속초 동명항 경매장 뒤): 수상한 사람 1은 경매장 동쪽 벽(592,154)에 숨어 있다가 [F]로 말을 걸면
  * 곧바로 이 장면이 시작된다. 플레이어는 경매장 북쪽 벽(588,152)에 붙어 숨고, 2는 동쪽(601,154)에서 걸어온다.
@@ -79,13 +79,13 @@ export const CINE_N186_WATCH: CineScript = {
   steps: [
     { kind: 'focus', who: 'player', ms: 480 },
     { kind: 'say', who: 'player', thought: true, text: '(시장 뒤에 누가 서 있다. 저 사람… 뭘 기다리는 거지? 벽에 붙어서 좀 보자.)', textEn: '(Someone is standing behind the market. What is he waiting for? Let me get behind the wall and watch.)' },
-    { kind: 'moveTo', who: 'player', tx: 588, ty: 152, face: 'right' },
+    { kind: 'moveTo', who: 'player', tx: 482, ty: 351, face: 'down' },
     { kind: 'fade', who: 'player', alpha: 0.55, ms: 280 },
     { kind: 'focus', who: 's1', ms: 560 },
     { kind: 'face', who: 's1', dir: 'right' },
     { kind: 'fade', who: 's2', alpha: 1, ms: 320 },
-    { kind: 'moveTo', who: 's2', tx: 594, ty: 154, face: 'left' },
-    { kind: 'moveTo', who: 's1', tx: 593, ty: 154, face: 'right' },
+    { kind: 'moveTo', who: 's2', tx: 483, ty: 354, face: 'left' },
+    { kind: 'moveTo', who: 's1', tx: 481, ty: 354, face: 'right' },
     { kind: 'say', who: 's1', bubble: '...', text: '...! 왔구만 그래.', textEn: '...! So you came.' },
     { kind: 'say', who: 's2', bubble: '...', text: '아무도 없는 게 맞겠지?', textEn: 'Nobody around, right?' },
     { kind: 'say', who: 's1', bubble: '...', text: '우리가 하루 이틀 해온 것도 아니고, 돈은 어디있어? 저번부터 많이 까먹던데? 오늘은 확실하지?', textEn: 'We have done this plenty of times. Where is the money? You have been coming up short lately. It is certain today?' },
@@ -93,11 +93,11 @@ export const CINE_N186_WATCH: CineScript = {
     { kind: 'give', from: 's2', to: 's1', item: 'book', ms: 1000 },
     { kind: 'say', who: 's2', bubble: '...', text: '곧 그 장소에서 만나지. 마무리 잘 하시게.', textEn: 'See you at the place soon. Finish it cleanly.' },
     { kind: 'say', who: 's1', bubble: '...', text: '...', textEn: '...', ms: 1200 },
-    { kind: 'moveTo', who: 's2', tx: 601, ty: 154, face: 'right' },
+    { kind: 'moveTo', who: 's2', tx: 490, ty: 354, face: 'right' },
     { kind: 'fade', who: 's2', alpha: 0, ms: 360 },
     { kind: 'remove', who: 's2' },
-    { kind: 'moveTo', who: 's1', tx: 592, ty: 151, face: 'up' },
-    { kind: 'moveTo', who: 's1', tx: 583, ty: 151, face: 'left' },
+    { kind: 'moveTo', who: 's1', tx: 482, ty: 349, face: 'up' },
+    { kind: 'moveTo', who: 's1', tx: 482, ty: 345, face: 'up' },
     { kind: 'fade', who: 's1', alpha: 0, ms: 360 },
     { kind: 'remove', who: 's1' },
     { kind: 'focus', who: 'player', ms: 520 },

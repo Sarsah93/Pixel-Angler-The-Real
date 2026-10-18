@@ -19,6 +19,8 @@ export interface StoryNpcPlacement {
   npcId: string;
   /** WorldMap 지역 id */
   regionId: string;
+  /** 263차 — 심리스 데이터 지역 id(지역에 데이터 지역이 여럿일 때 — 부산 감천 · 백운포 등). 없으면 그 지역의 모든 필드에 적용 */
+  dataRegion?: string;
   /**
    * 필드 배치 좌표(월드 타일).
    *
@@ -49,6 +51,8 @@ export interface StoryPlace {
   /** 퀘스트 objective.placeKey */
   key: string;
   regionId: string;
+  /** 263차 — 데이터 지역(없으면 지역 전체) */
+  dataRegion?: string;
   tx: number;
   ty: number;
   radiusTiles: number;
@@ -59,6 +63,8 @@ export interface StoryPlace {
 export interface StoryFieldTrigger {
   id: string;
   regionId: string;
+  /** 263차 — 데이터 지역(없으면 지역 전체) */
+  dataRegion?: string;
   tx: number;
   ty: number;
   labelKo: string;
@@ -117,35 +123,41 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   //  이 표에 없으면 할 일을 고정해도 화살표도, 「다른 지역 — ○○」 안내도 나오지 않았다(백로그 AA ①).
   //  무대가 열리는 차수에 좌표를 채운다. 지역은 **그 인물이 처음 등장하는 장(章)** 기준이고,
   //  여러 지역을 오가는 인물은 실제 안내가 추적 중인 할 일의 지역을 따른다(`objectiveTarget`).
-  { npcId: 'na_gibeom', regionId: 'busan' },
-  { npcId: 'seo_harin', regionId: 'busan' },
-  { npcId: 'jim_kang', regionId: 'busan' },
-  { npcId: 'go_hosu', regionId: 'busan' },
-  { npcId: 'mo_taejo', regionId: 'busan' },
-  { npcId: 'yeo_gangsan', regionId: 'busan' },
-  { npcId: 'chae_surim', regionId: 'busan' },
-  { npcId: 'yu_harang', regionId: 'busan' },
-  { npcId: 'ha_nui', regionId: 'busan' },
-  { npcId: 'namgung_hyeon', regionId: 'gyeongbuk_pohang' },
-  { npcId: 'han_bom', regionId: 'gyeongbuk_pohang' },
-  { npcId: 'lee_suyeon', regionId: 'gyeongbuk_pohang' },
-  { npcId: 'go_manseok', regionId: 'ulsan' },
-  { npcId: 'go_haena', regionId: 'ulsan' },
-  { npcId: 'chae_geumja', regionId: 'gyeongnam_geoje' },
-  { npcId: 'chae_pado', regionId: 'gyeongnam_geoje' },
-  { npcId: 'song_gibaek', regionId: 'chungnam_taean' },
-  { npcId: 'ma_gamgi', regionId: 'chungnam_taean' },
-  { npcId: 'oh_gayun', regionId: 'jeonnam_yeosu' },
-  { npcId: 'jeong_umi', regionId: 'jeonnam_yeosu' },
-  { npcId: 'oh_serin', regionId: 'jeju' },
-  { npcId: 'yu_ria', regionId: 'jeju' },
-  { npcId: 'mara', regionId: 'jeju' },
+  // ── 263차 — 속초 밖 인물 25명에 자리를 채웠다(사용자 결정 「지역은 장 순서대로 잠그고」 · 울릉 4명은 배 출조 뒤) ──
+  //  칸 = 그 데이터 지역 pois.json의 이름 있는 POI 옆 걷는 칸(scratchpad place_npcs.py — 큰 걷기 성분 · 낚시는 물가 2칸 안).
+  //  데이터 지역이 여럿인 지역(부산 · 거제 · 태안 · 제주)은 dataRegion으로 가른다. 집 · 일과는 아직 없다(늘 밖에 있다).
+  //  부산: 남항(공동어시장 732,146 · 요청 5 bbox) 서하린 · 채수림 / 충무시장 옆 나기범 / 영도 대평동 짐 강 / 암남 물가 씨바스터즈 셋 / 백운포 유하랑 · 하늬.
+  //  울산 방어진항 부두 고만석 · 고해나 / 포항 수협 옆 남궁현 · 사라말등대 갯바위 한봄 · 이수연(호미곶 대신) / 거제 지세포 터미널 채금자 · 채파도 /
+  //  여수 하멜등대 방파제 오가윤 · 구항 숙소 거리 정우미 / 태안 안흥항 송기백 · 마감기 / 제주 서귀포항 오세린 · 쇠머리코지 마라 · 도두항 유리아 / 인천 연안부두 단철호 · 하민지.
+  { npcId: 'na_gibeom', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 704, ty: 12, behavior: 'stall' },
+  { npcId: 'seo_harin', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 744, ty: 143, behavior: 'wander', facing: 'right' },
+  { npcId: 'jim_kang', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 1002, ty: 222, behavior: 'wander' },
+  { npcId: 'go_hosu', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 670, ty: 715, behavior: 'fishing' },
+  { npcId: 'mo_taejo', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 672, ty: 756, behavior: 'fishing' },
+  { npcId: 'yeo_gangsan', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 667, ty: 710, behavior: 'fishing' },
+  { npcId: 'chae_surim', regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 735, ty: 150, behavior: 'wander' },
+  { npcId: 'yu_harang', regionId: 'busan', dataRegion: 'busan_baegunpo', tx: 634, ty: 542, behavior: 'fishing' },
+  { npcId: 'ha_nui', regionId: 'busan', dataRegion: 'busan_baegunpo', tx: 372, ty: 25, behavior: 'wander' },
+  { npcId: 'namgung_hyeon', regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 582, ty: 350, behavior: 'wander' },
+  { npcId: 'han_bom', regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 770, ty: 359, behavior: 'wander' },
+  { npcId: 'lee_suyeon', regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 768, ty: 363, behavior: 'fishing' },
+  { npcId: 'go_manseok', regionId: 'ulsan', dataRegion: 'ulsan', tx: 633, ty: 421, behavior: 'patrol' },
+  { npcId: 'go_haena', regionId: 'ulsan', dataRegion: 'ulsan', tx: 637, ty: 417, behavior: 'wander' },
+  { npcId: 'chae_geumja', regionId: 'gyeongnam_geoje', dataRegion: 'geoje_east', tx: 616, ty: 411, behavior: 'patrol' },
+  { npcId: 'chae_pado', regionId: 'gyeongnam_geoje', dataRegion: 'geoje_east', tx: 616, ty: 410, behavior: 'wander' },
+  { npcId: 'song_gibaek', regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 446, ty: 353, behavior: 'wander' },
+  { npcId: 'ma_gamgi', regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 451, ty: 350, behavior: 'wander' },
+  { npcId: 'oh_gayun', regionId: 'jeonnam_yeosu', dataRegion: 'yeosu_city', tx: 310, ty: 567, behavior: 'wander', facing: 'down' },
+  { npcId: 'jeong_umi', regionId: 'jeonnam_yeosu', dataRegion: 'yeosu_city', tx: 258, ty: 498, behavior: 'wander' },
+  { npcId: 'oh_serin', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 502, ty: 403, behavior: 'fishing' },
+  { npcId: 'yu_ria', regionId: 'jeju', dataRegion: 'jeju_city', tx: 501, ty: 378, behavior: 'wander' },
+  { npcId: 'mara', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 226, ty: 439, behavior: 'fishing' },
   { npcId: 'oh_sera', regionId: 'ulleungdo' },
   { npcId: 'yeon_taeo', regionId: 'ulleungdo' },
   { npcId: 'seok_daeyang', regionId: 'ulleungdo' },
   { npcId: 'seok_dokgu', regionId: 'ulleungdo' },
-  { npcId: 'dan_cheolho', regionId: 'incheon' },
-  { npcId: 'ha_minji', regionId: 'incheon' },
+  { npcId: 'dan_cheolho', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 319, ty: 351, behavior: 'fishing' },
+  { npcId: 'ha_minji', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 331, ty: 358, behavior: 'wander' },
 ];
 
 export const STORY_PLACES: StoryPlace[] = [
@@ -157,21 +169,21 @@ export const STORY_PLACES: StoryPlace[] = [
 ];
 
 /**
- * N18-6의 첫 단계. 인천 필드맵이 아직 준비 중인 개발 버전에서도 실제로
- * 검증할 수 있도록 현재 열려 있는 상업항 맵의 도매시장 후문에 배치한다.
- * 추후 인천 맵이 열리면 좌표만 옮기고 연출·세이브 계약은 유지한다.
+ * N18-6의 첫 단계 — 263차부터 인천 연안부두(종합어시장 동쪽 벽)가 무대다.
+ * 167~262차에는 인천 필드가 없어 속초 동명항 경매장 후문에 임시로 두었다(연출·세이브 계약은 그대로).
  */
 export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
   // 167차 — 「위반 증거」 3단계. ① 경매장 동쪽 벽에 숨은 수상한 사람에게 말을 건다(→ 목격 컷씬) ·
   //  ② 경매장 앞 기록대의 수정된 명부를 살핀다 · ③ 도현수에게 말을 걸어 보고한다(대화창 행).
-  //  ⚠ 무대는 속초 동명항 경매장(605,154 하역 위치 서쪽 건물). 인천 필드가 생기면 좌표만 옮긴다.
+  //  263차 — 무대를 인천 연안부두 종합어시장(`incheon_yeonan` 467,354 건물)의 동쪽 벽으로 옮겼다(①·② — ③ 보고는 속초의 도현수 그대로).
+  //    167~262차 임시 무대는 속초 동명항 경매장(592,154 · 597,151)이었다.
   {
-    id: 'n18-6-origin-watch', regionId: 'gangwon_sokcho', tx: 592, ty: 154,
+    id: 'n18-6-origin-watch', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 480, ty: 354,
     labelKo: '수상한 사람에게 말을 건다', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 0,
     actor: { actorKey: 's1', nameKo: '수상해 보이는 사람 1', nameEn: 'Suspicious person 1', role: 'drifter', sex: 'm', age: 'mid', facing: 'left' },
   },
   {
-    id: 'n18-6-ledger-inspect', regionId: 'gangwon_sokcho', tx: 597, ty: 151,
+    id: 'n18-6-ledger-inspect', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 479, ty: 357,
     labelKo: '수정된 원산지 명부', actionKey: 'label_violation_review', questId: 'N18-6', objectiveIndex: 1, phase: 1,
   },
   {
@@ -313,16 +325,16 @@ export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
     linesKo: ['배에서 내린 상자가 경매 · 중도매 · 소매로 갈라지는 길을 표지에서 짚는다.', '단계마다 책임지는 사람이 바뀐다 — 그 이름을 순서대로 외운다.'],
     linesEn: ['On the board I trace how a crate splits from the boat into auction, wholesale and retail.', 'Who answers for it changes at every step — I learn the names in order.'],
   },
-  // N13-3 「폐어선의 겨울」 — 태안 (필드가 열리면 보인다)
+  // N13-3 「폐어선의 겨울」 — 태안 안흥항 안벽(송기백 거처 옆 — 263차 실제 칸 · 그 전엔 자리표시 40,40)
   {
-    id: 'n13-3-flue', regionId: 'chungnam_taean', tx: 40, ty: 40,
+    id: 'n13-3-flue', regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 448, ty: 352,
     labelKo: '폐어선 선실 연통', labelEn: 'Cabin flue of the old boat',
     actionKey: 'stove_repair', questId: 'N13-3', objectiveIndex: 1, phase: 0,
     linesKo: ['막힌 연통을 두드리자 그을음이 한 줌 떨어진다.', '이음새의 녹을 긁어내고 연통을 다시 끼운다.'],
     linesEn: ['I knock on the blocked flue and a handful of soot drops.', 'I scrape the rust from the joint and fit the pipe back.'],
   },
   {
-    id: 'n13-3-light', regionId: 'chungnam_taean', tx: 41, ty: 40,
+    id: 'n13-3-light', regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 449, ty: 352,
     labelKo: '선실 난로', labelEn: 'Cabin stove',
     actionKey: 'stove_repair', questId: 'N13-3', objectiveIndex: 1, phase: 1,
     linesKo: ['불씨를 넣자 바람이 연통으로 곧게 빠진다.', '불꽃이 다시 붙자 방 안의 손들이 움직이기 시작했다.'],

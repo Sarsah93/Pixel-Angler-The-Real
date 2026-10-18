@@ -300,7 +300,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-18 262차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-18 263차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -309,7 +309,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-18 262차) — 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
+**최근 변경 (2026-10-18 263차) — 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**
+
+- 사용자 결정 「지역은 장 순서대로 잠그고, 부산 위판장은 bbox 확장으로 해줘」: core `chapterOfRegion` · `isRegionOpenAtChapter`(구역 노드 + `STORY_CHAPTERS.regionIds`의 여는 장 ≤ 지금 장 · 시험 3) ·
+  월드맵 「아직 갈 수 없는 곳」 · 알림 「아직 갈 수 없습니다. 지금 갈 수 있는 곳: …」(장 번호 안 냄 — R2). 잠금은 월드맵 출조에만.
+- `STORY_NPC_PLACEMENTS` 25명 칸 · 행동(POI 옆 걷는 칸 · 울릉 4명은 배 출조 뒤) · 배치 · 트리거 · 장소 `dataRegion`(부산 · 거제 · 태안 · 제주처럼 데이터 지역이 여럿) · 안내 「다른 구역 — ○○」 ·
+  N18-6 ①·② 인천 종합어시장 동쪽 벽(각본 6칸) · N13-3 안흥 · 감천 bbox 북쪽 35.095(요청 5 refetch) · 출조 구역 「남항 · 공동어시장」 · 공동어시장(`shop=supermarket`) = 위판장.
+- 검증: 하네스 15필드(인물 25 걷는 칸 · 1장 속초만 → 2장 부산 · N18-6 각본 8칸 · 남항 `auction` · pageerror 0) · 빌드 3/3 · typecheck 0 · core 325/325 · 도달성 잃은 문 0 ·
+  아티팩트 4개(위키 60 · 셋 Version 5). 상세: [263차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-263-story-linkage-chapter-lock-npcs-namhang.md).
+
+**이전 변경 (2026-10-18 262차) — 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
 
 - 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘」: 컨테이너는 Overpass · OSM 미러가 네트워크 정책으로 막혀(403)
   **워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml` — `pixelazed/_osm_request.txt` 푸시 트리거 · 지역별 이어 가기 · fetch 재시도 · 러너가 실행 브랜치에 커밋)로 수집.
@@ -330,17 +339,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 「배경음악 … 제일 최근에 변경한 부분들로 우선 적용」: Lyria 2판 7 + 1판 3 = 10곡 → `audio/Music.ts`(자리마다 곡 · 반복 이음매 굽기 · 2초 교차 · 10분 고정) · 설정 「배경 음악」 「환경음」.
 - 검증: 빌드 3/3 · typecheck 0 · core 322/322 · 실렌더(구 텍스처 0 · 발자국 336 · 자리 없음 6 · 문 둘 이상 17 · [F] · 홈타운 · 부산 · 음악 8곡 순서 · 오징어 0 · pageerror 0) ·
   아티팩트 4개 재발행(위키 58 · 셋 Version 3). 상세: [261차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-261-vector-buildings-only-bgm-squid.md).
-
-**이전 변경 (2026-10-17 260차) — 아티팩트 3개 현행화 · 아티팩트 4개 갱신 규칙 · 원본 `docs/artifacts/`**
-
-- 사용자 「남은 과업 설계, 구현 라이브러리, 채비모딩순서도 까지도 업데이트도 해줘 … 규칙으로 정해놔」 — 세 페이지를 같은 URL Version 2로:
-  남은 과업 설계(98차판 → 259차 기준 다시 쓰기) · 구현 라이브러리(146차판 → 12갈래 157항목 · 머리 숫자 core dist 실측) ·
-  채비 모딩 순서도(192차판 → 258 문법 — 목줄 중간 · 목줄 끝 네 갈래 · 카드 채비 물건).
-- 규칙: 인게임 설계가 바뀐 차수마다 아티팩트 4개를 모두 갱신(§4 작업 기록 정책 · §8-18 · CLAUDE 15 · 스킬 `work-log` §2-7) ·
-  원본 `docs/artifacts/*.html` + 주소표 `docs/artifacts/README.md` · 점검 도구 `tools/check_artifact_page.cjs`.
-- 덤: 위키 이야기 페이지의 「요리 목표 승격 대기」는 낡은 표기였다(요리 목표 1개는 이미 자동) — 남은 수동 목표 수로 고쳤다.
-- 검증: 세 페이지 밝음 · 어두움 · 폰 폭 넘침 0 · 겹침 0 · pageerror 0 · 모듈 이름 실재 대조(지어낸 이름 1건 고침) · 코드 변경 없음.
-  상세: [260차 워크로그](../docs/wiki/03-WORKLOG/2026-10-17-260-artifacts-refresh-four-artifact-rule.md).
 
 ---
 

@@ -6,6 +6,7 @@
  */
 
 import type { StoryChapterDef } from '../types/Story.js';
+import { isRegionUnlocked } from '../types/WorldMap.js';
 
 export const STORY_CHAPTERS: StoryChapterDef[] = [
   {
@@ -111,4 +112,21 @@ export const STORY_CHAPTERS: StoryChapterDef[] = [
 
 export function getStoryChapter(ch: number): StoryChapterDef | undefined {
   return STORY_CHAPTERS.find((c) => c.chapter === ch);
+}
+
+/**
+ * 263차 — 이 지역을 여는 장(`regionIds`에 처음 나오는 장). 어느 장에도 없는 지역(홈타운 등)은 `undefined` = 처음부터 열림.
+ */
+export function chapterOfRegion(regionId: string): number | undefined {
+  return STORY_CHAPTERS.find((c) => c.regionIds.includes(regionId))?.chapter;
+}
+
+/**
+ * 263차 — 지역 장 잠금(사용자 결정 「지역은 장 순서대로 잠그고」).
+ * 타일맵(구역 노드)이 있고, 그 지역을 여는 장이 지금 장 이하여야 갈 수 있다. 장 번호는 화면에 내지 않는다(R2).
+ */
+export function isRegionOpenAtChapter(regionId: string, currentChapter: number): boolean {
+  if (!isRegionUnlocked(regionId)) return false;
+  const ch = chapterOfRegion(regionId);
+  return ch === undefined || ch <= currentChapter;
 }

@@ -320,6 +320,7 @@ export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
   incheon: INCHEON_YEONAN,
 };
 SEAMLESS_AREA_REGIONS['busan_baegunpo_1'] = BUSAN_BAEGUNPO;
+SEAMLESS_AREA_REGIONS['busan_namhang_1'] = BUSAN_GAMCHEON;   // 263차 — 남항 · 공동어시장(감천 bbox 북쪽 확장분)
 SEAMLESS_AREA_REGIONS['geoje_haegeumgang_1'] = GEOJE_HAEGEUMGANG;
 SEAMLESS_AREA_REGIONS['taean_manripo_1'] = TAEAN_MANRIPO;
 SEAMLESS_AREA_REGIONS['jeju_moseulpo_1'] = JEJU_MOSEULPO;

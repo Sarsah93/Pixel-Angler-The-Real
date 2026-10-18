@@ -10,7 +10,7 @@
 ## 2. 구성
 | 계층 | 파일 | 역할 |
 |---|---|---|
-| core | `types/WorldMap.ts` | 노드 11곳 · `REGION_AREA_NODES`(출조 구역 17 — **262 `spawnLatLon` 구역별 내리는 자리**) · 잠금 판정 |
+| core | `types/WorldMap.ts` | 노드 11곳 · `REGION_AREA_NODES`(출조 구역 18 — **262 `spawnLatLon` 구역별 내리는 자리** · 263 남항) · 잠금 판정(노드 존재 + **263 장 순서 `isRegionOpenAtChapter`**) |
 | core | `types/RegionMap.ts` | 타일맵 계약(7문자) + 맵 그래프(legacy) + **심리스 등록**(`SEAMLESS_REGIONS` 지역 기본 · **262 `SEAMLESS_AREA_REGIONS`** 구역(fieldMapId) → 데이터 지역 · `seamlessRegionOf(region, mapId)` · `ACTIVE_REGION_MODE`·`RegionMeta`/`RegionPoi`) |
 | core | `types/DepthProfile.ts` | 실측 연안 수심(거리→수심 보간·외삽) |
 | tools | `regions_config.py` · `fetch_region_osm.py` · `build_osm_tilemap.py` | **OSM 파이프라인** — 지역 bbox 레지스트리(v4 — 속초 크기 13 데이터 지역 + 분할 전 부산 3 · 섬 2) · Overpass 수집 캐시 · 5m/타일 래스터라이즈(**262 바다 = 해안선 방향 투표** · 마스킹 · 스폰 스냅 + 전역 폴백) |
@@ -65,6 +65,8 @@
 | **달리기(Shift 홀드 + 방향키)** — ×1.55(210 → 326 px/s) · 피로 85%·허기·수분 게이트 · 걷기 프레임 1.55배 | ✅ | 144 |
 | 씬 전환 안전망(SceneFade 17곳) | ✅ | 73 |
 | 교통비·귀가·잠금 지역 | ✅ | 44 |
+| **지역 장 순서 잠금**(사용자 결정 — `chapterOfRegion` · `isRegionOpenAtChapter` · 월드맵 「아직 갈 수 없는 곳」 · 장 번호 안 냄) | ✅ | **263** |
+| **부산 남항 · 공동어시장 구역**(감천 bbox 북쪽 35.095 · 요청 5 refetch · 1.17M 타일 · 위판장 = `shop` 이름 규칙) | ✅ | **263** |
 | 래스터 보강 — Sentinel-2 fetch·분류·terrain 병합(Phase 1·2, 속초) | ✅ | 109 |
 | 래스터 Phase 3 — DEM 경사(해안 변형·음영) | ⬜ | DEM 도엽 재확보 후 |
 | **OSM 심리스 v2 — 속초**(파이프라인·청크 스트리밍·POI·검증) | ✅ | 100 |
@@ -133,7 +135,7 @@
   문이 차도 밴드 위인 가게 50(길에 바짝 붙은 OSM 건물 — 옛 BFS 폴백) · 편집기(F7) 타일 수정 뒤 문 분배 사라짐(dev) · 레거시 20px 건물은 작다 ·
   구 건물 PNG 98장은 파일만 남았다(정리는 사용자 결정) — 상세 [261 §6](../03-WORKLOG/2026-10-18-261-vector-buildings-only-bgm-squid.md).
 - **262차 잔여** — 새 데이터 지역 12곳 사용자 육안(terrain ↔ 실지형 · 전국 지도 핀) · 자동 변환 상호 3,516곳 검토(`auto: true`) · 속초 밖 인물 좌표 ·
-  ~~감천 투표 방식 재굽기~~(요청 4 — 63.7%) · 이야기 연계(인물 29명 배치 · 장 잠금 · 부산 위판장 — 백로그 CK) · 감천 서방파제 피복 · 해금강 잃은 문 1 · 여수 도달성 씨앗 ·
+  ~~감천 투표 방식 재굽기~~(요청 4 — 63.7% → 요청 5 bbox 확장 50.6%) · ~~이야기 연계~~(263 — 남은 것 백로그 CK) · 감천 서방파제 피복 · 해금강 잃은 문 1 · 여수 도달성 씨앗 ·
   새 지역 래스터 · 어장 없음 · 여수 밀도(건물 8,157) 실플레이 · 워크플로 main 반영(Run workflow) · 네트워크 정책에 Overpass 허용(사용자) —
   상세 [262 §6](../03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md).
 - **주차장 경계 펜스**(173차 잔여) — 배치 규칙은 세울 수 있으나 충돌·통행 검증이 별도 작업.
@@ -166,6 +168,9 @@
 - POI 상호작용·사운드는 콘텐츠 확장 단계에서. 상세 미결은 스펙 §13-5.
 
 ## 6. 함정·불변조건
+
+- **구역 노드를 더하면 지역이 열리는 게 아니다(263)** — 월드맵은 `isRegionOpenAtChapter`(노드 + `STORY_CHAPTERS.regionIds`의 여는 장)를 본다. 새 지역을 추가할 때 장 데이터에 지역 id가 있어야 한다(없으면 처음부터 열림).
+- **bbox를 바꾸면 그 데이터 지역의 모든 칸 좌표가 바뀐다**(263 감천) — 구역 스폰은 위도 · 경도(`spawnLatLon`)라 그대로지만, 인물 배치 · 트리거 · 장소의 `tx/ty`는 다시 잰다(감천은 bbox 확장 뒤에 배치했다).
 
 - **bbox 가장자리 시드로 바다를 채우면 그 변이 육지를 지날 때 내륙이 잠긴다**(262차 — 지세포 'E' 99% · 감천 북쪽 확장 'S' 94%).
   바다는 **해안선 방향 투표**로 정한다(`build_osm_tilemap.py` — OSM coastline은 왼쪽 뭍 · 오른쪽 바다 · 장벽으로 나뉜 성분마다 오른쪽 표 +1 · 왼쪽 표 −1).

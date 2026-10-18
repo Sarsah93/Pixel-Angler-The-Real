@@ -61,12 +61,22 @@
   → **259 제작 창 클릭 · 의뢰 표시 다시 그리기 · 지도 이름 흰 테 · 수면 빗방울 · 어두운 장비 그림 흰 테 · main 반영 · 79차 배포**
   → **260 아티팩트 3개 현행화(남은 과업 설계 · 구현 라이브러리 · 채비 모딩 순서도) · 아티팩트 4개 갱신 규칙**
   → **261 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
-  → **262 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장(데이터 지역 13 · 출조 구역 17) · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**.
+  → **262 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장(데이터 지역 13 · 출조 구역 17) · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
+  → **263 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
-- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 + 262차 새 지역 12곳 terrain · 핀**) — 부족하면 규칙 보강.
-  새 지역은 워크플로로 굽는다(스킬 `add-region` 262 절). 차수별 잔여는 PLAN §2-3.
+- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 + 262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항**) — 부족하면 규칙 보강.
+  새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **263차**: **지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대** —
+  사용자 결정 「지역은 장 순서대로 잠그고, 부산 위판장은 bbox 확장으로 해줘.」(262 이야기 연계 점검의 두 물음) →
+  core `chapterOfRegion` · `isRegionOpenAtChapter`(구역 노드 + 여는 장 ≤ 지금 장 — 1장 속초 · 2장 부산 · 3장 울산 · 포항 · 4장 거제 · 여수 · 태안 · 5장 제주 · 6장 인천 · 시험 3) ·
+  월드맵 「아직 갈 수 없는 곳」(장 번호 안 냄 · 잠금은 월드맵 출조만) · `STORY_NPC_PLACEMENTS` 25명 칸 · 행동(POI 옆 걷는 칸 — 울릉 4명은 배 출조 뒤) ·
+  배치 · 트리거 · 장소 `dataRegion`(데이터 지역이 여럿인 부산 · 거제 · 태안 · 제주) · 안내 「다른 구역 — ○○」 · N18-6 ①·② 인천 종합어시장 동쪽 벽(각본 6칸) · N13-3 안흥항 ·
+  감천 bbox 북쪽 35.095(요청 5 refetch · 1,093 × 1,067 · 바다 50.6% · 걷기 성분 하나) · 출조 구역 「남항 · 공동어시장」(`busan_namhang_1`) · 부산공동어시장(`shop=supermarket`) = 위판장(`poiBuildingKind` 이름 규칙 · `AUCTION_NAME`) ·
+  하네스 15필드(인물 25 걷는 칸 · N18-6 각본 8칸 · 남항 `auction` · pageerror 0) · 빌드 3/3 · core 325/325 · 도달성 잃은 문 0 · 아티팩트 4개(위키 60 · 셋 Version 5).
+  **다음 = 사용자 육안(인물 자리 25 · 남항 — 81차 배포 뒤) · 새 인물 집 · 일과 · 물어보기 · 울릉 4명(배) · N18-4 거제 현장 · 호미곶(포항 bbox) 결정(백로그 CK) · main 반영 · 81차 배포(요청 시)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-18-263-story-linkage-chapter-lock-npcs-namhang.md`.
 - **262차**: **부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환** —
   사용자 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘.」 「계속해서 진행해줘.」 →
   컨테이너는 Overpass · OSM 미러가 막혀(403) **워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml` — `pixelazed/_osm_request.txt` 푸시 트리거 ·
@@ -91,14 +101,6 @@
   빌드 3/3 · core 322/322 · 실렌더(구 텍스처 0 · 발자국 336 · 자리 없음 6 · [F] · 홈타운 · 부산 · 음악 · pageerror 0) · 아티팩트 4개 재발행(위키 58 · 셋 Version 3).
   **다음 = 사용자 육안(발자국 크기 · 층수 표 · 좌판 차양) · 배경 음악 실청취 · main 반영 · 80차 배포(요청 시)(백로그 CI)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-18-261-vector-buildings-only-bgm-squid.md`.
-- **260차**: **아티팩트 3개 현행화 · 아티팩트 4개 갱신 규칙** — 사용자 「남은 과업 설계, 구현 라이브러리, 채비모딩순서도 까지도 업데이트도 해줘.
-  (이제부터 인게임 내 설계 변경이 이뤄지면 아티팩트 4개; 남은 과업 설계, 구현 라이브러리, 채비모딩순서도, wiki 전부 업데이트) 규칙으로 정해놔」 →
-  남은 과업 설계(98차판 → 259차 기준) · 구현 라이브러리(146차판 → 12갈래 157항목 · 머리 숫자 core dist 실측) ·
-  채비 모딩 순서도(192차판 → 258 문법 — 목줄 중간 · 목줄 끝 네 갈래 · 카드 채비 물건) — 셋 다 같은 URL Version 2 ·
-  규칙 = 절대 규칙 15 · AGENTS §4 · §8-18 · 스킬 `work-log` §2-7 · 원본과 주소표 `docs/artifacts/` · 점검 `tools/check_artifact_page.cjs` ·
-  위키 이야기 페이지 낡은 표기 정정(요리 목표는 이미 자동) · 코드 변경 없음.
-  **다음 = 남은 과업 설계 공유 설정(사용자 — 지금 비공개) · 다음 인게임 설계 차수부터 4개 갱신**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-17-260-artifacts-refresh-four-artifact-rule.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -187,16 +189,17 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   **262차부터 OSM 수집은 워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml`) — 이 컨테이너는 Overpass가 막혀 있다(403 · 환경 네트워크 정책).
   작업 브랜치에서는 `pixelazed/_osm_request.txt`에 지역 키를 적어 푸시하면 러너가 굽고 그 브랜치에 커밋한다(main에 들어가면 Actions 탭 Run workflow).
   ⚠ 러너가 도는 동안 같은 브랜치에 푸시하지 않는다(러너 푸시가 non-fast-forward로 거부돼 산출물을 잃는다).
-  심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon` · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
+  **지역은 장 순서대로 열린다**(263 — `isRegionOpenAtChapter` · `STORY_CHAPTERS.regionIds` — 노드만 더하면 열리지 않는다) · 인물 · 트리거 · 장소 칸은 `dataRegion`으로 데이터 지역을 가른다.
+  심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 80차 배포 2026-10-18 = 262차까지 포함** — 260~262는 80차에 처음 실렸다 · main `6851660`).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 59 = 262차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
+  전체 위키(농사 · 출조 지역 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 60 = 263차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 4 = 262차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 4 = 262차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 4 = 262차 기준 · 문법은 258차) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 5 = 263차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 5 = 263차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 5 = 263차 기준 · 문법은 258차) · 위키(위 줄).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

@@ -708,7 +708,7 @@ export {
 } from './rules/FisheryLaw.js';
 export type { BackpackId, BackpackSpec } from './inventory/Backpack.js';
 export { BASE_SLOTS_PER_TAB, BACKPACK_SPECS, resolveSlotsPerTab, canUnequipBag } from './inventory/Backpack.js';
-export { STORY_CHAPTERS, getStoryChapter } from './db-schema/StoryChapters.js';
+export { STORY_CHAPTERS, getStoryChapter, chapterOfRegion, isRegionOpenAtChapter } from './db-schema/StoryChapters.js';
 export { JOURNAL_PAGES, getJournalPage, journalCatchMatches } from './db-schema/JournalPages.js';
 export { STORY_MAIN_NPCS, STORY_ARCS, getStoryArc, getStoryNpc, arcOfNpc } from './db-schema/StoryArcs.js';
 export type { DayJobDef } from './db-schema/DayJobs.js';

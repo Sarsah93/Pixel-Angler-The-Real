@@ -853,7 +853,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .map(toSkillCard),
     },
     regions: {
-      note: '전국 지도에서 고르는 출조 지역과 그 안의 출조 구역입니다. 구역 카드를 누르면 바다 특성 · 대표 어종 · 수심 · 밑걸림 · 조행록 장 · 지도 크기가 펼쳐집니다. 구역마다 내리는 자리가 다릅니다.',
+      note: '전국 지도에서 고르는 출조 지역과 그 안의 출조 구역입니다. 지역은 이야기의 장 순서대로 열립니다(263차). 구역 카드를 누르면 바다 특성 · 대표 어종 · 수심 · 밑걸림 · 조행록 장 · 지도 크기가 펼쳐집니다. 구역마다 내리는 자리가 다릅니다.',
       groups: () => {
         const R = G.regions || [];
         const seas = ['동해', '남해', '제주', '서해'];
@@ -866,7 +866,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         for (const r of (G.regions || [])) {
           if (group === '_wait' ? r.open : (group && r.sea !== group)) continue;
           if (!r.open) {
-            out.push({ key: 'rg-' + r.id, name: r.name, meta: (r.sea ? r.sea + ' · ' : '') + (r.boat ? '배로 가는 섬 · 준비 중' : '준비 중'), img: null, price: '',
+            out.push({ key: 'rg-' + r.id, name: r.name, meta: (r.sea ? r.sea + ' · ' : '') + (r.chapter ? r.chapter + '장 · ' : '') + (r.boat ? '배로 가는 섬 · 준비 중' : '준비 중'), img: null, price: '',
               search: r.name + ' ' + r.nameEn + ' ' + r.sido,
               detail: () => ({ title: r.name, sub: r.nameEn + ' · ' + r.sido, lede: r.boat ? '도보로 닿지 않는 섬입니다. 배 출조 콘텐츠와 함께 열립니다.' : '필드 지도를 준비하고 있습니다.', img: null, tags: ['준비 중'],
                 body: r.pages.length ? '<div class="ssec"><h3>조행록</h3>' + kvRows(r.pages.map(pg => [pg.page + '장 ' + pg.label, esc(pg.species + ' · ' + pg.seasons + ' · ' + pg.how + (pg.cond ? ' · ' + pg.cond : ''))])) + '</div>' : '' }) });
@@ -879,7 +879,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
               search: r.name + ' ' + a.name + ' ' + a.nameEn + ' ' + a.desc + ' ' + a.details.join(' ') + ' ' + r.pages.map(pg => pg.species).join(' '),
               detail: () => ({
                 title: a.name, sub: r.name + ' · ' + a.nameEn, lede: a.desc, img: null,
-                tags: [r.sea || r.sido, a.depth ? '수심 ' + a.depth : '', a.snag, a.enterable ? '출조 가능' : '필드 준비 중', a.ownSpawn ? '구역마다 내리는 자리' : ''].filter(Boolean),
+                tags: [r.sea || r.sido, r.chapter ? r.chapter + '장부터 열림' : '', a.depth ? '수심 ' + a.depth : '', a.snag, a.enterable ? '출조 가능' : '필드 준비 중', a.ownSpawn ? '구역마다 내리는 자리' : ''].filter(Boolean),
                 body: '<div class="ssec"><h3>바다 특성</h3><ul class="plain">' + a.details.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' +
                   (map ? '<div class="ssec"><h3>필드 지도 — ' + esc(map.name) + '</h3>' + kvRows([['크기', esc(map.km + ' (' + map.w + ' × ' + map.h + '칸 · 1칸 = 5m)')], ['가게 · 장소', esc(map.shops + ' · ' + map.pois)], ['건물 윤곽', esc(String(map.buildings))], ['항로표지', esc(String(map.lights))]]) + '</div>' : '') +
                   (r.pages.length ? '<div class="ssec"><h3>조행록(' + esc(r.name) + ')</h3>' + kvRows(r.pages.map(pg => [pg.page + '장 ' + pg.label, esc(pg.species + ' · ' + pg.seasons + ' · ' + pg.how + (pg.cond ? ' · ' + pg.cond : ''))])) + '</div>' : ''),

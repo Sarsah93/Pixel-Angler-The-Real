@@ -73,7 +73,7 @@ import { RegionLight, RegionBuilding,
   RegionRoad,
   RegionPatch,
   SeamlessRegionDef,
-  seamlessRegionOf,
+  seamlessRegionOf, SEAMLESS_AREA_REGIONS,
   getRegionAreaNodes,
   seamBetween,
   getStatusEffect,
@@ -1746,6 +1746,8 @@ export class RegionFieldScene extends Phaser.Scene {
     if (poi.type === 'market') return 'market';
     if (poi.type === 'pharmacy') return 'pharmacy';   // 129차 P7 — 구급품·제작 재료 판매
     if (poi.type === 'shop') {
+      // 263차 — 위판장이 OSM에서 shop=supermarket으로 올라온 곳(부산공동어시장)도 이름으로 위판장이다
+      if (/공동어시장|수협|위판|어판장|공판장|활어\s*센터/.test(poi.name ?? '')) return 'market';
       const k = poi.shopKind ?? '';
       if (k === 'convenience') return 'convenience';
       if (k === 'supermarket' || k === 'grocery' || k === 'greengrocer') return 'mart';
@@ -5601,6 +5603,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     for (const def of STORY_FIELD_TRIGGERS) {
       if (def.regionId !== this.region || def.viaNpc) continue;   // viaNpc = 대화창 행으로만 닿는다
+      if (def.dataRegion && def.dataRegion !== this.seamlessDef?.dataRegion) continue;   // 263차
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
       const x = col * TR + TR / 2, y = row * TR + TR;
       const mark = this.add.graphics().setDepth(20 + y * 0.001 + 0.001);
@@ -5973,6 +5976,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.storyNpcs = [];
     for (const def of STORY_NPC_PLACEMENTS) {
       if (def.regionId !== this.region) continue;
+      if (def.dataRegion && def.dataRegion !== this.seamlessDef?.dataRegion) continue;   // 263차 — 데이터 지역이 여럿인 지역은 그 필드에서만
       // 178차 — 좌표 없는 등록은 **지역 안내 전용**이다(무대가 아직 없는 인물). 세우지 않는다.
       if (def.tx === undefined || def.ty === undefined) continue;
       const { col, row } = this.nearestWalkable(def.tx, def.ty);
@@ -6719,6 +6723,14 @@ export class RegionFieldScene extends Phaser.Scene {
     };
   }
 
+  /** 263차 — 데이터 지역 → 그 데이터 지역을 쓰는 이 지역의 출조 구역 이름(여럿이면 첫째) */
+  private areaNameOfDataRegion(dataRegion: string): string {
+    for (const a of getRegionAreaNodes(this.region)) {
+      if (SEAMLESS_AREA_REGIONS[a.fieldMapId]?.dataRegion === dataRegion) return a.name;
+    }
+    return this.regionNameKo(this.region);
+  }
+
   private regionNameKo(id: string): string {
     if (id === 'hometown') return '숙소(집)';
     return getRegionById(id)?.nameKo ?? WORLD_NODE_DATABASE.find((n) => n.id === id)?.name ?? id;
@@ -6759,7 +6771,12 @@ export class RegionFieldScene extends Phaser.Scene {
         if (n) return { x: n.x, y: n.y - 12, label: names.npcName(t.npcId) };
         // 178차 — 이 지역에 서 있지 않으면 어느 지역으로 가야 하는지 알려준다.
         //  지역은 **추적 중인 할 일의 지역**이 우선(같은 인물도 장마다 무대가 다르다) · 없으면 배치표.
-        const away = t.regionId ?? STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId)?.regionId;
+        const placement = STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId);
+        const away = t.regionId ?? placement?.regionId;
+        // 263차 — 같은 지역의 다른 데이터 지역(부산 백운포 ↔ 감천 등)이면 그 출조 구역 이름으로 안내한다
+        if (away === this.region && placement?.dataRegion && placement.dataRegion !== this.seamlessDef?.dataRegion) {
+          return { away: this.areaNameOfDataRegion(placement.dataRegion) };
+        }
         if (!away || away === this.region) return null;   // 같은 지역인데 안 서 있으면 조용히 안내 없음
         return { away: this.regionNameKo(away) };
       }
@@ -7060,6 +7077,7 @@ export class RegionFieldScene extends Phaser.Scene {
     //   다시 잡히지 않아 진행이 막혔고, 파산 · 새 게임 · 다른 슬롯을 불러와도 지워지지 않았다(감사 치명-4).
     for (const pl of STORY_PLACES) {
       if (pl.regionId !== this.region) continue;
+      if (pl.dataRegion && pl.dataRegion !== this.seamlessDef?.dataRegion) continue;   // 263차
       const cx = pl.tx * TR + TR / 2, cy = pl.ty * TR + TR / 2;
       if (Math.hypot(cx - px, cy - py) > pl.radiusTiles * TR) {
         this.insidePlaces.delete(pl.key);

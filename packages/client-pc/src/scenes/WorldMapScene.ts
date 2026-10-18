@@ -28,9 +28,11 @@ import {
   RegionAreaNode,
   SNAG_RISK_LABEL,
   isRegionUnlocked,
+  isRegionOpenAtChapter,
   getRegionAreaNodes,
   computeTravelFare,
 } from '@tra/core';
+import { StoryStore } from '../store/StoryStore.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { playSfx } from '../audio/SfxBank.js';
@@ -608,9 +610,17 @@ export class WorldMapScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * 263차 — 지역은 장 순서대로 열린다(사용자 결정). 타일맵이 있어도 그 지역을 여는 장이 오기 전에는 잠긴다.
+   * 장 번호는 화면에 내지 않는다(R2 — 「아직 갈 수 없는 곳」).
+   */
+  private regionOpen(regionId: string): boolean {
+    return isRegionOpenAtChapter(regionId, StoryStore.currentChapter());
+  }
+
   // ── 지역 리스트 아이템 ───────────────────────────────
   private addRegionListItem(region: RegionDef, node: FishingSpotNode | undefined, itemY: number): void {
-    const unlocked = isRegionUnlocked(region.id);
+    const unlocked = this.regionOpen(region.id);
     const btn = this.add.container(0, 0);
 
     const baseFill = unlocked ? 0x0e1c2d : 0x0c0f14;
@@ -631,7 +641,7 @@ export class WorldMapScene extends Phaser.Scene {
     const subText = this.add.text(40, itemY + 26,
       unlocked
         ? `포인트 ${region.subSpotIds.length}개${node ? '  ·  ' + node.availableTypes.map((t: string) => LEGEND_ITEMS.find((l) => l.type === t)?.label ?? t).join(' / ') : ''}`
-        : '준비중 — 현재 잠금',
+        : isRegionUnlocked(region.id) ? '아직 갈 수 없는 곳' : '준비중 — 현재 잠금',
       {
         fontFamily: '"Noto Sans KR", sans-serif',
         fontSize: '9px',
@@ -670,7 +680,7 @@ export class WorldMapScene extends Phaser.Scene {
       this.hideTooltip();
     });
     hit.on('pointerdown', () => {
-      if (!unlocked) { this.showLockedRegionAlert(region.nameKo); return; }
+      if (!unlocked) { this.showLockedRegionAlert(region.nameKo, isRegionUnlocked(region.id)); return; }
       this.navigateToRegion(region, node);
     });
     btn.add(hit);
@@ -681,7 +691,7 @@ export class WorldMapScene extends Phaser.Scene {
   // ── 지도 위 핀포인트 마커 그리기 ────────────────────
   private drawWorldNodePin(node: FishingSpotNode): void {
     const { x, y } = this.nodeToPinXY(node);
-    const unlocked = isRegionUnlocked(node.regionDatabaseId);
+    const unlocked = this.regionOpen(node.regionDatabaseId);
 
     // 주 타입 색상 (잠금 지역은 회색)
     const primaryType = node.availableTypes[0];
@@ -725,7 +735,7 @@ export class WorldMapScene extends Phaser.Scene {
       this.hideTooltip();
     });
     dot.on('pointerdown', () => {
-      if (!unlocked) { this.showLockedRegionAlert(node.name); return; }
+      if (!unlocked) { this.showLockedRegionAlert(node.name, isRegionUnlocked(node.regionDatabaseId)); return; }
       const region = REGION_DATABASE.find((r) => r.id === node.regionDatabaseId);
       if (region) this.navigateToRegion(region, node);
     });
@@ -734,13 +744,15 @@ export class WorldMapScene extends Phaser.Scene {
     this.pinMarkerMap.set(node.id, { dot, ring, label });
   }
 
-  /** 잠금 지역 클릭 시 안내 — 입장 가능 지역을 하드코딩하지 않고 동적으로 나열 */
-  private showLockedRegionAlert(regionName: string): void {
+  /** 잠금 지역 클릭 시 안내 — 입장 가능 지역을 하드코딩하지 않고 동적으로 나열. 263차 — 장 잠금(`exists`)이면 「아직 갈 수 없다」로(까닭은 말하지 않는다 — R2) */
+  private showLockedRegionAlert(regionName: string, exists = false): void {
     const unlocked = WORLD_NODE_DATABASE
-      .filter((n: FishingSpotNode) => isRegionUnlocked(n.regionDatabaseId))
+      .filter((n: FishingSpotNode) => this.regionOpen(n.regionDatabaseId))
       .map((n: FishingSpotNode) => n.name);
-    const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56,
-      `${regionName} 은(는) 아직 준비중입니다. 입장 가능: ${unlocked.join(' · ')}`, worldLabelStyle(12)).setOrigin(0.5)   // 257차 — 흰 테 글자.setDepth(400);
+    const msg = exists
+      ? `${regionName} 은(는) 아직 갈 수 없습니다. 지금 갈 수 있는 곳: ${unlocked.join(' · ')}`
+      : `${regionName} 은(는) 아직 준비중입니다. 입장 가능: ${unlocked.join(' · ')}`;
+    const alertTxt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 56, msg, worldLabelStyle(12)).setOrigin(0.5)   // 257차 — 흰 테 글자.setDepth(400);
     this.time.delayedCall(2600, () => alertTxt.destroy());
   }
 

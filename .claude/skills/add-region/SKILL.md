@@ -42,6 +42,12 @@ tools/regions_config.py 에 지역 bbox 등록 (v4 — 262차: 속초 크기 bbo
   `pois.json`의 이름 있는 POI 칸(유람선 터미널 · 항 수협 · 방파제 등대)을 bbox로 되돌린 위도 · 경도를 쓴다 — `lat = N − (ty+0.5)/H·(N−S)` · `lon = W + (tx+0.5)/W·(E−W)`.
   `meta.spawnApprox`는 항상 true라 판정 근거가 아니다 — 러너 로그의 `[warn] 스폰 스냅 실패`와 하네스 `dist`로 본다. 캐시가 있으면 로컬 재굽기(`python3.13 tools/build_osm_tilemap.py <r> --no-raster` …)로 `meta.spawn`만 바뀐다.
   구역의 `pixelX/Y`(zoom_{slug} 256×256 위 핀)는 대략값 — 핀 편집 Dev Tool로 다듬는다.
+- **지역이 열리는 조건은 둘이다(263차)** — 구역 노드가 있고(`isRegionUnlocked`) **그 지역을 여는 장이 왔을 때**(`isRegionOpenAtChapter` · `STORY_CHAPTERS.regionIds`).
+  새 지역 id를 장 데이터에 넣지 않으면 처음부터 열린다. 월드맵 잠긴 줄은 「아직 갈 수 없는 곳」 — 장 번호를 화면에 내지 않는다(R2).
+- **인물 · 트리거 · 장소 칸은 데이터 지역에 묶는다(263차)** — `STORY_NPC_PLACEMENTS` · `STORY_FIELD_TRIGGERS` · `STORY_PLACES`의 `dataRegion`.
+  데이터 지역이 여럿인 지역(부산 · 거제 · 태안 · 제주)에서 빠뜨리면 모든 필드에 같은 칸으로 선다. bbox를 바꾸면 그 지역의 `tx/ty`는 전부 다시 잰다(위도 · 경도 스폰만 그대로).
+  칸 고르기 = scratchpad `place_npcs.py` 패턴(POI 옆 · 큰 걷기 성분 · 낚시는 물가 2칸 안) — 지역만 있던 줄은 **제자리에서** 갱신한다(안내 화살표가 첫 항목을 본다).
+- **위판장은 OSM 종류가 아니라 이름으로 판정한다(263차)** — 부산공동어시장은 `shop=supermarket`. `poiBuildingKind` 이름 규칙(공동어시장 · 수협 · 위판 · 어판장 · 공판장 · 활어센터) + `AUCTION_NAME`.
 - **하네스**: 출조 구역마다 `scene.restart({ region, mapId })` → `playerTile()` · `seamlessDef.dataRegion` · 건물 · 가게 · 등대 · 404 · pageerror
   (262차 `harness_regions.cjs` 패턴 — 18구역 전부 `dist 0.0` · pageerror 0).
 
