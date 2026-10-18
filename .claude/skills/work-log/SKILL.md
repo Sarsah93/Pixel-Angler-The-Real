@@ -40,7 +40,8 @@ description: Pixel Angler 작업 기록·문서 체계 (docs/wiki 4층 — 구�
 7. **아티팩트 4개**(2026-10-17 · 260차 사용자 지시 — 「인게임 내 설계 변경이 이뤄지면 아티팩트 4개 … 전부 업데이트」) —
    그 차수에 게임 규칙 · 시스템 · 콘텐츠 · 화면 동작이 바뀌었으면 넷을 **모두** 같은 URL에 다시 발행한다.
    문서 · 도구만 고친 차수는 해당하지 않는다. 주소 · 원본 · 무엇을 고치는지는 [`docs/artifacts/README.md`](../../../docs/artifacts/README.md).
-   - 위키 — `node tools/gen_game_wiki_data.mjs --html` → 위키 아티팩트(바뀐 그림은 `files`).
+   - 위키 — `node tools/gen_game_wiki_data.mjs --html` → 위키 아티팩트(바뀐 그림은 `files`). 지도 탭(264)은 지형 · 가게 · 인물 자리가 바뀐 지역만
+     `node tools/capture_wiki_maps.cjs <폴더> <지역>`(dev 서버) → `node tools/dump_wiki_map_data.mjs` → 생성기 → 그 지역 `maps/<지역>/*.webp`를 `files`로. 파일 상한 511(`used.txt` 줄 수 + 지도 + 1).
    - 구현 라이브러리 — 항목 상태 · 차수 · 머리 숫자(core dist 실측) · 바닥 줄.
    - 남은 과업 설계 — 현황 표 · 대과제 단계 · 사용자 대기 큐 · 착수 순서.
    - 채비 모딩 순서도 — `RigTree.childrenOf`가 바뀌었으면 칸 · 갈래 · 규칙 · 경로 예시. 그대로면 첫 문단의 「N차 기준」만 올린다.

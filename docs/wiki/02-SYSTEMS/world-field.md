@@ -115,6 +115,7 @@
 | **벡터 건물 · 간판 자리 규칙** — `buildings.json`(OSM 폴리곤 546채 · 종류 7 · 층수 · `tools/extract_osm_buildings.py`) → 단위 계획(OSM 우선 · 못 덮은 `'#'`은 타일 윤곽 DP) · 2.5D 벽(1층 12 ~ 7층+ 48px · 창 · 1층 유리 · 문) · 지붕 5종(박공 5색 · 콘크리트 · 평지붕 녹색 우레탄/콘크리트 · 패널 · 차양) · 윤곽 그림자 · 포장 띠 · 청크 아틀라스 프레임 · 간판 = 문 양옆 중 차도 · 건물 아닌 쪽 → 보도 BFS ≤ 5 → 생략 · 같은 문 묶기 · 가림 판정 바닥선 | ✅ | **239** — `field/BuildingArt.ts` · `SeamlessChunks.buildChunkRoofs` · `RegionFieldScene.shopSignSpot` — 체감 조율 · 편집기 지붕 팔레트 ⬜ |
 | **구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물** — 프리팹(Gemini 횟집 2 · 팝업 4 · 고층 5 · TopDown 주택 2 · Kenney 노점 2) · 지붕 키트 로드 폐기(PNG 98장 · `ui/BuildingVariant.ts` 삭제 · 고층 파사드 산포 · 레거시 타일 기와 · `bld_` 도트 건물 · 창 불빛 · 네온) · 가게 389곳 중 건물 없는 자리 336곳에 발자국(`synthesizePoiBuildings` — 종류 · 층수 · 크기 표 `poiSynthSpec` · 문 칸 후보 ≤ 3칸 · 차도 밴드 0.35칸 · 다른 가게 앵커 · 물 회피 · 1차 맨땅 2차 보도 · 한 칸씩 줄이기) → 지형 '#' + `RegionBuilding`(`syn_<osmId>`) · 건물마다 가게 수만큼 문(`BuildingUnit.doors` · `assignUnitDoors` 24px 간격) = 그림 · [F] 문 앞 칸(차도 밴드는 마지막) · 간판 한 점 · 홈타운(집 = 주택 2층 · 보건소 = 공공) · 부산(가게 3×2) 레거시 20px도 `planBuildingUnits`(1칸 묶음 · 계단 0.5 · `fillWallRects` 윤곽 사각형) · 발 끝이 윤곽 안인 칸은 걷는 칸 아님(`isWalkable`) | ✅ | **261** — `RegionFieldScene.synthesizePoiBuildings · assignUnitDoors · planLegacyBuildings` · `SeamlessChunks.unitNear · unitById · setUnitDoors` · `BuildingArt.doorPointsOf` — 자리 없음 6 · 크기 표 조율 ⬜ |
 | **건물 실내 1단계** — 가게 · 먹는 곳 · 낚시점 · 보건소 · 위판장 홀(필드 위 겹층 `scenes/field/InteriorSystem.ts` · 배치 `data/InteriorLayouts.ts` · 그림 `ui/InteriorArt.ts`) · 문 앞 [F] 들어가기 · 매트로 나가기 | ✅ | **215** · 2단계 인물 집 6곳 ✅ **216** — 3단계 아파트 ⬜ |
+| **위키 지도 탭 캡처(264)** — 게임 렌더러로 심리스 14 + 홈타운을 통째로(`tools/capture_wiki_maps.cjs` — 청크 3×3 블록 · 타일당 8px · 4,096 WebP) · 미니맵 정보 핀 · 조행록 연동 — 검수용 조감도 | ✅ | **264** — [위키 지도 탭](discovery-wiki.md) |
 
 ## 5. 잔여·차기
 
@@ -168,6 +169,8 @@
 - POI 상호작용·사운드는 콘텐츠 확장 단계에서. 상세 미결은 스펙 §13-5.
 
 ## 6. 함정·불변조건
+
+- **지도를 통째로 찍을 때(264)** — 청크는 플레이어 중심 3×3만 상주한다. `chunks.update`를 하네스가 쥐고(`__force`일 때만 원래 갱신) 블록마다 `preloadAround`만 부르면 화면 3,072px 안이 다 구워진다. 카메라 bounds는 떼야 가장자리 블록 중심을 잡을 수 있다.
 
 - **구역 노드를 더하면 지역이 열리는 게 아니다(263)** — 월드맵은 `isRegionOpenAtChapter`(노드 + `STORY_CHAPTERS.regionIds`의 여는 장)를 본다. 새 지역을 추가할 때 장 데이터에 지역 id가 있어야 한다(없으면 처음부터 열림).
 - **bbox를 바꾸면 그 데이터 지역의 모든 칸 좌표가 바뀐다**(263 감천) — 구역 스폰은 위도 · 경도(`spawnLatLon`)라 그대로지만, 인물 배치 · 트리거 · 장소의 `tx/ty`는 다시 잰다(감천은 bbox 확장 뒤에 배치했다).

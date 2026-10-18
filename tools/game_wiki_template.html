@@ -307,6 +307,56 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .mbar div.hi{background:#dfe9d2; border-top-color:#4a7a2a}
 .mbar div.lo{background:#f1dcd6; border-top-color:#b2452f}
 .mlab{display:grid; grid-template-columns:repeat(12,1fr); gap:3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted); text-align:center}
+/* ── 지도 탭 (264차) ─────────────────────── */
+.mapbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px}
+.mapbar select,.mapbar input{font:inherit; font-size:13px; padding:7px 9px; background:var(--raised); color:var(--ink);
+  border:1px solid var(--rule); border-radius:4px}
+.mapbar input{flex:1 1 180px; min-width:140px}
+.mapbar .mbtn{font:inherit; font-size:12.5px; padding:6px 10px; border:1px solid var(--rule); border-radius:4px;
+  background:var(--raised); color:var(--ink2); cursor:pointer; font-family:'IBM Plex Mono',monospace}
+.mapbar .mbtn:hover{background:var(--sea-soft)}
+.maplayers{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
+.maplayers .chip{padding:4px 10px; font-size:12px; border-radius:4px}
+.maplayers .chip img{width:14px; height:14px; image-rendering:pixelated; vertical-align:-2px}
+.maprow{display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:14px; margin-top:12px; align-items:start}
+@media (max-width:960px){ .maprow{grid-template-columns:minmax(0,1fr)} }
+.mapview{position:relative; height:clamp(380px,68vh,780px); background:#0a0e14; border:1px solid var(--rule); border-radius:6px; overflow:hidden}
+@media (max-width:960px){ .mapview{height:clamp(320px,58vh,560px)} }
+.mapview canvas{display:block; width:100%; height:100%; cursor:grab; touch-action:none; outline:none}
+.mapview canvas:focus-visible{box-shadow:inset 0 0 0 2px var(--sea)}
+.mapview canvas.drag{cursor:grabbing}
+.mapstat{position:absolute; left:0; right:0; bottom:0; padding:4px 10px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+  color:#dfe6ee; background:rgba(10,14,20,.72); display:flex; gap:14px; flex-wrap:wrap; pointer-events:none}
+.maptip{position:absolute; pointer-events:none; background:rgba(10,14,20,.9); color:#f1f3f6; font-size:12px; padding:5px 8px;
+  border-radius:4px; border:1px solid rgba(255,255,255,.18); max-width:260px; display:none; z-index:3}
+.maptip b{display:block; font-size:12.5px}
+.maptip span{color:#b9c3cf; font-size:11.5px}
+.mapres{position:absolute; left:0; right:0; top:100%; z-index:30; background:var(--card); border:1px solid var(--rule); border-radius:0 0 6px 6px;
+  max-height:300px; overflow:auto; box-shadow:var(--shadow); display:none}
+.mapres button{display:flex; gap:8px; align-items:baseline; width:100%; text-align:left; font:inherit; font-size:13px; padding:7px 10px;
+  background:none; border:0; border-bottom:1px solid var(--rule-soft); color:var(--ink); cursor:pointer}
+.mapres button:hover{background:var(--sea-soft)}
+.mapres button .k{font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace; flex:0 0 auto}
+.mapres button .t{font-size:11px; color:var(--muted); margin-left:auto; font-family:'IBM Plex Mono',monospace; flex:0 0 auto}
+.mapsearch{position:relative; flex:1 1 220px; min-width:160px}
+.mapsearch input{width:100%}
+.mapside{background:var(--card); border:1px solid var(--rule); border-radius:6px; padding:14px 16px 18px; max-height:clamp(380px,68vh,780px); overflow:auto}
+@media (max-width:960px){ .mapside{max-height:46vh} }
+.mapside h2{font-size:19px; padding-right:4px}
+.mapside h3{font-size:14px; border-bottom:1px solid var(--rule); padding-bottom:4px; margin:16px 0 8px}
+.mapside .sci{font-size:12px; color:var(--muted); margin-top:3px}
+.mapside .kv th{width:84px}
+.mapside .kv{font-size:13px}
+.mapside ul.ml{list-style:none; margin:0; padding:0}
+.mapside ul.ml li{padding:4px 0; border-bottom:1px solid var(--rule-soft); font-size:13px; display:flex; gap:8px; align-items:baseline}
+.mapside ul.ml li .mono{font-size:11px; color:var(--muted); flex:0 0 auto}
+.mapside ul.ml li img{width:14px; height:14px; image-rendering:pixelated; vertical-align:-2px; flex:0 0 auto; align-self:center}
+.mapside .back{font:inherit; font-size:12px; color:var(--sea); background:none; border:0; padding:0; cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px}
+.mapside .legend{display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; font-size:12px; color:var(--ink2)}
+.mapside .legend img{width:14px; height:14px; image-rendering:pixelated; vertical-align:-2px; margin-right:5px}
+.mapside .legend i{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; border:1px solid rgba(0,0,0,.5)}
+.doc .maplinks{display:flex; flex-wrap:wrap; gap:6px 12px; margin:6px 0 0; padding:0; list-style:none}
+.doc .maplinks li{font-size:13.5px}
 .hidden{display:none}
 </style>
 
@@ -331,6 +381,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <button data-tab="farming" aria-pressed="false">농사</button>
     <button data-tab="skills" aria-pressed="false">스킬</button>
     <button data-tab="regions" aria-pressed="false">출조 지역</button>
+    <button data-tab="maps" aria-pressed="false" id="tabmaps">지도</button>
     <button data-tab="tide" aria-pressed="false">물때 공략</button>
     <button data-tab="titles" aria-pressed="false">타이틀·업적</button>
     <button data-tab="systems" aria-pressed="false">시스템</button>
@@ -358,6 +409,27 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <p class="gnote" id="gnote"></p>
     <p class="count" id="ccount"></p>
     <div class="grid" id="grid"></div>
+  </div>
+
+  <div id="tab-maps" class="hidden">
+    <div class="mapbar">
+      <select id="mapsel" aria-label="지도 고르기"></select>
+      <div class="mapsearch"><input type="search" id="mapq" placeholder="가게 · 인물 · 장소 이름으로 찾기" aria-label="지도에서 찾기" autocomplete="off"><div class="mapres" id="mapres"></div></div>
+      <button class="mbtn" id="mapfit" title="지도 전체가 보이게">맞춤</button>
+      <button class="mbtn" id="mapzo" title="축소">−</button>
+      <button class="mbtn" id="mapzi" title="확대">+</button>
+    </div>
+    <div class="maplayers" id="maplayers" role="group" aria-label="표시할 것"></div>
+    <p class="gnote">게임이 실제로 그리는 탑다운 화면을 지역마다 통째로 찍은 지도입니다(정오 · 맑음 · 사람과 차는 뺌). 휠이나 두 손가락으로 확대하고 끌어서 옮깁니다.
+      핀을 누르면 오른쪽에 상세가 열리고, 미니맵에 찍히는 가게 · 장소 · 등대 · 어장 · 이야기 인물 · 현장 · 내리는 자리를 전부 얹었습니다. 칸 좌표는 게임 안 타일과 같습니다.</p>
+    <div class="maprow">
+      <div class="mapview" id="mapview">
+        <canvas id="mapcv" tabindex="0" aria-label="지역 지도"></canvas>
+        <div class="maptip" id="maptip"></div>
+        <div class="mapstat" id="mapstat"></div>
+      </div>
+      <aside class="mapside" id="mapside" aria-label="지도 상세"></aside>
+    </div>
   </div>
 
   <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="상세">
@@ -538,9 +610,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     const infobox = '<aside class="infobox"><h4>퀘스트 정보 개요</h4><table><tbody>' +
       '<tr><th>유형</th><td><span class="pill ' + (q.kind === 'main' ? 'main' : 'sub') + '">' +
         kindLabel + '</span>' + (q.arcTitle ? esc(q.arcTitle.split(' — ')[0]) : '') + '</td></tr>' +
-      '<tr><th>위치</th><td>' + esc(q.regionName) + '</td></tr>' +
+      '<tr><th>위치</th><td>' + mapRegionLink(q.region, q.regionName, q.giver) + '</td></tr>' +
       '<tr><th>의뢰인</th><td>' + (solo ? '<span class="note">없음 — 스스로 정하는 할 일</span>'
-        : esc(q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
+        : mapNpcLink(q.giver, q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
       '<tr><th>요구 레벨</th><td class="mono">Lv. ' + q.lv + '</td></tr>' +
       '<tr><th>클리어 난이도</th><td><span class="dif d-' + q.diff.tier + '">' + esc(q.diff.label) + '</span>' +
         (q.diff.acts.length ? '<br><span class="note">' + esc(q.diff.acts.join(' · ')) + '</span>'
@@ -566,6 +638,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (q.obj.some((o, i) => D.scenes && D.scenes[q.id + '#' + i])) secs.push(['장면', 's-scene']);
     secs.push(['보상', 's-rw'], ['안내', 's-guide']);
     if (q.nar && (q.nar.intro || q.nar.epi)) secs.push(['참고', 's-note']);
+    if (questMapLinks(q).length) secs.push(['지도', 's-map']);
     secs.push(['여담', 's-misc']);
     h += '<nav class="toc"><strong>목차</strong><ol>' +
       secs.map(s => '<li><a href="#' + s[1] + '">' + s[0] + '</a></li>').join('') + '</ol></nav>';
@@ -725,6 +798,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       h += '</section>';
     }
 
+    // 6b 지도 (264차) — 이 할 일과 이어진 자리들(의뢰인 · 상대 인물 · 장소 · 현장)을 지도 탭에서 연다
+    const mlinks = questMapLinks(q);
+    if (mlinks.length){
+      h += '<section class="sec" id="s-map"><h2>지도</h2><p class="note">지도 탭에서 그 자리를 가운데에 놓고 엽니다. 칸 좌표는 게임 안 타일과 같습니다.</p><ul class="maplinks">' +
+        mlinks.map(l => '<li><a class="xl" data-map="' + esc(l.path) + '" href="#' + esc(l.path) + '">' + esc(l.label) + '</a>' +
+          (l.note ? ' <span class="note">' + esc(l.note) + '</span>' : '') + '</li>').join('') + '</ul></section>';
+    }
+
     // 7 여담
     h += '<section class="sec" id="s-misc"><h2>여담</h2><ul>';
     if (q.arcTitle) h += '<li>이 할 일은 「' + esc(q.arcTitle) + '」 이야기의 한 편입니다.</li>';
@@ -770,7 +851,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   });
   document.getElementById('doc').addEventListener('click', e => {
     const a = e.target.closest('a[data-id]');
-    if (a){ e.preventDefault(); go(a.dataset.id); }
+    if (a){ e.preventDefault(); go(a.dataset.id); return; }
+    const ml = e.target.closest('a[data-map]');   // 264차 — 조행록 → 지도 탭
+    if (ml){ e.preventDefault(); openMapPath(ml.dataset.map); }
   });
   document.getElementById('q').addEventListener('input', e => { term = e.target.value.trim(); renderIndex(); });
   jump.addEventListener('change', e => {
@@ -789,17 +872,488 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   }
   window.addEventListener('hashchange', () => {
     const id = location.hash.replace('#', '');
+    if (id.startsWith('map/')) { if (id !== mapCurrentPath()) openMapPath(id); return; }   // 264차
     if (byId[id] && id !== current) go(id);
   });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 지도 탭 (264차) — 게임 렌더러로 찍은 지역 지도(타일당 8px 시트 + 2px 축소판) 위에
+  //   미니맵 정보(가게 · 장소 · 등대 · 어장 · 이야기 인물 · 현장 · 이야기 장소 · 내리는 자리 · 집 설치물)를 얹는 확대/축소 뷰어.
+  //   해시 `#map/<지도>[/npc/<id>|/poi/<번호>|/trig/<id>|/place/<키>|/area/<id>|/light/<번호>|/home/<id>|/t/<x>,<y>]`로 자리를 연다.
+  // ══════════════════════════════════════════════════════════════════════════
+  const MAPS = G.maps || { px: 8, list: [], icons: [], legend: [], npcAt: {}, placeAt: {}, triggersByQuest: {}, regionMaps: {} };
+  const mapById = Object.fromEntries(MAPS.list.map(m => [m.id, m]));
+  if (!MAPS.list.length) { const tb = document.getElementById('tabmaps'); if (tb) tb.remove(); }
+  const ICON_IMG = {};
+  for (const ic of MAPS.icons) { const im = new Image(); im.src = (G.inl && G.inl[ic.img]) ? G.inl[ic.img] : 'img/' + ic.img; ICON_IMG[ic.id] = im; }
+  const iconTag = id => ICON_IMG[id] ? '<img src="' + ICON_IMG[id].src + '" alt="">' : '';
+  const LAYERS = [['shop', '가게'], ['place', '장소'], ['light', '등대'], ['farm', '어장'], ['npc', '인물'], ['trig', '현장'], ['spot', '이야기 장소'],
+    ['area', '내리는 자리'], ['home', '집 설치물'], ['label', '이름'], ['grid', '격자']];
+  const LAYER_ICON = { shop: 'mm_market', place: 'mm_poi', npc: 'mm_npc' };
+  const MV = { map: null, zoom: 1, cx: 0, cy: 0, sel: null, hover: null, pin: null, marks: [], imgs: new Map(), inited: false, w: 0, h: 0, dpr: 1,
+    drag: null, pinch: null, raf: 0, on: { shop: true, place: true, light: true, farm: true, npc: true, trig: true, spot: true, area: true, home: true, label: true, grid: false } };
+  const KIND_KO = { npc: '인물', poi: '가게 · 장소', trig: '현장', place: '이야기 장소', area: '내리는 자리', light: '항로표지', home: '설치물', t: '칸' };
+  const tileC = (m, t) => (t + 0.5) * m.px;
+  const qlink = q => '<a class="xl" data-open="quests:' + esc(q.id) + '" href="#' + esc(q.id) + '">' + esc(q.title) + '</a>' +
+    '<span class="mono"> ' + q.chapter + '장 · ' + (q.kind === 'main' ? '본 줄기' : '곁가지') + '</span>';
+
+  function mapEl(id){ return document.getElementById(id); }
+  function getImg(f){
+    const c = MV.imgs.get(f);
+    if (c) return c.ok ? c.img : null;
+    const img = new Image();
+    const e = { img, ok: false };
+    MV.imgs.set(f, e);
+    img.onload = () => { e.ok = true; mapQueue(); };
+    img.onerror = () => { e.err = true; mapQueue(); };   // 못 받은 시트도 상태줄을 다시 쓴다
+    img.src = f;
+    return null;
+  }
+  function mapQueue(){ if (MV.raf) return; MV.raf = requestAnimationFrame(() => { MV.raf = 0; mapDraw(); }); }
+  function mapResize(){
+    const view = mapEl('mapview'), cv = mapEl('mapcv');
+    const w = view.clientWidth, h = view.clientHeight;
+    if (!w || !h) return;
+    MV.dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (MV.w !== w || MV.h !== h) { MV.w = w; MV.h = h; cv.width = Math.round(w * MV.dpr); cv.height = Math.round(h * MV.dpr); }
+    MV.ctx = cv.getContext('2d');
+  }
+  function mapInit(){
+    if (MV.inited) return;
+    MV.inited = true;
+    const sel = mapEl('mapsel');
+    const groups = new Map();
+    for (const m of MAPS.list) { if (!groups.has(m.regionName)) groups.set(m.regionName, []); groups.get(m.regionName).push(m); }
+    sel.innerHTML = [...groups].map(([rn, ms]) => '<optgroup label="' + esc(rn) + (ms[0].chapter ? ' · ' + ms[0].chapter + '장' : '') + '">' +
+      ms.map(m => '<option value="' + esc(m.id) + '">' + esc(m.name) + ' — ' + m.cols + '×' + m.rows + '칸</option>').join('') + '</optgroup>').join('');
+    sel.addEventListener('change', () => openMapPath('map/' + sel.value));
+    mapEl('maplayers').innerHTML = LAYERS.map(([id, label]) => '<button class="chip" data-l="' + id + '" aria-pressed="' + MV.on[id] + '">' +
+      (LAYER_ICON[id] ? iconTag(LAYER_ICON[id]) : '') + esc(label) + '</button>').join('');
+    mapEl('maplayers').addEventListener('click', e => {
+      const b = e.target.closest('[data-l]'); if (!b) return;
+      MV.on[b.dataset.l] = !MV.on[b.dataset.l]; b.setAttribute('aria-pressed', String(MV.on[b.dataset.l])); mapQueue();
+    });
+    mapEl('mapfit').addEventListener('click', () => { mapFit(); mapQueue(); });
+    mapEl('mapzi').addEventListener('click', () => zoomBy(1.5, MV.w / 2, MV.h / 2));
+    mapEl('mapzo').addEventListener('click', () => zoomBy(1 / 1.5, MV.w / 2, MV.h / 2));
+    const cv = mapEl('mapcv');
+    cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomBy(Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    const ptrs = new Map();
+    cv.addEventListener('pointerdown', e => {
+      cv.setPointerCapture(e.pointerId); cv.focus({ preventScroll: true });
+      const r = cv.getBoundingClientRect();
+      ptrs.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+      if (ptrs.size === 1) MV.drag = { x: e.clientX, y: e.clientY, cx: MV.cx, cy: MV.cy, moved: false };
+      else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; MV.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: MV.zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, cx: MV.cx, cy: MV.cy }; MV.drag = null; }
+    });
+    cv.addEventListener('pointermove', e => {
+      const r = cv.getBoundingClientRect(); const px = e.clientX - r.left, py = e.clientY - r.top;
+      if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: px, y: py });
+      if (MV.pinch && ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+        const z = clampZoom(MV.pinch.zoom * d / Math.max(1, MV.pinch.d));
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        // 핀치 가운데가 같은 지도점에 머물도록
+        const wx = MV.pinch.cx + (MV.pinch.mx - MV.w / 2) / MV.pinch.zoom, wy = MV.pinch.cy + (MV.pinch.my - MV.h / 2) / MV.pinch.zoom;
+        MV.zoom = z; MV.cx = wx - (mx - MV.w / 2) / z; MV.cy = wy - (my - MV.h / 2) / z; mapQueue(); return;
+      }
+      if (MV.drag) {
+        const dx = e.clientX - MV.drag.x, dy = e.clientY - MV.drag.y;
+        if (!MV.drag.moved && Math.hypot(dx, dy) > 4) { MV.drag.moved = true; cv.classList.add('drag'); mapTip(null); }
+        if (MV.drag.moved) { MV.cx = MV.drag.cx - dx / MV.zoom; MV.cy = MV.drag.cy - dy / MV.zoom; mapQueue(); }
+        return;
+      }
+      const hit = hitMark(px, py);
+      if (hit !== MV.hover) { MV.hover = hit; mapQueue(); }
+      mapTip(hit, px, py);
+      mapStat(px, py);
+    });
+    const up = e => {
+      ptrs.delete(e.pointerId);
+      if (MV.pinch && ptrs.size < 2) MV.pinch = null;
+      if (MV.drag && !MV.drag.moved && e.type === 'pointerup') {
+        const r = cv.getBoundingClientRect(); const hit = hitMark(e.clientX - r.left, e.clientY - r.top);
+        if (hit) mapSelect(hit, false); else if (MV.sel) { MV.sel = null; mapSide(); mapHash(); mapQueue(); }
+      }
+      MV.drag = null; cv.classList.remove('drag');
+    };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('pointerleave', () => { mapTip(null); MV.hover = null; mapQueue(); });
+    cv.addEventListener('dblclick', e => { const r = cv.getBoundingClientRect(); zoomBy(2, e.clientX - r.left, e.clientY - r.top); });
+    cv.addEventListener('keydown', e => {
+      const step = 60 / MV.zoom;
+      if (e.key === '+' || e.key === '=') zoomBy(1.5, MV.w / 2, MV.h / 2);
+      else if (e.key === '-') zoomBy(1 / 1.5, MV.w / 2, MV.h / 2);
+      else if (e.key === 'ArrowLeft') { MV.cx -= step; mapQueue(); } else if (e.key === 'ArrowRight') { MV.cx += step; mapQueue(); }
+      else if (e.key === 'ArrowUp') { MV.cy -= step; mapQueue(); } else if (e.key === 'ArrowDown') { MV.cy += step; mapQueue(); }
+      else if (e.key === 'Escape') { MV.sel = null; mapSide(); mapHash(); mapQueue(); }
+      else return;
+      e.preventDefault();
+    });
+    // 검색
+    const q = mapEl('mapq'), res = mapEl('mapres');
+    q.addEventListener('input', () => mapSearch(q.value.trim()));
+    q.addEventListener('focus', () => mapSearch(q.value.trim()));
+    document.addEventListener('click', e => { if (!e.target.closest('.mapsearch')) res.style.display = 'none'; });
+    res.addEventListener('click', e => {
+      const b = e.target.closest('[data-k]'); if (!b) return;
+      res.style.display = 'none';
+      const mk = { kind: b.dataset.k, id: b.dataset.i };
+      const s = resolveTarget(MV.map, mk); if (s) mapSelect(s, true);
+    });
+    mapEl('mapside').addEventListener('click', e => {
+      const a = e.target.closest('a.xl[data-open]');
+      if (a) { e.preventDefault(); const [t, ...rest] = a.dataset.open.split(':'); openByKey(t, rest.join(':')); return; }
+      const ml = e.target.closest('[data-map]');
+      if (ml) { e.preventDefault(); openMapPath(ml.dataset.map); return; }
+      const bk = e.target.closest('[data-back]');
+      if (bk) { MV.sel = null; mapSide(); mapHash(); mapQueue(); }
+    });
+    if (window.ResizeObserver) new ResizeObserver(() => { mapResize(); mapQueue(); }).observe(mapEl('mapview'));
+    else window.addEventListener('resize', () => { mapResize(); mapQueue(); });
+  }
+  function mapShow(){
+    mapInit();
+    mapResize();
+    if (!MV.map && MAPS.list.length) { MV.map = MAPS.list[0]; mapEl('mapsel').value = MV.map.id; mapFit(); mapSide(); }
+    mapQueue();
+  }
+  function clampZoom(z){ const m = MV.map; const fit = fitZoom(); return Math.max(fit * 0.5, Math.min(64 / m.px, z)); }
+  function fitZoom(){ const m = MV.map; return Math.min(MV.w / m.width, MV.h / m.height) * 0.97; }
+  function mapFit(){ const m = MV.map; if (!m || !MV.w) return; MV.zoom = fitZoom(); MV.cx = m.width / 2; MV.cy = m.height / 2; }
+  function zoomBy(f, sx, sy){
+    const z0 = MV.zoom, z1 = clampZoom(z0 * f);
+    const wx = MV.cx + (sx - MV.w / 2) / z0, wy = MV.cy + (sy - MV.h / 2) / z0;
+    MV.zoom = z1; MV.cx = wx - (sx - MV.w / 2) / z1; MV.cy = wy - (sy - MV.h / 2) / z1; mapQueue();
+  }
+  function centerOn(x, y, minPpt){
+    MV.cx = x; MV.cy = y;
+    if (minPpt && MV.zoom * MV.map.px < minPpt) MV.zoom = clampZoom(minPpt / MV.map.px);
+  }
+
+  // ── 마커 목록(지금 배율에서 보이는 것) ──
+  function buildMarks(m, z){
+    const ppt = z * m.px; const out = [];
+    const add = (o) => out.push(o);
+    if (MV.on.shop || MV.on.place) for (const p of m.pois) {
+      if (!p.icon) continue;
+      const isShop = !!p.kind;
+      if (isShop ? !MV.on.shop : !MV.on.place) continue;
+      const goods = isShop && p.kind !== 'restaurant' && p.kind !== 'cafe' && p.kind !== 'pub';
+      add({ kind: 'poi', id: String(p.i), ref: p, x: tileC(m, p.tx), y: tileC(m, p.ty), icon: p.icon, pri: isShop ? (goods ? 1 : 0) : 0, label: p.name || p.kindKo || p.placeKo, sub: isShop ? p.kindKo : (p.placeKo || p.typeKo) });
+    }
+    if (MV.on.light) m.lights.forEach((l, i) => add({ kind: 'light', id: String(i), ref: l, x: tileC(m, l.tx), y: tileC(m, l.ty), pri: 2, label: l.name || '항로표지', sub: (l.major ? '등대' : '방파제등') + (l.colour ? ' · ' + l.colour : '') }));
+    if (MV.on.npc) for (const n of m.npcs) add({ kind: 'npc', id: n.id, ref: n, x: tileC(m, n.tx), y: tileC(m, n.ty), icon: 'mm_npc', pri: 3, label: n.name, sub: n.role });
+    if (MV.on.trig) for (const t of m.triggers) add({ kind: 'trig', id: t.id, ref: t, x: tileC(m, t.tx), y: tileC(m, t.ty), pri: 3, label: t.label, sub: t.questTitle + ' · ' + t.phase + '단계' });
+    if (MV.on.spot) for (const p of m.places) add({ kind: 'place', id: p.key, ref: p, x: tileC(m, p.tx), y: tileC(m, p.ty), pri: 3, label: p.label, sub: '이야기 장소 · 반경 ' + p.r + '칸' });
+    if (MV.on.area) for (const a of m.areas) if (a.tx !== undefined) add({ kind: 'area', id: a.id, ref: a, x: tileC(m, a.tx), y: tileC(m, a.ty), pri: 3, label: a.name, sub: '내리는 자리' + (a.own ? '' : ' (지역 기본)') });
+    if (MV.on.home) for (const o of m.home) add({ kind: 'home', id: o.id, ref: o, x: (o.tx + o.fw / 2) * m.px, y: (o.ty + o.fh / 2) * m.px, pri: 2, label: o.label, sub: '칸 ' + o.tx + ',' + o.ty });
+    if (MV.pin) add({ kind: 't', id: MV.pin.tx + ',' + MV.pin.ty, ref: MV.pin, x: tileC(m, MV.pin.tx), y: tileC(m, MV.pin.ty), pri: 4, label: '칸 ' + MV.pin.tx + ',' + MV.pin.ty, sub: '' });
+    // 솎기 — 축소하면 셀마다 우선순위 높은 하나만(게임 미니맵과 같은 규칙). 고른 것은 늘 남긴다
+    const cell = ppt < 1.5 ? 22 : ppt < 4 ? 14 : 0;
+    if (!cell) return out;
+    const taken = new Map(); const kept = [];
+    out.sort((a, b) => b.pri - a.pri);
+    for (const mk of out) {
+      const sel = MV.sel && MV.sel.kind === mk.kind && MV.sel.id === mk.id;
+      if (!sel && ppt < 1.5 && mk.pri < 1) continue;
+      const k = Math.floor(mk.x * z / cell) + ':' + Math.floor(mk.y * z / cell);
+      if (!sel && taken.has(k)) continue;
+      taken.set(k, mk); kept.push(mk);
+    }
+    return kept;
+  }
+  function hitMark(px, py){
+    const z = MV.zoom, ox = MV.w / 2 - MV.cx * z, oy = MV.h / 2 - MV.cy * z;
+    let best = null, bd = 12;
+    for (const mk of MV.marks) { const d = Math.hypot(ox + mk.x * z - px, oy + mk.y * z - py); if (d < bd || (d === bd && best && mk.pri > best.pri)) { bd = d; best = mk; } }
+    return best;
+  }
+  function labelText(ctx, text, x, y, size){
+    ctx.font = '600 ' + size + 'px "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.strokeText(text, x, y);
+    ctx.fillStyle = '#111'; ctx.fillText(text, x, y);
+  }
+  function drawMark(ctx, mk, ox, oy, z, ppt){
+    const x = ox + mk.x * z, y = oy + mk.y * z;
+    const big = ppt >= 8;
+    const selected = MV.sel && MV.sel.kind === mk.kind && MV.sel.id === mk.id;
+    const hovered = MV.hover === mk;
+    if (mk.kind === 'poi' || mk.kind === 'npc') {
+      const sz = big ? 20 : 16; const im = ICON_IMG[mk.icon];
+      ctx.fillStyle = mk.kind === 'npc' ? 'rgba(255,230,120,.55)' : 'rgba(10,14,20,.45)'; ctx.beginPath(); ctx.arc(x, y, sz / 2 + 2, 0, Math.PI * 2); ctx.fill();
+      if (im && im.complete && im.naturalWidth) { ctx.imageSmoothingEnabled = false; ctx.drawImage(im, Math.round(x - sz / 2), Math.round(y - sz / 2), sz, sz); }
+      else { ctx.fillStyle = '#5cd0ff'; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); }
+    } else if (mk.kind === 'trig') {
+      ctx.fillStyle = '#ffd257'; ctx.strokeStyle = '#5a3d00'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, big ? 8 : 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3a2600'; ctx.font = 'bold 9px "IBM Plex Mono",monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(mk.ref.phase), x, y + 0.5);
+    } else if (mk.kind === 'place') {
+      const r = mk.ref.r * ppt; if (r > 6) { ctx.setLineDash([4, 3]); ctx.strokeStyle = 'rgba(92,208,255,.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = '#5cd0ff'; ctx.strokeStyle = '#0a1628'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 7); ctx.lineTo(x - 7, y); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (mk.kind === 'area') {
+      ctx.strokeStyle = '#0a1628'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y - 12); ctx.stroke();
+      ctx.fillStyle = '#ff4040'; ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.lineTo(x + 11, y - 8); ctx.lineTo(x, y - 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#0a1628'; ctx.beginPath(); ctx.arc(x, y + 6, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else if (mk.kind === 'light') {
+      const c = mk.ref.colour === 'red' ? '#ff5a4a' : mk.ref.colour === 'green' ? '#4fd86b' : '#ffffff';
+      const r = mk.ref.major ? 7 : 5;
+      ctx.fillStyle = c; ctx.strokeStyle = '#0a1628'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      if (mk.ref.major) { ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * (r + 2), y + Math.sin(a) * (r + 2)); ctx.lineTo(x + Math.cos(a) * (r + 6), y + Math.sin(a) * (r + 6)); ctx.stroke(); } }
+    } else if (mk.kind === 'home') {
+      const w = Math.max(10, mk.ref.fw * ppt), h = Math.max(10, mk.ref.fh * ppt);
+      ctx.strokeStyle = '#ffe9a0'; ctx.lineWidth = 1.5; ctx.strokeRect(x - w / 2, y - h / 2, w, h);
+      ctx.fillStyle = 'rgba(255,233,160,.18)'; ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    } else if (mk.kind === 't') {
+      ctx.strokeStyle = '#ff4040'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9); ctx.stroke();
+    }
+    if (selected || hovered) {
+      ctx.strokeStyle = selected ? '#ffd257' : 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, (big ? 13 : 11) + (selected ? 2 : 0), 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#5a3d00'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, (big ? 13 : 11) + (selected ? 4 : 2), 0, Math.PI * 2); ctx.stroke();
+    }
+    const showLabel = MV.on.label && (selected || hovered || (mk.kind === 'poi' ? ppt >= 10 : ppt >= 4));
+    if (showLabel && mk.label) labelText(ctx, mk.label, x, y + (big ? 13 : 10), mk.kind === 'poi' ? 10.5 : 11.5);
+  }
+  function mapDraw(){
+    if (!MV.inited || !MV.map || !MV.ctx || !MV.w) return;
+    const m = MV.map, ctx = MV.ctx, w = MV.w, h = MV.h, z = MV.zoom;
+    ctx.setTransform(MV.dpr, 0, 0, MV.dpr, 0, 0);
+    ctx.fillStyle = '#0a0e14'; ctx.fillRect(0, 0, w, h);
+    const ox = w / 2 - MV.cx * z, oy = h / 2 - MV.cy * z, ppt = z * m.px;
+    ctx.imageSmoothingEnabled = z < 1; ctx.imageSmoothingQuality = 'high';
+    const ov = getImg(m.overview.f), sOv = m.px / m.overview.px;
+    if (ov) ctx.drawImage(ov, ox, oy, m.overview.w * sOv * z, m.overview.h * sOv * z);
+    let waiting = 0;
+    if (ppt >= 3) for (const sh of m.sheets) {
+      const sx = ox + sh.x * z, sy = oy + sh.y * z, sw = sh.w * z, shh = sh.h * z;
+      if (sx > w || sy > h || sx + sw < 0 || sy + shh < 0) continue;
+      const im = getImg(sh.f); if (im) ctx.drawImage(im, sx, sy, sw, shh); else if (!(MV.imgs.get(sh.f) || {}).err) waiting++;   // 못 받은 시트(없는 파일)는 기다리지 않는다
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1; ctx.strokeRect(Math.round(ox) + .5, Math.round(oy) + .5, Math.round(m.width * z), Math.round(m.height * z));
+    if (MV.on.grid && ppt >= 10) {
+      const c0 = Math.max(0, Math.floor(-ox / ppt)), c1 = Math.min(m.cols, Math.ceil((w - ox) / ppt));
+      const r0 = Math.max(0, Math.floor(-oy / ppt)), r1 = Math.min(m.rows, Math.ceil((h - oy) / ppt));
+      for (let c = c0; c <= c1; c++) { ctx.strokeStyle = c % 10 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(Math.round(ox + c * ppt) + .5, oy + r0 * ppt); ctx.lineTo(Math.round(ox + c * ppt) + .5, oy + r1 * ppt); ctx.stroke(); }
+      for (let r = r0; r <= r1; r++) { ctx.strokeStyle = r % 10 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.moveTo(ox + c0 * ppt, Math.round(oy + r * ppt) + .5); ctx.lineTo(ox + c1 * ppt, Math.round(oy + r * ppt) + .5); ctx.stroke(); }
+      if (ppt >= 24) { ctx.font = '10px "IBM Plex Mono",monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top'; for (let c = Math.ceil(c0 / 10) * 10; c < c1; c += 10) for (let r = Math.ceil(r0 / 10) * 10; r < r1; r += 10) { ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText(c + ',' + r, ox + c * ppt + 2, oy + r * ppt + 2); } }
+    }
+    if (MV.on.farm && m.farms.length) {
+      // 어장 폴리곤은 bbox 밖으로 이어진 것도 있다 — 지도 사각형 안만 그린다
+      ctx.save(); ctx.beginPath(); ctx.rect(ox, oy, m.width * z, m.height * z); ctx.clip();
+      for (const f of m.farms) for (const ring of f.rings) {
+        ctx.beginPath(); ring.forEach(([px, py], i) => { const sx = ox + px * m.px * z, sy = oy + py * m.px * z; if (i) ctx.lineTo(sx, sy); else ctx.moveTo(sx, sy); }); ctx.closePath();
+        ctx.fillStyle = 'rgba(80,170,255,.22)'; ctx.fill(); ctx.strokeStyle = 'rgba(40,120,220,.95)'; ctx.lineWidth = 1.5; ctx.stroke();
+        if (MV.on.label && ppt >= 2 && ring.length) { const cx = ring.reduce((a, p) => a + p[0], 0) / ring.length, cy = ring.reduce((a, p) => a + p[1], 0) / ring.length; labelText(ctx, (f.name || '어장') + (f.kind ? ' · ' + f.kind : ''), ox + cx * m.px * z, oy + cy * m.px * z - 6, 11); }
+      }
+      ctx.restore();
+    }
+    // 고른 인물의 집 — 점선으로 잇는다
+    if (MV.sel && MV.sel.kind === 'npc' && MV.sel.ref.home && MV.on.npc) {
+      const hm = MV.sel.ref.home; const hx = ox + tileC(m, hm.tx) * z, hy = oy + tileC(m, hm.ty) * z, nx = ox + MV.sel.x * z, ny = oy + MV.sel.y * z;
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(255,233,160,.95)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(hx, hy); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#ffe9a0'; ctx.strokeStyle = '#0a1628'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(hx, hy - 9); ctx.lineTo(hx + 8, hy - 2); ctx.lineTo(hx + 6, hy - 2); ctx.lineTo(hx + 6, hy + 6); ctx.lineTo(hx - 6, hy + 6); ctx.lineTo(hx - 6, hy - 2); ctx.lineTo(hx - 8, hy - 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (MV.on.label) labelText(ctx, hm.label, hx, hy + 9, 11);
+    }
+    MV.marks = buildMarks(m, z);
+    for (const mk of MV.marks) if (!(MV.sel && MV.sel.kind === mk.kind && MV.sel.id === mk.id)) drawMark(ctx, mk, ox, oy, z, ppt);
+    for (const mk of MV.marks) if (MV.sel && MV.sel.kind === mk.kind && MV.sel.id === mk.id) drawMark(ctx, mk, ox, oy, z, ppt);
+    mapStat(null, null, waiting);
+  }
+  let statPx = null;
+  function mapStat(px, py, waiting){
+    const m = MV.map; if (!m) return;
+    if (px !== null && px !== undefined) statPx = { px, py };
+    const z = MV.zoom, ppt = z * m.px;
+    let at = '';
+    if (statPx) { const tx = Math.floor((MV.cx + (statPx.px - MV.w / 2) / z) / m.px), ty = Math.floor((MV.cy + (statPx.py - MV.h / 2) / z) / m.px); if (tx >= 0 && ty >= 0 && tx < m.cols && ty < m.rows) at = '칸 ' + tx + ', ' + ty; }
+    const shown = MV.marks.length;
+    mapEl('mapstat').innerHTML = '<span>' + esc(m.name) + ' · ' + m.cols + '×' + m.rows + '칸' + (m.km ? ' · ' + esc(m.km) : '') + '</span>' +
+      '<span>타일당 ' + (ppt >= 10 ? Math.round(ppt) : ppt.toFixed(1)) + 'px</span>' + (at ? '<span>' + at + '</span>' : '') +
+      '<span>표시 ' + shown + '</span>' + (waiting ? '<span>시트 받는 중 ' + waiting + '</span>' : '');
+  }
+  function mapTip(mk, px, py){
+    const t = mapEl('maptip');
+    if (!mk) { t.style.display = 'none'; return; }
+    t.innerHTML = '<b>' + esc(mk.label) + '</b>' + (mk.sub ? '<span>' + esc(mk.sub) + '</span>' : '');
+    t.style.display = 'block';
+    const right = px > MV.w - 180;
+    t.style.left = right ? '' : (px + 14) + 'px'; t.style.right = right ? (MV.w - px + 14) + 'px' : '';
+    t.style.top = Math.max(4, py - 14) + 'px';
+  }
+  function resolveTarget(m, tg){
+    if (!m || !tg) return null;
+    const mkOf = (kind, id, ref, x, y) => ({ kind, id, ref, x, y });
+    if (tg.kind === 'npc') { const n = m.npcs.find(x => x.id === tg.id); return n ? mkOf('npc', n.id, n, tileC(m, n.tx), tileC(m, n.ty)) : null; }
+    if (tg.kind === 'poi') { const p = m.pois[Number(tg.id)]; return p ? mkOf('poi', String(p.i), p, tileC(m, p.tx), tileC(m, p.ty)) : null; }
+    if (tg.kind === 'trig') { const t = m.triggers.find(x => x.id === tg.id); return t ? mkOf('trig', t.id, t, tileC(m, t.tx), tileC(m, t.ty)) : null; }
+    if (tg.kind === 'place') { const p = m.places.find(x => x.key === tg.id); return p ? mkOf('place', p.key, p, tileC(m, p.tx), tileC(m, p.ty)) : null; }
+    if (tg.kind === 'area') { const a = m.areas.find(x => x.id === tg.id); return a && a.tx !== undefined ? mkOf('area', a.id, a, tileC(m, a.tx), tileC(m, a.ty)) : null; }
+    if (tg.kind === 'light') { const l = m.lights[Number(tg.id)]; return l ? mkOf('light', tg.id, l, tileC(m, l.tx), tileC(m, l.ty)) : null; }
+    if (tg.kind === 'home') { const o = m.home.find(x => x.id === tg.id); return o ? mkOf('home', o.id, o, (o.tx + o.fw / 2) * m.px, (o.ty + o.fh / 2) * m.px) : null; }
+    if (tg.kind === 't') { const [tx, ty] = String(tg.id).split(',').map(Number); if (!Number.isFinite(tx) || !Number.isFinite(ty)) return null; MV.pin = { tx, ty }; return mkOf('t', tx + ',' + ty, MV.pin, tileC(m, tx), tileC(m, ty)); }
+    return null;
+  }
+  function mapSelect(mk, center){
+    MV.sel = { kind: mk.kind, id: mk.id, ref: mk.ref, x: mk.x, y: mk.y };
+    if (center) centerOn(mk.x, mk.y, 8);
+    mapSide(); mapHash(); mapQueue();
+    if (center) mapEl('mapview').scrollIntoView({ block: 'nearest' });
+  }
+  function mapCurrentPath(){
+    if (!MV.map) return '';
+    let p = 'map/' + MV.map.id;
+    if (MV.sel) p += '/' + MV.sel.kind + '/' + encodeURIComponent(MV.sel.id);
+    return p;
+  }
+  function mapHash(){ history.replaceState(null, '', '#' + mapCurrentPath()); }
+  /** `map/<지도>[/<종류>/<id>]` — 탭을 열고 그 자리를 가운데에 놓는다 */
+  function openMapPath(path){
+    const parts = String(path || '').replace(/^#/, '').split('/');
+    if (parts[0] !== 'map') return false;
+    const m = mapById[parts[1]]; if (!m) return false;
+    if (tab !== 'maps') setTab('maps');
+    mapInit(); mapResize();
+    if (MV.map !== m) { MV.map = m; MV.sel = null; MV.hover = null; MV.pin = null; mapEl('mapsel').value = m.id; mapFit(); }
+    const tg = parts[2] ? { kind: parts[2], id: decodeURIComponent(parts.slice(3).join('/')) } : null;
+    const s = tg ? resolveTarget(m, tg) : null;
+    if (s) { MV.sel = s; centerOn(s.x, s.y, 8); } else if (tg) MV.sel = null;
+    mapSide(); mapHash(); mapQueue();
+    mapEl('mapview').scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+  const mkv = pairs => '<table class="kv"><tbody>' + pairs.filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .map(([k, v]) => '<tr><th>' + esc(k) + '</th><td>' + v + '</td></tr>').join('') + '</tbody></table>';
+  const pathOf = (m, kind, id) => 'map/' + m.id + '/' + kind + '/' + encodeURIComponent(id);
+  const mjump = (m, kind, id, text) => '<a class="xl" data-map="' + esc(pathOf(m, kind, id)) + '" href="#' + esc(pathOf(m, kind, id)) + '">' + esc(text) + '</a>';
+  function mapSide(){
+    const m = MV.map, el = mapEl('mapside'); if (!m) { el.innerHTML = ''; return; }
+    const s = MV.sel;
+    if (!s) {
+      const shops = m.pois.filter(p => p.kind).length, places = m.pois.filter(p => !p.kind && p.icon).length;
+      el.innerHTML = '<h2>' + esc(m.name) + '</h2><div class="sci">' + esc(m.regionName) + (m.chapter ? ' · ' + m.chapter + '장부터' : '') + (m.nameEn ? ' · ' + esc(m.nameEn) : '') + '</div>' +
+        mkv([['크기', m.cols + ' × ' + m.rows + '칸' + (m.km ? ' · ' + esc(m.km) : '') + (m.tileM ? ' · 1칸 = ' + m.tileM + 'm' : '')],
+          ['가게 · 장소', shops + ' · ' + places + (m.pois.length ? ' (POI ' + m.pois.length + ')' : '')],
+          ['건물 윤곽', m.buildings || ''], ['항로표지', m.lights.length || ''], ['어장', m.farms.length || ''],
+          ['인물 · 현장', m.npcs.length + ' · ' + m.triggers.length],
+          ['내리는 자리', m.spawn ? '칸 ' + m.spawn.tx + ',' + m.spawn.ty + (m.spawn.name ? ' · ' + esc(m.spawn.name) : '') : '']]) +
+        (m.areas.length ? '<h3>출조 구역</h3><ul class="ml">' + m.areas.map(a => '<li>' + (a.tx !== undefined ? mjump(m, 'area', a.id, a.name) : esc(a.name)) +
+          '<span class="mono">' + (a.tx !== undefined ? a.tx + ',' + a.ty : '') + '</span>' + (a.enterable ? '' : '<span class="mono">준비 중</span>') + '</li>').join('') + '</ul>' : '') +
+        (m.npcs.length ? '<h3>이야기 인물</h3><ul class="ml">' + m.npcs.map(n => '<li>' + iconTag('mm_npc') + mjump(m, 'npc', n.id, n.name) + '<span class="mono">' + n.tx + ',' + n.ty + '</span></li>').join('') + '</ul>' : '') +
+        (m.triggers.length ? '<h3>현장 지점</h3><ul class="ml">' + m.triggers.map(t => '<li>' + mjump(m, 'trig', t.id, t.label) + '<span class="mono">' + esc(t.questId) + ' · ' + t.phase + '단계</span></li>').join('') + '</ul>' : '') +
+        (m.places.length ? '<h3>이야기 장소</h3><ul class="ml">' + m.places.map(p => '<li>' + mjump(m, 'place', p.key, p.label) + '<span class="mono">' + p.tx + ',' + p.ty + '</span></li>').join('') + '</ul>' : '') +
+        (m.home.length ? '<h3>집 설치물</h3><ul class="ml">' + m.home.map(o => '<li>' + mjump(m, 'home', o.id, o.label) + '<span class="mono">' + o.tx + ',' + o.ty + '</span></li>').join('') + '</ul>' +
+          (m.homeCounts ? '<p class="sci">나무 ' + m.homeCounts.tree + ' · 바위 ' + m.homeCounts.rock + '</p>' : '') : '') +
+        '<h3>범례</h3><div class="legend">' + MAPS.legend.map(([ic, lb]) => '<span>' + iconTag(ic) + esc(lb) + '</span>').join('') +
+        '<span><i style="background:#ffd257"></i>현장 지점(숫자 = 단계)</span><span><i style="background:#5cd0ff;border-radius:0;transform:rotate(45deg)"></i>이야기 장소</span>' +
+        '<span><i style="background:#ff4040"></i>내리는 자리(깃발)</span><span><i style="background:#fff"></i>항로표지</span><span><i style="background:rgba(80,170,255,.5)"></i>어장 구역</span></div>' +
+        (m.regionId !== 'hometown' ? '<p class="sci" style="margin-top:12px"><a class="xl" data-open="regions:' + (m.areas[0] ? 'ra-' + esc(m.areas[0].id) : 'rg-' + esc(m.regionId)) + '" href="#">출조 지역 탭에서 보기</a></p>' : '');
+      return;
+    }
+    const back = '<p><button class="back" data-back="1">← 지도 전체 정보</button></p>';
+    const tile = (tx, ty) => '칸 ' + tx + ', ' + ty + ' <span class="mono">(' + Math.round(tx * (m.tileM || 0)) + 'm, ' + Math.round(ty * (m.tileM || 0)) + 'm)</span>'.replace(' <span class="mono">(0m, 0m)</span>', '');
+    if (s.kind === 'npc') {
+      const n = s.ref;
+      el.innerHTML = back + '<h2>' + iconTag('mm_npc') + ' ' + esc(n.name) + '</h2><div class="sci">' + esc(n.role) + (n.nameEn ? ' · ' + esc(n.nameEn) : '') + '</div>' +
+        mkv([['자리', tile(n.tx, n.ty)], ['행동', esc(n.behaviorKo) + ' · ' + esc(n.facing) + '을 본다'], ['일과', esc(n.routine)],
+          ['집', n.home ? mjump(m, 't', n.home.tx + ',' + n.home.ty, n.home.label) + ' <span class="mono">' + n.home.tx + ',' + n.home.ty + '</span>' : '없음 — 늘 밖에 있다'],
+          ['이야기', n.arc ? esc(n.arc) : '']]) +
+        (n.gives.length ? '<h3>맡기는 할 일 ' + n.gives.length + '</h3><ul class="ml">' + n.gives.map(q => '<li>' + qlink(q) + '</li>').join('') + '</ul>' : '') +
+        (n.related.length ? '<h3>상대로 나오는 할 일 ' + n.related.length + '</h3><ul class="ml">' + n.related.map(q => '<li>' + qlink(q) + '</li>').join('') + '</ul>' : '');
+    } else if (s.kind === 'poi') {
+      const p = s.ref;
+      el.innerHTML = back + '<h2>' + (p.icon ? iconTag(p.icon) + ' ' : '') + esc(p.name || p.kindKo || p.placeKo || p.typeKo) + '</h2><div class="sci">' + esc(p.kindKo || p.placeKo || p.typeKo) + (p.nameEn ? ' · ' + esc(p.nameEn) : '') + '</div>' +
+        mkv([['자리', tile(p.tx, p.ty)], ['종류', esc(p.typeKo) + (p.shopKind ? ' · ' + esc(p.shopKind) : '')], ['거래', p.kind ? esc(p.kindKo) + ' — [F]로 들어간다' : '없음 — 지도 핀만'],
+          ['파는 것', p.goods ? esc(p.goods) : ''], ['영업', p.hours ? esc(p.hours) : ''], ['출처', p.capture ? '사용자 지도 캡처' : 'OSM']]) +
+        '<p class="sci" style="margin-top:12px">가게 이름은 실제 상호를 바꾼 게임 상호입니다.</p>';
+    } else if (s.kind === 'trig') {
+      const t = s.ref;
+      el.innerHTML = back + '<h2>' + esc(t.label) + '</h2><div class="sci">현장 지점 · ' + t.phase + '단계</div>' +
+        mkv([['자리', tile(t.tx, t.ty)], ['할 일', qlink({ id: t.questId, title: t.questTitle, chapter: t.chapter, kind: (byId[t.questId] || {}).kind || 'sub' })],
+          ['목표', esc(t.objective)], ['서 있는 사람', t.actor ? esc(t.actor) : ''], ['대화로', t.viaNpc ? esc(((m.npcs.find(n => n.id === t.viaNpc) || {}).name) || t.viaNpc) + '에게 말을 걸어 진행' : ''],
+          ['받는 물건', t.give ? esc(t.give) : ''], ['내려놓는 물건', t.take ? esc(t.take) : '']]);
+    } else if (s.kind === 'place') {
+      const p = s.ref;
+      el.innerHTML = back + '<h2>' + esc(p.label) + '</h2><div class="sci">이야기 장소 · 반경 ' + p.r + '칸</div>' +
+        mkv([['자리', tile(p.tx, p.ty)], ['키', '<span class="mono">' + esc(p.key) + '</span>']]) +
+        (p.quests.length ? '<h3>이 장소에 가는 할 일</h3><ul class="ml">' + p.quests.map(q => '<li>' + qlink(q) + '</li>').join('') + '</ul>' : '');
+    } else if (s.kind === 'area') {
+      const a = s.ref;
+      el.innerHTML = back + '<h2>' + esc(a.name) + '</h2><div class="sci">출조 구역 · 내리는 자리' + (a.nameEn ? ' · ' + esc(a.nameEn) : '') + '</div>' +
+        mkv([['내리는 자리', tile(a.tx, a.ty) + (a.own ? '' : ' <span class="mono">(지역 기본 자리)</span>')], ['수심', a.depth ? esc(a.depth) : ''], ['밑걸림', a.snag ? esc(a.snag) : ''], ['출조', a.enterable ? '가능' : '필드 준비 중']]) +
+        '<p class="sci" style="margin-top:12px"><a class="xl" data-open="regions:ra-' + esc(a.id) + '" href="#">출조 지역 탭에서 이 구역 보기</a></p>';
+    } else if (s.kind === 'light') {
+      const l = s.ref;
+      el.innerHTML = back + '<h2>' + esc(l.name || '항로표지') + '</h2><div class="sci">' + (l.major ? '등대' : '방파제등') + '</div>' +
+        mkv([['자리', tile(l.tx, l.ty)], ['등색', l.colour ? esc(l.colour) : ''], ['종류', esc(l.kind || '')]]);
+    } else if (s.kind === 'home') {
+      const o = s.ref;
+      el.innerHTML = back + '<h2>' + esc(o.label) + '</h2><div class="sci">집 설치물</div>' + mkv([['자리', tile(o.tx, o.ty)], ['크기', o.fw + ' × ' + o.fh + '칸']]);
+    } else {
+      el.innerHTML = back + '<h2>칸 ' + esc(s.id) + '</h2><div class="sci">지도 위 한 칸</div>';
+    }
+  }
+  function mapSearch(term){
+    const res = mapEl('mapres'), m = MV.map; if (!m) return;
+    const t = term.toLowerCase();
+    if (!t) { res.style.display = 'none'; return; }
+    const out = [];
+    const push = (kind, id, name, sub, tx, ty) => { if (out.length < 40 && (name + ' ' + sub).toLowerCase().includes(t)) out.push({ kind, id, name, sub, tx, ty }); };
+    for (const n of m.npcs) push('npc', n.id, n.name, n.role, n.tx, n.ty);
+    for (const tg of m.triggers) push('trig', tg.id, tg.label, tg.questTitle, tg.tx, tg.ty);
+    for (const p of m.places) push('place', p.key, p.label, '이야기 장소', p.tx, p.ty);
+    for (const a of m.areas) if (a.tx !== undefined) push('area', a.id, a.name, '내리는 자리', a.tx, a.ty);
+    for (const o of m.home) push('home', o.id, o.label, '설치물', o.tx, o.ty);
+    m.lights.forEach((l, i) => push('light', String(i), l.name || '항로표지', l.major ? '등대' : '방파제등', l.tx, l.ty));
+    for (const p of m.pois) if (p.icon) push('poi', String(p.i), p.name || p.kindKo || p.placeKo, (p.kindKo || p.placeKo || p.typeKo) + (p.nameEn ? ' · ' + p.nameEn : ''), p.tx, p.ty);
+    res.innerHTML = out.length ? out.map(r => '<button data-k="' + esc(r.kind) + '" data-i="' + esc(r.id) + '"><span class="k">' + esc(KIND_KO[r.kind] || r.kind) + '</span>' + esc(r.name) +
+      (r.sub ? ' <span class="k">' + esc(r.sub) + '</span>' : '') + '<span class="t">' + r.tx + ',' + r.ty + '</span></button>').join('') : '<button disabled>없음</button>';
+    res.style.display = 'block';
+  }
+  // ── 조행록 → 지도 링크 ──
+  function mapRegionLink(regionId, regionName, giver){
+    const ms = MAPS.regionMaps[regionId];
+    if (!ms || !ms.length) return esc(regionName);
+    const at = giver && MAPS.npcAt[giver];
+    const first = at && ms.includes(at.map) ? 'map/' + at.map + '/npc/' + encodeURIComponent(giver) : 'map/' + ms[0];
+    let h = '<a class="xl" data-map="' + esc(first) + '" href="#' + esc(first) + '">' + esc(regionName) + '</a>';
+    if (ms.length > 1) h += '<br><span class="note">지도 ' + ms.map(id => '<a class="xl" data-map="map/' + esc(id) + '" href="#map/' + esc(id) + '">' + esc((mapById[id] || {}).name || id) + '</a>').join(' · ') + '</span>';
+    return h;
+  }
+  function mapNpcLink(npcId, name){
+    const at = npcId && MAPS.npcAt[npcId];
+    if (!at) return esc(name);
+    const p = 'map/' + at.map + '/npc/' + encodeURIComponent(npcId);
+    return '<a class="xl" data-map="' + esc(p) + '" href="#' + esc(p) + '" title="지도에서 자리 보기">' + esc(name) + '</a>';
+  }
+  function questMapLinks(q){
+    const out = []; const seen = new Set();
+    const add = (path, label, note) => { if (seen.has(path)) return; seen.add(path); out.push({ path, label, note }); };
+    const npcL = (id, why) => { const at = MAPS.npcAt[id]; if (!at) return; const n = ((mapById[at.map] || {}).npcs || []).find(x => x.id === id); add('map/' + at.map + '/npc/' + encodeURIComponent(id), (n ? n.name : id) + ' — ' + (mapById[at.map] || {}).name, why + ' · 칸 ' + at.tx + ',' + at.ty); };
+    if (q.giver) npcL(q.giver, '의뢰인');
+    for (const o of q.obj || []) {
+      if (o.npcId) npcL(o.npcId, '목표 상대');
+      if (o.placeKey) {
+        const pa = MAPS.placeAt[o.placeKey];
+        if (pa) { const pl = ((mapById[pa.map] || {}).places || []).find(x => x.key === o.placeKey); add('map/' + pa.map + '/place/' + encodeURIComponent(o.placeKey), (pl ? pl.label : o.placeKey) + ' — ' + (mapById[pa.map] || {}).name, '목표 장소 · 칸 ' + pa.tx + ',' + pa.ty); }
+        else if (o.placeKey.startsWith('region:')) { const rid = o.placeKey.slice(7); const ms = MAPS.regionMaps[rid] || []; for (const id of ms) add('map/' + id, (mapById[id] || {}).name || id, '도착해야 하는 지역'); }
+      }
+    }
+    for (const t of MAPS.triggersByQuest[q.id] || []) add('map/' + t.map + '/trig/' + encodeURIComponent(t.id), t.label + ' — ' + (mapById[t.map] || {}).name, '현장 ' + t.phase + '단계 · 칸 ' + t.tx + ',' + t.ty);
+    if (!out.length) { const ms = MAPS.regionMaps[q.region] || []; for (const id of ms) add('map/' + id, (mapById[id] || {}).name || id, '이 할 일의 지역'); }
+    return out;
+  }
 
   renderIndex();
   renderDoc(false);
 
+
   // ── 도감 탭 (169차 — 분류 버튼 · 썸네일 · 상세) ─────────────
   let tab = 'quests', cterm = '', group = '', sub = '';
   const nfw = n => nf(Math.round(n)) + '원';
+  // 264차 — 작은 그림은 `G.inl[파일명]`(data URI · 한 번만 실림)에서, 나머지는 img/ 파일에서
+  const imgSrc = file => (G.inl && G.inl[file]) ? G.inl[file] : (String(file).startsWith('data:') ? file : 'img/' + file);
   const img = (file, cls) => file
-    ? '<img src="' + (String(file).startsWith('data:') ? '' : 'img/') + esc(file) + '" alt="" loading="lazy"' + (cls ? ' class="' + cls + '"' : '') + '>'
+    ? '<img src="' + esc(imgSrc(file)) + '" alt="" loading="lazy"' + (cls ? ' class="' + cls + '"' : '') + '>'
     : '';
   const thumb = (file, ph) => '<div class="thumb">' + (file ? img(file) : '<span class="ph">' + esc(ph) + '</span>') + '</div>';
   const kvRows = pairs => '<table class="kv"><tbody>' + pairs
@@ -881,7 +1435,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
                 title: a.name, sub: r.name + ' · ' + a.nameEn, lede: a.desc, img: null,
                 tags: [r.sea || r.sido, r.chapter ? r.chapter + '장부터 열림' : '', a.depth ? '수심 ' + a.depth : '', a.snag, a.enterable ? '출조 가능' : '필드 준비 중', a.ownSpawn ? '구역마다 내리는 자리' : ''].filter(Boolean),
                 body: '<div class="ssec"><h3>바다 특성</h3><ul class="plain">' + a.details.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' +
-                  (map ? '<div class="ssec"><h3>필드 지도 — ' + esc(map.name) + '</h3>' + kvRows([['크기', esc(map.km + ' (' + map.w + ' × ' + map.h + '칸 · 1칸 = 5m)')], ['가게 · 장소', esc(map.shops + ' · ' + map.pois)], ['건물 윤곽', esc(String(map.buildings))], ['항로표지', esc(String(map.lights))]]) + '</div>' : '') +
+                  (map ? '<div class="ssec"><h3>필드 지도 — ' + esc(map.name) + '</h3>' + kvRows([['지도', '<a class="xl" data-map="map/' + esc(a.dataRegion) + '/area/' + esc(a.id) + '" href="#map/' + esc(a.dataRegion) + '/area/' + esc(a.id) + '">지도 탭에서 이 구역 보기</a>'], ['크기', esc(map.km + ' (' + map.w + ' × ' + map.h + '칸 · 1칸 = 5m)')], ['가게 · 장소', esc(map.shops + ' · ' + map.pois)], ['건물 윤곽', esc(String(map.buildings))], ['항로표지', esc(String(map.lights))]]) + '</div>' : '') +
                   (r.pages.length ? '<div class="ssec"><h3>조행록(' + esc(r.name) + ')</h3>' + kvRows(r.pages.map(pg => [pg.page + '장 ' + pg.label, esc(pg.species + ' · ' + pg.seasons + ' · ' + pg.how + (pg.cond ? ' · ' + pg.cond : ''))])) + '</div>' : ''),
               }),
             });
@@ -1445,8 +1999,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     const cq = document.getElementById('cq'); if (cq) cq.value = '';
     for (const x of document.querySelectorAll('#tabs button')) x.setAttribute('aria-pressed', String(x.dataset.tab === tab));
     document.getElementById('tab-quests').classList.toggle('hidden', tab !== 'quests');
-    document.getElementById('tab-cat').classList.toggle('hidden', tab === 'quests');
-    if (tab !== 'quests') renderCat();
+    document.getElementById('tab-cat').classList.toggle('hidden', tab === 'quests' || tab === 'maps');
+    document.getElementById('tab-maps').classList.toggle('hidden', tab !== 'maps');
+    if (tab === 'maps') mapShow();   // 264차
+    else if (tab !== 'quests') renderCat();
   }
   function openByKey(t, key){
     closeSheet();
@@ -1473,6 +2029,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   document.getElementById('sheet').addEventListener('click', e => {
     const a = e.target.closest('a.xl[data-open]');
     if (a) { e.preventDefault(); const [t, ...rest] = a.dataset.open.split(':'); openByKey(t, rest.join(':')); return; }
+    const ml = e.target.closest('a[data-map]');
+    if (ml) { e.preventDefault(); closeSheet(); openMapPath(ml.dataset.map); return; }
     if (e.target.id === 'sheet' || e.target.closest('#sheetx')) closeSheet();
   });
   document.addEventListener('keydown', e => {
@@ -1494,5 +2052,6 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     setTab(b.dataset.tab);
   });
   document.getElementById('cq').addEventListener('input', e => { cterm = e.target.value.trim(); renderCat(); });
+  if (location.hash.startsWith('#map/')) openMapPath(location.hash.slice(1));   // 264차
 })();
 </script>

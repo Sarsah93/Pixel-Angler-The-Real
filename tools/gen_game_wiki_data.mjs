@@ -1099,6 +1099,149 @@ const regions = core.WORLD_NODE_DATABASE.map((n) => {
   };
 });
 
+
+// ─────────────────────────────────────────────
+// 264차 — 지도 탭: 데이터 지역(심리스 13 + 홈타운)마다 캡처 시트(`tools/capture_wiki_maps.cjs` 규격 — 타일당 8px · 4,096 시트 · 축소판 2px)
+//   × 가게 · 장소(미니맵 핀) · 등대 · 어장 · 이야기 인물 자리 · 현장 지점 · 장소 · 출조 구역 내리는 자리 · 홈타운 설치물.
+//   클라이언트 표는 `tools/dump_wiki_map_data.mjs` 산출(`tools/wiki_map_data.json`)에서 읽는다.
+// ─────────────────────────────────────────────
+const MAP_PX = 8, MAP_SHEET = 4096, MAP_OV_PX = 2;
+const mapData = readJson(path.join(ROOT, 'tools/wiki_map_data.json'))
+  ?? { placements: [], places: [], triggers: [], buildingLabel: {}, buildingGoods: {}, buildingHours: {}, poiLabel: {}, hometown: null, poiKinds: {} };
+const MM_ICON = { convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food', cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery' };
+const HOURS_KO = (h) => (!h ? '' : h === 'always' ? '24시간' : `${h.open}~${h.close}시`);
+const NPC_BEHAVIOR_KO = { stall: '좌판을 지킨다', patrol: '오가며 둘러본다', fishing: '낚시한다', wander: '서성인다' };
+const FACING_KO = { down: '정면', left: '왼쪽', right: '오른쪽', up: '뒤' };
+const HOME_OBJ_KO = { door: '집 문', busStop: '버스 정류장', well: '우물', clinic: '보건소', pier: '선착장', tidalRock: '갯바위', tree: '나무', rock: '바위', stump: '그루터기', farmPlot: '텃밭', workbench: '작업대', fence: '울타리' };
+const POI_TYPE_KO = { restaurant: '음식점', cafe: '카페', shop: '가게', lodging: '숙소', bank: '은행', fuel: '주유소', viewpoint: '전망 포인트', info: '관광안내소', toilet: '공중화장실',
+  pharmacy: '약국', police: '파출소', lighthouse: '등대', ferry_terminal: '여객터미널', market: '시장', hospital: '병원', fishing_spot: '낚시터' };
+const SHIFT_KO = (r) => (!r || !r.shifts?.length ? '24시간 밖' : r.shifts.map((s) => `${Math.floor(s.fromMin / 60)}~${Math.floor(s.toMin / 60)}시`).join(' · ') + (r.offDays?.length ? ' · 일요일 쉼' : ''));
+const questBrief = (q) => ({ id: q.id, title: q.titleKo, kind: q.kind, chapter: q.chapter });
+const mapNpc = (p) => {
+  const d = core.getStoryNpc(p.npcId);
+  const routine = core.routineOfNpc ? core.routineOfNpc(p.npcId) : null;
+  const gives = core.STORY_QUESTS.filter((q) => q.giver === p.npcId).map(questBrief);
+  const related = core.STORY_QUESTS.filter((q) => q.giver !== p.npcId && (q.objectives ?? []).some((o) => o.npcId === p.npcId)).map(questBrief);
+  return {
+    id: p.npcId, name: d?.nameKo ?? p.npcId, nameEn: d?.nameEn ?? '', role: d?.roleKo ?? '', tx: p.tx, ty: p.ty,
+    behavior: p.behavior ?? 'wander', behaviorKo: NPC_BEHAVIOR_KO[p.behavior ?? 'wander'] ?? p.behavior, facing: FACING_KO[p.facing ?? 'down'],
+    home: p.home ? { tx: p.home.tx, ty: p.home.ty, label: p.home.labelKo } : null,
+    routine: routine ? `${SHIFT_KO(routine)}${p.home ? '' : ' (집 없음)'}` : '',
+    arc: core.arcOfNpc ? (core.arcOfNpc(p.npcId)?.titleKo ?? '') : '',
+    gives, related,
+  };
+};
+const areaSpawnTile = (meta, a) => {
+  const ll = a.spawnLatLon;
+  if (meta?.bbox && ll) {
+    const [s, w, n, e] = meta.bbox;
+    const tx = Math.floor((ll[1] - w) / (e - w) * meta.width), ty = Math.floor((n - ll[0]) / (n - s) * meta.height);
+    if (tx >= 0 && ty >= 0 && tx < meta.width && ty < meta.height) return { tx, ty, own: true };
+  }
+  return meta?.spawn ? { tx: meta.spawn[0], ty: meta.spawn[1], own: false } : null;
+};
+const sheetsOf = (W, H, dr) => {
+  const out = [];
+  for (let sr = 0; sr < Math.ceil(H / MAP_SHEET); sr++) for (let sc = 0; sc < Math.ceil(W / MAP_SHEET); sc++) {
+    out.push({ f: `maps/${dr}/s_${sc}_${sr}.webp`, x: sc * MAP_SHEET, y: sr * MAP_SHEET, w: Math.min(MAP_SHEET, W - sc * MAP_SHEET), h: Math.min(MAP_SHEET, H - sr * MAP_SHEET) });
+  }
+  return out;
+};
+const inRegion = (x, regionId, dr, onlyDr) => x.regionId === regionId && (x.dataRegion ? x.dataRegion === dr : !onlyDr);
+// 데이터 지역 → 전국 지도 노드 · 구역(한 지역에 데이터 지역이 여럿이면 각 구역이 제 데이터 지역에 붙는다)
+const drIndex = new Map();
+for (const n of core.WORLD_NODE_DATABASE) {
+  const rid = n.regionDatabaseId;
+  for (const a of core.getRegionAreaNodes(rid)) {
+    const def = core.seamlessRegionOf(rid, a.fieldMapId);
+    if (!def) continue;
+    let e = drIndex.get(def.dataRegion);
+    if (!e) { e = { regionId: rid, regionName: n.name, short: n.shortName, name: def.name, nameEn: def.nameEn ?? '', areas: [], multi: false }; drIndex.set(def.dataRegion, e); }
+    e.areas.push(a);
+  }
+}
+for (const e of drIndex.values()) e.multi = [...drIndex.values()].filter((x) => x.regionId === e.regionId).length > 1;
+const mapList = [];
+for (const [dr, e] of drIndex) {
+  const meta = readJson(path.join(DATA_DIR, dr, 'meta.json'));
+  if (!meta) continue;
+  const pois = readJson(path.join(DATA_DIR, dr, 'pois.json')) ?? [];
+  const kinds = mapData.poiKinds[dr] ?? [];
+  const lights = readJson(path.join(DATA_DIR, dr, 'lights.json')) ?? [];
+  const farms = (readJson(path.join(DATA_DIR, dr, 'fishfarms.json'))?.farms ?? []).map((f) => ({
+    name: f.name ?? '', kind: f.kindKo ?? f.kind ?? '', method: f.method ?? '', desc: f.farmDesc ?? '', areaHa: f.areaHa ?? null, admin: f.admin ?? '',
+    rings: (f.rings ?? []).map((r) => r.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10])),
+  }));
+  const bld = readJson(path.join(DATA_DIR, dr, 'buildings.json')) ?? [];
+  const W = meta.width * MAP_PX, H = meta.height * MAP_PX;
+  const chapter = core.chapterOfRegion ? (core.chapterOfRegion(e.regionId) ?? null) : null;
+  mapList.push({
+    id: dr, name: e.name, nameEn: e.nameEn, regionId: e.regionId, regionName: e.regionName, short: e.short, chapter, legacy: false,
+    cols: meta.width, rows: meta.height, tileM: meta.tileMeters ?? 5, km: `${(meta.width * (meta.tileMeters ?? 5) / 1000).toFixed(1)} × ${(meta.height * (meta.tileMeters ?? 5) / 1000).toFixed(1)} km`,
+    px: MAP_PX, width: W, height: H, sheets: sheetsOf(W, H, dr),
+    overview: { f: `maps/${dr}/overview.webp`, w: Math.round(W * MAP_OV_PX / MAP_PX), h: Math.round(H * MAP_OV_PX / MAP_PX), px: MAP_OV_PX },
+    spawn: meta.spawn ? { tx: meta.spawn[0], ty: meta.spawn[1], name: meta.spawnName ?? '' } : null,
+    areas: e.areas.map((a) => ({ id: a.id, name: a.name, nameEn: a.nameEn ?? '', mapId: a.fieldMapId, enterable: a.enterable !== false, ...(areaSpawnTile(meta, a) ?? {}) , depth: a.depthRangeM ? `${a.depthRangeM[0]}~${a.depthRangeM[1]}m` : '', snag: a.snagRisk ? core.SNAG_RISK_LABEL[a.snagRisk] : '' })),
+    pois: pois.map((p, i) => {
+      const k = kinds[i] ?? { kind: null, stall: false, auction: false, place: null };
+      return {
+        i, tx: p.tx, ty: p.ty, name: p.name ?? '', nameEn: p.nameEn ?? '', type: p.type, typeKo: POI_TYPE_KO[p.type] ?? p.type, shopKind: p.shopKind ?? '',
+        kind: k.kind, kindKo: k.kind ? (k.auction ? '위판장' : k.stall ? '좌판' : mapData.buildingLabel[k.kind] ?? k.kind) : '',
+        goods: k.kind ? (mapData.buildingGoods[k.kind] ?? '') : '', hours: k.kind ? HOURS_KO(mapData.buildingHours[k.kind]) : '',
+        icon: k.kind ? MM_ICON[k.kind] : (k.place !== null ? 'mm_poi' : null), placeKo: k.place ?? '', capture: p.src === 'capture',
+      };
+    }),
+    lights: lights.map((l) => ({ tx: l.tx, ty: l.ty, name: l.name ?? '', kind: l.kind ?? '', colour: l.colour ?? '', major: !!l.major })),
+    farms, buildings: bld.length,
+    npcs: mapData.placements.filter((p) => p.tx !== undefined && inRegion(p, e.regionId, dr, false)).map(mapNpc),
+    places: mapData.places.filter((p) => inRegion(p, e.regionId, dr, false)).map((p) => ({
+      key: p.key, tx: p.tx, ty: p.ty, r: p.radiusTiles, label: p.labelKo,
+      quests: core.STORY_QUESTS.filter((q) => (q.objectives ?? []).some((o) => o.placeKey === p.key)).map(questBrief),
+    })),
+    triggers: mapData.triggers.filter((t) => inRegion(t, e.regionId, dr, false)).map((t) => {
+      const q = core.STORY_QUESTS.find((x) => x.id === t.questId);
+      return { id: t.id, tx: t.tx, ty: t.ty, label: t.labelKo, questId: t.questId, questTitle: q?.titleKo ?? t.questId, chapter: q?.chapter ?? null,
+        objective: q?.objectives?.[t.objectiveIndex]?.labelKo ?? '', phase: t.phase + 1, actor: t.actor?.nameKo ?? '', viaNpc: t.viaNpc ?? '', give: t.give ?? '', take: t.take ?? '' };
+    }),
+    home: [],
+  });
+}
+// 홈타운(레거시 · 타일 20px · 시트 한 장)
+if (mapData.hometown) {
+  const hm = readJson(path.join(DATA_DIR, 'hometown', 'hometown_home.json'));
+  if (hm) {
+    const W = hm.cols * 20, H = hm.rows * 20;
+    const objs = mapData.hometown.objects;
+    mapList.push({
+      id: 'hometown', name: '홈타운 (집)', nameEn: 'Hometown (Home)', regionId: 'hometown', regionName: '홈타운', short: '홈타운', chapter: null, legacy: true,
+      cols: hm.cols, rows: hm.rows, tileM: null, km: '', px: 20, width: W, height: H,
+      sheets: [{ f: 'maps/hometown/s_0_0.webp', x: 0, y: 0, w: W, h: H }], overview: { f: 'maps/hometown/overview.webp', w: W, h: H, px: 20 },
+      spawn: { tx: mapData.hometown.spawn.col, ty: mapData.hometown.spawn.row, name: '집 문 앞' }, areas: [], pois: [], lights: [], farms: [], buildings: 0,
+      npcs: mapData.placements.filter((p) => p.tx !== undefined && p.regionId === 'hometown').map(mapNpc),
+      places: mapData.places.filter((p) => p.regionId === 'hometown').map((p) => ({ key: p.key, tx: p.tx, ty: p.ty, r: p.radiusTiles, label: p.labelKo, quests: [] })),
+      triggers: [],
+      home: objs.filter((o) => o.type !== 'tree' && o.type !== 'rock').map((o) => ({ id: o.id, type: o.type, label: HOME_OBJ_KO[o.type] ?? o.type, tx: o.tx, ty: o.ty, fw: o.fw, fh: o.fh })),
+      homeCounts: { tree: objs.filter((o) => o.type === 'tree').length, rock: objs.filter((o) => o.type === 'rock').length },
+    });
+  }
+}
+// 조행록 탭 연결 색인 — 인물 · 장소 · 현장 · 지역
+const npcAt = {}, placeAt = {}, triggersByQuest = {}, regionMaps = {};
+for (const m of mapList) {
+  (regionMaps[m.regionId] ??= []).push(m.id);
+  for (const n of m.npcs) npcAt[n.id] ??= { map: m.id, tx: n.tx, ty: n.ty };
+  for (const p of m.places) placeAt[p.key] ??= { map: m.id, tx: p.tx, ty: p.ty };
+  for (const t of m.triggers) (triggersByQuest[t.questId] ??= []).push({ map: m.id, id: t.id, label: t.label, tx: t.tx, ty: t.ty, phase: t.phase });
+}
+const maps = {
+  px: MAP_PX, sheet: MAP_SHEET,
+  icons: ['mm_conv', 'mm_mart', 'mm_market', 'mm_food', 'mm_cafe', 'mm_pub', 'mm_pharm', 'mm_daily', 'mm_nursery', 'mm_poi', 'mm_npc', 'mm_quest', 'mm_ready']
+    .map((id) => ({ id, img: imgOf(`px:${id}`) })).filter((x) => x.img),
+  legend: [['mm_market', '직판장 · 위판장 · 좌판'], ['mm_mart', '식자재마트'], ['mm_daily', '생활용품점'], ['mm_nursery', '종묘사'], ['mm_conv', '편의점'], ['mm_pharm', '약국'],
+    ['mm_food', '음식점'], ['mm_cafe', '카페'], ['mm_pub', '주점'], ['mm_poi', '장소(거래 없음)'], ['mm_npc', '이야기 인물']],
+  list: mapList, npcAt, placeAt, triggersByQuest, regionMaps,
+};
+
 const out = {
   generatedFrom: '@tra/core dist + client wiki catalog + docs/wiki/02-SYSTEMS',
   generatedAt: new Date().toISOString(),
@@ -1109,6 +1252,7 @@ const out = {
     rules: rules.length, updates: updates.length, skills: skillList.length, titles: guide.titles.length,
     crops: farmCrops.length, supplies: farmSupplies.length,
     regions: regions.filter((r) => r.open).length, areas: regions.reduce((n, r) => n + r.areas.length, 0),
+    maps: mapList.length, mapNpcs: mapList.reduce((n, m) => n + m.npcs.length, 0), mapPois: mapList.reduce((n, m) => n + m.pois.length, 0),
   },
   quests,
   cooking: {
@@ -1152,6 +1296,7 @@ const out = {
   guide,
   farming,
   regions,
+  maps,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
@@ -1162,16 +1307,22 @@ for (const i of items) if (i.img) used.add(i.img);
 for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
 for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
+for (const ic of maps.icons) used.add(ic.img);   // 264차 — 지도 탭 핀 아이콘(16px — 전부 HTML 안)
 // 249차 — 아티팩트 한 판에는 파일이 511개까지만 들어간다(위키가 쓰는 그림 512장 + index.html — 그 전까지 코드 그림 141장이 빠진 채였다).
 //   작은 그림(INLINE_MAX 이하 — 16px 아이콘 · 스킬 아이콘 · 코드 그림 섬네일)은 HTML 안에 data URI로 넣고, 나머지만 img/ 파일로 둔다.
-const INLINE_MAX = 8192;
+// 264차 — 지도 시트(maps/ — 15지도 99파일)가 들어오면서 파일 상한(511)에 걸려 8KB → 20KB로 올렸다(213장이 HTML 안으로 · 페이지 약 +4.5MB).
+const INLINE_MAX = 20480;
+// 264차 — 같은 그림이 카드 · 상세 · 재료 줄에 여러 번 나와 data URI를 자리마다 넣으면 페이지가 3배로 불었다(20KB 상한에서 13MB).
+//   그림은 `out.inl[파일명]`에 **한 번만** 넣고, 값은 파일명 그대로 둔다 — 템플릿 `img()`가 `G.inl`에서 찾아 쓴다.
 const inlined = new Set();
+out.inl = {};
 const inlineSmall = (v) => {
   if (!v || typeof v !== 'object') return;
   for (const [k, x] of Object.entries(v)) {
     if ((k === 'img' || k === 'src') && typeof x === 'string' && x.endsWith('.png') && used.has(x)) {
+      if (inlined.has(x)) continue;
       const p = path.join(IMG_DIR, x);
-      if (fs.existsSync(p) && fs.statSync(p).size <= INLINE_MAX) { v[k] = `data:image/png;base64,${fs.readFileSync(p).toString('base64')}`; inlined.add(x); }
+      if (fs.existsSync(p) && fs.statSync(p).size <= INLINE_MAX) { out.inl[x] = `data:image/png;base64,${fs.readFileSync(p).toString('base64')}`; inlined.add(x); }
     } else if (x && typeof x === 'object') inlineSmall(x);
   }
 };

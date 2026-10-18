@@ -185,3 +185,20 @@ py tools/pixelize_islet.py <photo.png> --region <region> --name <islet> --grid 3
   `--center` = 인게임 성분 무게중심 · `--islet-max` = 그 성분 타일 수 이상(래스터 `'r'` 섞인 섬은 600을 넘는다).
 - ⚠ 섬 위치는 `islet` 플래그가 아니라 **`lights.json`·POI 좌표**로 확정한다(116차 — 엉뚱한 섬에 적용한 전례).
 - 램프는 휘도 **순위 균등화** — 분위 정규화는 밝은 사진에서 너무 밝다.
+
+## 위키 지도 탭 캡처 (264차)
+
+새 지역을 굽거나 지형 · 가게 · 인물 자리를 바꾸면 위키 「지도」 탭의 그림도 다시 찍는다(게임 렌더러 그대로 — 검수용 조감도).
+
+```bash
+npx pnpm --filter @tra/client-pc run dev                      # dev 서버(5173)
+node tools/capture_wiki_maps.cjs <출력 폴더> [데이터 지역 …]   # 지역을 안 적으면 15지도 전부(지역당 약 4분 · 홈타운 포함)
+node tools/dump_wiki_map_data.mjs                             # 인물 자리 · 장소 · 현장 · 가게 종류 → tools/wiki_map_data.json
+node tools/gen_game_wiki_data.mjs --html > <폴더>/index.html   # 지도 탭 데이터는 meta.json · pois.json · lights.json · fishfarms.json에서
+```
+
+- 새 데이터 지역은 `capture_wiki_maps.cjs`의 `MAPS` 표에 `[지역 id, 구역 fieldMapId]` 한 줄을 더한다(어느 구역이든 같은 데이터 지역이면 같은 지도).
+- 하네스는 페이지 `Date`를 정오 KST로 밀고(밤 명암 · 가로등 없음) 사람 · 차 · 날씨 · HUD · 글자를 숨긴 뒤, 화면을 3,072px로 키우고
+  `chunks.update`를 쥐어(`__force`일 때만 원래 갱신) 청크 3×3 블록마다 `preloadAround` → `postrender`에서 캔버스를 1/4(타일당 8px)로 누적한다.
+  카메라 bounds는 떼야 가장자리 블록 중심을 잡는다. 산출 = `maps/<지역>/s_<col>_<row>.webp`(4,096 시트) · `overview.webp`(2px) · `index.json`.
+- 아티팩트에는 바뀐 지역의 시트만 `files`로 올린다(파일 상한 511 — 그림 283 + 지도 + index.html). 가게 종류 핀은 씬 규칙 복제(`dump_wiki_map_data.mjs`)라 씬을 고치면 같이 고친다.

@@ -62,12 +62,22 @@
   → **260 아티팩트 3개 현행화(남은 과업 설계 · 구현 라이브러리 · 채비 모딩 순서도) · 아티팩트 4개 갱신 규칙**
   → **261 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
   → **262 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장(데이터 지역 13 · 출조 구역 17) · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
-  → **263 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**.
+  → **263 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**
+  → **264 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
-- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 + 262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항**) — 부족하면 규칙 보강.
+- **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 + 262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **264차**: **위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포** —
+  사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일을 다 보여주기) … 확대/축소 … npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) … 조행록에서 지역을 누르면 지도로 … 다 하고나서 main 반영하고 81차 배포해줘」 →
+  `tools/capture_wiki_maps.cjs`(dev 서버 + Playwright — `Date`를 정오 KST로 · 사람 · 차 · 날씨 · HUD · 글자 숨김 · 화면 3,072px · `chunks.update` 쥐기 · 청크 3×3 블록 누적 · 타일당 8px · 4,096 WebP 시트 · 2px 축소판) ·
+  `tools/dump_wiki_map_data.mjs`(인물 자리 · 장소 · 현장 · 가게 종류 — 씬 규칙 복제 ⚠) · 생성기 `maps`(심리스 14 + 홈타운 · 가게 · 등대 · 어장 · 인물 · 현장 · 장소 · 내리는 자리 · 집 설치물 · 연결 색인) ·
+  템플릿 「지도」 탭(캔버스 뷰어 · 휠 · 끌기 · 핀치 · 검색 · 레이어 11 · 격자 · 칸 좌표 · 핀 상세 · 범례 · 해시 `#map/<지도>/<종류>/<id>`) · 조행록 위치 · 의뢰인 · 「지도」 절 ↔ 핀 양방향 · 출조 지역 카드 링크 ·
+  그림 사전 `G.inl`(20KB 이하 352장 HTML 안 · 한 번만 — 파일 283 + 지도 __FILES__ + 1 = __FILES_TOTAL__ / 511) ·
+  캡처 15지도 pageerror 0 · Playwright pageerror 0 · 위키 __WIKI_VERSION__ · main 빨리 감기 · 81차 배포(__DEPLOY_SHORT__).
+  **다음 = 사용자 육안(지도 탭 15지도 조감 · 핀 자리 · 8px 가독성) · 지형 · 가게 자리가 바뀐 지역은 그 지역만 다시 캡처(백로그 CL)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-18-264-wiki-map-tab-region-atlas.md`.
 - **263차**: **지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대** —
   사용자 결정 「지역은 장 순서대로 잠그고, 부산 위판장은 bbox 확장으로 해줘.」(262 이야기 연계 점검의 두 물음) →
   core `chapterOfRegion` · `isRegionOpenAtChapter`(구역 노드 + 여는 장 ≤ 지금 장 — 1장 속초 · 2장 부산 · 3장 울산 · 포항 · 4장 거제 · 여수 · 태안 · 5장 제주 · 6장 인천 · 시험 3) ·
@@ -90,17 +100,6 @@
   감천 요청 4 재굽기(75.3 → 63.7% · 러너 `110bc78`) · 이야기 연계 점검 = 지도 층만 열림(인물 29명 자리 없음 · 9지역 처음부터 열림 · 부산 위판장 없음 — 백로그 CK).
   **다음 = 사용자 육안(80차 배포본 — 새 지역 12곳 terrain · 전국 지도 핀) · 자동 변환 상호 검토(CJ) · 이야기 연계 263차(CK — 장 잠금 · 부산 위판장은 사용자 결정)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md`.
-- **261차**: **구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남** —
-  사용자 「구 에셋 건물 이미지들 … 전부 사용하지 않고 … 지도 기반 건물로만 … 표지판이 있는 위치가 해당 상가 건물들」 「냉동 오징어 2개를 팔았는데 … 하나 더 생겨져 있음」
-  「배경음악 초안 … 제일 최근에 변경한 부분들로 우선 적용」 →
-  Gemini 횟집 · 팝업 · 고층 · TopDown 주택 · Kenney 노점 · 지붕 키트 로드 폐기(PNG 98장 — 파일은 `public/tileset/`에 그대로 · `ui/BuildingVariant.ts` 삭제) ·
-  가게 389곳 중 건물 없는 자리 336곳에 발자국(`RegionFieldScene.synthesizePoiBuildings` — 종류 · 층수 · 크기 표 · 문 칸 후보 · 차도 밴드 · 다른 가게 · 물 회피 · 2차 보도 → 지형 '#' + 윤곽) ·
-  건물마다 가게 수만큼 문(`BuildingUnit.doors` · `assignUnitDoors`) = 그림 · [F] 문 앞 칸 · 간판 한 점 · 홈타운 집 · 보건소 · 부산 가게도 같은 벡터 건물(`planLegacyBuildings`) ·
-  발 끝이 윤곽 안인 칸은 걷는 칸 아님(`isWalkable`) · 오징어 = `repairPrologue`가 판 뒤 되살림 → `prologue.sell` 깃발(A/B 5회) ·
-  Lyria 2판 7 + 1판 3 = 10곡 → `audio/Music.ts`(자리마다 곡 · 반복 이음매 굽기 · 2초 교차 · 10분 고정) · 설정 「배경 음악」 「환경음」 ·
-  빌드 3/3 · core 322/322 · 실렌더(구 텍스처 0 · 발자국 336 · 자리 없음 6 · [F] · 홈타운 · 부산 · 음악 · pageerror 0) · 아티팩트 4개 재발행(위키 58 · 셋 Version 3).
-  **다음 = 사용자 육안(발자국 크기 · 층수 표 · 좌판 차양) · 배경 음악 실청취 · main 반영 · 80차 배포(요청 시)(백로그 CI)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-18-261-vector-buildings-only-bgm-squid.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -193,9 +192,11 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 80차 배포 2026-10-18 = 262차까지 포함** — 260~262는 80차에 처음 실렸다 · main `6851660`).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages — **최근 81차 배포 2026-10-18 = 263차까지 포함**(264는 위키 · 도구만) — 263은 81차에 처음 실렸다 · main `__MAIN_SHA__`).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 60 = 263차**(생성기 `tools/gen_game_wiki_data.mjs --html` — 8KB 이하 그림은 HTML 안 · 아티팩트 한 판 파일 상한 511).
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **__WIKI_VERSION__ = 264차**
+  (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` __FILES__파일).
+  지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다 — 지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
   남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 5 = 263차 기준 · 비공개) ·
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 5 = 263차 기준) ·

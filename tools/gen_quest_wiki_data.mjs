@@ -128,6 +128,7 @@ const quests = core.STORY_QUESTS.map((q) => {
     obj: (q.objectives ?? []).map((o, i) => ({
       label: n?.objectives?.[i] ?? o.labelKo, kind: o.kind, manual: !!o.manual,
       minCm: o.minCm, target: o.target, spotKind: o.spotKind,
+      npcId: o.npcId ?? null, placeKey: o.placeKey ?? null,   // 264차 — 지도 탭 연결(인물 자리 · 장소)
     })),
     diff: (() => { const d = core.questDifficulty(q); return { tier: d.tier, label: d.labelKo, score: d.score, acts: d.actionsKo, reason: d.reasonKo }; })(),
     teaches: q.teaches ?? [],
