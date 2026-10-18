@@ -1,15 +1,5 @@
 # OSM 지역 수집 요청 (262차) — 이 파일을 고쳐 푸시하면 워크플로 「OSM 지역 수집」(.github/workflows/osm-region.yml)이 돈다.
 # 한 줄에 지역 키 하나(tools/regions_config.py). `refetch` 한 줄을 넣으면 그 지역들의 캐시를 지우고 다시 받는다.
 # 같은 지역을 다시 돌리려면 아래 요청 번호를 올린다(파일이 바뀌어야 푸시가 트리거를 깨운다).
-# 요청 3 — 울산 · 포항 · 거제 둘 · 여수 · 태안 둘 · 제주 셋 · 인천 (요청 2는 모슬포 Overpass 5xx로 통째로 버려졌다 — 이제 지역별로 이어 간다)
-ulsan
-pohang_guryongpo
-geoje_east
-geoje_south
-yeosu_city
-taean_anheung
-taean_manripo
-jeju_city
-jeju_moseulpo
-jeju_seogwipo
-incheon_yeonan
+# 요청 4 — 감천 재굽기: 요청 1은 가장자리 시드 방식(바다 75.3% · 서쪽 부두 매립지가 바다)이었다 → 262차 해안선 방향 투표로 다시(캐시 그대로 · refetch 없음 · 기대 64.2%)
+busan_gamcheon
