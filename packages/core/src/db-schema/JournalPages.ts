@@ -8,7 +8,7 @@
  * ⚖ §0.5 어종 대체(레포 미등록 종): 1 임연수어 → **도루묵** · 4 호래기 → **볼락**(§7-4-3 대체안) ·
  *   7 지세포 볼락 → **광어**(같은 대체안) · 10 주꾸미 → **갑오징어**. `substitutedFrom`에 원안 표기.
  *   추가 권장(어종 등록 시 되돌린다): 임연수어·호래기·주꾸미·청어·살오징어·망둥어.
- * ⚠ 지역 하위 권역(거제 동/남, 태안 안흥/만리포, 제주 3)은 OSM 확장 전이라 `areaKey`로만 예약.
+ * 262차 — 지역 하위 권역(거제 동/남, 태안 안흥/만리포, 제주 3)이 심리스로 열려 `areaKey`를 실제 출조 구역 id(`REGION_AREA_NODES`)로 맞췄다.
  */
 
 import type { JournalPageDef } from '../types/Story.js';
@@ -28,22 +28,22 @@ export const JOURNAL_PAGES: JournalPageDef[] = [
     speciesId: 'yellowtail', seasons: ['winter'], howKo: '겨울 11~1월 · 선상 지깅', howEn: 'Winter Nov–Jan · boat jigging', minCm: 40, arcId: 'N08' },
   { page: 6, regionId: 'gyeongbuk_pohang', labelKo: '포항 구룡포', labelEn: 'Pohang — Guryongpo',
     speciesId: 'red_seabream', seasons: ['spring', 'autumn'], howKo: '봄·가을 새벽/저녁 · 타이라바', howEn: 'Spring/autumn dawn or dusk · tai-rubber', arcId: 'N09' },
-  { page: 7, regionId: 'gyeongnam_geoje', areaKey: 'geoje_east', labelKo: '거제 지세포', labelEn: 'Geoje — Jisepo',
+  { page: 7, regionId: 'gyeongnam_geoje', areaKey: 'geoje_area_jisepo', labelKo: '거제 지세포', labelEn: 'Geoje — Jisepo',
     speciesId: 'flatfish', seasons: ['spring', 'autumn'], howKo: '봄·가을 주간 · 지그헤드 다운샷', howEn: 'Spring/autumn daytime · jighead downshot',
     arcId: 'N11', substitutedFrom: '볼락' },
-  { page: 8, regionId: 'gyeongnam_geoje', areaKey: 'geoje_south', labelKo: '거제 해금강', labelEn: 'Geoje — Haegeumgang',
+  { page: 8, regionId: 'gyeongnam_geoje', areaKey: 'geoje_area_haegeumgang', labelKo: '거제 해금강', labelEn: 'Geoje — Haegeumgang',
     speciesId: 'largescale_blackfish', seasons: ['summer'], howKo: '초여름 · 갯바위', howEn: 'Early summer · rocks', arcId: 'N01' },
   { page: 9, regionId: 'jeonnam_yeosu', labelKo: '여수', labelEn: 'Yeosu',
     speciesId: 'hairtail', seasons: ['summer', 'autumn'], howKo: '초여름~가을 야간 · 루어 또는 선상', howEn: 'Early summer–autumn night · lure or boat', arcId: 'N12' },
-  { page: 10, regionId: 'chungnam_taean', areaKey: 'taean_anheung', labelKo: '태안 안흥', labelEn: 'Taean — Anheung',
+  { page: 10, regionId: 'chungnam_taean', areaKey: 'taean_area_anheung', labelKo: '태안 안흥', labelEn: 'Taean — Anheung',
     speciesId: 'cuttlefish', seasons: ['autumn'], howKo: '가을 주간 · 에깅', howEn: 'Autumn daytime · egging', arcId: 'N13', substitutedFrom: '주꾸미' },
-  { page: 11, regionId: 'chungnam_taean', areaKey: 'taean_manripo', labelKo: '태안 만리포', labelEn: 'Taean — Mallipo',
+  { page: 11, regionId: 'chungnam_taean', areaKey: 'taean_area_manripo', labelKo: '태안 만리포', labelEn: 'Taean — Mallipo',
     speciesId: 'sea_bass', seasons: ['spring', 'summer'], howKo: '봄~여름 포말대 야간 · 서프 루어', howEn: 'Spring–summer surf-zone night · surf lure', arcId: 'N02' },
-  { page: 12, regionId: 'jeju', areaKey: 'jeju_city', labelKo: '제주 도두항', labelEn: 'Jeju — Dodu Port',
+  { page: 12, regionId: 'jeju', areaKey: 'jeju_area_dodu', labelKo: '제주 도두항', labelEn: 'Jeju — Dodu Port',
     speciesId: 'swordtip_squid', seasons: ['summer'], howKo: '여름 야간 · 집어등', howEn: 'Summer night · fishing lights', count: 3, arcId: 'N14' },
-  { page: 13, regionId: 'jeju', areaKey: 'jeju_moseulpo', labelKo: '제주 모슬포', labelEn: 'Jeju — Moseulpo',
+  { page: 13, regionId: 'jeju', areaKey: 'jeju_area_moseulpo', labelKo: '제주 모슬포', labelEn: 'Jeju — Moseulpo',
     speciesId: 'yellowtail', seasons: ['winter'], howKo: '겨울 11~1월 · 대물 지깅', howEn: 'Winter Nov–Jan · big-fish jigging', minCm: 80, arcId: 'N10' },
-  { page: 14, regionId: 'jeju', areaKey: 'jeju_seogwipo', labelKo: '제주 서귀포', labelEn: 'Jeju — Seogwipo',
+  { page: 14, regionId: 'jeju', areaKey: 'jeju_area_seogwipo', labelKo: '제주 서귀포', labelEn: 'Jeju — Seogwipo',
     speciesId: 'squid', seasons: ['autumn'], howKo: '가을 야간 얕은 곳 · 에기', howEn: 'Autumn night shallows · egi', arcId: 'N14' },
   { page: 15, regionId: 'incheon', labelKo: '인천 연안부두', labelEn: 'Incheon — Yeonan Pier',
     speciesId: 'black_rockfish', seasons: ['autumn'], howKo: '가을 야간 대물', howEn: 'Autumn night, big one', minCm: 30, arcId: 'N17' },

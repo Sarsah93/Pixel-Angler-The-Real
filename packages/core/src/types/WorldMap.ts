@@ -493,6 +493,221 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       snagRisk: 'mid',
     },
   ],
+
+  // ── 262차 — 다른 육지 지역 7곳(OSM 심리스 · 속초 크기 bbox). 핀 좌표는 zoom_{slug}(256×256) 위 대략값 — 핀 편집 Dev Tool로 다듬는다.
+  //   fieldMapId는 심리스 데이터 지역 선택 키(`SEAMLESS_AREA_REGIONS`)이고 레거시 맵 그래프는 없다. 스폰은 regions_config spawn과 같다.
+  ulsan: [
+    {
+      id: 'ulsan_area_bangeojin', name: '방어진항', nameEn: 'Bangeojin Port',
+      desc: '동해 남부의 큰 어항 · 겨울 방어 지깅의 성지', descEn: 'A big fishing harbour on the southern East Sea · winter yellowtail jigging mecca',
+      pixelX: 178, pixelY: 115, fieldMapId: 'ulsan_bangeojin_1', spawnLatLon: [35.4870, 129.4300],
+      details: [
+        '방어진항 · 슬도 · 대왕암공원 갯바위가 걸어서 이어진다',
+        '대표 어종: 방어(겨울) · 부시리 · 전갱이 · 고등어 · 감성돔 · 볼락',
+        '슬도 갯바위 — 찌낚시 감성돔 · 벵에돔, 밑걸림 주의',
+        '겨울 새벽 방어 · 여름밤 전갱이 · 볼락 루어',
+      ],
+      detailsEn: [
+        'Bangeojin harbour, Seuldo and the Daewangam rocks are all within a walk',
+        'Key species: yellowtail (winter) · amberjack · horse mackerel · mackerel · black seabream · rockfish',
+        'Seuldo rocks — float fishing for seabream and blackfish, watch for snags',
+        'Winter dawn yellowtail · summer-night horse mackerel · rockfish lures',
+      ],
+      depthRangeM: [5, 25], snagRisk: 'mid',
+    },
+  ],
+  gyeongbuk_pohang: [
+    {
+      id: 'pohang_area_guryongpo', name: '구룡포항', nameEn: 'Guryongpo Port',
+      desc: '대게 · 과메기의 항구 · 봄가을 참돔', descEn: 'Harbour of snow crab and gwamegi · spring and autumn red seabream',
+      pixelX: 160, pixelY: 178, fieldMapId: 'pohang_guryongpo_1', spawnLatLon: [35.9900, 129.5560],
+      details: [
+        '큰 방파제 둘이 감싼 어항 — 외항 쪽은 급심',
+        '대표 어종: 참돔(봄 · 가을) · 감성돔 · 전갱이 · 고등어 · 오징어 · 학공치',
+        '봄 · 가을 새벽과 저녁이 피크 · 여름밤 오징어 에깅',
+        '과메기 덕장 · 대게 거리 — 가게가 많다',
+      ],
+      detailsEn: [
+        'A harbour wrapped by two big breakwaters — the outer side drops steeply',
+        'Key species: red seabream (spring, autumn) · black seabream · horse mackerel · mackerel · squid · halfbeak',
+        'Spring and autumn dawn and dusk are peak · summer-night squid eging',
+        'Gwamegi drying racks and the snow-crab street — plenty of shops',
+      ],
+      depthRangeM: [6, 20], snagRisk: 'mid',
+    },
+  ],
+  gyeongnam_geoje: [
+    {
+      id: 'geoje_area_jisepo', name: '지세포항', nameEn: 'Jisepo Port',
+      desc: '동쪽 바다를 향한 아늑한 항 · 광어 · 볼락 다운샷', descEn: 'A snug harbour facing east · flatfish and rockfish downshot',
+      pixelX: 236, pixelY: 118, fieldMapId: 'geoje_jisepo_1', spawnLatLon: [34.8330, 128.6990],
+      details: [
+        '지세포항 방파제와 안쪽 모래 · 펄 바닥 — 입문 생활낚시',
+        '대표 어종: 광어 · 볼락 · 감성돔 · 전갱이 · 고등어 · 보리멸',
+        '봄 · 가을 주간 지그헤드 · 다운샷 · 밤 볼락 루어',
+        '외항 쪽 급심 — 겨울 감성돔',
+      ],
+      detailsEn: [
+        'Jisepo breakwater and the sandy, muddy inner bottom — beginner-friendly casual fishing',
+        'Key species: flatfish · rockfish · black seabream · horse mackerel · mackerel · whiting',
+        'Spring and autumn daytime jighead and downshot · night rockfish lures',
+        'The outer side drops steeply — winter black seabream',
+      ],
+      depthRangeM: [4, 15], snagRisk: 'low',
+    },
+    {
+      id: 'geoje_area_haegeumgang', name: '해금강', nameEn: 'Haegeumgang',
+      desc: '남해 갯바위의 끝 · 초여름 긴꼬리벵에돔', descEn: 'The far rocks of the South Sea · early-summer largescale blackfish',
+      pixelX: 228, pixelY: 195, fieldMapId: 'geoje_haegeumgang_1', spawnLatLon: [34.7470, 128.6825],
+      details: [
+        '갈곶 갯바위와 해금강 바위섬 — 발판이 거칠다',
+        '대표 어종: 긴꼬리벵에돔(초여름) · 벵에돔 · 감성돔 · 돌돔 · 참돔',
+        '파도가 세면 위험 — 날씨를 본다',
+        '밑걸림 많음 — 채비 여분',
+      ],
+      detailsEn: [
+        'Galgot rocks and the Haegeumgang rock islets — rough footing',
+        'Key species: largescale blackfish (early summer) · blackfish · black seabream · knifejaw · red seabream',
+        'Dangerous in heavy swell — check the weather',
+        'Frequent snags — bring spare rigs',
+      ],
+      depthRangeM: [8, 30], snagRisk: 'high',
+    },
+  ],
+  jeonnam_yeosu: [
+    {
+      id: 'yeosu_area_guhang', name: '여수 구항', nameEn: 'Yeosu Old Port',
+      desc: '돌산대교 아래 도심 항 · 여름밤 갈치', descEn: 'A downtown harbour under Dolsan Bridge · summer-night hairtail',
+      pixelX: 115, pixelY: 52, fieldMapId: 'yeosu_guhang_1', spawnLatLon: [34.7420, 127.7440],
+      details: [
+        '구항 안벽 · 신항 · 오동도 방파제가 걸어서 이어진다',
+        '대표 어종: 갈치(초여름~가을 밤) · 감성돔 · 전갱이 · 고등어 · 볼락 · 주꾸미',
+        '밤 집어등 아래 갈치 · 전갱이 루어',
+        '물때 영향이 큰 남해 — 사리 전후 조류',
+      ],
+      detailsEn: [
+        'The old-port quay, the new port and the Odongdo breakwater are all within a walk',
+        'Key species: hairtail (early summer–autumn nights) · black seabream · horse mackerel · mackerel · rockfish · webfoot octopus',
+        'Hairtail under the night lights · horse mackerel lures',
+        'Tide matters on the South Sea — currents around spring tides',
+      ],
+      depthRangeM: [5, 18], snagRisk: 'mid',
+    },
+  ],
+  chungnam_taean: [
+    {
+      id: 'taean_area_anheung', name: '안흥 · 신진도', nameEn: 'Anheung · Sinjindo',
+      desc: '신진도 · 안흥항 — 가을 갑오징어 에깅', descEn: 'Sinjindo and Anheung harbour — autumn cuttlefish eging',
+      pixelX: 110, pixelY: 125, fieldMapId: 'taean_anheung_1', spawnLatLon: [36.6740, 126.1300],
+      details: [
+        '서해 — 조차가 크다 · 물이 빠지면 갯벌, 물이 들면 안벽',
+        '대표 어종: 갑오징어(가을) · 주꾸미 · 우럭 · 광어 · 삼치 · 농어',
+        '가을 주간 에깅 · 봄 우럭 원투',
+        '신진도 방파제와 안흥 외항 — 조류가 셀 때 주의',
+      ],
+      detailsEn: [
+        'West Sea — big tidal range · mudflats at low water, quays at high water',
+        'Key species: cuttlefish (autumn) · webfoot octopus · black rockfish · flatfish · Spanish mackerel · sea bass',
+        'Autumn daytime eging · spring rockfish surf casting',
+        'Sinjindo breakwater and the Anheung outer harbour — mind the strong currents',
+      ],
+      depthRangeM: [3, 12], snagRisk: 'mid',
+    },
+    {
+      id: 'taean_area_manripo', name: '만리포', nameEn: 'Mallipo',
+      desc: '서해 포말대 — 봄여름 밤 농어 서프 루어', descEn: 'West Sea surf zone — spring and summer night sea bass on surf lures',
+      pixelX: 100, pixelY: 42, fieldMapId: 'taean_manripo_1', spawnLatLon: [36.7860, 126.1430],
+      details: [
+        '긴 모래 해변 · 양 끝 갯바위',
+        '대표 어종: 농어(봄~여름 밤) · 광어 · 우럭 · 보리멸 · 삼치',
+        '파도가 적당히 있는 밤이 호황 · 서프 루어 · 원투',
+        '해변은 밑걸림 낮음 · 양 끝 갯바위는 주의',
+      ],
+      detailsEn: [
+        'A long sandy beach with rocks at both ends',
+        'Key species: sea bass (spring–summer nights) · flatfish · black rockfish · whiting · Spanish mackerel',
+        'Nights with moderate surf fish best · surf lures · surf casting',
+        'Low snag risk on the beach · mind the rocks at both ends',
+      ],
+      depthRangeM: [2, 8], snagRisk: 'low',
+    },
+  ],
+  jeju: [
+    {
+      id: 'jeju_area_dodu', name: '도두항', nameEn: 'Dodu Port',
+      desc: '제주시 서쪽 어항 · 여름밤 한치 집어등', descEn: "A fishing harbour west of Jeju City · summer-night swordtip squid under the lights",
+      pixelX: 115, pixelY: 128, fieldMapId: 'jeju_dodu_1', spawnLatLon: [33.5080, 126.4670],
+      details: [
+        '공항 옆 어항 — 방파제 · 도두봉 갯바위',
+        '대표 어종: 한치(여름 밤) · 무늬오징어 · 벵에돔 · 독가시치 · 전갱이',
+        '여름 밤 집어등 아래 한치 · 가을 에깅',
+        '제주 북쪽 — 북서풍에 약하다',
+      ],
+      detailsEn: [
+        'A harbour beside the airport — breakwaters and the Dodubong rocks',
+        'Key species: swordtip squid (summer nights) · bigfin squid · blackfish · rabbitfish · horse mackerel',
+        'Swordtip squid under the summer-night lights · autumn eging',
+        "Jeju's north shore — exposed to north-westerlies",
+      ],
+      depthRangeM: [5, 20], snagRisk: 'mid',
+    },
+    {
+      id: 'jeju_area_moseulpo', name: '모슬포 운진항', nameEn: 'Moseulpo Unjin Port',
+      desc: '제주 남서 끝 · 겨울 대물 방어', descEn: "Jeju's south-west corner · big winter yellowtail",
+      pixelX: 48, pixelY: 203, fieldMapId: 'jeju_moseulpo_1', spawnLatLon: [33.2140, 126.2510],
+      details: [
+        '운진항(가파도 배) · 모슬포항 — 바람이 센 바다',
+        '대표 어종: 방어(겨울 대물) · 부시리 · 벵에돔 · 참돔 · 자리돔',
+        '겨울 방어는 선상 지깅이 주류 — 항 안쪽 안벽은 생활낚시',
+        '바람 · 파도 — 출조 전 날씨 확인',
+      ],
+      detailsEn: [
+        'Unjin harbour (Gapado ferry) and Moseulpo harbour — a windy sea',
+        'Key species: yellowtail (big winter fish) · amberjack · blackfish · red seabream · damselfish',
+        'Winter yellowtail is mostly boat jigging — the inner quays are casual fishing',
+        'Wind and swell — check the weather before going',
+      ],
+      depthRangeM: [8, 30], snagRisk: 'mid',
+    },
+    {
+      id: 'jeju_area_seogwipo', name: '서귀포항', nameEn: 'Seogwipo Port',
+      desc: '문섬 · 새섬 앞 남쪽 항 · 가을 무늬오징어', descEn: 'The southern harbour facing Munseom and Saeseom · autumn bigfin squid',
+      pixelX: 128, pixelY: 214, fieldMapId: 'jeju_seogwipo_1', spawnLatLon: [33.2400, 126.5620],
+      details: [
+        '서귀포항 방파제와 새섬 산책로 — 발판이 좋다',
+        '대표 어종: 무늬오징어(가을) · 벵에돔 · 돌돔 · 참돔',
+        '가을 밤 얕은 곳 에깅 · 봄 벵에돔 찌낚시',
+        '급심 · 조류 — 채비를 무겁게',
+      ],
+      detailsEn: [
+        'Seogwipo breakwater and the Saeseom promenade — good footing',
+        'Key species: bigfin squid (autumn) · blackfish · knifejaw · red seabream',
+        'Autumn-night shallow eging · spring blackfish float fishing',
+        'Deep and fast water — rig heavy',
+      ],
+      depthRangeM: [10, 40], snagRisk: 'mid',
+    },
+  ],
+  incheon: [
+    {
+      id: 'incheon_area_yeonan', name: '연안부두', nameEn: 'Yeonan Pier',
+      desc: '수도권 가까운 항 · 가을 밤 우럭', descEn: 'A harbour close to the capital · autumn-night black rockfish',
+      pixelX: 188, pixelY: 128, fieldMapId: 'incheon_yeonan_1', spawnLatLon: [37.4520, 126.6010],
+      details: [
+        '연안부두 안벽 · 방파제 — 조차 9m의 서해',
+        '대표 어종: 우럭(가을 밤 대물) · 망둥어 · 숭어 · 삼치 · 광어',
+        '사리 물돌이 때 활성 · 물때표 필수',
+        '밤 안벽 생활낚시 — 바닥 펄 · 밑걸림 낮음',
+      ],
+      detailsEn: [
+        'Yeonan pier quays and breakwaters — a West Sea with a 9 m tidal range',
+        'Key species: black rockfish (big autumn-night fish) · goby · mullet · Spanish mackerel · flatfish',
+        'Active around spring-tide turns · a tide table is a must',
+        'Night quay fishing — muddy bottom, low snag risk',
+      ],
+      depthRangeM: [3, 12], snagRisk: 'low',
+    },
+  ],
 };
 
 /** 해당 지역이 준비되어(입장 가능) 있는지 여부 */

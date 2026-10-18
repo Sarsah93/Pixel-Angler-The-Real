@@ -1,6 +1,6 @@
 # S2·S7. 월드맵 · 지역 타일맵 · 필드(이동·환경)
 
-> 상태 **🔶 부분**(지역 3곳 개방 — 속초는 **OSM 심리스 v2**). 관련 차수 3·17·18·19·44·46·73·**100**
+> 상태 **🟢 운영**(262차 — 출조 지역 9곳 · 구역 17 · 심리스 데이터 지역 13 — 울릉 · 독도는 배 출조 뒤). 관련 차수 3·17·18·19·44·46·73·**100**·**262**
 
 ---
 
@@ -10,10 +10,11 @@
 ## 2. 구성
 | 계층 | 파일 | 역할 |
 |---|---|---|
-| core | `types/WorldMap.ts` | 노드 11곳 · `REGION_AREA_NODES`(출조 구역) · 잠금 판정 |
-| core | `types/RegionMap.ts` | 타일맵 계약(7문자) + 맵 그래프(legacy) + **심리스 등록**(`SEAMLESS_REGIONS`·`ACTIVE_REGION_MODE`·`RegionMeta`/`RegionPoi`) |
+| core | `types/WorldMap.ts` | 노드 11곳 · `REGION_AREA_NODES`(출조 구역 17 — **262 `spawnLatLon` 구역별 내리는 자리**) · 잠금 판정 |
+| core | `types/RegionMap.ts` | 타일맵 계약(7문자) + 맵 그래프(legacy) + **심리스 등록**(`SEAMLESS_REGIONS` 지역 기본 · **262 `SEAMLESS_AREA_REGIONS`** 구역(fieldMapId) → 데이터 지역 · `seamlessRegionOf(region, mapId)` · `ACTIVE_REGION_MODE`·`RegionMeta`/`RegionPoi`) |
 | core | `types/DepthProfile.ts` | 실측 연안 수심(거리→수심 보간·외삽) |
-| tools | `regions_config.py` · `fetch_region_osm.py` · `build_osm_tilemap.py` | **OSM 파이프라인** — 지역 17개 bbox 레지스트리 · Overpass 수집 캐시 · 10m/타일 래스터라이즈(flood·마스킹·스폰 스냅) |
+| tools | `regions_config.py` · `fetch_region_osm.py` · `build_osm_tilemap.py` | **OSM 파이프라인** — 지역 bbox 레지스트리(v4 — 속초 크기 13 데이터 지역 + 분할 전 부산 3 · 섬 2) · Overpass 수집 캐시 · 5m/타일 래스터라이즈(**262 바다 = 해안선 방향 투표** · 마스킹 · 스폰 스냅 + 전역 폴백) |
+| CI | `.github/workflows/osm-region.yml` · `pixelazed/_osm_request.txt` | **262 OSM 지역 수집 워크플로** — 러너가 fetch → build → 건물 · 등대 · 게임 상호(`--auto`)까지 굽고 실행한 브랜치에 커밋. main에 없는 브랜치는 요청 파일 푸시로 깨운다 |
 | tools | `build_region_maps.py` · `build_depth_profiles.py` | 지형 PNG → 타일 JSON(**심리스 분기 포함**) / 수심 ZIP → 프로필 |
 | client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 · 지점 이름 흰 테 글자(259) |
 | client | `RegionFieldScene` | legacy 전맵 베이킹 / **심리스 분기**(meta 스폰·OSM POI·엣지 비활성) · 캐스팅 · 조명/날씨 · 설치 모드 |
@@ -31,6 +32,8 @@
           build_osm_tilemap.py → pixelazed/<region>/terrain.png(손수정 정본)·pois·meta
           build_region_maps.py → data/<region>/seamless.json + pois.json + meta.json
           RegionFieldScene + SeamlessChunks: 3×3 청크 상주 렌더/충돌 · meta.spawn · 엣지 없음
+          262 — WorldMapScene { region, mapId: area.fieldMapId } → seamlessRegionOf(region, mapId)가 데이터 지역을 고르고
+                area.spawnLatLon(WGS84) → meta bbox 등장방형 타일 → nearestWalkable(구역마다 내리는 자리)
 ```
 
 - 타일 문자 8종: `.` 육지 `~` 바다 `#` 건물 `,` 잔디 + **`r` 차도 `w` 보도 `s` 모래사장
@@ -86,13 +89,13 @@
 | **도로 마킹 현실화** — 이중도로 황색 중앙선 · 골목 접속부 무절단 · 마킹 아스팔트 클립(직선 횡단보도 우선) · 골목 중앙선 제거 · 차도 안 건물 274타일 런타임 정리 · 편집기 호버 고스트 | ✅ | 106 후속 |
 | 방파제 두부(head) 끝단 배치 · 부두 **코너 셀** 자동 방위 매핑 · `submerged_*` 셀 재선정 | ⬜ | 105·106 |
 | 자동 프롭↔수동 프롭 겹침 검사 · 차량 신호 준수 · "도로 위 건물" 위치 제보 대기 · 도심 골목 도로 폭(체감 vs 실측) | ⬜ | |
-| OSM 지역 확장 — **land 14개**(boat 2개 분리) — fetch→build→검수 반복 | ⬜ | 코드 변경 없음 — 스폰·terrain 검수 필요 |
+| **OSM 지역 확장 — 육지 8지역 · 데이터 지역 13**(속초 1 · 부산 감천 · 백운포 · 울산 · 포항 구룡포 · 거제 지세포 · 해금강 · 여수 · 태안 안흥 · 만리포 · 제주 도두 · 모슬포 · 서귀포 · 인천 연안부두) — 속초 크기 bbox · Actions 수집 · 게임 상호 자동 변환 · 구역 17 | ✅ | **262** — 사용자 육안(terrain ↔ 실지형 · 핀 자리) · 자동 상호 검토 ⬜ |
 | §11 에셋 교체(타일셋·프리팹) + L4 NPC | ⬜ | 절차 구현이 자리 — 에셋 도착 시 교체 |
 | **마을 사람(일반 NPC) 결정적 배치 + 자율 배회** — `characterOf('amb_*')` · 건물 반경 6타일 마을 편향 · 보도/맨땅/잔디 · 4방향 타일 걷기 · 차도 금지 · 카메라 반경 밖 동결 · 구 gem 보행자 프롭 산포 폐기 | ✅ | **166** — `scenes/field/FieldNpcSystem.ts` |
 | POI 세분화(비거래 시설 전용 씬·지역 실상점 카탈로그) | ⬜ | 현재 마커+SHOP_CATALOG 프리셋 |
 | **바닥 점 → 가게 간판 · 좌판만 노점(바로 거래) · 지도 캡처 POI 병합** | ✅ | **217** · **218** 캡처 6~10 — 가게별 영업시간 ⬜ |
-| **게임 상호**(실제 상호를 조금씩 바꾸기 — 표 하나 · 병합 때 적용) | ✅ | **218** |
-| 스폰 다중화(`meta.spawns[]`) | ⬜ | 스펙 §12-2 |
+| **게임 상호**(실제 상호를 조금씩 바꾸기 — 표 하나 · 병합 때 적용) · **262 `--auto`**(표에 없는 가게 = 업종 말 유지 · 줄기 마지막 음절 모음 바꾸기 · 프랜차이즈 가상 브랜드 · `auto: true`로 표에 남김) | ✅ | **218** · **262** — 자동분 검토 ⬜ |
+| 스폰 다중화 — `RegionAreaNode.spawnLatLon`(구역마다 내리는 자리 · 속초항 여객선터미널 앞 · 동명항 · 부산 4 · 새 지역 12) | ✅ | **262** — 스펙 §12-2의 `meta.spawns[]` 대신 구역 노드가 좌표를 든다 |
 | **전체 지도 오버레이(M)** — 휠 줌(맞춤~×8 · **내 위치 중심**)·드래그(**좌→우 = 지도 왼쪽으로** `DRAG_DIR`)·더블클릭 중심 · 마커(랜드마크·상점·식당·NPC·퀘스트 `?`/`!`) · 좌하단 범례 16종 · **빨간 점멸 현위치** · 피어 · **우클릭 핀 설정/제거** + 핀 화살표(청록) | ✅ | **155** — `ui/FullMapPanel.ts` · `store/MapPinStore.ts`(지역당 1개 · 세션 메모리) · 259 이름표(목표 · 핀 · 다른 사람 · 「나」) 흰 테 글자 |
 | 미니맵 **타이틀바 [−][+]** 크기 단계 + 미니맵 아래 **퀘스트 추적기**(제목·목표·방법·거리) + 목표 방향 점멸 화살표(금) | ✅ | 155 — M 키는 전체 지도로 이관 |
 | 미니맵 · 전체 지도 **마커 정보 카드**(호버 — 이름 · 종류 · 파는 것 · 영업 상태 · 의뢰 상태 · 거리·방향 · 겹친 자리 목록 · 누르면 핀) | ✅ | 200 · **201** — `ui/MapMarkerTip` · `BUILDING_GOODS` · `BUILDING_HOURS`(직판장·편의점 24h · 그 외 10~22시 · **202 — 닫힌 시간엔 거래 대신 문 앞 혼잣말**) |
@@ -159,6 +162,18 @@
 - POI 상호작용·사운드는 콘텐츠 확장 단계에서. 상세 미결은 스펙 §13-5.
 
 ## 6. 함정·불변조건
+
+- **bbox 가장자리 시드로 바다를 채우면 그 변이 육지를 지날 때 내륙이 잠긴다**(262차 — 지세포 'E' 99% · 감천 북쪽 확장 'S' 94%).
+  바다는 **해안선 방향 투표**로 정한다(`build_osm_tilemap.py` — OSM coastline은 왼쪽 뭍 · 오른쪽 바다 · 장벽으로 나뉜 성분마다 오른쪽 표 +1 · 왼쪽 표 −1).
+  시드 하나로 채우면 부두 · 좁은 물길 건너편에 떨어진 시드 몇 개가 뭍을 잠근다(실측 98%) — 반드시 성분 단위 다수결. 결과가 5~92% 밖이면 가장자리 시드로 되돌린다.
+  `seaEdges`는 bbox 안에 해안선이 하나도 없을 때의 폴백이다.
+- **main에 없는 워크플로는 Run workflow · API dispatch가 404다**(262차) — 작업 브랜치에서는 `pixelazed/_osm_request.txt`를 고쳐 푸시해 깨운다.
+  **워크플로가 도는 동안 같은 브랜치에 푸시하지 않는다** — 러너의 산출물 푸시가 non-fast-forward로 거부돼 결과가 통째로 사라진다.
+  `set -e` 한 줄 루프는 지역 하나(Overpass 5xx)로 열 지역 결과를 버린다 — 지역별로 이어 가고 된 것은 커밋한 뒤 실패 목록으로 끝낸다.
+- **원격 작업 컨테이너는 Overpass · OSM 미러를 전부 막는다**(403 — 환경 네트워크 정책). 수집은 러너(또는 사용자 PC)에서만.
+- **항 머리가 bbox 밖이면 양안이 다른 걷기 성분이 된다**(감천 — 감천동 쪽 · 암남 반도 쪽). 구역마다 내리는 자리가 있어 플레이는 되지만, 걸어서 건너지는 못한다.
+- **`merge_capture_pois.py`는 `capture_pois.json`이 있어야 했다**(262차 전) — 새 지역은 캡처가 없으므로 없으면 게임 상호만 적용하게 바꿨다. 순서(마지막)는 그대로.
+- **`_JUNG` 같은 모듈 전역 이름을 같은 파일에서 다시 쓰면 로마자 표가 덮인다**(262차 실측 — 'ㅕsㅗ Restaurant'). 자모 표는 `_JUNG_JAMO`.
 
 - **방파제 피복 방위는 동률을 직선 걸음 수로 가린다**(219차 — 사용자 「알 수 없는 구조물 — 직판장 근처」).
   「가장 가까운 물 방위」를 거리장이 가장 작은 첫 이웃(n→e→s→w)으로 고르면, 항내 물가 줄처럼 동 · 남 거리가 같은 칸이 'e'로 잡혀

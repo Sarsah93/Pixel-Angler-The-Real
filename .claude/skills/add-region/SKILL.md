@@ -11,14 +11,36 @@ description: Pixel Angler 신규 지역(타일맵 필드) 추가 절차 — 실�
 ## OSM 심리스 파이프라인 (v2 — 2026-08-27, 스펙 `.agents/OSM_TILEMAP_SPEC.md`)
 
 ```
-tools/regions_config.py 에 지역 bbox 등록 (17개 기등록 — 신규는 bbox·seaEdges·spawn 한 줄)
+tools/regions_config.py 에 지역 bbox 등록 (v4 — 262차: 속초 크기 bbox 규칙 · 신규는 bbox·seaEdges·spawn 한 줄)
   → py tools/fetch_region_osm.py <region>     (Overpass 1회 온라인 — 파츠 캐시, 재수집 = 파일 삭제)
   → py tools/build_osm_tilemap.py <region>    (→ pixelazed/<region>/terrain.png·pois·meta)
   → py tools/build_region_maps.py <region>    (meta.json 존재 = 심리스 분기 → seamless.json + 복사)
+  → py tools/extract_osm_buildings.py · extract_lights.py · merge_capture_pois.py <region>   (건물 · 등대 · 게임 상호 — 순서 고정)
   → core RegionMap.ts SEAMLESS_REGIONS 등록 + WorldMap.ts REGION_AREA_NODES 구역 노드
      (등록 시 **nameEn 도 함께 채운다** — 지명은 사전이 아니라 데이터가 정본, 120차)
   → RegionFieldScene가 자동으로 심리스 모드(SeamlessChunks 청크 스트리밍)로 연다
 ```
+
+### 262차 — 수집은 GitHub Actions · 지역 하나에 데이터 지역 여럿 · 구역별 스폰
+
+- **원격 작업 컨테이너는 Overpass · OSM 미러가 전부 막혀 있다**(403 — 환경 네트워크 정책). 수집은 워크플로
+  **「OSM 지역 수집」**(`.github/workflows/osm-region.yml`)이 러너에서 fetch → build → 건물 · 등대 · 게임 상호까지 돌리고
+  산출물(`pixelazed/_osmcache/<region>*` · `pixelazed/<region>/` · `public/data/<region>/`)을 **실행한 브랜치에 커밋**한다.
+  - main에 이 파일이 있으면 Actions 탭 「Run workflow」(브랜치 · regions · refetch). **main에 없는 브랜치에서는 Run workflow · API dispatch가 404**다 —
+    `pixelazed/_osm_request.txt`에 지역 키를 적어(한 줄 하나 · `refetch` 줄 = 캐시 지우고 다시) 푸시하면 그 푸시가 수집을 깨운다(요청 번호 주석을 올려 파일을 바꾼다).
+  - 끝나면 `git pull`. 러너 로그에 sea ratio · 스폰 스냅 · 걷기 성분 · 「표에 없는 가게 이름」이 찍힌다 — 그 이름으로 `pixelazed/<region>/name_alias.json`을 쓰고
+    `python tools/merge_capture_pois.py <region>`을 다시 돌린다(캡처 파일이 없는 지역은 게임 상호만 적용 — 262차).
+  - 12지역 한 번에 돌리면 약 10분. 구역 셋이 한 bbox에 들면 bbox 하나(속초), 10km 떨어지면 데이터 지역을 나눈다(부산 감천 · 백운포).
+- **bbox는 속초 크기(약 3.5~4.3 × 5.4~6 km · 75만~105만 타일)** — v3의 큰 bbox(1.3~3.3M)는 수집 안 하고 기록만 남겼다(`regions_config.py` 머리말).
+  `seaEdges`는 **바다가 확실한 변만**(육지가 걸리는 변에 시드를 두면 내륙이 침수 — 백운포는 남쪽이 신선대 부두라 'E'만).
+  항 머리가 bbox 밖이면 양안이 다른 걷기 성분이 된다(감천 요청 1 — N 35.082 → 35.090으로 다시).
+- **지역 하나 안에 데이터 지역이 여럿**이면 core `SEAMLESS_AREA_REGIONS[fieldMapId]`(구역 → 데이터 지역)에 넣는다.
+  `seamlessRegionOf(regionId, mapId)` — 표에 없는 구역은 `SEAMLESS_REGIONS[regionId]`(지역 기본). 레거시 맵 그래프는 없어도 된다(심리스 모드).
+- **구역별 스폰은 `RegionAreaNode.spawnLatLon`(WGS84)** — 필드가 meta bbox 등장방형으로 타일을 구해 `nearestWalkable`로 스냅한다.
+  bbox를 다시 잘라도 좌표는 그대로 쓸 수 있다. 자리는 `terrain.txt`(걷기 성분 · 'b' 띠)에서 고르고 하네스로 `dist 0.0`을 확인한다.
+  구역의 `pixelX/Y`(zoom_{slug} 256×256 위 핀)는 대략값 — 핀 편집 Dev Tool로 다듬는다.
+- **하네스**: 출조 구역마다 `scene.restart({ region, mapId })` → `playerTile()` · `seamlessDef.dataRegion` · 건물 · 가게 · 등대 · 404 · pageerror
+  (262차 `harness_regions.cjs` 패턴 — 18구역 전부 `dist 0.0` · pageerror 0).
 
 - **스펙 §0.5 코드 정합 노트가 본문보다 우선** — **1타일 = 5m · 심리스 TR 32px**(legacy 20) ·
   타일 8종(`. ~ # , r w s b` — `w` = 보도) · 도로 폭 미터 기준(`ROAD_W_M`) ·
@@ -116,7 +138,7 @@ py tools/merge_capture_pois.py <region>   # 캡처 POI 병합 + 게임 상호 �
 index.html을 돌려줘 JSON 파싱 pageerror(함정 — depthProfileUrl과 동일). 방파제 단면(테트라포드/사석/
 상판)은 `computeBreakwaters`가 지형에서 자동 산출하므로 별도 데이터가 없다.
 
-## 건물 윤곽 · 종류 · 층수 (239차 — 필수)
+## 건물 윤곽 · 종류 · 층수 (239차 — 필수 · 262차부터 워크플로가 함께 뽑는다)
 
 건물 그림은 `'#'` 타일이 아니라 **OSM 폴리곤**으로 선다(`scenes/field/BuildingArt.ts`). 지형 빌드 뒤 따로 뽑는다:
 

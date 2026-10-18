@@ -290,13 +290,40 @@ const BUSAN_BAEGUNPO: SeamlessRegionDef = {
   hasLights: true, hasBuildings: true,
 };
 
+/** 262차 — 다른 육지 지역 11 데이터 지역(속초 크기 bbox — `tools/regions_config.py` v4). 울릉 · 독도(배 전용)는 아직 */
+const def = (dataRegion: string, name: string, nameEn: string): SeamlessRegionDef =>
+  ({ dataRegion, dataDir: `data/${dataRegion}`, name, nameEn, hasLights: true, hasBuildings: true });
+const ULSAN_BANGEOJIN = def('ulsan', '울산 방어진', 'Ulsan Bangeojin');
+const POHANG_GURYONGPO = def('pohang_guryongpo', '포항 구룡포', 'Pohang Guryongpo');
+const GEOJE_JISEPO = def('geoje_east', '거제 지세포', 'Geoje Jisepo');
+const GEOJE_HAEGEUMGANG = def('geoje_south', '거제 해금강', 'Geoje Haegeumgang');
+const YEOSU_CITY = def('yeosu_city', '여수', 'Yeosu');
+const TAEAN_ANHEUNG = def('taean_anheung', '태안 안흥', 'Taean Anheung');
+const TAEAN_MANRIPO = def('taean_manripo', '태안 만리포', 'Taean Mallipo');
+const JEJU_DODU = def('jeju_city', '제주 도두', 'Jeju Dodu');
+const JEJU_MOSEULPO = def('jeju_moseulpo', '제주 모슬포', 'Jeju Moseulpo');
+const JEJU_SEOGWIPO = def('jeju_seogwipo', '제주 서귀포', 'Jeju Seogwipo');
+const INCHEON_YEONAN = def('incheon_yeonan', '인천 연안부두', 'Incheon Yeonan Pier');
+
 /** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방). 구역별로 다른 데이터 지역은 `SEAMLESS_AREA_REGIONS` */
 export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
   gangwon_sokcho: { dataRegion: 'sokcho_v2', dataDir: 'data/sokcho_v2', name: '속초', nameEn: 'Sokcho', hasLights: true, hasFishFarms: true, hasBuildings: true },
   // 262차 — 지역 기본은 감천(감천항 서 · 동방파제 · 암남공원). 백운포 구역만 아래 표가 다른 데이터 지역으로 보낸다
   busan: BUSAN_GAMCHEON,
+  // 262차 — 지역 기본(첫 구역). 둘째 · 셋째 구역은 아래 표
+  ulsan: ULSAN_BANGEOJIN,
+  gyeongbuk_pohang: POHANG_GURYONGPO,
+  gyeongnam_geoje: GEOJE_JISEPO,
+  jeonnam_yeosu: YEOSU_CITY,
+  chungnam_taean: TAEAN_ANHEUNG,
+  jeju: JEJU_DODU,
+  incheon: INCHEON_YEONAN,
 };
 SEAMLESS_AREA_REGIONS['busan_baegunpo_1'] = BUSAN_BAEGUNPO;
+SEAMLESS_AREA_REGIONS['geoje_haegeumgang_1'] = GEOJE_HAEGEUMGANG;
+SEAMLESS_AREA_REGIONS['taean_manripo_1'] = TAEAN_MANRIPO;
+SEAMLESS_AREA_REGIONS['jeju_moseulpo_1'] = JEJU_MOSEULPO;
+SEAMLESS_AREA_REGIONS['jeju_seogwipo_1'] = JEJU_SEOGWIPO;
 
 /**
  * 현재 모드에서 이 지역이 심리스로 열리는가 (아니면 undefined = legacy 경로).

@@ -1053,6 +1053,52 @@ const groupCount = (list, key) => {
   return m;
 };
 
+// ─────────────────────────────────────────────
+// 262차 — 출조 지역: 전국 지도 노드 × 출조 구역(REGION_AREA_NODES) × 심리스 데이터 지역(지도 크기 · 가게 · 건물 · 등대는 public/data에서 실측) × 조행록 장
+// ─────────────────────────────────────────────
+const DATA_DIR = path.join(ROOT, 'packages/client-pc/public/data');
+const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+const SEA_KO = { east: '동해', south: '남해', west: '서해' };
+const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
+const dataRegionStats = (dr) => {
+  const meta = readJson(path.join(DATA_DIR, dr, 'meta.json'));
+  if (!meta) return null;
+  const pois = readJson(path.join(DATA_DIR, dr, 'pois.json')) ?? [];
+  const bld = readJson(path.join(DATA_DIR, dr, 'buildings.json')) ?? [];
+  const lights = readJson(path.join(DATA_DIR, dr, 'lights.json')) ?? [];
+  const km = (n) => (n * (meta.tileMeters ?? 5) / 1000).toFixed(1);
+  const shops = pois.filter((q) => ['shop', 'restaurant', 'cafe', 'lodging', 'pharmacy', 'fuel', 'bank', 'market'].includes(q.type)).length;
+  return { id: dr, w: meta.width, h: meta.height, km: `${km(meta.width)} × ${km(meta.height)} km`, pois: pois.length, shops, buildings: bld.length, lights: lights.length };
+};
+const regions = core.WORLD_NODE_DATABASE.map((n) => {
+  const rid = n.regionDatabaseId;
+  const areas = core.getRegionAreaNodes(rid);
+  const pages = core.JOURNAL_PAGES.filter((pg) => pg.regionId === rid).map((pg) => ({
+    page: pg.page, label: pg.labelKo, species: core.FISH_DATABASE.find((f) => f.id === pg.speciesId)?.nameKo ?? pg.speciesId,
+    seasons: pg.seasons.map((x) => SEASON_KO[x] ?? x).join(' · '), how: pg.howKo,
+    cond: [pg.minCm ? `${pg.minCm}cm 이상` : '', pg.count ? `${pg.count}마리` : '', pg.releaseAfter ? '계측 뒤 방류' : ''].filter(Boolean).join(' · '),
+  }));
+  const seaKey = core.seaZoneOf ? core.seaZoneOf(rid) : null;
+  const drs = [];
+  for (const a of areas) {
+    const def = core.seamlessRegionOf(rid, a.fieldMapId);
+    if (def && !drs.some((d) => d.id === def.dataRegion)) { const st = dataRegionStats(def.dataRegion); if (st) drs.push({ ...st, name: def.name }); }
+  }
+  return {
+    id: rid, name: n.name, nameEn: n.nameEn, short: n.shortName, sido: n.region, sea: rid === 'jeju' ? '제주' : (SEA_KO[seaKey] ?? ''),
+    open: areas.length > 0, boat: ['ulleungdo', 'dokdo'].includes(rid),
+    areas: areas.map((a) => {
+      const def = core.seamlessRegionOf(rid, a.fieldMapId);
+      return {
+        id: a.id, name: a.name, nameEn: a.nameEn ?? '', desc: a.desc, details: a.details ?? [], depth: a.depthRangeM ? `${a.depthRangeM[0]}~${a.depthRangeM[1]}m` : '',
+        snag: a.snagRisk ? core.SNAG_RISK_LABEL[a.snagRisk] : '', enterable: a.enterable !== false, dataRegion: def?.dataRegion ?? null, mapName: def?.name ?? '',
+        ownSpawn: !!a.spawnLatLon,
+      };
+    }),
+    maps: drs, pages,
+  };
+});
+
 const out = {
   generatedFrom: '@tra/core dist + client wiki catalog + docs/wiki/02-SYSTEMS',
   generatedAt: new Date().toISOString(),
@@ -1062,6 +1108,7 @@ const out = {
     items: items.length, images: Object.keys(manifest).length,
     rules: rules.length, updates: updates.length, skills: skillList.length, titles: guide.titles.length,
     crops: farmCrops.length, supplies: farmSupplies.length,
+    regions: regions.filter((r) => r.open).length, areas: regions.reduce((n, r) => n + r.areas.length, 0),
   },
   quests,
   cooking: {
@@ -1104,6 +1151,7 @@ const out = {
   skills,
   guide,
   farming,
+  regions,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
