@@ -195,6 +195,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   **262차부터 OSM 수집은 워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml`) — 이 컨테이너는 Overpass가 막혀 있다(403 · 환경 네트워크 정책).
   작업 브랜치에서는 `pixelazed/_osm_request.txt`에 지역 키를 적어 푸시하면 러너가 굽고 그 브랜치에 커밋한다(main에 들어가면 Actions 탭 Run workflow).
   ⚠ 러너가 도는 동안 같은 브랜치에 푸시하지 않는다(러너 푸시가 non-fast-forward로 거부돼 산출물을 잃는다).
+  요청 파일이 바뀐 커밋을 main에 올리면 main에서도 한 번 돈다(264 — 캐시 커밋이 main에 생겨 빨리 감기가 막히면 `git merge origin/main`).
   **지역은 장 순서대로 열린다**(263 — `isRegionOpenAtChapter` · `STORY_CHAPTERS.regionIds` — 노드만 더하면 열리지 않는다) · 인물 · 트리거 · 장소 칸은 `dataRegion`으로 데이터 지역을 가른다.
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).

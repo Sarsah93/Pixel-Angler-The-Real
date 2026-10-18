@@ -28,6 +28,8 @@ tools/regions_config.py 에 지역 bbox 등록 (v4 — 262차: 속초 크기 bbo
   산출물(`pixelazed/_osmcache/<region>*` · `pixelazed/<region>/` · `public/data/<region>/`)을 **실행한 브랜치에 커밋**한다.
   - main에 이 파일이 있으면 Actions 탭 「Run workflow」(브랜치 · regions · refetch). **main에 없는 브랜치에서는 Run workflow · API dispatch가 404**다 —
     `pixelazed/_osm_request.txt`에 지역 키를 적어(한 줄 하나 · `refetch` 줄 = 캐시 지우고 다시) 푸시하면 그 푸시가 수집을 깨운다(요청 번호 주석을 올려 파일을 바꾼다).
+    ⚠ 요청 파일이 바뀐 커밋이 main에 들어가면(빨리 감기 포함) main에서도 한 번 돈다(264) — 러너 캐시 커밋이 main에 생겨 빨리 감기가 막히면
+    `git merge origin/main`으로 받는다(산출물은 같고 Overpass 타임스탬프만 다르다).
   - 끝나면 `git pull`. 러너 로그에 sea ratio · 스폰 스냅 · 걷기 성분 · 「표에 없는 가게 이름」이 찍힌다 — 그 이름으로 `pixelazed/<region>/name_alias.json`을 쓰고
     `python tools/merge_capture_pois.py <region>`을 다시 돌린다(캡처 파일이 없는 지역은 게임 상호만 적용 — 262차).
   - 12지역 한 번에 돌리면 약 10분. 구역 셋이 한 bbox에 들면 bbox 하나(속초), 10km 떨어지면 데이터 지역을 나눈다(부산 감천 · 백운포).
