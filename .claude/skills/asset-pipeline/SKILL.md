@@ -335,3 +335,21 @@ node tools/dish_photos.cjs --from <폴더>         # 불요리 완성 요리(레
 - 씨앗 봉투 창은 그림의 25%라 `cutoutMulti`의 갇힌 흰 섬 제거(3% 미만)에 안 걸린다 — `seed_packets.cjs`가 「가장 큰 불투명 순백 덩어리」로 창을 따로 찾는다.
   띠 색은 작물 갈래(잎 · 열매 · 뿌리 · 곡물 · 콩 · 향채 · 나물 · 싹)마다 색상만 돌린다(틀 초록이 짙어 밝기를 조금 올린다).
 - 위키: `dump_wiki_items.mjs`가 게임과 같은 순서로 `imgKey`를 적고, `gen_wiki_images.py`가 `ITEM_IMAGE_FILES`(원본) · `public/food/*.png`를 읽는다.
+
+## ⑧ 그림 얼굴 초상 — 인물 · 주인공 판 · 얼굴형 판 · 입 모양은 코드 (268 · 269차)
+
+대화창 · 혼잣말 · 일지 초상은 Gemini 흉상(192×192 · 셀 2px)이 먼저다(`ui/FacePhoto.ts`). 원본은 저장소에 두지 않고 `public/faces/<키>.png`가 정본이다.
+
+```bash
+NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set cast|player [--only okseon] --ref <화풍 앵커 png>   # 인물 42 · 주인공 24(계란형 · 다문 입)
+NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set player --shapes round,square --ref <앵커>       # 269 — 얼굴형 판 48(기본 판을 같은 인물 앵커로)
+node tools/gemini_face_art.cjs --out <폴더> --sheet <png>          # 12장씩 검수 시트
+node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 벗기기 → 정사각(어깨 바닥) → 96칸 → public/faces + data/FacePortraits.ts(+ 인물은 tools/wiki_img)
+```
+
+- **화풍 · 밀도 앵커 한 장은 필수**(268) — 앵커 없이는 128칸급 · 32칸급 밀도가 섞인다. 앵커가 없으면 `public/faces` 두 장을 자동으로 붙인다.
+- **얼굴형 판은 기본 판을 같은 인물 앵커로** 붙인다(`--shapes` — `_refs/base_<키>.png` 3배) — 같은 사람 · 머리 · 배색을 두고 턱선 · 볼만 바뀐다(시범 4장 실측 — 차이는 작지만 일관).
+  키 = `<기본 키>_<round|square>` · `FacePhoto.playerBaseKey`가 얼굴형 판을 먼저 찾고 없으면 계란형 판으로 돌아간다.
+- **입 모양 4 · 볼 홍조는 그림이 아니라 코드**(269 — 216장 ≈ 1만 3천 원이라) — `findMouth`(입술 선 성분 + 분홍 입술살) → `applyMouth`(웃는 입 = 입꼬리 1~2px ↑ · 작은 입 = 0.72배 · 벌린 입 = 2px 틈) ·
+  `applyBlush`(입 상자 기준 좌우 위 타원). 치환 전에 기준 피부 위에서 한다. 틀(96칸 · 어깨 바닥)을 바꾸면 `MOUTH_WIN` · 흰자 행을 다시 잰다(scratchpad `face_mouth_proto.cjs` · `face_lip_colors.cjs` 패턴).
+- 값(269 실측 · 공식 단가): 한 장 ≈ $0.043~0.047(입력 2.7~4.1K 토큰 · 출력 1.8~1.9K — 이미지 1,120 + 글 · 생각) — 얼굴 66장 ≈ 4,400원 · 얼굴형 48장 ≈ 3,100원 · 아이템 7장 ≈ 440원.

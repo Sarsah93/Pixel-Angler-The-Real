@@ -306,7 +306,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-19 268차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-19 269차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -315,7 +315,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-19 268차) — 그림 얼굴 초상 66장(Gemini) · 화풍 앵커 · 게임 · 위키 적용**
+**최근 변경 (2026-10-19 269차) — 남은 코드 그림 7장 · 주인공 얼굴형 판 48장(Gemini) · 입 모양 4 · 볼 홍조는 코드로**
+
+- 사용자 「Gemini API 크레딧이 약 9,900원 … 주인공 얼굴형 … 이 범위 내에서 … 남은 코드그림 7장 먼저 진행할 지, 잘 견적내서 적용해봐」: 268 로그 토큰 × 공식 단가 = 한 장 ≈ 60원 →
+  코드 그림 7(약 440원 · 그림 230 · 코드 그림 0) · 얼굴형 둥근 · 각진 48장(약 3,100원 — `gemini_face_art.cjs --shapes` · 기본 판을 같은 인물 앵커로 · 같은 사람 턱선만) ·
+  입 4 · 볼 홍조는 그림 대신 `FacePhoto` 입술 픽셀 변형(`findMouth` 24/24 · `applyMouth` · `applyBlush` — 216장 ≈ 1만 3천 원 대신 0원).
+- 얼굴 114장(`playerBaseKey` 얼굴형 우선 → 기본) · 키 `_m_<입>` · `_b` · PLAN 두 번 들어간 사본 삭제(432 → 210줄) · 스킬 `asset-pipeline` ⑧.
+- 검증: 시트 · 몽타주 육안(7/7 · 48/48 · 입 24 × 5) · 하네스(부팅 114 · 아이템 7 키 · 격자 31키 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 332/332 ·
+  아티팩트 라이브러리 11 · 과업 10 · 순서도 10 · 약 3,500원 씀(잔액 약 6,200원 추정).
+  상세: [269차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-269-face-shapes-mouth-code-art-seven.md).
+
+**이전 변경 (2026-10-19 268차) — 그림 얼굴 초상 66장(Gemini) · 화풍 앵커 · 게임 · 위키 적용**
 
 - 사용자 「Gemini 크레딧 충전했어. 계속해서 진행해줘」: 시범 4장의 도트 밀도가 제각각(128칸 vs 32칸)이라 첫 정옥선 그림을 `--ref` 화풍 · 밀도 앵커로 붙여 66장(인물 42 · 주인공 24)을
   같은 밀도로 뽑았다(실패 0). 정옥선 캐스트 표 = 장발 · 백발 · 피부 2(해시 4는 다른 인종으로 읽혔다). 시트 검수 뒤 둘만 다시(모태조 소품 · 여 곱슬 얼룩).
@@ -335,15 +345,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   `ensureFacePortrait(…, who)` — 그림 0장(Gemini 결제 402). §4 R3에 쪽 넘김 한 줄.
 - 검증: core 332/332 · 빌드 3/3 · typecheck 0 · 하네스 4벌(지도 · 미끼 · 집 · 초상) pageerror 0 · 아티팩트 셋 Version 8.
   상세: [267차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-267-first-feedback-six-fixes-face-portrait-path.md).
-
-**이전 변경 (2026-10-19 266차) — 탭 복귀 검정 화면(WebGL 컨텍스트 복구 뒤 다시 굽기) · 간판 자리 전수 검수(입구 옆 · 차도 밖) · main 반영 · 82차 배포**
-
-- 사용자 「다른 창에 들어갔다가 다시 픽셀앵글러로 돌아오면 로딩없는 대기 화면 … 검정 화면」 「도로 위에 표지판 … 입구 바로 옆에 표지판이 서있게」:
-  컨텍스트 복구 때 RenderTexture(청크 · 지붕 · 레거시 건물 · 집 어둠)를 다시 굽는다(`RESTORE_WEBGL` → `rebakeAfterContextRestore` · `refreshLights`) · 유실 오버레이 「되살리는 중」.
-- 간판 = 입구 바로 옆(side → side2 → 벽 간판 → 2칸 → 생략 — §4 R9 보강) · `nudgeOffRoad` 건물 쪽만(길 건너 문 169 → 0) · 문 앞 칸 BFS ≤ 3 · 먼 [F]는 간판을 [F] 옆에.
-- 검증: `WEBGL_lose_context` 하네스(복구 뒤 밝기 0.947 그대로 · pageerror 0) · 14지역 감사(간판 3,131 · 떨어진 간판 523 → 41 · 벽 757) · core 325/325 · 빌드 3/3 · typecheck 0 ·
-  아티팩트 4개(셋 Version 7 · 위키 66) · 82차 배포(실행 11 · gh-pages `bbf106c` · 정적 파일 1,921 같음 · 하위 경로 기동 한 18.1초 · 영 18.8초 · pageerror 0).
-  상세: [266차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md).
 
 ---
 

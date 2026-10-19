@@ -8,13 +8,6 @@
 
 /** 텍스처 키 → `public/` 기준 상대 경로 (선행 `/` 금지 — 서브패스 배포) */
 export const ITEM_ART_ASSETS: Record<string, string> = {
-  art_rig_card: 'item-icons/drawn/rig_card.png',
-  art_wet_photo: 'item-icons/drawn/wet_photo.png',
-  art_tide_sample: 'item-icons/drawn/tide_sample.png',
-  art_bamboo_piece: 'item-icons/drawn/bamboo_piece.png',
-  art_sinker_stone: 'item-icons/drawn/sinker_stone.png',
-  art_backpack: 'item-icons/drawn/backpack.png',
-  art_backpack_rough: 'item-icons/drawn/backpack_rough.png',
 };
 
 /** 아이템 id → 텍스처 키 (세이브에 `iconTexture`가 없어도 그림이 나온다) */

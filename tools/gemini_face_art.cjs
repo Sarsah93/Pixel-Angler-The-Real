@@ -20,6 +20,7 @@
  *    node tools/gemini_face_art.cjs --list                                         # 대상 · 자동 문장 표
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --dry         # 프롬프트 + 참고 그림만(요청 없음)
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> [--set cast|player|all] [--only okseon,baram]
+ *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set player --shapes round,square   # 269 — 얼굴형 판(기본 판을 같은 인물 앵커로)
  *        [--ref <화풍 · 밀도 앵커 png>[,png]] [--model gemini-nano-banana-2.1] [--jobs 3] [--tries 4] [--tag v2] [--force]
  *    node tools/gemini_face_art.cjs --out <폴더> --sheet <png>                     # 검수 시트(12장씩)
  *    node tools/gemini_face_art.cjs --out <폴더> --install [--only …] [--force]     # 배경 벗기기 → 정사각 → 96칸(셀 2px = 192px)
@@ -92,7 +93,7 @@ function describe(core, key, cfg, trait, npc, note) {
 }
 
 /** 대상 표 — cast(43) + player(16 + 수염 8) */
-async function buildTargets(set) {
+async function buildTargets(set, shapes = []) {
   const core = await loadCore();
   const out = {};
   if (set === 'cast' || set === 'all') {
@@ -112,9 +113,20 @@ async function buildTargets(set) {
           const look = { ...core.defaultAppearance(sex), hairStyle: style, hair: PLAYER_BASE.hair, skin: PLAYER_BASE.skin, eye: PLAYER_BASE.eye, faceShape: 'oval', mouth: 'neutral', blush: false, beard: beard ? PLAYER_BASE.hair : -1 };
           const cfg = { look, outfit: { ...core.bareOutfit(), shirt: 'tee', shirtColor: 0x3d5a80 } };
           const trait = { sex, age: 'young', role: 'angler' };
-          out[key] = { key, kind: 'player', nameKo: `주인공 ${sex === 'm' ? '남' : '여'} · ${STYLE_NAME[style]}${beard ? ' · 수염' : ''}`, nameEn: key, cfg,
-            text: describe(core, key, cfg, trait, npc, NOTES.player)
-              + ' 머리카락 · 피부 · 눈동자는 각각 **한 가지 기준색과 그 밝은 · 어두운 단계(3단)만** 쓴다 — 게임이 그 색을 통째로 바꿔 입힌다. 모자 · 안경 · 장신구 없음.' };
+          const palNote = ' 머리카락 · 피부 · 눈동자는 각각 **한 가지 기준색과 그 밝은 · 어두운 단계(3단)만** 쓴다 — 게임이 그 색을 통째로 바꿔 입힌다. 모자 · 안경 · 장신구 없음.';
+          const nameKo = `주인공 ${sex === 'm' ? '남' : '여'} · ${STYLE_NAME[style]}${beard ? ' · 수염' : ''}`;
+          if (!shapes.length) {
+            out[key] = { key, kind: 'player', nameKo, nameEn: key, cfg, text: describe(core, key, cfg, trait, npc, NOTES.player) + palNote };
+            continue;
+          }
+          // 269 — 얼굴형 판: 기본(계란형) 판을 같은 인물 앵커로 붙이고 턱선 · 볼만 바꾼다. 키 = `<기본 키>_<얼굴형>`
+          for (const shape of shapes) {
+            if (!SHAPE_DETAIL[shape]) throw new Error(`모르는 얼굴형: ${shape} (round · square)`);
+            const vkey = `${key}_${shape}`;
+            const vcfg = { ...cfg, look: { ...look, faceShape: shape } };
+            out[vkey] = { key: vkey, kind: 'player', base: key, nameKo: `${nameKo} · ${SHAPE_NAME[shape]} 얼굴`, nameEn: vkey, cfg: vcfg,
+              text: describe(core, vkey, vcfg, trait, npc, NOTES.player) + palNote + ' ' + SHAPE_DETAIL[shape] };
+          }
         }
       }
     }
@@ -128,6 +140,26 @@ const STYLE_INTRO = '픽셀 아트 **인물 초상(흉상)** 한 장을 그려 �
   + '사실적 비례의 얼굴(눈 · 코 · 입 · 귀가 분명하고 호감 가는 인상 — 추하거나 기괴하지 않게). 사진 · 3D · 수채 · 부드러운 번짐 금지.';
 const ANCHOR_TEXT = '바로 위 그림(있다면)은 **화풍 · 도트 밀도 참고**입니다 — 그 사람을 그리지 말고 밀도와 음영 방식만 따르세요. '
   + '아래 작은 도트 그림은 그릴 인물의 **배색 · 머리 모양 · 모자 앵커**입니다 — 같은 사람을 훨씬 자세하고 보기 좋게 다시 그리되 배색은 따르세요. 그 작은 그림을 그대로 키우지는 마세요.';
+
+/** 269 — 얼굴형 판의 턱선 설명(기본 = 계란형). 얼굴형은 턱선 · 볼에서 읽힌다(이마는 머리카락이 덮는다) */
+const SHAPE_DETAIL = {
+  round: '얼굴형: **둥근 얼굴** — 턱선이 부드럽게 둥글고 볼이 통통한 동그란 윤곽. 기본 계란형보다 얼굴 너비가 넓고 턱이 짧다. 기본 초상과 **얼굴형(턱선 · 볼)만** 다르고 나머지는 전부 같다.',
+  square: '얼굴형: **각진 얼굴** — 턱이 넓고 턱선이 직선에 가까운 사각 윤곽, 광대와 턱뼈가 분명하다. 기본 초상과 **얼굴형(턱선 · 볼)만** 다르고 나머지는 전부 같다.',
+};
+const SHAPE_ANCHOR_TEXT = '바로 위 그림은 **화풍 · 도트 밀도 참고**입니다 — 그 사람을 그리지 말고 밀도와 음영 방식만 따르세요. '
+  + '아래 첫 그림은 **같은 인물의 기본(계란형) 초상**입니다 — 같은 사람 · 같은 머리 모양 · 수염 · 배색 · 옷 · 구도 · 표정을 그대로 두고, **얼굴형(턱선 · 볼)만** 설명대로 바꿔 다시 그리세요. '
+  + '그다음 작은 도트 그림은 배색 · 머리 모양 앵커입니다(그대로 키우지는 마세요).';
+
+/** 269 — 설치된 기본 판(192px)을 3배로 키워 같은 인물 앵커로 보낸다(없으면 null — 그때는 보통 생성) */
+function baseRefPart(outDir, baseKey) {
+  const src = path.join(FACES_DIR, `${baseKey}.png`);
+  if (!fs.existsSync(src)) return null;
+  const dir = path.join(outDir, '_refs');
+  fs.mkdirSync(dir, { recursive: true });
+  const dst = path.join(dir, `base_${baseKey}.png`);
+  if (!fs.existsSync(dst)) execFileSync('convert', [src, '-background', 'white', '-alpha', 'remove', '-scale', '300%', `PNG24:${dst}`]);
+  return { inlineData: { mimeType: 'image/png', data: fs.readFileSync(dst).toString('base64') } };
+}
 
 const taskText = (it) => `그릴 사람: ${it.nameKo} (${it.nameEn}). ${it.text}\n`
   + '조건: 순백색 단색 배경(그림자 · 무늬 없음). 인물 하나만, 머리 끝과 어깨선이 잘리지 않게. 글자 · 숫자 · 로고 · 테두리 · 말풍선 없음. 정사각 1:1.';
@@ -170,7 +202,7 @@ function styleRefParts(outDir, refs, exclude) {
 }
 
 function parseArgs(argv) {
-  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [] };
+  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [], shapes: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -187,6 +219,7 @@ function parseArgs(argv) {
     else if (a === '--list') P.list = true;
     else if (a === '--sheet') P.sheet = path.resolve(next());
     else if (a === '--ref') P.refs.push(...next().split(',').map((f) => path.resolve(f.trim())).filter(Boolean));
+    else if (a === '--shapes') P.shapes = next().split(',').map((s) => s.trim()).filter(Boolean);
     else throw new Error(`모르는 인자: ${a}`);
   }
   return P;
@@ -196,8 +229,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const outName = (key, tag) => `${key}${tag ? `.${tag}` : ''}`;
 
 async function generateOne(core, key, it, P) {
+  const baseRef = it.base ? baseRefPart(P.out, it.base) : null;
+  const parts = baseRef
+    ? [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, key), { text: SHAPE_ANCHOR_TEXT }, baseRef, procRefPart(core, P.out, key, it.cfg), { text: taskText(it) }]
+    : [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, key), { text: ANCHOR_TEXT }, procRefPart(core, P.out, key, it.cfg), { text: taskText(it) }];
   const body = {
-    contents: [{ role: 'user', parts: [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, key), { text: ANCHOR_TEXT }, procRefPart(core, P.out, key, it.cfg), { text: taskText(it) }] }],
+    contents: [{ role: 'user', parts }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },
   };
   let last = '';
@@ -305,7 +342,7 @@ async function install(P, targets, list) {
 
 (async () => {
   const P = parseArgs(process.argv.slice(2));
-  const { core, targets } = await buildTargets(P.set);
+  const { core, targets } = await buildTargets(P.set, P.shapes);
   let list = Object.keys(targets);
   if (P.only) {
     const miss = P.only.filter((k) => !targets[k]);
@@ -324,7 +361,8 @@ async function install(P, targets, list) {
   if (P.dry) {
     for (const k of list) {
       procRefPart(core, P.out, k, targets[k].cfg); styleRefParts(P.out, P.refs, k);
-      console.log(`\n=== ${k} (${targets[k].nameKo}) ===\n${taskText(targets[k])}`);
+      const b = targets[k].base ? baseRefPart(P.out, targets[k].base) : null;
+      console.log(`\n=== ${k} (${targets[k].nameKo})${targets[k].base ? ` · 같은 인물 앵커 ${b ? '있음' : '없음(기본 판 미설치)'}` : ''} ===\n${taskText(targets[k])}`);
     }
     console.log(`\n[dry] ${list.length}장 — 참고 그림 ${path.join(P.out, '_refs')} · 요청은 보내지 않았다`);
     return;

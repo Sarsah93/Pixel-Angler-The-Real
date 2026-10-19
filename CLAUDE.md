@@ -67,13 +67,22 @@
   → **265 속초 출조 지점 「속초항」 하나 · 출조 구역 규칙(걷기 30초) · 위키 지도 탭 구 맵 15**
   → **266 탭 복귀 검정 화면(WebGL 복구 뒤 다시 굽기) · 간판 입구 옆 · 문 밀기 중심선 금지 · main 반영 · 82차 배포**
   → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길**
-  → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**.
+  → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**
+  → **269 코드 그림 7 · 주인공 얼굴형 판 48(같은 인물 앵커) · 입 4 · 볼 홍조는 코드 · 약 3,500원**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **269차**: **남은 코드 그림 7장 · 주인공 얼굴형 판 48장(Gemini) · 입 모양 4 · 볼 홍조는 코드로** —
+  사용자 「Gemini API 크레딧이 약 9,900원 … 얼굴형 … 이 범위 내에서 … 코드그림 7장 먼저 진행할 지, 잘 견적내서 적용해봐」 → 268 로그 토큰 × 공식 단가 = 한 장 ≈ 60원 →
+  코드 그림 7(약 440원 · `misc.cjs` 그대로 · 카드 230 · 코드 그림 0) · 얼굴형 둥근 · 각진 48장(약 3,100원 — `gemini_face_art.cjs --shapes round,square` ·
+  기본 판을 3배로 키워 같은 인물 앵커 · 시범 4 → 44 · 실패 0 · 같은 사람 턱선만) · 입 4 · 볼 홍조 = `FacePhoto` 입술 픽셀 변형(`findMouth` 24/24 · 입꼬리 1~2px · 0.72배 · 2px 틈 · 타원 분홍) ·
+  얼굴 114장 · 키 `<기본>_<얼굴형>` · `_m_<입>` · `_b` · PLAN 두 번 들어간 사본 삭제 · 스킬 `asset-pipeline` ⑧ ·
+  검증 = 시트 · 몽타주 육안(7/7 · 48/48 · 입 24 × 5) · 하네스(부팅 114 · 아이템 7 키 · 격자 31키 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 라이브러리 11 · 과업 10 · 순서도 10.
+  **다음 = 사용자 육안(코드 그림 7 · 얼굴형 · 입 · 홍조) · 얼굴형 차이를 더 뚜렷하게 할지(24장 ≈ 1,500원) · 83차 배포(요청 시) · 잔액 약 6,200원(추정)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-19-269-face-shapes-mouth-code-art-seven.md`.
 - **268차**: **그림 얼굴 초상 66장(Gemini) · 화풍 앵커 · 게임 · 위키 적용** —
   사용자 「Gemini 크레딧 충전했어. 계속해서 진행해줘」 → 시범 4장 밀도 제각각(정옥선 128칸급 · 나머지 32칸급) → 첫 정옥선 그림을 `--ref` 앵커로 66장 같은 밀도(실패 0 · 약 7분) ·
   정옥선 캐스트 표 장발 · 백발 · 피부 2(해시 4는 다른 인종으로 읽힘 — 필드 스프라이트도 같이) · 시트 검수 뒤 둘만 다시(모태조 「소품 없음」 · 여 곱슬 얼룩) ·
@@ -95,15 +104,6 @@
   검증 = core 332/332 · 빌드 3/3 · typecheck 0 · 하네스(가이드 흐름 Enter → 휠 6.61 → 끌기 144px · 한계 48 · 속초 184px · 화살표 둘 326m/298m · 집 ESC 나가기 0 · 「열기」 8마리 · 가짜 초상 치환 색 일치) pageerror 0 ·
   아티팩트 셋 Version 8(위키는 입력 불변). **다음 = 사용자 실플레이 확인 · Gemini 충전 뒤 초상 66장 · 83차 배포(요청 시)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-267-first-feedback-six-fixes-face-portrait-path.md`.
-- **266차**: **탭 복귀 검정 화면(WebGL 컨텍스트 복구 뒤 다시 굽기) · 간판 자리 전수 검수(입구 옆 · 차도 밖) · main 반영 · 82차 배포** —
-  사용자 「브라우저에 창 두개 띄워놓고 다른 거 보고 있다가 다시 게임 창 켜면 검정 화면 … 로딩없는 대기 화면」 「도로 위에 표지판 … 입구 바로 옆에 표지판이 서있게」 →
-  원인 = 브라우저가 끊은 WebGL 컨텍스트가 돌아와도 RenderTexture(청크 지면 · 지붕 · 레거시 건물 · 집 어둠)는 비어 있다 →
-  `RESTORE_WEBGL`에서 다시 굽기(`rebakeAfterContextRestore` · `refreshLights`) · 유실 오버레이 「되살리는 중」 ·
-  간판 규칙 side → side2 → **벽 간판**(문 변 위 · 건물 앞) → 2칸 → 생략 · `nudgeOffRoad` 건물 쪽만(길 건너 문 169 → 0) · 문 앞 칸 BFS ≤ 3 · 먼 [F]는 간판을 [F] 옆에 ·
-  검증 = `WEBGL_lose_context` 하네스(복구 뒤 밝기 0.947 그대로 · pageerror 0) · 14지역 감사(간판 3,131 · 떨어진 간판 523 → 41 · 벽 757 · 차도 밴드 안 간판 = 벽 발치뿐) ·
-  core 325/325 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(셋 Version 7 · 위키 66) · 82차 배포(실행 11 · gh-pages `bbf106c` · 정적 파일 1,921 같음 · 하위 경로 기동 한 18.1초 · 영 18.8초 · pageerror 0).
-  **다음 = 사용자 실브라우저 확인(다른 창 갔다 오기 · 간판 자리) · 문 변이 물 쪽인 큰 건물 · 감사 도구화(백로그 CM)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -126,7 +126,7 @@
   `food assets/items/` = 장비 밖 아이템 원본 223장(255 — Gemini · 씨앗 봉투 틀 `_template/`) — 게임은 `node tools/item_cards.cjs`가 굽는 `public/items/` 카드 · 아이콘만 싣는다.
   `food assets/dishes/` = 완성 요리 사진 원본 7장(255) — `node tools/dish_photos.cjs`가 `public/food/` 사진 · 칸 아이콘으로 굽는다.
   얼굴 초상(268)은 원본을 저장소에 두지 않는다 — `public/faces/<키>.png`(192px)가 정본이고, 더 뽑을 때는 `NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> [--ref 앵커]`
-  → `--sheet` 검수 → `--install`(스킬 `asset-pipeline` ⑦).
+  → `--sheet` 검수 → `--install`(스킬 `asset-pipeline` ⑧ — 269 얼굴형 판 `--shapes round,square` · 입 · 홍조는 코드).
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
   `assets/cursor/` = 게임 마우스 포인터 원본(250 — 찌 화살 · Gemini 원본) — `node tools/gen_game_cursor.cjs`가 `data/GameCursorArt.ts`를 굽는다.
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스) ·
@@ -209,9 +209,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 9 = 268차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 10 = 268차 기준 · 치환 자리 규칙) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 9 = 268차 기준 · 문법은 258차) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 10 = 269차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 11 = 269차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 10 = 269차 기준 · 문법은 258차) · 위키(위 줄 — 269차는 입력 불변).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
