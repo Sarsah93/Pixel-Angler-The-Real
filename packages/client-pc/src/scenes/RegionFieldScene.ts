@@ -317,6 +317,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private regionPois: RegionPoi[] = [];
   /** POI 문(door) 타일 — 앵커가 건물(#) 안이면 최근접 r/. 타일 (인덱스 = regionPois) */
   private poiDoors: { x: number; y: number }[] = [];
+  /** 266차 — POI별 건물 그림 단위 · 문 변 위 점(벽에 붙는 간판용) — `assignUnitDoors`가 채운다 */
+  private poiUnit: (BuildingUnit | null)[] = [];
+  private poiUnitDoor: ([number, number] | null)[] = [];
   /** 청크 키("cc,cr") → 그 청크에 속한 POI 인덱스 목록 */
   private poiByChunk = new Map<string, number[]>();
   /** 상주 청크의 POI 마커 오브젝트 (청크 키 → 오브젝트들) */
@@ -337,6 +340,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private legacyUnits: BuildingUnit[] = [];
   private legacyCover = new Uint8Array(0);
   private legacyBuildingImgs: Phaser.GameObjects.Image[] = [];
+  /** 266차 — 레거시 건물 아틀라스(RenderTexture) — 컨텍스트 복구 때 다시 굽는다 */
+  private legacyAtlases: Phaser.GameObjects.RenderTexture[] = [];
   /** 지금 반투명 상태인 프리팹 — 이력(hysteresis)에 쓴다 */
   private faded = new Set<OccluderObj>();
   private occludeAt = 0;
@@ -769,6 +774,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.legacyUnits = [];
     this.legacyCover = new Uint8Array(0);
     this.legacyBuildingImgs = [];
+    this.legacyAtlases = [];
     const st0 = loadSettings();
     this.showFieldLabels = st0.showFieldLabels;
     // 178차 — 할 일 위치 안내(화살표) 켜고 끄기. 설정 창에서 바꾸면 즉시 반영된다.
@@ -780,6 +786,11 @@ export class RegionFieldScene extends Phaser.Scene {
     const onLabelsToggle = (v: boolean): void => { this.showFieldLabels = v; this.refreshQuestMarkers(true); };
     this.game.events.on('field-labels-changed', onLabelsToggle);
     this.events.once('shutdown', () => this.game.events.off('field-labels-changed', onLabelsToggle));
+    // 266차 — WebGL 컨텍스트가 끊겼다 돌아오면(다른 창 · 탭에 있다가 복귀) RenderTexture 내용은 비어 있다 —
+    //   청크 · 지붕 아틀라스 · 레거시 건물 아틀라스를 다시 굽는다(캔버스 텍스처 · Text · generateTexture는 Phaser가 원본에서 다시 올린다).
+    const onWebglRestored = (): void => this.rebakeAfterContextRestore();
+    this.game.renderer.on(Phaser.Renderer.Events.RESTORE_WEBGL, onWebglRestored);
+    this.events.once('shutdown', () => this.game.renderer.off(Phaser.Renderer.Events.RESTORE_WEBGL, onWebglRestored));
     // 멀티 — 세션에 들어와 있으면 위치 알림을 켠다 (싱글이면 아무것도 하지 않는다)
     MultiplayerClient.startPresence();
     this.events.once('shutdown', () => this.clearPeers());
@@ -1721,7 +1732,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 217차 — 바닥 이름표는 그리지 않는다(이름은 다가가면 [F] 안내가 말한다)
       this.buildings.push({ x, y, kind, branch: { key: `${this.region}:${this.mapId}:poi${i}`, name: BUILDING_LABEL[kind] } });
       const at = this.shopSignSpot({ x, y }, (i + 1) * 7919, used);
-      if (at) this.addShopSign(at.x, at.y, kind);
+      if (at) this.addShopSign(at.x, at.y, kind, { poi: i, door: { x, y }, via: at.via });
     });
   }
 
@@ -2051,6 +2062,7 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   private assignUnitDoors(): ([number, number] | null)[] {
     const out: ([number, number] | null)[] = this.regionPois.map(() => null);
+    this.poiUnit = this.regionPois.map(() => null);
     if (!this.chunks) return out;
     const byUnit = new Map<BuildingUnit, number[]>();
     this.regionPois.forEach((poi, i) => {
@@ -2059,6 +2071,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const u = this.chunks!.unitById(`syn_${poi.osmId || `${poi.tx}_${poi.ty}`}`)
         ?? this.chunks!.unitNear(poi.tx * TR + TR / 2, poi.ty * TR + TR / 2, TR * 1.6)?.u ?? null;
       if (!u) return;
+      this.poiUnit[i] = u;
       const list = byUnit.get(u);
       if (list) list.push(i); else byUnit.set(u, [i]);
     });
@@ -2093,6 +2106,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.poiByChunk.clear();
     const N = RegionFieldScene.SEAMLESS_CHUNK_TILES;
     const unitDoor = this.assignUnitDoors();
+    this.poiUnitDoor = unitDoor;
     this.regionPois.forEach((poi, i) => {
       // 150차 — 문 좌표가 차도 벡터 밴드 안이면 땅으로 민다(사용자 리포트 "횟집이 도로 위에").
       //  ⚠ 106차 `trimBuildingsOnRoads`는 **타일**만 걷어냈고, 화면의 아스팔트는 101차 이후
@@ -2106,15 +2120,39 @@ export class RegionFieldScene extends Phaser.Scene {
       if (dp) {
         const dc = Math.floor(dp[0] / TR), drr = Math.floor((dp[1] + TR * 0.5) / TR);
         let fallback: { x: number; y: number } | null = null;
-        for (const [c, r] of [[dc, drr], [dc - 1, drr], [dc + 1, drr], [dc, drr + 1]] as const) {
+        // 칸 하나를 [F] 자리로 시험 — 몸이 서는 땅이면 문 좌표(도로 밖으로 민 것) · 차도 위면 'band'(마지막 수단으로 보관) · 못 서면 null
+        const probe = (c: number, r: number, x: number): { x: number; y: number } | 'band' | null => {
           const t = this.terrainAt(c, r);
-          if (t === undefined || t === 'building' || t === 'water' || t === 'cliff' || !this.chunks!.tileFitsBody(c, r)) continue;
-          const cand = this.nudgePoiDoor({ x: Math.max(c * TR + 4, Math.min(c * TR + TR - 4, dp[0])), y: r * TR + TR / 2 });
-          if (this.chunks!.insideBuildingArt(cand.x, cand.y)) continue;
+          if (t === undefined || t === 'building' || t === 'water' || t === 'cliff' || !this.chunks!.tileFitsBody(c, r)) return null;
+          const cand = this.nudgePoiDoor({ x, y: r * TR + TR / 2 });
+          if (this.chunks!.insideBuildingArt(cand.x, cand.y)) return null;
           // 차도 밴드 위 문은 마지막 수단 — 길가에 바짝 붙은 건물은 문 앞 칸이 아스팔트일 수 있다
-          if (t === 'road' || this.chunks!.onRoadBand(cand.x, cand.y)) { fallback ??= cand; continue; }
-          door = cand;
-          break;
+          if (t === 'road' || this.chunks!.onRoadBand(cand.x, cand.y)) { fallback ??= cand; return 'band'; }
+          return cand;
+        };
+        for (const [c, r] of [[dc, drr], [dc - 1, drr], [dc + 1, drr], [dc, drr + 1]] as const) {
+          const got = probe(c, r, Math.max(c * TR + 4, Math.min(c * TR + TR - 4, dp[0])));
+          if (got && got !== 'band') { door = got; break; }
+        }
+        // 266차 — 넷이 다 막히면(이웃 윤곽 · 좁은 틈 · 물) 문 앞 칸에서 BFS ≤ 3칸 — [F] 자리가 그림의 문 곁을 떠나지 않게.
+        //   옛 폴백(앵커 기준 `resolvePoiDoor` BFS ≤ 12)은 큰 건물에서 문 변 반대편(최대 9칸)에 [F]를 두어 벽 간판과 갈라졌다.
+        if (!door && !fallback) {
+          const seen = new Set<number>([drr * this.cols + dc]);
+          const queue: [number, number, number][] = [[dc, drr, 0]];
+          while (queue.length > 0 && !door) {
+            const [c, r, d] = queue.shift()!;
+            if (d > 3) break;
+            if (d >= 2) {
+              const got = probe(c, r, c * TR + TR / 2);
+              if (got && got !== 'band') { door = got; break; }
+            }
+            for (const [ddc, ddr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+              const nc = c + ddc, nr = r + ddr;
+              if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
+              const k = nr * this.cols + nc;
+              if (!seen.has(k)) { seen.add(k); queue.push([nc, nr, d + 1]); }
+            }
+          }
         }
         door ??= fallback;
       }
@@ -2196,8 +2234,11 @@ export class RegionFieldScene extends Phaser.Scene {
       //  거래가 없는 장소(정류장 · 여객터미널 …)는 땅에 아무것도 없고 지도(미니맵 · M)에만 핀이 있다.
       //  261차 — 가게마다 문이 하나씩이라 간판도 가게마다(같은 칸을 쓰는 문만 하나로 묶인다).
       if (kind) {
-        const at = this.shopSignSpot(door, poi.osmId | 0, signDoors);
-        if (at) objs.push(...this.addShopSign(at.x, at.y, kind));
+        const wu = this.poiUnit[i], wdp = this.poiUnitDoor[i];
+        // 266차 — [F] 자리가 그림의 문에서 2.5칸 넘게 떨어졌으면(옛 폴백) 벽 간판 대신 [F] 자리 옆에 세운다 — 간판은 거래하는 곳을 가리킨다
+        const wallAt = wu && wdp && Math.hypot(door.x - wdp[0], door.y - wdp[1]) <= TR * 2.5 ? { u: wu, dp: wdp } : undefined;
+        const at = this.shopSignSpot(door, poi.osmId | 0, signDoors, wallAt);
+        if (at) objs.push(...this.addShopSign(at.x, at.y, kind, { poi: i, door, via: at.via }, at.depthY));
       }
     }
     this.poiObjects.set(key, objs);
@@ -2208,9 +2249,17 @@ export class RegionFieldScene extends Phaser.Scene {
    * ② 문이 차도를 못 벗어났으면(양옆이 다 아스팔트) 문에서 가장 가까운 **보도 · 땅**(≤ 5타일)으로 옮긴다.
    * ③ 그런 자리도 없으면 세우지 않는다. 지붕 위(건물 타일 · 지붕 그림 아래)도 같은 규칙으로 내려온다.
    * ④ 같은 문(타일)을 쓰는 가게들은 간판 하나로 묶는다 — 217차의 문 옆 간판이 상가 한 채에 여섯 개씩 서서 밀도가 부담이었다.
-   * 반환 = 기둥 밑 월드 px, 없으면 null.
+   *
+   * 266차 — **간판은 입구 바로 옆**(사용자 「표지판이 편의점이면, 도로 옆에 건물이 있고, 입구 바로 옆에 표지판이 서있게」).
+   * 전 지역 감사(14지역 · 간판 3,057)에서 차도 벡터 밴드 안에 선 간판은 0이었지만, 문이 차도에 바짝 붙은 가게(497)의 간판이
+   * ②의 BFS로 최대 5칸 떠밀려 길가에 홀로 섰다(523). 순서를 바꾼다:
+   *   side(문 양옆 20px) → side2(36px · 한 칸 더) → **wall(건물 문 변 위 · 문 옆 18px — 벽에 붙는 간판, 건물 그림 앞에 그린다)**
+   *   → bfs(≤ 2칸 — 건물 없는 가게 · 좌판) → 없으면 세우지 않는다.
+   * 반환 = 기둥 밑 월드 px · 자리 종류 · 벽 간판은 깊이 기준 y(건물 바닥선 + 1). 없으면 null.
    */
-  private shopSignSpot(door: { x: number; y: number }, seed: number, used: Set<string>): { x: number; y: number } | null {
+  private shopSignSpot(
+    door: { x: number; y: number }, seed: number, used: Set<string>, wall?: { u: BuildingUnit; dp: [number, number] },
+  ): { x: number; y: number; via: 'side' | 'side2' | 'wall' | 'bfs'; depthY?: number } | null {
     const dkey = `${Math.floor(door.x / TR)},${Math.floor(door.y / TR)}`;
     if (used.has(dkey)) return null;
     const ok = (x: number, y: number): boolean => {
@@ -2222,18 +2271,38 @@ export class RegionFieldScene extends Phaser.Scene {
       return true;
     };
     const pref = (seed & 2) === 0 ? 1 : -1;
-    for (const side of [pref, -pref]) {
-      const x = door.x + side * 20, y = door.y + 10;
-      if (ok(x, y)) { used.add(dkey); return { x, y }; }
+    for (const off of [20, 36]) {
+      for (const side of [pref, -pref]) {
+        const x = door.x + side * off, y = door.y + 10;
+        if (ok(x, y)) { used.add(dkey); return { x, y, via: off === 20 ? 'side' : 'side2' }; }
+      }
     }
-    // 가장 가까운 보도 · 땅 — 문 타일에서 BFS ≤ 5
+    // 266차 — 벽 간판: 문 변을 따라 문 옆 18px, 윤곽 안쪽 2px(벽 발치). 기둥 · 판이 남향 벽 그림 위에 서고 건물보다 앞에 그려진다.
+    //   변 끝(모서리)을 넘지 않게 안쪽 점이 바닥 윤곽 안인지 본다. 차양(roof) · 남향 변 없는 건물은 문 변이 없다.
+    if (wall) {
+      const e = doorEdgeOf(wall.u);
+      if (e) {
+        const dx = e.bx - e.ax, dy = e.by - e.ay, L = Math.hypot(dx, dy) || 1;
+        const ex = dx / L, ey = dy / L;
+        const nx = dy / L, ny = -dx / L;   // 바깥(남쪽) 법선 — 시계 방향 윤곽 · y 아래
+        for (const side of [pref, -pref]) {
+          const px = wall.dp[0] + side * 18 * ex, py = wall.dp[1] + side * 18 * ey;
+          if (!pointInPoly(px - nx * 6, py - ny * 6, wall.u.poly)) continue;   // 모서리 밖
+          const x = px - nx * 2, y = py - ny * 2;
+          if (this.terrainAt(Math.floor(x / TR), Math.floor(y / TR)) === 'water') continue;
+          used.add(dkey);
+          return { x, y, via: 'wall', depthY: wall.u.bottomY + 1 };
+        }
+      }
+    }
+    // 건물이 없는 가게(좌판 · 차양) — 문 타일에서 BFS ≤ 2칸의 보도 · 땅
     const c0 = Math.floor(door.x / TR), r0 = Math.floor(door.y / TR);
     const seen = new Set<number>([r0 * this.cols + c0]);
     const queue: [number, number, number][] = [[c0, r0, 0]];
     let best: { x: number; y: number; d2: number } | null = null;
     while (queue.length > 0) {
       const [c, r, d] = queue.shift()!;
-      if (d > 5) break;
+      if (d > 2) break;
       const t = this.terrainAt(c, r);
       if (d > 0 && (t === 'sidewalk' || t === 'land' || t === 'grass')) {
         const x = c * TR + TR / 2, y = r * TR + TR / 2 + 8;
@@ -2242,7 +2311,7 @@ export class RegionFieldScene extends Phaser.Scene {
           if (!best || d2 < best.d2) best = { x, y, d2 };
         }
       }
-      if (best && d >= 2) break;   // 가까운 고리에서 찾았으면 더 멀리 안 본다
+      if (best && d >= 1) break;   // 가까운 고리에서 찾았으면 더 멀리 안 본다
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
         const nc = c + dc, nr = r + dr;
         if (nc < 0 || nc >= this.cols || nr < 0 || nr >= this.rows) continue;
@@ -2252,7 +2321,7 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     if (!best) { this.signsDropped++; return null; }
     used.add(dkey);
-    return { x: best.x, y: best.y };
+    return { x: best.x, y: best.y, via: 'bfs' };
   }
 
   /** 세울 자리가 없어 뺀 간판 수(dev 계측) */
@@ -2262,7 +2331,9 @@ export class RegionFieldScene extends Phaser.Scene {
    * 217차 — 가게 간판(땅에 박힌 기둥 + 판 + 종류 아이콘). 판은 종류마다 색이 다르다.
    * 자리는 `shopSignSpot`(239차 규칙)이 정하고, y 정렬로 사람 앞뒤가 맞는다. `sx, sy` = 기둥 밑.
    */
-  private addShopSign(sx: number, sy: number, kind: BuildingKind): Phaser.GameObjects.GameObject[] {
+  private addShopSign(
+    sx: number, sy: number, kind: BuildingKind, meta?: { poi: number; door: { x: number; y: number }; via: string }, depthY?: number,
+  ): Phaser.GameObjects.GameObject[] {
     const base = `poi_sign_${kind}`;
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
@@ -2278,8 +2349,9 @@ export class RegionFieldScene extends Phaser.Scene {
       g.generateTexture(base, 24, 32);
       g.destroy();
     }
-    const depth = 20 + sy * 0.001 + 0.0004;
+    const depth = 20 + (depthY ?? sy) * 0.001 + 0.0004;   // 266차 — 벽 간판은 건물 바닥선 + 1(건물 그림 앞)
     const board = this.add.image(sx, sy, base).setOrigin(0.5, 30 / 32).setDepth(depth);
+    board.setData('sign', meta ?? null);   // 266차 — 전 지역 간판 자리 감사(dev 하네스)가 읽는다
     const out: Phaser.GameObjects.GameObject[] = [board];
     const icon = addPixelIcon(this, RegionFieldScene.MINI_SHOP_ICON[kind], sx, sy - 30 + 10, 16);
     if (icon) { icon.setDepth(depth + 0.00005); out.push(icon); }
@@ -5131,10 +5203,24 @@ export class RegionFieldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 266차 — 컨텍스트 복구 뒤 GPU에만 있던 그림(RenderTexture)을 다시 굽는다.
+   * 사용자 리포트 「브라우저에 창 두 개 띄워 놓고 다른 거 보다가 다시 게임 창 켜면 검정 화면」 — 브라우저가 뒤에 있던 창의 WebGL
+   * 컨텍스트를 끊었다 돌려주면 Phaser는 텍스처 · 셰이더를 되살리지만 RenderTexture(청크 지면 · 지붕 · 건물 아틀라스)는 비어 있다.
+   */
+  private rebakeAfterContextRestore(): void {
+    if (this.bootFailed) return;
+    if (this.chunks) this.chunks.rebakeResident();
+    else this.renderLegacyBuildings();
+    console.warn(`[PixelAngler] WebGL 복구 — ${this.chunks ? '청크 · 지붕 아틀라스' : '레거시 건물 아틀라스'} 다시 굽기`);
+  }
+
   /** 261차 — 레거시 건물 단위 그림(심리스 `buildChunkRoofs`와 같은 아틀라스 방식) — 깊이 = 바닥선 · 뒤로 들어가면 반투명 */
   private renderLegacyBuildings(): void {
     for (const img of this.legacyBuildingImgs) img.destroy();
     this.legacyBuildingImgs = [];
+    for (const a of this.legacyAtlases) a.destroy();   // 266차 — 다시 굽을 때 옛 아틀라스를 버린다
+    this.legacyAtlases = [];
     if (this.legacyUnits.length === 0) return;
     const MAX_W = Math.max(1024, ...this.legacyUnits.map((u) => u.x1 - u.x0));
     const sheets = packUnits(this.legacyUnits, MAX_W, 4096);
@@ -5151,8 +5237,9 @@ export class RegionFieldScene extends Phaser.Scene {
         img.setData('bottomY', u.bottomY);
         this.legacyBuildingImgs.push(img);
       }
-      this.events.once('shutdown', () => atlas.destroy());
+      this.legacyAtlases.push(atlas);
     }
+    this.events.once('shutdown', () => { for (const a of this.legacyAtlases) a.destroy(); this.legacyAtlases = []; });
     this.occludersByChunk.set('legacy', this.legacyBuildingImgs);
   }
 

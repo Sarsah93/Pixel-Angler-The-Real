@@ -116,9 +116,12 @@
 | **구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물** — 프리팹(Gemini 횟집 2 · 팝업 4 · 고층 5 · TopDown 주택 2 · Kenney 노점 2) · 지붕 키트 로드 폐기(PNG 98장 · `ui/BuildingVariant.ts` 삭제 · 고층 파사드 산포 · 레거시 타일 기와 · `bld_` 도트 건물 · 창 불빛 · 네온) · 가게 389곳 중 건물 없는 자리 336곳에 발자국(`synthesizePoiBuildings` — 종류 · 층수 · 크기 표 `poiSynthSpec` · 문 칸 후보 ≤ 3칸 · 차도 밴드 0.35칸 · 다른 가게 앵커 · 물 회피 · 1차 맨땅 2차 보도 · 한 칸씩 줄이기) → 지형 '#' + `RegionBuilding`(`syn_<osmId>`) · 건물마다 가게 수만큼 문(`BuildingUnit.doors` · `assignUnitDoors` 24px 간격) = 그림 · [F] 문 앞 칸(차도 밴드는 마지막) · 간판 한 점 · 홈타운(집 = 주택 2층 · 보건소 = 공공) · 부산(가게 3×2) 레거시 20px도 `planBuildingUnits`(1칸 묶음 · 계단 0.5 · `fillWallRects` 윤곽 사각형) · 발 끝이 윤곽 안인 칸은 걷는 칸 아님(`isWalkable`) | ✅ | **261** — `RegionFieldScene.synthesizePoiBuildings · assignUnitDoors · planLegacyBuildings` · `SeamlessChunks.unitNear · unitById · setUnitDoors` · `BuildingArt.doorPointsOf` — 자리 없음 6 · 크기 표 조율 ⬜ |
 | **건물 실내 1단계** — 가게 · 먹는 곳 · 낚시점 · 보건소 · 위판장 홀(필드 위 겹층 `scenes/field/InteriorSystem.ts` · 배치 `data/InteriorLayouts.ts` · 그림 `ui/InteriorArt.ts`) · 문 앞 [F] 들어가기 · 매트로 나가기 | ✅ | **215** · 2단계 인물 집 6곳 ✅ **216** — 3단계 아파트 ⬜ |
 | **위키 지도 탭 캡처(264)** — 게임 렌더러로 심리스 14 + 홈타운을 통째로(`tools/capture_wiki_maps.cjs` — 청크 3×3 블록 · 타일당 8px · 4,096 WebP) · 미니맵 정보 핀 · 조행록 연동 — 검수용 조감도 | ✅ | **264** — [위키 지도 탭](discovery-wiki.md) |
+| **WebGL 컨텍스트 복구 · 간판 입구 옆 · 문 밀기 중심선 금지** — 복구 이벤트에 청크 · 지붕 · 레거시 아틀라스 다시 굽기(`rebakeAfterContextRestore`) · 유실 오버레이 「되살리는 중」 · 간판 side → side2 → 벽(문 변 위 18px · 건물 앞) → 2칸 → 생략 · [F] 문 앞 칸 넷이 막히면 BFS ≤ 3 · 먼 [F](2.5칸 초과)는 간판을 [F] 옆에 · `nudgeOffRoad` 건물 쪽만 | ✅ | **266** — 14지역 감사 간판 3,131 · 떨어진 간판 523 → 41 · 벽 간판 757 · 차도 밴드 위 [F] 문 383 — 문 변이 물 쪽인 큰 건물 123 ⬜(백로그 CM) |
 
 ## 5. 잔여·차기
 
+- **문 변이 물 · 이웃 윤곽을 향한 큰 건물**(266 — 여수 상가 14×11칸 등 123곳) — `doorEdgeOf`가 「가장 아래 남향 변」만 고른다.
+  앞 칸이 걷기 칸인 변을 우선하면 그림의 문 · [F] · 간판이 한 자리에 선다(백로그 CM — 그림도 바뀐다). 차도 밴드에 걸친 윤곽의 벽 간판 313도 같은 항목.
 - **속초 기본 자리 ↔ 속초항 출조 자리**(265) — 버스 도착은 지역 기본(동명항 방파제 입구 527,128), 월드맵 출조는 속초항 여객선터미널(465,156).
   둘 다 걷는 칸 · 걸어서 90칸이라 그대로 뒀다 — 한 자리로 맞추려면 `regions_config.py` 속초 spawn(사용자 결정 · 백로그 D).
 - **`d`(흙길)·`t`(갯벌)는 속초에서 0타일**(172차) — 속초 OSM 캐시에 해당 태그가 거의 없다.
@@ -469,3 +472,13 @@
     `isWalkable`이 칸 아랫변 1px 안쪽 점을 `insideBuildingArt`로 거른다(스폰 · 인물 · 문 자리 · 길찾기 공통).
 46. **가게마다 문은 청크를 굽기 전에 넣는다** — `assignUnitDoors`는 `prepareSeamlessPois`(청크 생성 직후 · `preloadAround` 전)에서 `setUnitDoors`를 부른다.
     편집기 `invalidateTiles`가 단위를 다시 계획하면 `doors`가 사라진다(dev — 지역 재진입 복구).
+47. **RenderTexture는 WebGL 컨텍스트가 돌아와도 비어 있다**(266) — 다른 창에 갔다 온 뒤 브라우저가 끊었던 컨텍스트를 돌려주면
+    Phaser 3.90 `dispatchContextRestored`가 텍스처 · 프레임버퍼 **래퍼**는 다시 만들지만 프레임버퍼 **내용**은 안 채운다(캔버스 텍스처 · `generateTexture`는 원본에서 다시 올라간다).
+    청크 지면 · 지붕 아틀라스 · 레거시 건물 아틀라스는 `RESTORE_WEBGL`에서 `rebakeAfterContextRestore()`(`chunks.rebakeResident()` · `renderLegacyBuildings()`)가 다시 굽는다.
+    필드에 RenderTexture를 더 두면 같은 자리에서 다시 채운다 — 안 채우면 사용자가 본 「검정 화면」이다. 유실 중 오버레이(`game.ts`)는 「되살리는 중」 안내다.
+    하네스는 `WEBGL_lose_context.loseContext()` → `restoreContext()`(scratchpad `ctx_restore.cjs` — 복구 뒤 밝기 비교).
+48. **문을 도로 밖으로 밀 때 중심선을 넘지 않는다 · 간판은 입구 바로 옆**(266) — 옛 `nudgeOffRoad`는 건물 쪽이 막히면 반대쪽(건너편 보도)으로 밀어
+    169곳의 [F] 문이 길 건너에 섰다. 지금은 건물 쪽으로만 밀고(밴드 끝 · 끝 − 여유) 못 밀면 그 자리다.
+    간판은 `shopSignSpot` 순서 side(20px) → side2(36px) → **wall**(문 변 위 · 문 옆 18px · 깊이 = 건물 바닥선 + 1) → bfs(≤ 2칸) → 생략.
+    [F] 문이 그림의 문에서 2.5칸 넘게 떨어졌으면(옛 폴백) 벽 간판 대신 [F] 자리 옆이다. 그림의 문 앞 칸이 넷 다 막히면 BFS ≤ 3칸(옛 앵커 BFS ≤ 12는 문 반대편까지 갔다).
+    감사는 scratchpad `sign_audit.cjs`(14지역 · 청크 3×3 블록 · `poi_sign_*` 메타 `sign` — 차도 밴드 · 문 거리 · 가림).

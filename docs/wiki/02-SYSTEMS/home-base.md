@@ -253,3 +253,6 @@
 51. **가구는 그림이 둘이다 — 방 안 코드 그림(`drawFurnitureArt`)과 아이템 그림(`public/items/furn_*` — 가방 · 상세 · 위키)**(256).
     한쪽 짜임을 바꾸면 다른 쪽과 맞는지 실렌더로 나란히 본다(255에 의자 등받이가 통판 + 홈 3줄 ↔ 기둥 둘 + 살 셋으로 갈렸다).
     살 · 틈처럼 뚫린 곳은 투명으로 두지 말고 그늘색으로 칠한다 — 뒤의 밝은 좌판이 비쳐 틈이 살처럼 읽힌다.
+52. **집 어둠은 RenderTexture라 WebGL 컨텍스트가 돌아오면 비어 있다**(266) — 다른 창에 갔다 온 뒤 브라우저가 컨텍스트를 돌려주면
+    Phaser가 프레임버퍼 래퍼는 다시 만들지만 내용은 안 채운다. `HomeInteriorScene`이 `RESTORE_WEBGL`에서 `ambience.refreshLights()`로 다시 그린다.
+    집에 RenderTexture를 더 두면 같은 자리에서 다시 채운다(필드는 `rebakeAfterContextRestore` — [world-field §6-47](world-field.md)).

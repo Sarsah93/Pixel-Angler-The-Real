@@ -149,6 +149,9 @@ function installStaleTextGuard(): void {
  * 1) WebGL 컨텍스트 유실 — GPU 부하·드라이버 리셋 시 캔버스가 JS 에러 0으로 검게 멈춘다
  *    (씬은 계속 활성이라 유저는 원인을 알 수 없음). 안내 오버레이를 띄우고 클릭 시 새로고침.
  *    브라우저가 컨텍스트를 복구(webglcontextrestored)하면 오버레이는 자동 제거된다.
+ *    266차 — 다른 창 · 탭에 있다가 돌아올 때 브라우저가 컨텍스트를 끊었다 돌려주는 일이 잦다(사용자 리포트 「돌아오면 검정 화면」).
+ *    Phaser 3.90은 텍스처 · 셰이더를 되살리지만 **RenderTexture 내용은 비어 있다** — 씬이 `RESTORE_WEBGL`에 청크 · 지붕 · 건물 아틀라스 · 집 어둠을 다시 굽는다.
+ *    그래서 오버레이는 「되살리는 중」이고, 돌아오지 않을 때만 클릭 새로고침이다.
  * 2) 처리되지 않은 런타임 예외 — 씬 create 도중 예외가 나면 그 씬이 그리다 만 채 멈춰
  *    검은 화면처럼 보인다. 콘솔을 열지 않아도 알 수 있게 상단 배너로 1회 노출한다.
  */
@@ -172,9 +175,9 @@ function installCrashGuards(game: Phaser.Game): void {
       lostOverlay = makeDiv(
         'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;'
         + 'background:#05090f;color:#d0e8f5;font-family:"Noto Sans KR",sans-serif;text-align:center;cursor:pointer;',
-        '<div style="font-size:20px;font-weight:bold;margin-bottom:12px;">화면 출력이 중단되었습니다</div>'
-        + '<div style="font-size:14px;color:#8faabf;line-height:1.7;">그래픽 장치(WebGL) 연결이 끊겼습니다 — 다른 프로그램의 GPU 부하가 원인일 수 있습니다.<br>'
-        + '화면을 클릭하면 게임을 새로고침합니다. (마지막 침대 저장 이후 진행은 복구되지 않습니다)</div>',
+        '<div style="font-size:20px;font-weight:bold;margin-bottom:12px;">화면을 되살리는 중입니다</div>'
+        + '<div style="font-size:14px;color:#8faabf;line-height:1.7;">그래픽 장치(WebGL) 연결이 잠시 끊겼습니다 — 다른 창 · 프로그램의 GPU 사용이 원인일 수 있습니다.<br>'
+        + '보통 몇 초 안에 그대로 돌아옵니다. 돌아오지 않으면 화면을 클릭해 새로고침하세요. (마지막 침대 저장 이후 진행은 복구되지 않습니다)</div>',
       );
       lostOverlay.addEventListener('click', () => location.reload());
       console.error('[PixelAngler] WebGL context lost — 오버레이 표시');
@@ -182,7 +185,7 @@ function installCrashGuards(game: Phaser.Game): void {
     canvas.addEventListener('webglcontextrestored', () => {
       lostOverlay?.remove();
       lostOverlay = null;
-      console.warn('[PixelAngler] WebGL context restored');
+      console.warn('[PixelAngler] WebGL context restored — 씬이 RenderTexture 그림을 다시 굽는다(RESTORE_WEBGL)');
     });
   });
 

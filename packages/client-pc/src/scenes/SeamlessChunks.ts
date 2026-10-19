@@ -1952,9 +1952,12 @@ export class SeamlessChunks {
       const ch = this.tileAt(Math.floor(tx), Math.floor(ty));
       return ch === '.' || ch === ',' || ch === 's' || ch === 'w' || ch === 'r';
     };
-    for (const sgn of [1, -1]) {
-      const nx = x + ux * need * sgn, ny = y + uy * need * sgn;
-      if (landable(nx, ny)) return { x: nx * tr, y: ny * tr, moved: true };
+    // 266차 — **도로 중심선을 넘지 않는다**. 옛 코드는 바깥쪽(건물 쪽)이 '#'이면 반대쪽(길 건너)으로 밀어
+    //   가게 169곳의 [F] 문이 길 건너편에 섰다(전 지역 간판 감사 — 벽 간판이 문에서 2~5칸). 바깥쪽이 막히면
+    //   아스팔트 가장자리까지만 밀고, 그것도 안 되면 원래 자리(차도 위 문 = 마지막 수단)를 지킨다.
+    for (const push of [need, Math.max(0, need - clearance + 0.25)]) {
+      const nx = x + ux * push, ny = y + uy * push;
+      if (landable(nx, ny)) return { x: nx * tr, y: ny * tr, moved: push > 0 };
     }
     return { x: px, y: py, moved: false };
   }

@@ -345,6 +345,10 @@ export class HomeInteriorScene extends Phaser.Scene {
     const onResume = (): void => { this.cameras.main.fadeIn(220, 0, 10, 20); this.ambience?.refresh(); this.syncWeatherSound(); };
     this.events.on('resume', onResume);
     this.events.once('shutdown', () => this.events.off('resume', onResume));
+    // 266차 — WebGL 컨텍스트 복구 뒤 어둠 RenderTexture는 비어 있다 — 불빛을 다시 그린다(필드 청크는 RegionFieldScene이 굽는다)
+    const onWebglRestored = (): void => { this.ambience?.refreshLights(); console.warn('[PixelAngler] WebGL 복구 — 집 어둠 다시 그리기'); };
+    this.game.renderer.on(Phaser.Renderer.Events.RESTORE_WEBGL, onWebglRestored);
+    this.events.once('shutdown', () => this.game.renderer.off(Phaser.Renderer.Events.RESTORE_WEBGL, onWebglRestored));
 
     // 플레이어 — 188차 프롤로그 기상은 침대 왼편 · 그 밖에는 현관 매트 위에서 방을 바라본다
     if (this.wake) { this.px = OX + 8.6 * IT; this.py = OY + 4.6 * IT; this.facing = 'down'; }
