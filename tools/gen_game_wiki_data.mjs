@@ -1225,10 +1225,37 @@ if (mapData.hometown) {
     });
   }
 }
+// 265차 — 구 맵(레거시 · 속초 7 · 부산 8 · 타일 20px). 심리스(100 · 262)로 바뀐 뒤 게임에서는 안 열린다 —
+//   「지금 구현한 모든 지역맵」을 보려고 찍어 둔다(캡처 = 씬 `legacy` 플래그). 가게는 손그림 POI(kind만 · 이름 없음) · 이웃 맵 = 그래프 links
+const EDGE_KO = { N: '북', S: '남', E: '동', W: '서' };
+const LEGACY_POI_KO = { food: '먹거리 가게' };
+const LEGACY_POI_ICON = { food: 'mm_food' };
+for (const regionId of ['gangwon_sokcho', 'busan']) {
+  const graph = core.REGION_MAP_GRAPHS[regionId];
+  const wn = core.WORLD_NODE_DATABASE.find((n) => n.regionDatabaseId === regionId);
+  const regionName = `${wn?.name ?? regionId} (구 맵)`;
+  for (const nd of graph?.nodes ?? []) {
+    const j = readJson(path.join(DATA_DIR, graph.dataDir.replace(/^data\//, ''), `${nd.id}.json`));
+    if (!j) continue;
+    const W = j.cols * 20, H = j.rows * 20;
+    mapList.push({
+      id: nd.id, name: nd.name, nameEn: nd.nameEn ?? '', regionId, regionName, short: wn?.shortName ?? regionName, chapter: null, legacy: true, old: true,
+      cols: j.cols, rows: j.rows, tileM: null, km: '', px: 20, width: W, height: H,
+      sheets: sheetsOf(W, H, nd.id), overview: { f: `maps/${nd.id}/overview.webp`, w: Math.round(W / 2), h: Math.round(H / 2), px: 10 },
+      spawn: null, areas: [], lights: [], farms: [], buildings: 0, npcs: [], places: [], triggers: [], home: [],
+      pois: (j.pois ?? []).map((p, i) => ({
+        i, tx: p.col, ty: p.row, name: '', nameEn: '', type: 'legacy', typeKo: '구 맵 가게(손그림)', shopKind: '', kind: p.kind ?? null,
+        kindKo: mapData.buildingLabel[p.kind] ?? LEGACY_POI_KO[p.kind] ?? p.kind ?? '', goods: mapData.buildingGoods[p.kind] ?? '', hours: HOURS_KO(mapData.buildingHours[p.kind]),
+        icon: MM_ICON[p.kind] ?? LEGACY_POI_ICON[p.kind] ?? 'mm_poi', placeKo: '', capture: false, old: true,
+      })),
+      links: Object.entries(nd.links ?? {}).map(([dir, id]) => ({ dir, dirKo: EDGE_KO[dir] ?? dir, id, name: graph.nodes.find((x) => x.id === id)?.name ?? id })),
+    });
+  }
+}
 // 조행록 탭 연결 색인 — 인물 · 장소 · 현장 · 지역
 const npcAt = {}, placeAt = {}, triggersByQuest = {}, regionMaps = {};
 for (const m of mapList) {
-  (regionMaps[m.regionId] ??= []).push(m.id);
+  if (!m.old) (regionMaps[m.regionId] ??= []).push(m.id);   // 구 맵은 조행록 · 지역 카드 링크에서 뺀다(지도 탭 목록에만)
   for (const n of m.npcs) npcAt[n.id] ??= { map: m.id, tx: n.tx, ty: n.ty };
   for (const p of m.places) placeAt[p.key] ??= { map: m.id, tx: p.tx, ty: p.ty };
   for (const t of m.triggers) (triggersByQuest[t.questId] ??= []).push({ map: m.id, id: t.id, label: t.label, tx: t.tx, ty: t.ty, phase: t.phase });

@@ -40,6 +40,22 @@ const MAPS = {
   jeju_seogwipo: ['jeju', 'jeju_seogwipo_1'],
   incheon_yeonan: ['incheon', 'incheon_yeonan_1'],
   hometown: ['hometown', 'hometown_home'],
+  // 265차 — 구 맵(레거시 · 타일 20px · 맵 그래프 노드). 심리스로 바뀐 뒤 게임에서는 안 열리지만 「지금 구현한 모든 지역맵」을 보려고 찍는다(씬 `legacy` 플래그)
+  sokcho_sokchohang_3: ['gangwon_sokcho', 'sokcho_sokchohang_3', true],
+  sokcho_sokchohang_2: ['gangwon_sokcho', 'sokcho_sokchohang_2', true],
+  sokcho_sokchohang_1: ['gangwon_sokcho', 'sokcho_sokchohang_1', true],
+  sokcho_sokchohang_dongmyeonghang: ['gangwon_sokcho', 'sokcho_sokchohang_dongmyeonghang', true],
+  sokcho_dongmyeonghang_1: ['gangwon_sokcho', 'sokcho_dongmyeonghang_1', true],
+  sokcho_dongmyeonghang_2: ['gangwon_sokcho', 'sokcho_dongmyeonghang_2', true],
+  sokcho_dongmyeonghang_3: ['gangwon_sokcho', 'sokcho_dongmyeonghang_3', true],
+  busan_gamcheon_west_1: ['busan', 'busan_gamcheon_west_1', true],
+  busan_gamcheon_west_2: ['busan', 'busan_gamcheon_west_2', true],
+  busan_gamcheon_east_1: ['busan', 'busan_gamcheon_east_1', true],
+  busan_gamcheon_east_2: ['busan', 'busan_gamcheon_east_2', true],
+  busan_gamcheon_east_3: ['busan', 'busan_gamcheon_east_3', true],
+  busan_amnam_1: ['busan', 'busan_amnam_1', true],
+  busan_baegunpo_1: ['busan', 'busan_baegunpo_1', true],
+  busan_baegunpo_2: ['busan', 'busan_baegunpo_2', true],
 };
 const wanted = process.argv.slice(3).filter((a) => !a.startsWith('--'));
 const MAX_BLOCKS = Number((process.argv.find((a) => a.startsWith('--max-blocks=')) ?? '').split('=')[1] || 0);   // 시험용
@@ -82,21 +98,21 @@ function noonOffsetMs() {
   console.log(`[clock] 페이지 시각(로컬) ${hourInPage}시 · Date 보정 ${Math.round(noonOffsetMs() / 60000)}분`);
 
   for (const dr of list) {
-    const [region, mapId] = MAPS[dr];
+    const [region, mapId, legacy = false] = MAPS[dr];
     const t0 = Date.now();
     const before = errors.length;
-    await page.evaluate(({ region, mapId }) => {
+    await page.evaluate(({ region, mapId, legacy }) => {
       const g = globalThis.__PIXEL_ANGLER_GAME;
       for (const s of g.scene.getScenes(true)) { if (s.scene.key !== 'RegionFieldScene') s.scene.stop(); }
       const f = g.scene.getScene('RegionFieldScene');
-      if (f.scene.isActive()) f.scene.restart({ region, mapId }); else g.scene.start('RegionFieldScene', { region, mapId });
-    }, { region, mapId });
+      if (f.scene.isActive()) f.scene.restart({ region, mapId, legacy }); else g.scene.start('RegionFieldScene', { region, mapId, legacy });
+    }, { region, mapId, legacy });
     // 홈타운은 새 게임이 집 안(HomeInteriorScene)에서 시작한다 — 실내를 닫고 필드를 깨운다(stop + resume 규칙)
     await page.waitForFunction(() => {
       const g = globalThis.__PIXEL_ANGLER_GAME; const s = g.scene.getScene('RegionFieldScene');
       if (!s || s.bootFailed || !s.playerBody || !s.hud) return false;
       if (!s.scene.isActive() && g.scene.isActive('HomeInteriorScene')) { g.scene.getScene('HomeInteriorScene').scene.stop(); g.scene.resume('RegionFieldScene'); return false; }
-      return s.scene.isActive() && (s.chunks || s.region === 'hometown');
+      return s.scene.isActive() && (s.chunks || !s.seamlessDef);   // 구 맵(홈타운 · legacy)은 청크가 없다
     }, { timeout: 120000, polling: 300 });
     await page.waitForTimeout(2500);
 
@@ -167,7 +183,8 @@ function noonOffsetMs() {
         }
       }
     } else {
-      blocks.push([info.worldW / 2, info.worldH / 2]);
+      // 구 맵 — 1,024px 블록 격자(홈타운 960×640 = 1블록 · 속초 구 맵 1,460×1,180 = 4블록)
+      for (let by = info.S / 2; by - info.S / 2 < info.worldH; by += info.S) for (let bx = info.S / 2; bx - info.S / 2 < info.worldW; bx += info.S) blocks.push([bx, by]);
     }
     const todo = MAX_BLOCKS > 0 ? blocks.slice(0, MAX_BLOCKS) : blocks;
     let i = 0;
@@ -232,7 +249,7 @@ function noonOffsetMs() {
         sheets.push({ f, x: sc * SHEET, y: sr * SHEET, w: sw, h: sh, bytes: buf.length });
       }
     }
-    const ovScale = info.seamless ? 0.25 : 1;   // 8px/타일 → 2px/타일
+    const ovScale = info.seamless ? 0.25 : (legacy ? 0.5 : 1);   // 8px/타일 → 2px/타일 · 구 맵 20px → 10px(홈타운은 1:1 그대로)
     const ow = Math.round(meta.W * ovScale), oh = Math.round(meta.H * ovScale);
     const ovB64 = await toB64(0, 0, meta.W, meta.H, ow, oh, 0.9);
     const ovBuf = Buffer.from(ovB64, 'base64');

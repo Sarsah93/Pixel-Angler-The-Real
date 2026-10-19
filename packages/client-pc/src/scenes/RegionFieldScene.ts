@@ -211,6 +211,8 @@ interface RegionFieldInit {
   entryEdge?: EdgeDir | null;
   /** 진입 엣지 상의 상대 위치 (0~1) */
   entryT?: number;
+  /** 265차 — 심리스로 열리는 지역을 구 맵(맵 그래프 노드 · 타일 20px)으로 연다. 위키 지도 캡처 · 폴백 점검 전용 — 게임 흐름은 쓰지 않는다 */
+  legacy?: boolean;
 }
 
 /** 과증식 대발생 주기 (145차) — 이 시간마다 배치가 새로 굴러간다(표류 되감기 상한도 여기서 나온다) */
@@ -593,7 +595,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 262차 — dataIn.mapId(구역별 fieldMapId)로 ① 데이터 지역을 고르고(부산 백운포는 감천과 다른 bbox — `SEAMLESS_AREA_REGIONS`)
     //   ② 구역별 스폰(`RegionAreaNode.spawnLatLon`)을 잡는다(스펙 §12-2 스폰 다중화).
     this.areaMapId = dataIn.mapId;
-    this.seamlessDef = seamlessRegionOf(this.region, dataIn.mapId);
+    this.seamlessDef = dataIn.legacy ? undefined : seamlessRegionOf(this.region, dataIn.mapId);   // 265차 — legacy = 구 맵 강제(캡처 전용)
     TR = this.seamlessDef ? 32 : 20;
     this.mapId = this.seamlessDef
       ? `${this.seamlessDef.dataRegion}_seamless`

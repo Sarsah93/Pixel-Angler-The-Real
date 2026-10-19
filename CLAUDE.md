@@ -63,13 +63,23 @@
   → **261 구 에셋 건물 그림 폐기 · 가게 자리 합성 발자국 · 가게마다 문 · 레거시 맵 벡터 건물 · 배경 음악 · 냉동 오징어 되살아남**
   → **262 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장(데이터 지역 13 · 출조 구역 17) · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
   → **263 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**
-  → **264 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**.
+  → **264 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**
+  → **265 속초 출조 지점 「속초항」 하나 · 출조 구역 규칙(걷기 30초) · 위키 지도 탭 구 맵 15**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **265차**: **속초 출조 지점 「속초항」 하나 · 출조 구역 나누는 규칙(걷기 거리) · 위키 지도 탭에 구 맵 15(속초 7 · 부산 8)** —
+  사용자 「지도 탭 육안 확인했어. 레거시 속초 · 부산 맵도 찍어서 올려줘. … 속초 선택 시 … 그냥 속초항 하나로 하자 … 부산 · 제주는 … 따로 스폰되게 해야할 듯. 어떻게 생각해?」 →
+  `REGION_AREA_NODES` 동명항 노드 삭제(구역 18 → 17 · 설명 · 수심은 속초항에 합침) ·
+  **규칙 = 같은 데이터 지역 안에서 내리는 자리끼리 걸어서 약 30초(200칸 · 1km) 안이면 노드 하나**(BFS — 속초 90칸 · 부산 감천 가장 가까운 쌍 461칸 → 넷 그대로 · 제주 데이터 지역 셋) ·
+  씬 init `legacy` 플래그(캡처 · 폴백 전용) · `capture_wiki_maps.cjs` 구 맵 15(블록 격자 · 축소판 1/2) · 생성기 구 맵 항목(이웃 맵 · 손그림 가게 핀 · 조행록 링크 제외) · 템플릿 「구 맵」 안내 ·
+  하네스(속초 핀 1 · 스폰 (465,156) · 옛 mapId 폴백 (527,128) · legacy 부팅 · pageerror 0) · 캡처 15(30파일 5.7MB) · 위키 Playwright pageerror 0 · core 325/325 · 빌드 3/3 ·
+  아티팩트 4개(셋 Version 6 · 위키 64 — 파일 413 / 511).
+  **다음 = 사용자 육안(월드맵 속초 카드 · 위키 구 맵 15) · 속초 기본 자리 ↔ 속초항 자리 통일 여부(백로그 D) · main 반영 · 82차 배포(요청 시)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-19-265-sokcho-single-area-legacy-maps-wiki.md`.
 - **264차**: **위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포** —
   사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일을 다 보여주기) … 확대/축소 …
   npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) …
@@ -94,19 +104,6 @@
   하네스 15필드(인물 25 걷는 칸 · N18-6 각본 8칸 · 남항 `auction` · pageerror 0) · 빌드 3/3 · core 325/325 · 도달성 잃은 문 0 · 아티팩트 4개(위키 60 · 셋 Version 5).
   **다음 = 사용자 육안(인물 자리 25 · 남항 — 81차 배포 뒤) · 새 인물 집 · 일과 · 물어보기 · 울릉 4명(배) · N18-4 거제 현장 · 호미곶(포항 bbox) 결정(백로그 CK) · main 반영 · 81차 배포(요청 시)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-18-263-story-linkage-chapter-lock-npcs-namhang.md`.
-- **262차**: **부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환** —
-  사용자 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘.」 「계속해서 진행해줘.」 →
-  컨테이너는 Overpass · OSM 미러가 막혀(403) **워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml` — `pixelazed/_osm_request.txt` 푸시 트리거 ·
-  지역별 이어 가기 · fetch 90초 4번 · 러너가 실행 브랜치에 커밋 · main에 없는 워크플로는 dispatch 404)로 수집 —
-  데이터 지역 13(속초 + 부산 감천 · 백운포 + 울산 방어진 · 포항 구룡포 · 거제 지세포 · 해금강 · 여수 구항 · 태안 안흥 · 만리포 · 제주 도두 · 모슬포 · 서귀포 · 인천 연안부두 — bbox 전부 속초 크기) ·
-  출조 구역 17(`REGION_AREA_NODES` 새 노드 11) · core `SEAMLESS_AREA_REGIONS`(구역 fieldMapId → 데이터 지역) · `seamlessRegionOf(region, mapId)` · `RegionAreaNode.spawnLatLon`(구역별 내리는 자리) ·
-  `build_osm_tilemap.py` 바다 = 해안선 방향 투표(성분별 다수결 — 가장자리 시드 침수 지세포 99% 해결) · `merge_capture_pois.py --auto`(게임 상호 자동 변환 3,516곳 · `auto: true`) ·
-  위키 「출조 지역」 탭 · 해금강 스폰 보정(설정 좌표가 바다 → 도장포 유람선 터미널 POI 실측 칸) ·
-  하네스 17/17(걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 해금강 1 · 나머지 0) · 빌드 3/3 · core 322/322 · 아티팩트 4개(위키 59 · 셋 Version 4).
-  main 빨리 감기(`6851660`) · 「테스트 배포」 80차(gh-pages `dbb11ac` — 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
-  감천 요청 4 재굽기(75.3 → 63.7% · 러너 `110bc78`) · 이야기 연계 점검 = 지도 층만 열림(인물 29명 자리 없음 · 9지역 처음부터 열림 · 부산 위판장 없음 — 백로그 CK).
-  **다음 = 사용자 육안(80차 배포본 — 새 지역 12곳 terrain · 전국 지도 핀) · 자동 변환 상호 검토(CJ) · 이야기 연계 263차(CK — 장 잠금 · 부산 위판장은 사용자 결정)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -197,20 +194,21 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   ⚠ 러너가 도는 동안 같은 브랜치에 푸시하지 않는다(러너 푸시가 non-fast-forward로 거부돼 산출물을 잃는다).
   요청 파일이 바뀐 커밋을 main에 올리면 main에서도 한 번 돈다(264 — 캐시 커밋이 main에 생겨 빨리 감기가 막히면 `git merge origin/main`).
   **지역은 장 순서대로 열린다**(263 — `isRegionOpenAtChapter` · `STORY_CHAPTERS.regionIds` — 노드만 더하면 열리지 않는다) · 인물 · 트리거 · 장소 칸은 `dataRegion`으로 데이터 지역을 가른다.
+  **출조 구역은 걷기 거리로 나눈다**(265 — 같은 데이터 지역 안에서 내리는 자리끼리 걸어서 약 30초(200칸) 안이면 노드 하나 · 속초 = 속초항 하나 · 부산 감천 4 · 제주 3).
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eb403f4` — **최근 81차 배포 2026-10-18 = 263차까지 포함**(264는 위키 · 도구만) —
   263은 81차에 처음 실렸다 · main `01bbb50`).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 63 = 264차**
-  (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 99파일).
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 64 = 265차**
+  (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 5 = 263차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 5 = 263차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 5 = 263차 기준 · 문법은 258차) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 6 = 265차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 6 = 265차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 6 = 265차 기준 · 문법은 258차) · 위키(위 줄).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

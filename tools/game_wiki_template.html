@@ -1237,6 +1237,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
           ['건물 윤곽', m.buildings || ''], ['항로표지', m.lights.length || ''], ['어장', m.farms.length || ''],
           ['인물 · 현장', m.npcs.length + ' · ' + m.triggers.length],
           ['내리는 자리', m.spawn ? '칸 ' + m.spawn.tx + ',' + m.spawn.ty + (m.spawn.name ? ' · ' + esc(m.spawn.name) : '') : '']]) +
+        (m.old ? '<p class="sci">구 맵 — 심리스 지도로 바뀐 뒤 게임에서는 열리지 않습니다. 손그림 타일(1칸 = 20px)을 그대로 찍은 것입니다.</p>' : '') +
+        (m.links && m.links.length ? '<h3>이웃 맵</h3><ul class="ml">' + m.links.map(l => '<li><a class="xl" data-map="map/' + esc(l.id) + '" href="#map/' + esc(l.id) + '">' + esc(l.dirKo) + ' — ' + esc(l.name) + '</a></li>').join('') + '</ul>' : '') +
         (m.areas.length ? '<h3>출조 구역</h3><ul class="ml">' + m.areas.map(a => '<li>' + (a.tx !== undefined ? mjump(m, 'area', a.id, a.name) : esc(a.name)) +
           '<span class="mono">' + (a.tx !== undefined ? a.tx + ',' + a.ty : '') + '</span>' + (a.enterable ? '' : '<span class="mono">준비 중</span>') + '</li>').join('') + '</ul>' : '') +
         (m.npcs.length ? '<h3>이야기 인물</h3><ul class="ml">' + m.npcs.map(n => '<li>' + iconTag('mm_npc') + mjump(m, 'npc', n.id, n.name) + '<span class="mono">' + n.tx + ',' + n.ty + '</span></li>').join('') + '</ul>' : '') +
@@ -1264,8 +1266,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       const p = s.ref;
       el.innerHTML = back + '<h2>' + (p.icon ? iconTag(p.icon) + ' ' : '') + esc(p.name || p.kindKo || p.placeKo || p.typeKo) + '</h2><div class="sci">' + esc(p.kindKo || p.placeKo || p.typeKo) + (p.nameEn ? ' · ' + esc(p.nameEn) : '') + '</div>' +
         mkv([['자리', tile(p.tx, p.ty)], ['종류', esc(p.typeKo) + (p.shopKind ? ' · ' + esc(p.shopKind) : '')], ['거래', p.kind ? esc(p.kindKo) + ' — [F]로 들어간다' : '없음 — 지도 핀만'],
-          ['파는 것', p.goods ? esc(p.goods) : ''], ['영업', p.hours ? esc(p.hours) : ''], ['출처', p.capture ? '사용자 지도 캡처' : 'OSM']]) +
-        '<p class="sci" style="margin-top:12px">가게 이름은 실제 상호를 바꾼 게임 상호입니다.</p>';
+          ['파는 것', p.goods ? esc(p.goods) : ''], ['영업', p.hours ? esc(p.hours) : ''], ['출처', p.old ? '구 맵 손그림(이름 없음)' : p.capture ? '사용자 지도 캡처' : 'OSM']]) +
+        (p.old ? '' : '<p class="sci" style="margin-top:12px">가게 이름은 실제 상호를 바꾼 게임 상호입니다.</p>');
     } else if (s.kind === 'trig') {
       const t = s.ref;
       el.innerHTML = back + '<h2>' + esc(t.label) + '</h2><div class="sci">현장 지점 · ' + t.phase + '단계</div>' +

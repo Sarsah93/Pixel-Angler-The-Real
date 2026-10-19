@@ -300,7 +300,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-18 264차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-19 265차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -309,7 +309,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-18 264차) — 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**
+**최근 변경 (2026-10-19 265차) — 속초 출조 지점 「속초항」 하나 · 출조 구역 나누는 규칙(걷기 거리) · 위키 지도 탭에 구 맵 15**
+
+- 사용자 「속초 선택 시 … 그냥 속초항 하나로 하자. 어차피 한 맵에서 이동가능한 위치라서」 「레거시 속초 · 부산 맵도 찍어서 올려줘」 「부산 · 제주는 … 따로 스폰되게 해야할 듯. 어떻게 생각해?」:
+  `REGION_AREA_NODES` 동명항 노드 삭제(구역 18 → 17 · 설명은 속초항에) · **규칙 = 같은 데이터 지역 안에서 내리는 자리끼리 걸어서 약 30초(200칸 · 1km) 안이면 노드 하나**
+  (BFS 실측 — 속초항 ~ 동명항 90칸 · 부산 감천 가장 가까운 쌍 461칸 → 넷 그대로 · 제주는 데이터 지역 셋 — 부산 · 제주는 지금 구조(구역별 `spawnLatLon`) 그대로가 답).
+- 씬 init `legacy` 플래그(위키 캡처 · 폴백 전용) · 구 맵 15 캡처(`capture_wiki_maps.cjs` — 1,024px 블록 격자 · 축소판 1/2) · 생성기 · 템플릿(「○○ (구 맵)」 묶음 · 이웃 맵 링크 · 손그림 가게 핀).
+- 검증: core 325/325 · 빌드 3/3 · typecheck 0 · 하네스(속초 핀 1 · 스폰 · 옛 mapId 폴백 · legacy 부팅 · pageerror 0) · 캡처 15(30파일 5.7MB) · 위키 Playwright pageerror 0 ·
+  아티팩트 4개(셋 Version 6 · 위키 64 — 파일 413 / 511). 상세: [265차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-265-sokcho-single-area-legacy-maps-wiki.md).
+
+**이전 변경 (2026-10-18 264차) — 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**
 
 - 사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일) … 확대/축소 … npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) …
   조행록에서 지역을 누르면 지도로 … 다 하고나서 main 반영하고 81차 배포」:
@@ -333,18 +342,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   N18-6 ①·② 인천 종합어시장 동쪽 벽(각본 6칸) · N13-3 안흥 · 감천 bbox 북쪽 35.095(요청 5 refetch) · 출조 구역 「남항 · 공동어시장」 · 공동어시장(`shop=supermarket`) = 위판장.
 - 검증: 하네스 15필드(인물 25 걷는 칸 · 1장 속초만 → 2장 부산 · N18-6 각본 8칸 · 남항 `auction` · pageerror 0) · 빌드 3/3 · typecheck 0 · core 325/325 · 도달성 잃은 문 0 ·
   아티팩트 4개(위키 60 · 셋 Version 5). 상세: [263차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-263-story-linkage-chapter-lock-npcs-namhang.md).
-
-**이전 변경 (2026-10-18 262차) — 부산 심리스(감천 · 백운포) · 육지 8지역 OSM 확장 · Actions 수집 워크플로 · 구역별 내리는 자리 · 게임 상호 자동 변환**
-
-- 「이제 다른 맵 작업도 시작해야 할 것 같아. 부산 먼저 진행하고, 다른 맵들도 진행해줘」: 컨테이너는 Overpass · OSM 미러가 네트워크 정책으로 막혀(403)
-  **워크플로 「OSM 지역 수집」**(`.github/workflows/osm-region.yml` — `pixelazed/_osm_request.txt` 푸시 트리거 · 지역별 이어 가기 · fetch 재시도 · 러너가 실행 브랜치에 커밋)로 수집.
-  데이터 지역 13(속초 + 부산 감천 · 백운포 + 울산 · 포항 구룡포 · 거제 지세포 · 해금강 · 여수 · 태안 안흥 · 만리포 · 제주 도두 · 모슬포 · 서귀포 · 인천 연안부두) · 출조 구역 17.
-- core `SEAMLESS_AREA_REGIONS`(구역 → 데이터 지역) · `seamlessRegionOf(region, mapId)` · `RegionAreaNode.spawnLatLon`(구역별 내리는 자리) · 새 구역 노드 11 · 조행록 areaKey · 위키 「출조 지역」 탭 ·
-  `build_osm_tilemap.py` 바다 = 해안선 방향 투표(가장자리 시드 침수 해결) · `merge_capture_pois.py --auto`(게임 상호 자동 변환 3,516곳).
-- 검증: 하네스 17/17(걷는 칸 · dist ≤ 2.8 · pageerror 0) · 도달성(잃은 문 해금강 1 · 나머지 0) · 빌드 3/3 · typecheck 0 · core 322/322 · 해금강 스폰 보정(도장포 유람선 터미널) ·
-  아티팩트 4개(위키 59 · 셋 Version 4) · main 빨리 감기(`6851660`) · 「테스트 배포」 80차(gh-pages `dbb11ac` — 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0) ·
-  감천 요청 4 재굽기(63.7%) · 이야기 연계 점검(지도 층만 — 인물 29명 배치 · 장 잠금 · 부산 위판장은 백로그 CK).
-  상세: [262차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-262-busan-and-regions-seamless.md).
 
 ---
 

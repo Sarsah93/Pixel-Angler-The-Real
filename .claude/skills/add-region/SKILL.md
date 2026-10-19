@@ -100,6 +100,8 @@ pixelazed/<region>/<mapId>.png  (실지형 픽셀 지도 — 파일명 = mapId)
 2. `REGION_MAP_GRAPHS`에 등록.
 3. **`depthProfileUrl`은 실측 수심 JSON이 있는 지역만** 지정 — 미등록 지역에 무조건 로드시키면 Vite SPA 폴백이 index.html을 돌려줘 **JSON 파싱 pageerror** (17차 부산 검증에서 실측). 수심 JSON은 `tools/build_depth_profiles.py`.
 4. 출조 개방 = `WorldMap.ts`의 `REGION_AREA_NODES`에 구역 노드 추가 (핀 좌표·fieldMapId·details·depthRangeM·snagRisk). **노드 존재 = `isRegionUnlocked` 자동 해제** / 타일맵 미완성이면 `enterable: false`(핀·설명만 표시, 진입 차단).
+   **구역 노드 수**(265): 같은 데이터 지역 안에서 내리는 자리끼리 걸어서 약 30초(200칸 · 1km) 안이면 노드 하나(속초항 · 동명항 → 속초항).
+   직선이 아니라 걷기 거리다(`seamless.json` 4-연결 BFS · `~` · `#` 제외) — 감천 서 · 동방파제는 직선 107칸 · 걷기 2,237칸이라 따로 둔다.
 
 ## 스폰·검증
 
@@ -205,3 +207,5 @@ node tools/gen_game_wiki_data.mjs --html > <폴더>/index.html   # 지도 탭 �
   카메라 bounds는 떼야 가장자리 블록 중심을 잡는다. 산출 = `maps/<지역>/s_<col>_<row>.webp`(4,096 시트) · `overview.webp`(2px) · `index.json`.
 - 아티팩트에는 바뀐 지역의 시트만 `files`로 올린다(파일 상한 511 — 그림 283 + 지도 + index.html).
   가게 종류 핀은 씬 규칙 복제(`dump_wiki_map_data.mjs`)라 씬을 고치면 같이 고친다.
+- **구 맵(레거시 속초 7 · 부산 8)은 265차부터 찍는다** — MAPS 표의 키 = 맵 그래프 노드 id(`sokcho_sokchohang_3` …) · 씬 init `legacy: true`(캡처 · 폴백 전용 — `seamlessRegionOf`를 건너뛴다) ·
+  1:1 20px 시트 한 장 · 축소판 10px. 생성기는 `old: true`로 「○○ (구 맵)」 묶음 · 이웃 맵 링크를 만들고 조행록 · 지역 카드 링크에서는 뺀다.

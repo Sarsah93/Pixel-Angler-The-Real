@@ -325,8 +325,11 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       id: 'sokcho_area_sokchohang',
       name: '속초항',
       nameEn: 'Sokcho Port',
-      desc: '속초 대표 항구 · 원투 도다리의 성지',
-      descEn: "Sokcho's main harbour · surf-casting flounder heaven",
+      // 265차 — 속초 출조 지점은 이것 하나(사용자 결정 「그냥 속초항 하나로 하자. 어차피 한 맵에서 이동가능한 위치라서」).
+      //   동명항 노드를 뺐다 — 같은 심리스 맵이고 내리는 자리 사이가 걸어서 90칸(450m · 약 14초)이다.
+      //   규칙: 같은 데이터 지역 안에서 내리는 자리끼리 걸어서 약 30초(200칸 · 1km) 안이면 노드 하나, 멀면 따로 둔다(부산 감천 4곳처럼 — 가장 가까운 쌍 461칸).
+      desc: '속초 대표 항구 · 원투 도다리의 성지 · 북쪽 동명항까지 걸어서 간다',
+      descEn: "Sokcho's main harbour · surf-casting flounder heaven · Dongmyeong Port is a short walk north",
       pixelX: 184,
       pixelY: 60,
       fieldMapId: 'sokcho_sokchohang_1',
@@ -338,6 +341,7 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         '대표 어종: 도다리(원투·지렁이) · 학공치 · 우럭 · 볼락 · 가자미',
         '봄·가을 도다리/가자미 · 여름 오징어(무늬/한치) · 겨울 볼락',
         '원투 도다리는 주간~해질녘, 볼락·오징어는 야간',
+        '북쪽 동명항(걸어서 450m)은 겨울 명태 · 임연수어 · 학공치 — 외항 쪽은 급심, 볼락·우럭은 야간 루어',
       ],
       detailsEn: [
         'Divided into outer harbour, inner harbour, channel and beach (difficulty: channel < inner < beach < outer)',
@@ -345,34 +349,9 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
         'Key species: flounder (surf casting, worms) · halfbeak · rockfish · black rockfish · flatfish',
         'Spring/autumn flounder and flatfish · summer squid (bigfin/swordtip) · winter rockfish',
         'Surf-cast flounder by day to dusk; rockfish and squid at night',
+        'Dongmyeong Port, a 450 m walk north: winter pollock, Arabesque greenling and halfbeak — the outer side drops steeply; rockfish on night lures',
       ],
-      depthRangeM: [3, 18],
-      snagRisk: 'mid',
-    },
-    {
-      id: 'sokcho_area_dongmyeonghang',
-      name: '동명항',
-      nameEn: 'Dongmyeong Port',
-      desc: '겨울 명태로 유명한 동해 어항 · 사계절 낚시',
-      descEn: 'East Sea harbour famous for winter pollock · fishing all year',
-      pixelX: 221,
-      pixelY: 49,
-      fieldMapId: 'sokcho_dongmyeonghang_1',
-      // 262차 — 동명항 방파제 입구 = 지역 기본 스폰과 같은 자리(regions_config spawn)
-      spawnLatLon: [38.2117, 128.5980],
-      details: [
-        '시설이 잘 갖춰진 동해안 어항 — 외항 쪽은 급심',
-        '대표 어종: 명태(겨울) · 가자미 · 임연수어 · 도다리 · 학공치 · 볼락 · 우럭',
-        '사계절 가능, 겨울이 최고 시즌 (명태) · 학공치는 가을~겨울',
-        '피크 시간대: 새벽 4~7시 / 밤 9시~자정 · 볼락·우럭은 야간 루어',
-      ],
-      detailsEn: [
-        'A well-equipped East Coast harbour — the outer side drops steeply',
-        'Key species: pollock (winter) · flatfish · Arabesque greenling · flounder · halfbeak · rockfish · black rockfish',
-        'Possible year round; winter is peak (pollock) · halfbeak autumn to winter',
-        'Peak hours: 4–7am / 9pm–midnight · rockfish on night lures',
-      ],
-      depthRangeM: [4, 20],
+      depthRangeM: [3, 20],
       snagRisk: 'mid',
     },
   ],
