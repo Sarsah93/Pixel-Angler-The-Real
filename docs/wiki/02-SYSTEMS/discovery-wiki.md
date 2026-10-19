@@ -47,6 +47,7 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 
 | 과제 | 상태 | 차수 |
 |---|---|---|
+| **위키 인물 얼굴**(268 — 지도 핀 상세 72px · 인물 목록 34px · 조행록 의뢰인 56px — 생성기 `mapNpc.img` ← `tools/wiki_img/face_<id>.png` · `--install`이 복사) | ✅ | **268** |
 | DiscoveryStore + 세이브 + legacy 백필 | ✅ | 099 |
 | 발견 소스 4곳 배선 (catch/trap/night_hunting/inventory) | ✅ | 099 |
 | 도감 4탭 + 미발견 실루엣/힌트 | ✅ | 099 |

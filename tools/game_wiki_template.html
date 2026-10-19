@@ -345,6 +345,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .mapside h2{font-size:19px; padding-right:4px}
 .mapside h3{font-size:14px; border-bottom:1px solid var(--rule); padding-bottom:4px; margin:16px 0 8px}
 .mapside .sci{font-size:12px; color:var(--muted); margin-top:3px}
+/* 268차 — 그림 얼굴 초상(192px · 셀 2px) — 핀 상세 · 인물 목록 · 조행록 의뢰인 칸 */
+.face{width:72px; height:72px; image-rendering:pixelated; border-radius:8px; border:1px solid var(--rule); background:#0f1a28; float:left; margin:0 10px 6px 0}
+.face.sm{width:34px; height:34px; float:none; border-radius:6px; margin:0 6px 0 0; vertical-align:middle}
+.face.q{width:56px; height:56px; float:none; border-radius:7px; margin:0 8px 0 0; vertical-align:middle}
 .mapside .kv th{width:84px}
 .mapside .kv{font-size:13px}
 .mapside ul.ml{list-style:none; margin:0; padding:0}
@@ -612,7 +616,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         kindLabel + '</span>' + (q.arcTitle ? esc(q.arcTitle.split(' — ')[0]) : '') + '</td></tr>' +
       '<tr><th>위치</th><td>' + mapRegionLink(q.region, q.regionName, q.giver) + '</td></tr>' +
       '<tr><th>의뢰인</th><td>' + (solo ? '<span class="note">없음 — 스스로 정하는 할 일</span>'
-        : mapNpcLink(q.giver, q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
+        : npcFace(q.giver, 'q') + mapNpcLink(q.giver, q.giverName) + (q.giverRole ? '<br><span class="note">' + esc(q.giverRole) + '</span>' : '')) + '</td></tr>' +
       '<tr><th>요구 레벨</th><td class="mono">Lv. ' + q.lv + '</td></tr>' +
       '<tr><th>클리어 난이도</th><td><span class="dif d-' + q.diff.tier + '">' + esc(q.diff.label) + '</span>' +
         (q.diff.acts.length ? '<br><span class="note">' + esc(q.diff.acts.join(' · ')) + '</span>'
@@ -1241,7 +1245,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         (m.links && m.links.length ? '<h3>이웃 맵</h3><ul class="ml">' + m.links.map(l => '<li><a class="xl" data-map="map/' + esc(l.id) + '" href="#map/' + esc(l.id) + '">' + esc(l.dirKo) + ' — ' + esc(l.name) + '</a></li>').join('') + '</ul>' : '') +
         (m.areas.length ? '<h3>출조 구역</h3><ul class="ml">' + m.areas.map(a => '<li>' + (a.tx !== undefined ? mjump(m, 'area', a.id, a.name) : esc(a.name)) +
           '<span class="mono">' + (a.tx !== undefined ? a.tx + ',' + a.ty : '') + '</span>' + (a.enterable ? '' : '<span class="mono">준비 중</span>') + '</li>').join('') + '</ul>' : '') +
-        (m.npcs.length ? '<h3>이야기 인물</h3><ul class="ml">' + m.npcs.map(n => '<li>' + iconTag('mm_npc') + mjump(m, 'npc', n.id, n.name) + '<span class="mono">' + n.tx + ',' + n.ty + '</span></li>').join('') + '</ul>' : '') +
+        (m.npcs.length ? '<h3>이야기 인물</h3><ul class="ml">' + m.npcs.map(n => '<li>' + (n.img ? '<img class="face sm" src="' + imgSrc(n.img) + '" alt="" width="34" height="34">' : iconTag('mm_npc')) + mjump(m, 'npc', n.id, n.name) + '<span class="mono">' + n.tx + ',' + n.ty + '</span></li>').join('') + '</ul>' : '') +
         (m.triggers.length ? '<h3>현장 지점</h3><ul class="ml">' + m.triggers.map(t => '<li>' + mjump(m, 'trig', t.id, t.label) + '<span class="mono">' + esc(t.questId) + ' · ' + t.phase + '단계</span></li>').join('') + '</ul>' : '') +
         (m.places.length ? '<h3>이야기 장소</h3><ul class="ml">' + m.places.map(p => '<li>' + mjump(m, 'place', p.key, p.label) + '<span class="mono">' + p.tx + ',' + p.ty + '</span></li>').join('') + '</ul>' : '') +
         (m.home.length ? '<h3>집 설치물</h3><ul class="ml">' + m.home.map(o => '<li>' + mjump(m, 'home', o.id, o.label) + '<span class="mono">' + o.tx + ',' + o.ty + '</span></li>').join('') + '</ul>' +
@@ -1256,7 +1260,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     const tile = (tx, ty) => '칸 ' + tx + ', ' + ty + ' <span class="mono">(' + Math.round(tx * (m.tileM || 0)) + 'm, ' + Math.round(ty * (m.tileM || 0)) + 'm)</span>'.replace(' <span class="mono">(0m, 0m)</span>', '');
     if (s.kind === 'npc') {
       const n = s.ref;
-      el.innerHTML = back + '<h2>' + iconTag('mm_npc') + ' ' + esc(n.name) + '</h2><div class="sci">' + esc(n.role) + (n.nameEn ? ' · ' + esc(n.nameEn) : '') + '</div>' +
+      el.innerHTML = back + (n.img ? '<img class="face" src="' + imgSrc(n.img) + '" alt="" width="72" height="72">' : '') + '<h2>' + iconTag('mm_npc') + ' ' + esc(n.name) + '</h2><div class="sci">' + esc(n.role) + (n.nameEn ? ' · ' + esc(n.nameEn) : '') + '</div><div style="clear:both"></div>' +
         mkv([['자리', tile(n.tx, n.ty)], ['행동', esc(n.behaviorKo) + ' · ' + esc(n.facing) + '을 본다'], ['일과', esc(n.routine)],
           ['집', n.home ? mjump(m, 't', n.home.tx + ',' + n.home.ty, n.home.label) + ' <span class="mono">' + n.home.tx + ',' + n.home.ty + '</span>' : '없음 — 늘 밖에 있다'],
           ['이야기', n.arc ? esc(n.arc) : '']]) +
@@ -1321,6 +1325,12 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     let h = '<a class="xl" data-map="' + esc(first) + '" href="#' + esc(first) + '">' + esc(regionName) + '</a>';
     if (ms.length > 1) h += '<br><span class="note">지도 ' + ms.map(id => '<a class="xl" data-map="map/' + esc(id) + '" href="#map/' + esc(id) + '">' + esc((mapById[id] || {}).name || id) + '</a>').join(' · ') + '</span>';
     return h;
+  }
+  // 268차 — 인물 얼굴(지도 데이터의 `img` — 있을 때만)
+  function npcFace(npcId, cls){
+    const at = npcId && MAPS.npcAt[npcId];
+    const n = at && ((mapById[at.map] || {}).npcs || []).find(x => x.id === npcId);
+    return n && n.img ? '<img class="face ' + (cls || 'sm') + '" src="' + imgSrc(n.img) + '" alt="">' : '';
   }
   function mapNpcLink(npcId, name){
     const at = npcId && MAPS.npcAt[npcId];

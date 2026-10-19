@@ -20,7 +20,7 @@
  *    node tools/gemini_face_art.cjs --list                                         # 대상 · 자동 문장 표
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --dry         # 프롬프트 + 참고 그림만(요청 없음)
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> [--set cast|player|all] [--only okseon,baram]
- *        [--model gemini-nano-banana-2.1] [--jobs 3] [--tries 4] [--tag v2] [--force]
+ *        [--ref <화풍 · 밀도 앵커 png>[,png]] [--model gemini-nano-banana-2.1] [--jobs 3] [--tries 4] [--tag v2] [--force]
  *    node tools/gemini_face_art.cjs --out <폴더> --sheet <png>                     # 검수 시트(12장씩)
  *    node tools/gemini_face_art.cjs --out <폴더> --install [--only …] [--force]     # 배경 벗기기 → 정사각 → 96칸(셀 2px = 192px)
  *        → packages/client-pc/public/faces/<키>.png + src/data/FacePortraits.ts(자동 목록 — 부팅이 `face_<키>`로 싣는다)
@@ -35,6 +35,7 @@ const ROOT = path.resolve(__dirname, '..');
 const CORE = path.join(ROOT, 'packages', 'core', 'dist', 'index.js');
 const FACES_DIR = path.join(ROOT, 'packages', 'client-pc', 'public', 'faces');
 const MANIFEST = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'FacePortraits.ts');
+const WIKI_IMG = path.join(ROOT, 'tools', 'wiki_img');
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 const CELLS = 96;      // 긴 변 칸 수
 const CELL = 2;        // 셀 px — 맵 기준 입자와 같다(192px 정사각)
@@ -122,9 +123,11 @@ async function buildTargets(set) {
 }
 
 const STYLE_INTRO = '픽셀 아트 **인물 초상(흉상)** 한 장을 그려 주세요. 머리 꼭대기부터 어깨선까지, 정면에서 아주 살짝 비스듬히 본 얼굴, 얼굴이 화면의 60% 이상을 차지하게 크게. '
-  + '화풍: 레트로 어드벤처 게임의 대화창 초상 — 또렷한 도트(약 96칸 격자), 얼굴 · 머리 · 옷 둘레를 감싸는 진한 윤곽선, 평평한 면과 3단 음영(밝음 · 기본 · 그늘), 색은 적게(12~20색). '
-  + '사실적 비례의 얼굴(눈 · 코 · 입 · 귀가 분명하고 호감 가는 인상 — 추하거나 기괴하지 않게). 사진 · 3D · 수채 · 부드러운 번짐 금지. '
-  + '첨부한 작은 도트 그림은 이 인물의 **배색 · 머리 모양 · 모자 앵커**입니다 — 같은 사람을 훨씬 자세하고 보기 좋게 다시 그리되 배색은 따르세요. 그 작은 그림을 그대로 키우지는 마세요.';
+  + '화풍: 레트로 어드벤처 게임의 대화창 초상 — 또렷한 도트, 얼굴 · 머리 · 옷 둘레를 감싸는 진한 윤곽선, 평평한 면과 3단 음영(밝음 · 기본 · 그늘), 색은 적게(12~20색). '
+  + '도트 밀도: 화면 한 변이 약 128칸(한 칸 = 8px)인 **세밀한 도트**입니다 — 32칸짜리 굵은 도트로 그리지 마세요. 눈동자 · 콧날 · 입술 · 머리카락 결이 칸 몇 개로 그려질 만큼 촘촘하게. '
+  + '사실적 비례의 얼굴(눈 · 코 · 입 · 귀가 분명하고 호감 가는 인상 — 추하거나 기괴하지 않게). 사진 · 3D · 수채 · 부드러운 번짐 금지.';
+const ANCHOR_TEXT = '바로 위 그림(있다면)은 **화풍 · 도트 밀도 참고**입니다 — 그 사람을 그리지 말고 밀도와 음영 방식만 따르세요. '
+  + '아래 작은 도트 그림은 그릴 인물의 **배색 · 머리 모양 · 모자 앵커**입니다 — 같은 사람을 훨씬 자세하고 보기 좋게 다시 그리되 배색은 따르세요. 그 작은 그림을 그대로 키우지는 마세요.';
 
 const taskText = (it) => `그릴 사람: ${it.nameKo} (${it.nameEn}). ${it.text}\n`
   + '조건: 순백색 단색 배경(그림자 · 무늬 없음). 인물 하나만, 머리 끝과 어깨선이 잘리지 않게. 글자 · 숫자 · 로고 · 테두리 · 말풍선 없음. 정사각 1:1.';
@@ -150,15 +153,24 @@ function procRefPart(core, outDir, key, cfg) {
   return { inlineData: { mimeType: 'image/png', data: fs.readFileSync(dst).toString('base64') } };
 }
 
-/** 이미 설치한 얼굴 두 장(있으면) — 화풍 통일 */
-function styleRefParts(exclude) {
-  if (!fs.existsSync(FACES_DIR)) return [];
-  return fs.readdirSync(FACES_DIR).filter((f) => f.endsWith('.png') && f !== `${exclude}.png`).sort().slice(0, 2)
-    .map((f) => ({ inlineData: { mimeType: 'image/png', data: fs.readFileSync(path.join(FACES_DIR, f)).toString('base64') } }));
+/**
+ * 화풍 · 도트 밀도 앵커 — `--ref` 파일(최대 2장 · 512px로 줄여 보냄)이 있으면 그것, 없으면 이미 설치한 얼굴 두 장.
+ * 267차 시범: 앵커 없이는 한 장은 128칸급 세밀 도트, 다른 장은 32칸급 굵은 도트로 밀도가 제각각이었다 — 앵커 한 장이 밀도를 고정한다.
+ */
+function styleRefParts(outDir, refs, exclude) {
+  const files = refs.length ? refs.slice(0, 2)
+    : fs.existsSync(FACES_DIR) ? fs.readdirSync(FACES_DIR).filter((f) => f.endsWith('.png') && f !== `${exclude}.png`).sort().slice(0, 2).map((f) => path.join(FACES_DIR, f)) : [];
+  const dir = path.join(outDir, '_refs');
+  fs.mkdirSync(dir, { recursive: true });
+  return files.map((f) => {
+    const dst = path.join(dir, `style_${path.basename(f)}`);
+    if (!fs.existsSync(dst)) execFileSync('convert', [f, '-background', 'white', '-alpha', 'remove', '-resize', '512x512>', `PNG24:${dst}`]);
+    return { inlineData: { mimeType: 'image/png', data: fs.readFileSync(dst).toString('base64') } };
+  });
 }
 
 function parseArgs(argv) {
-  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '' };
+  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -174,6 +186,7 @@ function parseArgs(argv) {
     else if (a === '--install') P.install = true;
     else if (a === '--list') P.list = true;
     else if (a === '--sheet') P.sheet = path.resolve(next());
+    else if (a === '--ref') P.refs.push(...next().split(',').map((f) => path.resolve(f.trim())).filter(Boolean));
     else throw new Error(`모르는 인자: ${a}`);
   }
   return P;
@@ -184,7 +197,7 @@ const outName = (key, tag) => `${key}${tag ? `.${tag}` : ''}`;
 
 async function generateOne(core, key, it, P) {
   const body = {
-    contents: [{ role: 'user', parts: [{ text: STYLE_INTRO }, procRefPart(core, P.out, key, it.cfg), ...styleRefParts(key), { text: taskText(it) }] }],
+    contents: [{ role: 'user', parts: [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, key), { text: ANCHOR_TEXT }, procRefPart(core, P.out, key, it.cfg), { text: taskText(it) }] }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },
   };
   let last = '';
@@ -281,6 +294,8 @@ async function install(P, targets, list) {
     for (let i = 0; i < side * side; i++) if (sq[i * 4 + 3] === 0) sq[i * 4] = sq[i * 4 + 1] = sq[i * 4 + 2] = 0;
     const g = regrid(sq, side, side, CELLS, CELL);
     const bytes = encode(g.w, g.h, g.data, dst);
+    // 268차 — 인물 얼굴은 위키 그림 폴더에도 둔다(지도 핀 상세 · 조행록 의뢰인 칸 — 생성기가 `face_<id>.png`를 찾는다). 주인공 판은 위키에 없다
+    if (targets[key].kind === 'cast') { fs.mkdirSync(WIKI_IMG, { recursive: true }); fs.copyFileSync(dst, path.join(WIKI_IMG, `face_${key}.png`)); }
     console.log(`${key} → ${path.relative(ROOT, dst)}: ${w}x${h} → ${g.w}x${g.h} (${(bytes / 1024).toFixed(0)}KB) · ${cut.note} · 번짐 ${pf.peeled}px`);
     n++;
   }
@@ -308,7 +323,7 @@ async function install(P, targets, list) {
   if (P.install) { await install(P, targets, list); return; }
   if (P.dry) {
     for (const k of list) {
-      procRefPart(core, P.out, k, targets[k].cfg);
+      procRefPart(core, P.out, k, targets[k].cfg); styleRefParts(P.out, P.refs, k);
       console.log(`\n=== ${k} (${targets[k].nameKo}) ===\n${taskText(targets[k])}`);
     }
     console.log(`\n[dry] ${list.length}장 — 참고 그림 ${path.join(P.out, '_refs')} · 요청은 보내지 않았다`);

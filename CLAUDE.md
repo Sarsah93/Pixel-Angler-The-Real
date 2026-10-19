@@ -66,13 +66,22 @@
   → **264 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**
   → **265 속초 출조 지점 「속초항」 하나 · 출조 구역 규칙(걷기 30초) · 위키 지도 탭 구 맵 15**
   → **266 탭 복귀 검정 화면(WebGL 복구 뒤 다시 굽기) · 간판 입구 옆 · 문 밀기 중심선 금지 · main 반영 · 82차 배포**
-  → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길(그림은 Gemini 결제 대기)**.
+  → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길**
+  → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **268차**: **그림 얼굴 초상 66장(Gemini) · 화풍 앵커 · 게임 · 위키 적용** —
+  사용자 「Gemini 크레딧 충전했어. 계속해서 진행해줘」 → 시범 4장 밀도 제각각(정옥선 128칸급 · 나머지 32칸급) → 첫 정옥선 그림을 `--ref` 앵커로 66장 같은 밀도(실패 0 · 약 7분) ·
+  정옥선 캐스트 표 장발 · 백발 · 피부 2(해시 4는 다른 인종으로 읽힘 — 필드 스프라이트도 같이) · 시트 검수 뒤 둘만 다시(모태조 「소품 없음」 · 여 곱슬 얼룩) ·
+  `--install` 66장(192×192 · 9~16KB) · `FacePortraits.ts` 66키 · `tools/wiki_img/face_*` 42 · 위키 지도 핀 상세(72px) · 인물 목록(34px) · 조행록 의뢰인(56px) 얼굴 ·
+  주인공 치환 = 색 + 자리(`FacePhoto.recolorFace` — 머리 성분 40픽셀 · 가지치기 · 어두운 띠 번짐 · 눈 = 흰자 3px 안 — 색조만으로는 코 · 입 · 목 그늘이 머리색) ·
+  검증 = 위키 Playwright pageerror 0 · 게임 하네스 2회(부팅 66 · 혼잣말 · 대화창 · 일지 · 치환 격자 26칸) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 셋 Version 9(라이브러리 10) · 위키 67.
+  **다음 = 사용자 육안(66장 · 대화창 인상 · 치환 색) · 주인공 얼굴형 · 입 판 결정 · 83차 배포(요청 시)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-19-268-face-portraits-66-gemini.md`.
 - **267차**: **첫 실플레이 피드백 여섯 · 그림 얼굴 초상의 길** —
   사용자 「지도가 작아서 끌리지 않는 것 같은데 … wiki에 반영된 지도 드래깅되는 것처럼」 「22시 이후로는 퀘스트 진행 불가 … 빨간색 텍스트로 단서」
   「미끼(20개입, 8개입) … 한 번 사용하고 바로 사라짐 → 열기」 「집 안에서 esc 누르면 집 밖으로 나가짐 → 금지」 「대화가 앞에 내용이 겹쳐서 나옴」
@@ -95,15 +104,6 @@
   core 325/325 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(셋 Version 7 · 위키 66) · 82차 배포(실행 11 · gh-pages `bbf106c` · 정적 파일 1,921 같음 · 하위 경로 기동 한 18.1초 · 영 18.8초 · pageerror 0).
   **다음 = 사용자 실브라우저 확인(다른 창 갔다 오기 · 간판 자리) · 문 변이 물 쪽인 큰 건물 · 감사 도구화(백로그 CM)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md`.
-- **265차**: **속초 출조 지점 「속초항」 하나 · 출조 구역 나누는 규칙(걷기 거리) · 위키 지도 탭에 구 맵 15(속초 7 · 부산 8)** —
-  사용자 「지도 탭 육안 확인했어. 레거시 속초 · 부산 맵도 찍어서 올려줘. … 속초 선택 시 … 그냥 속초항 하나로 하자 … 부산 · 제주는 … 따로 스폰되게 해야할 듯. 어떻게 생각해?」 →
-  `REGION_AREA_NODES` 동명항 노드 삭제(구역 18 → 17 · 설명 · 수심은 속초항에 합침) ·
-  **규칙 = 같은 데이터 지역 안에서 내리는 자리끼리 걸어서 약 30초(200칸 · 1km) 안이면 노드 하나**(BFS — 속초 90칸 · 부산 감천 가장 가까운 쌍 461칸 → 넷 그대로 · 제주 데이터 지역 셋) ·
-  씬 init `legacy` 플래그(캡처 · 폴백 전용) · `capture_wiki_maps.cjs` 구 맵 15(블록 격자 · 축소판 1/2) · 생성기 구 맵 항목(이웃 맵 · 손그림 가게 핀 · 조행록 링크 제외) · 템플릿 「구 맵」 안내 ·
-  하네스(속초 핀 1 · 스폰 (465,156) · 옛 mapId 폴백 (527,128) · legacy 부팅 · pageerror 0) · 캡처 15(30파일 5.7MB) · 위키 Playwright pageerror 0 · core 325/325 · 빌드 3/3 ·
-  아티팩트 4개(셋 Version 6 · 위키 64 — 파일 413 / 511).
-  **다음 = 사용자 육안(월드맵 속초 카드 · 위키 구 맵 15) · 속초 기본 자리 ↔ 속초항 자리 통일 여부(백로그 D) · main 반영 · 82차 배포(요청 시)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-19-265-sokcho-single-area-legacy-maps-wiki.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -125,6 +125,8 @@
   `food assets/tackle/` = 낚시 장비 원본 115장(249 — 사용자 그림 41 · Gemini 74) — 게임은 `node tools/tackle_cards.cjs`가 굽는 `public/tackle/` 카드 · 아이콘만 싣는다.
   `food assets/items/` = 장비 밖 아이템 원본 223장(255 — Gemini · 씨앗 봉투 틀 `_template/`) — 게임은 `node tools/item_cards.cjs`가 굽는 `public/items/` 카드 · 아이콘만 싣는다.
   `food assets/dishes/` = 완성 요리 사진 원본 7장(255) — `node tools/dish_photos.cjs`가 `public/food/` 사진 · 칸 아이콘으로 굽는다.
+  얼굴 초상(268)은 원본을 저장소에 두지 않는다 — `public/faces/<키>.png`(192px)가 정본이고, 더 뽑을 때는 `NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> [--ref 앵커]`
+  → `--sheet` 검수 → `--install`(스킬 `asset-pipeline` ⑦).
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
   `assets/cursor/` = 게임 마우스 포인터 원본(250 — 찌 화살 · Gemini 원본) — `node tools/gen_game_cursor.cjs`가 `data/GameCursorArt.ts`를 굽는다.
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스) ·
@@ -202,14 +204,14 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `bbf106c` — **최근 82차 배포 2026-10-19 = 266차까지 포함**(265 속초항 하나 · 266 WebGL 복구 · 간판 입구 옆) —
   main `718d39e` · 실행 11).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 66 = 266차**(65 · 66 = 지도 시트 14지역 다시 찍음)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 67 = 268차**(인물 얼굴 35장 HTML 안 · 65 · 66 = 지도 시트 14지역 다시 찍음)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 8 = 267차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 8 = 267차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 8 = 267차 기준 · 문법은 258차) · 위키(위 줄 — 267차는 입력 불변이라 그대로).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 9 = 268차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 10 = 268차 기준 · 치환 자리 규칙) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 9 = 268차 기준 · 문법은 258차) · 위키(위 줄).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

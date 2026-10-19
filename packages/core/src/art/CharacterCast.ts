@@ -78,7 +78,8 @@ export const CAST_TRAITS: Record<string, CastTrait> = {
 
 /** 손으로 굳힌 외형 (해시 결과를 덮어쓴다) */
 export const CAST_OVERRIDE: Record<string, Partial<CharAppearance> & { outfit?: Partial<CharOutfit> }> = {
-  okseon: { hairStyle: 'short', hair: 7, outfit: { hat: 'bandana', hatColor: 0xc4553f } },
+  // 267차 사용자 지시 「정옥선은 할머니라 흰머리 장발, 모자」 — 장발 · 백발 · 약간 그을린 피부(해시값 4 = 가장 짙은 피부는 초상에서 다른 인종으로 읽혔고, 3도 너무 짙었다)
+  okseon: { hairStyle: 'long', hair: 7, skin: 2, outfit: { hat: 'bandana', hatColor: 0xc4553f } },
   tak_mansu: { hair: 7, beard: 7, outfit: { hat: 'sun', hatColor: 0xd1a72f } },
   kang_ducheol: { hair: 6, beard: 6, outfit: { hat: 'cap', hatColor: 0x3d5a80 } },
   go_manseok: { hair: 7, beard: 7, outfit: { hat: 'beanie', hatColor: 0x5b6637 } },

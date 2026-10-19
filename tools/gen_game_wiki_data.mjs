@@ -1122,8 +1122,10 @@ const mapNpc = (p) => {
   const routine = core.routineOfNpc ? core.routineOfNpc(p.npcId) : null;
   const gives = core.STORY_QUESTS.filter((q) => q.giver === p.npcId).map(questBrief);
   const related = core.STORY_QUESTS.filter((q) => q.giver !== p.npcId && (q.objectives ?? []).some((o) => o.npcId === p.npcId)).map(questBrief);
+  // 268차 — 그림 얼굴 초상(`tools/gemini_face_art.cjs --install`이 `tools/wiki_img/face_<id>.png`로 복사) — 있으면 핀 상세 · 조행록 의뢰인 칸에
+  const face = fs.existsSync(path.join(IMG_DIR, `face_${p.npcId}.png`)) ? `face_${p.npcId}.png` : '';
   return {
-    id: p.npcId, name: d?.nameKo ?? p.npcId, nameEn: d?.nameEn ?? '', role: d?.roleKo ?? '', tx: p.tx, ty: p.ty,
+    id: p.npcId, name: d?.nameKo ?? p.npcId, nameEn: d?.nameEn ?? '', role: d?.roleKo ?? '', tx: p.tx, ty: p.ty, img: face,
     behavior: p.behavior ?? 'wander', behaviorKo: NPC_BEHAVIOR_KO[p.behavior ?? 'wander'] ?? p.behavior, facing: FACING_KO[p.facing ?? 'down'],
     home: p.home ? { tx: p.home.tx, ty: p.home.ty, label: p.home.labelKo } : null,
     routine: routine ? `${SHIFT_KO(routine)}${p.home ? '' : ' (집 없음)'}` : '',
@@ -1335,6 +1337,7 @@ for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
 for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
 for (const ic of maps.icons) used.add(ic.img);   // 264차 — 지도 탭 핀 아이콘(16px — 전부 HTML 안)
+for (const m of maps.list) for (const n of m.npcs ?? []) if (n.img) used.add(n.img);   // 268차 — 인물 얼굴(192px · 20KB 아래면 HTML 안)
 // 249차 — 아티팩트 한 판에는 파일이 511개까지만 들어간다(위키가 쓰는 그림 512장 + index.html — 그 전까지 코드 그림 141장이 빠진 채였다).
 //   작은 그림(INLINE_MAX 이하 — 16px 아이콘 · 스킬 아이콘 · 코드 그림 섬네일)은 HTML 안에 data URI로 넣고, 나머지만 img/ 파일로 둔다.
 // 264차 — 지도 시트(maps/ — 15지도 99파일)가 들어오면서 파일 상한(511)에 걸려 8KB → 20KB로 올렸다(213장이 HTML 안으로 · 페이지 약 +4.5MB).
