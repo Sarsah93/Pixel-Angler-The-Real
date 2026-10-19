@@ -178,7 +178,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
   `nudgeOffRoad`는 건물 쪽으로만(길 건너로 민 문 169 → 0) · 문 앞 칸 넷이 막히면 BFS ≤ 3 · [F]가 그림의 문에서 2.5칸 넘게 떨어지면 간판은 [F] 옆.
 - 검증: `WEBGL_lose_context` 하네스(필드 · 집 · 레거시 — 복구 뒤 밝기 0.947 그대로 · pageerror 0) ·
   14지역 감사(간판 3,131 · 떨어진 간판 523 → 41 · 벽 간판 757 · 차도 밴드 안 간판 = 벽 발치 313뿐) ·
-  core 325/325 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(셋 Version 7 · 위키 __WIKIVER__) · 82차 배포 __DEPLOY_SHORT__.
+  core 325/325 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(셋 Version 7 · 위키 66) · 82차 배포(실행 11 · gh-pages `bbf106c` · 정적 파일 1,921 같음 · 하위 경로 기동 한 18.1초 · 영 18.8초 · pageerror 0).
 - 상세: [워크로그 266](../docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md)
 
 ### 265차 (2026-10-19) — 속초 출조 지점 「속초항」 하나 · 출조 구역 나누는 규칙(걷기 거리) · 위키 지도 탭에 구 맵 15

@@ -319,7 +319,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   컨텍스트 복구 때 RenderTexture(청크 · 지붕 · 레거시 건물 · 집 어둠)를 다시 굽는다(`RESTORE_WEBGL` → `rebakeAfterContextRestore` · `refreshLights`) · 유실 오버레이 「되살리는 중」.
 - 간판 = 입구 바로 옆(side → side2 → 벽 간판 → 2칸 → 생략 — §4 R9 보강) · `nudgeOffRoad` 건물 쪽만(길 건너 문 169 → 0) · 문 앞 칸 BFS ≤ 3 · 먼 [F]는 간판을 [F] 옆에.
 - 검증: `WEBGL_lose_context` 하네스(복구 뒤 밝기 0.947 그대로 · pageerror 0) · 14지역 감사(간판 3,131 · 떨어진 간판 523 → 41 · 벽 757) · core 325/325 · 빌드 3/3 · typecheck 0 ·
-  아티팩트 4개(셋 Version 7 · 위키 __WIKIVER__) · 82차 배포 __DEPLOY_SHORT__. 상세: [266차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md).
+  아티팩트 4개(셋 Version 7 · 위키 66) · 82차 배포(실행 11 · gh-pages `bbf106c` · 정적 파일 1,921 같음 · 하위 경로 기동 한 18.1초 · 영 18.8초 · pageerror 0).
+  상세: [266차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md).
 
 **이전 변경 (2026-10-19 265차) — 속초 출조 지점 「속초항」 하나 · 출조 구역 나누는 규칙(걷기 거리) · 위키 지도 탭에 구 맵 15**
 

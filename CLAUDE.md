@@ -78,7 +78,7 @@
   `RESTORE_WEBGL`에서 다시 굽기(`rebakeAfterContextRestore` · `refreshLights`) · 유실 오버레이 「되살리는 중」 ·
   간판 규칙 side → side2 → **벽 간판**(문 변 위 · 건물 앞) → 2칸 → 생략 · `nudgeOffRoad` 건물 쪽만(길 건너 문 169 → 0) · 문 앞 칸 BFS ≤ 3 · 먼 [F]는 간판을 [F] 옆에 ·
   검증 = `WEBGL_lose_context` 하네스(복구 뒤 밝기 0.947 그대로 · pageerror 0) · 14지역 감사(간판 3,131 · 떨어진 간판 523 → 41 · 벽 757 · 차도 밴드 안 간판 = 벽 발치뿐) ·
-  core 325/325 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(셋 Version 7 · 위키 __WIKIVER__) · 82차 배포 __DEPLOY_SHORT__.
+  core 325/325 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(셋 Version 7 · 위키 66) · 82차 배포(실행 11 · gh-pages `bbf106c` · 정적 파일 1,921 같음 · 하위 경로 기동 한 18.1초 · 영 18.8초 · pageerror 0).
   **다음 = 사용자 실브라우저 확인(다른 창 갔다 오기 · 간판 자리) · 문 변이 물 쪽인 큰 건물 · 감사 도구화(백로그 CM)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-266-webgl-restore-sign-audit-deploy82.md`.
 - **265차**: **속초 출조 지점 「속초항」 하나 · 출조 구역 나누는 규칙(걷기 거리) · 위키 지도 탭에 구 맵 15(속초 7 · 부산 8)** —
@@ -200,17 +200,17 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eb403f4` — **최근 81차 배포 2026-10-18 = 263차까지 포함**(264는 위키 · 도구만) —
-  263은 81차에 처음 실렸다 · main `01bbb50`).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `bbf106c` — **최근 82차 배포 2026-10-19 = 266차까지 포함**(265 속초항 하나 · 266 WebGL 복구 · 간판 입구 옆) —
+  main `718d39e` · 실행 11).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 64 = 265차**
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 66 = 266차**(65 · 66 = 지도 시트 14지역 다시 찍음)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 6 = 265차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 6 = 265차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 6 = 265차 기준 · 문법은 258차) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 7 = 266차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 7 = 266차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 7 = 266차 기준 · 문법은 258차) · 위키(위 줄).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
