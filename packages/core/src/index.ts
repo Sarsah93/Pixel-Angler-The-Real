@@ -833,6 +833,7 @@ export { FOOD_NUTRITION, DAILY_KCAL, DAILY_WATER_ML, restoreFromNutrition, foodN
   type FoodNutrition } from './db-schema/FoodNutrition.js';
 export { objectiveTarget, objectiveHowToKo, nextObjectiveIndex,
   type QuestGuideTarget, type QuestGuideTargetKind, type GuideNames } from './rules/QuestGuide.js';
+export { hasBatchim, particle, objectiveNominalKo, spokenProgressKo, spokenDoneKo, type SpokenObjective } from './rules/KoreanPhrase.js';
 // 237차 — 철 따라 다른 퀘스트 선물(N19-7 정옥선의 남는 모종 · 씨앗)
 export { okseonSpareGift, type OkseonSpareGift, type OkseonSpareHave, type QuestGiftItem } from './rules/QuestGifts.js';
 

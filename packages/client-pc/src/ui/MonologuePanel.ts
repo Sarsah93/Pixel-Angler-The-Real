@@ -142,7 +142,7 @@ export class MonologuePanel extends DraggablePanel {
     g.fillStyle(0x12263a, 1); g.fillRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
     g.lineStyle(2, 0x6b9fbc, 0.95); g.strokeRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
     c.add(g);
-    const key = this.voice?.portraitKey ?? ensureFacePortrait(this.scene, characterLook(), FACE_SCALE);
+    const key = this.voice?.portraitKey ?? ensureFacePortrait(this.scene, characterLook(), FACE_SCALE, 'player');
     // 32×32 초상 전체(얼굴·목·어깨)를 프레임 안에 넣고 상하 여백을 확보한다.
     const imageSize = Math.min(FACE_PX, PORTRAIT_FRAME_H - 16);
     const imageTop = top + Math.floor((PORTRAIT_FRAME_H - imageSize) / 2);

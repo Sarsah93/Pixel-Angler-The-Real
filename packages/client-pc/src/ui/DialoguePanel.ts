@@ -46,10 +46,11 @@ import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { applyScreenFixed } from './DraggablePanel.js';
-import { t } from '../i18n/I18n.js';
+import { t, getLocale } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS } from '@tra/core';
+import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, spokenProgressKo, spokenDoneKo, particle, type SpokenObjective } from '@tra/core';
+import { SHOP_CATALOG, BUILDING_HOURS, BUILDING_LABEL, type BuildingKind } from '../data/ShopCatalog.js';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
 import { GuideTour, maybeStartTour } from './GuideTour.js';
@@ -88,6 +89,10 @@ const COL = {
   text: '#e8f4fd', dim: '#8fa6bd', accent: '#ffe9a0', ok: '#7fe0b0',
   warn: '#ffb45a', hint: '#7f95aa', narr: '#d6c9a8',
 };
+/** 267차 — 주의 단락(영업시간 등) 글자색 — 사용자 「빨간색 텍스트로 단서 주기」 */
+const COL_CAUTION = '#ff8f7f';
+/** 267차 — 단락 앞에 붙이면 그 단락은 **빨간 글로 제 쪽에 홀로** 찍힌다(보이지 않는 글자 — 번역 전에 뗀다) */
+const HINT_PREFIX = '\u2063';
 
 interface ChoiceRow {
   label: string; hint?: string; action: () => void; disabled?: boolean;
@@ -127,7 +132,9 @@ export class DialoguePanel extends DraggablePanel {
   get currentView(): View { return this.view; }
 
   /** 응답 화면 (141차) — 보상은 고른 뒤에만 드러난다 */
-  private reply: { line: string; rewards: string[]; epilogue?: string; declined?: boolean } | null = null;
+  private reply: { line: string; rewards: string[]; epilogue?: string; declined?: boolean; said?: string } | null = null;
+  /** 267차 — 지금 쪽이 주의 단락(빨간 글) 쪽인가 — 다음 단락은 새 쪽에서 평소 색으로 */
+  private hintPage = false;
 
   // ── 타이핑 로그 ──────────────────────────────────
   /** 이미 다 찍힌 글(단락 사이 빈 줄 포함) */
@@ -355,7 +362,7 @@ export class DialoguePanel extends DraggablePanel {
     g.lineStyle(2, 0x6b9fbc, 0.95);
     g.strokeRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
 
-    const key = ensureFacePortrait(this.scene, characterOf(this.npcId), FACE_SCALE);
+    const key = ensureFacePortrait(this.scene, characterOf(this.npcId), FACE_SCALE, this.npcId);
     // 32×32 전체 래스터를 유지하되 프레임 안에서 중앙 정렬한다. 특히 y=30~31의
     // 어깨 행이 칸 밖으로 밀려나지 않도록 위·아래 여백을 동일하게 둔다.
     const imageSize = Math.min(FACE_PX, PORTRAIT_FRAME_H - 16);
@@ -432,9 +439,14 @@ export class DialoguePanel extends DraggablePanel {
 
   // ═══════════ 타이핑 ═══════════
   /** 단락들을 차례로 찍고, 다 찍히면 선택지를 연다 */
-  private play(paras: string[], rows: ChoiceRow[], keepLog = false): void {
-    if (!keepLog) { this.logDone = ''; }
-    this.queue = paras.filter((p) => p.trim().length > 0);
+  private play(paras: string[], rows: ChoiceRow[], _keepLog = false): void {
+    // 267차 — 화면(인사 · 의뢰 · 답 · 진행)마다 **새 쪽**에서 시작한다. 옛 규칙(keepLog)은 앞 화면 글 아래에 이어 붙여
+    //   앞 단락이 반쯤 잘린 채 위로 밀려 보였다(사용자 「앞에 내용이 겹쳐서 나옴 … 똑같이 그대로 점멸」).
+    //   찍을 단락이 없으면(답 뒤 「계속 이야기하기」 메뉴) 지금 쪽을 그대로 둔다 — 마지막 단락을 쪽에 붙여 두고 선택지만 바꾼다.
+    const list = paras.filter((p) => p.trim().length > 0);
+    if (list.length > 0) { this.logDone = ''; this.setHintPage(false); }
+    else if (this.typingPara) { this.typed = this.typingPara.length; this.commitPara(); }
+    this.queue = list;
     this.pendingRows = rows;
     this.rows = [];
     this.cursor = 0;
@@ -450,10 +462,43 @@ export class DialoguePanel extends DraggablePanel {
     // 187차 — 찍기 **전에** 번역한다. 부분 문자열은 사전에 없어서, 영어 설정에서 한국어가 한 글자씩
     //   찍히다가 끝에서야 영어로 바뀌었다(따옴표로 감싼 대사는 끝까지 한국어였다 — I18n 인용부호 규칙).
     // 257차 — 번역한 **뒤에** 문장마다 줄을 바꾸고(빈 줄) 문장 끝에서 쉬어 간다(사용자 「실제로 말할 때 저렇게 빠르게 말하지 않으니까」)
-    const paced = paceSentences(t(next));
-    this.typingPara = paced.text;
+    const isHint = next.startsWith(HINT_PREFIX);
+    const paced = paceSentences(t(isHint ? next.slice(HINT_PREFIX.length) : next));
+    // 267차 — 주의 단락(빨간 글)은 제 쪽에 홀로 찍는다 — 앞뒤로 쪽을 넘긴다
+    if (isHint || this.hintPage) this.logDone = '';
+    this.setHintPage(isHint);
+    // 267차 — 이 단락까지 넣으면 상자를 넘칠 때는 앞 단락을 지우고 **새 쪽**에서 잇는다(위로 밀어 반 잘린 줄을 남기지 않는다)
+    if (this.logDone && this.logText) {
+      this.logText.setText(`${this.logDone}\n\n${paced.text}`);
+      if (this.logText.height > LOG_H) this.logDone = '';
+    }
+    // 267차 — 단락 하나가 상자보다 길면(서두 아홉 문장 · 긴 답) **문장 경계에서 쪽을 가른다** — 들어가는 데까지 찍고 ▼, 나머지는 다음 쪽.
+    //   따옴표 단락은 쪽마다 따옴표를 닫고 다시 연다.
+    let text = paced.text;
+    let pauses = paced.pauses;
+    if (this.logText) {
+      const head = this.logDone ? `${this.logDone}\n\n` : '';
+      const fits = (upTo: number): boolean => { this.logText!.setText(head + text.slice(0, upTo)); return this.logText!.height <= LOG_H; };
+      if (!fits(text.length)) {
+        // 자를 자리 = 문장 끝 쉼 + 빈 줄 경계(한 번 갈라 둔 나머지는 쉼 표시가 없어도 빈 줄로 문장이 나뉘어 있다)
+        const blanks: number[] = [];
+        for (let i = text.indexOf('\n\n'); i >= 0; i = text.indexOf('\n\n', i + 2)) blanks.push(i + 2);
+        const cuts = [...new Set([...pauses, ...blanks])].filter((i) => i > 0 && i < text.length).sort((a, b) => a - b);
+        let cut = -1;
+        for (const i of cuts) { if (fits(i)) cut = i; else break; }
+        if (cut > 0) {
+          const quoted = text.startsWith('"') && text.endsWith('"');
+          let rest = text.slice(cut).replace(/^\n+/, '');
+          text = text.slice(0, cut).replace(/\n+$/, '');
+          if (quoted) { text += '"'; rest = `"${rest}`; }
+          pauses = pauses.filter((i) => i < text.length);
+          this.queue.unshift((isHint ? HINT_PREFIX : '') + rest);
+        }
+      }
+    }
+    this.typingPara = text;
     this.typed = 0;
-    this.pauses = new Set(paced.pauses); this.holdTicks = 0;
+    this.pauses = new Set(pauses); this.holdTicks = 0;
     this.paintLog();
     this.typeTimer = this.scene.time.addEvent({
       delay: TYPE_MS, loop: true,
@@ -473,6 +518,12 @@ export class DialoguePanel extends DraggablePanel {
         }
       },
     });
+  }
+
+  /** 267차 — 주의 쪽(빨간 글) 켜고 끄기 */
+  private setHintPage(on: boolean): void {
+    this.hintPage = on;
+    this.logText?.setColor(on ? COL_CAUTION : COL.text);
   }
 
   private commitPara(): void {
@@ -619,6 +670,7 @@ export class DialoguePanel extends DraggablePanel {
     }
     if (n?.offer) paras.push(`"${n.offer}"`);
     else for (const [ko] of dialogueOf(q.id).offer) paras.push(`"${ko}"`);
+    paras.push(...this.hoursHintParas(q, false));   // 267차 — 영업시간 주의(빨간 글)
     const note = StoryStore.offerNoteKo(q);
     if (note) paras.push(note);
     const rows = StoryStore.visibleChoices(q, 'offer').map((ch) => this.choiceRow(q, ch, 'offer'));
@@ -631,12 +683,11 @@ export class DialoguePanel extends DraggablePanel {
     const paras = [this.questHead(q)];
     paras.push(`"${np ?? dialogueOf(q.id).progress[0]}"`);
     if (this.actionReply) { paras.push(`"${this.actionReply}"`); this.actionReply = ''; }
-    paras.push(this.objectiveLines(q));
+    // 267차 — 「[완료] … / - …」 나열 대신 말하듯(1인칭 산문). 다 했으면 그 문장이 「다시 말을 걸면 보고할 수 있다」까지 말한다
+    paras.push(this.progressNarration(q, 'active'));
+    paras.push(...this.hoursHintParas(q, true));   // 267차 — 아직 안 산 가게 목표가 있으면 영업시간 주의
     const rows: ChoiceRow[] = [];
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
-    // 188차 — '직접 하는 목표'가 남지 않았다는 것만으로는 준비가 끝난 게 아니다(어획·방문 등 자동 목표가
-    //   남아 있으면 제출할 수 없다). 전부 채웠을 때만 안내한다(AG ④a).
-    if (idx < 0 && StoryStore.allObjectivesDone(q)) paras.push('준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.');
     if (idx >= 0) {
       const objective = q.objectives[idx];
       if (objective.actionKey) {
@@ -699,7 +750,7 @@ export class DialoguePanel extends DraggablePanel {
   private playComplete(q: StoryQuestDef): void {
     const nd = narrativeOf(q.id)?.done;
     const paras = [this.questHead(q)];
-    paras.push(this.objectiveLines(q));
+    paras.push(this.progressNarration(q, 'complete'));
     // 254차 — 끝내는 자리 대화(보상 답 · 결말을 대화가 고른다)
     const doneTalk = StoryStore.completeTalk(q);
     if (doneTalk) { this.enterTalk(doneTalk, paras); return; }
@@ -732,6 +783,51 @@ export class DialoguePanel extends DraggablePanel {
   }
 
   /**
+   * 267차 — 진행 상황을 **말하듯**(1인칭 산문 — R4). 「사이소에서 저가 릴대를 사는 것은 끝냈다. 이제 테트라포드 틈에서 한 마리를 올리는 것이 남았다.」
+   * 사용자 「대화하듯 진행 상황을 전개 · 설명하듯 notice 해야 하는데 … 텍스트로만 나열하듯 적혀지고 있는게 이질감」.
+   * 영어는 문장 규칙이 한국어용이라 옛 목록을 그대로 쓴다.
+   */
+  private progressNarration(q: StoryQuestDef, mode: 'active' | 'complete'): string {
+    if (getLocale() !== 'ko') {
+      const list = this.objectiveLines(q);
+      return mode === 'active' && StoryStore.allObjectivesDone(q) ? `${list}\n준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.` : list;
+    }
+    const items: SpokenObjective[] = q.objectives.map((o, i) => {
+      const tgt = StoryStore.objectiveTarget(o);
+      const cur = o.actionKey ? StoryStore.actionStep(q.id, i) : (StoryStore.progress(q.id)?.obj[i] ?? 0);
+      return { label: narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo, done: StoryStore.objectiveDone(q, i), cur, target: tgt };
+    });
+    return mode === 'complete' ? spokenDoneKo(items) : spokenProgressKo(items);
+  }
+
+  /**
+   * 267차 — 영업시간 주의(빨간 쪽). 나레이션 `hint`가 있으면 의뢰인의 말로, 없으면 「사는」 목표의 가게 시간표에서 1인칭 메모를 만든다.
+   * 사용자 「퀘스트를 건네 받을 때 … 영업시간을 반드시 확인해야 할 거야 … 같은 단서 주기」(사이소 영수증이 밤 10시 뒤에 막혔다).
+   * `onlyUndone` = 진행 중 화면 — 아직 안 산 목표가 있을 때만.
+   */
+  private hoursHintParas(q: StoryQuestDef, onlyUndone: boolean): string[] {
+    const n = narrativeOf(q.id);
+    const buyIdx = q.objectives.map((o, i) => (o.placeKey?.startsWith('buy:') ? i : -1)).filter((i) => i >= 0);
+    const pending = buyIdx.filter((i) => !onlyUndone || !StoryStore.objectiveDone(q, i));
+    if (n?.hint) return !onlyUndone || pending.length > 0 ? [`${HINT_PREFIX}"${n.hint}"`] : [];
+    const kinds = new Set<BuildingKind>();
+    for (const i of pending) {
+      const itemId = (q.objectives[i].placeKey ?? '').slice(4);
+      for (const kind of Object.keys(SHOP_CATALOG) as BuildingKind[]) {
+        if (SHOP_CATALOG[kind].sells.some((e) => e.id === itemId)) kinds.add(kind);
+      }
+    }
+    const out: string[] = [];
+    for (const kind of kinds) {
+      const h = BUILDING_HOURS[kind];
+      if (h === 'always') continue;
+      const label = BUILDING_LABEL[kind];
+      out.push(`${HINT_PREFIX}(영업시간을 봐 둬야 한다. ${label}${particle(label, '은', '는')} 보통 ${h.open}시부터 ${h.close}시까지 연다.)`);
+    }
+    return out;
+  }
+
+  /**
    * 선택지 → 행. **미리보기 없음**(141차 — 보상은 고른 뒤 응답 문장과 결과 목록으로 드러난다).
    */
   private choiceRow(q: StoryQuestDef, ch: QuestChoiceDef, stage: 'offer' | 'complete'): ChoiceRow {
@@ -748,6 +844,7 @@ export class DialoguePanel extends DraggablePanel {
           rewards: done ? StoryStore.lastRewardLines : [],
           epilogue: done ? narrativeOf(q.id)?.epilogue : undefined,
           declined: StoryStore.lastAction === 'declined',
+          said: ch.labelKo,   // 267차 — 새 쪽 첫 줄에 내가 한 말을 되짚는다(앞 쪽이 사라지므로)
         };
         this.enterReply();
       },
@@ -759,6 +856,7 @@ export class DialoguePanel extends DraggablePanel {
     const r = this.reply!;
     // 253차 — 응답이 길어졌다: 빈 줄 단락마다 끊어 찍는다(▼)
     const paras = r.line.split('\n\n').map((p) => `"${p}"`);
+    if (r.said && !r.said.startsWith('(')) paras.unshift(`나 — "${r.said}"`);
     if (r.declined) paras.push('의뢰를 받지 않았습니다.');
     // 258차 — 답의 효과(「이 답으로」) · 고르지 않은 답(「→ ???」)은 찍지 않는다 — 위키에서만 본다
     if (r.rewards.length) paras.push(`받은 것 — ${r.rewards.join(' · ')}`);
@@ -833,7 +931,10 @@ export class DialoguePanel extends DraggablePanel {
     const rows: ChoiceRow[] = [{ label: '계속 이야기하기', action: () => { this.reply = null; this.enterMenu(false); } }, this.exitRow()];
     if (talk.at === 'offer') {
       if (StoryStore.lastAction === 'declined') paras.push('의뢰를 받지 않았습니다.');
-      else StoryStore.emitActionSource('selection', `talk:${talk.id}`);
+      else {
+        StoryStore.emitActionSource('selection', `talk:${talk.id}`);
+        if (q) paras.push(...this.hoursHintParas(q, false));   // 267차 — 받는 자리 대화가 끝나면 영업시간 주의(빨간 글)
+      }
     } else if (talk.at === 'objective' && q && talk.objectiveIndex !== undefined) {
       paras.push(`[완료] ${narrativeOf(q.id)?.objectives?.[talk.objectiveIndex] ?? q.objectives[talk.objectiveIndex]?.labelKo ?? ''}`);
     } else if (talk.at === 'action' && q && talk.objectiveIndex !== undefined) {

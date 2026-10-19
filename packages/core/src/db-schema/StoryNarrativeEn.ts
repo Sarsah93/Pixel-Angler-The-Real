@@ -22,11 +22,12 @@ export interface NarrativeEnEntry {
   done?: string;
   objectives?: string[];
   epilogue?: string;
+  hint?: string;
 }
 
-interface EnLines { offer?: string; progress?: string; done?: string; obj?: string[]; epi?: string }
+interface EnLines { offer?: string; progress?: string; done?: string; obj?: string[]; epi?: string; hint?: string }
 const E = (intro: string, l: EnLines = {}): NarrativeEnEntry =>
-  ({ intro, offer: l.offer, progress: l.progress, done: l.done, objectives: l.obj, epilogue: l.epi });
+  ({ intro, offer: l.offer, progress: l.progress, done: l.done, objectives: l.obj, epilogue: l.epi, hint: l.hint });
 
 export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
   // ═══════════════════════════════════════════
@@ -55,7 +56,8 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "That rod's too good, don't use it here. Go to Saiso and buy a cheap one. Hole fishing is for rods you won't miss when they snap.",
       progress: "Still empty-handed. Look right under the gap. You don't need to cast far.",
       done: "...well, you caught it. Don't throw away the Saiso receipt. Fishing starts with counting what your gear costs.",
-      obj: ["Buy a cheap reel rod at Saiso", "Bring up one fish from a tetrapod gap"] }),
+      obj: ["Buy a cheap reel rod at Saiso", "Bring up one fish from a tetrapod gap"],
+      hint: "Oh, and check the hours. Saiso usually opens ten in the morning to ten at night. Go at night and the door is shut." }),
   'M1-05': E(
     "I unfold my father's reel rod for the first time. Twelve guide rings, one of them slightly bent. Do Hyeonsu nags me from behind under the pretext of fixing my casting stance. The sinker touches bottom, the line draws tight, and the tip trembles. My wrist moved before I did. The weight of the first hookset travels up my arm. Today I think I am learning, for the first time, whose hand this rod remembers.",
     { offer: "Unfold it. Learn casting again from the start. Watch the rod tip bend hard, and strike on the third.",

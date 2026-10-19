@@ -131,6 +131,8 @@ NPC 대사는 좌→우로 **타이핑**되고, 넘치면 앞 줄이 위로 밀�
 **NPC를 누르자마자 의뢰서가 펼쳐지지 않는다.**
 **한 문장이 끝나면 줄을 바꾸고 잠깐 쉰다**(2026-10-16 · 257차 사용자 지시 — 「실제로 말을 할 때, 저렇게 빠르게 말하지 않으니까」).
 혼잣말 · 대화창 · 컷씬은 찍기 직전에 core `paceSentences`로 가르고(번역 뒤) 문장 끝마다 `SENTENCE_PAUSE_MS`만큼 쉰다. 대사 데이터에 줄바꿈을 손으로 넣지 않는다.
+**대화창은 쪽 단위다**(2026-10-19 · 267차 사용자 리포트 「앞에 내용이 겹쳐서 나옴」) — 화면마다 앞 글을 지우고 새 쪽에 찍고, 넘치면 단락 · 문장 끝에서 쪽을 갈라 ▼로 넘긴다.
+진행 중 화면은 목표 글머리를 나열하지 않고 말하듯 잇는다(core `spokenProgressKo`). 영업시간이 걸린 의뢰는 받을 때 빨간 글 단서(`QuestNarrative.hint`)로 일러 준다.
 
 **R4. 나레이션은 정의문 요약이 아니다.**
 퀘스트 설명은 `descKo` 같은 설계 요약을 그대로 쓰지 않는다. **NPC가 실제로 한 말 + 주인공이
@@ -304,7 +306,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-19 266차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-19 267차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -313,7 +315,18 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-19 266차) — 탭 복귀 검정 화면(WebGL 컨텍스트 복구 뒤 다시 굽기) · 간판 자리 전수 검수(입구 옆 · 차도 밖) · main 반영 · 82차 배포**
+**최근 변경 (2026-10-19 267차) — 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길**
+
+- 사용자 피드백 여섯(「지도가 작아서 끌리지 않는 것 같은데 … wiki처럼」 「22시 이후로는 … 빨간색 텍스트로 단서」 「미끼 … 한 번 사용하고 바로 사라짐」 「집 안에서 esc … 금지」
+  「대화가 앞에 내용이 겹쳐서 나옴」 「서브퀘 체크 넣어도 메인퀘 안내만」): 전체 지도 작은 맵도 끌림(여백 48 · 실제 이동 판정 · 처음 배율 ≤ 최대 0.7배) ·
+  대화창 쪽 단위(앞 글 지움 · 단락 · 문장 끝에서 가름) + 진행 말하듯(core `KoreanPhrase`) + `QuestNarrative.hint` 빨간 글(M1-04 사이소 10~22시) ·
+  `isBaitItem`이 묶음 · 포장 제외 + 가방 「열기」(`openBundle`) · `onEscape` 나가기 삭제 · `INDOOR_SEA` 0.04 · 메인 노랑 · 서브 파랑 화살표(`questSubTargetPos`).
+- 그림 얼굴 초상: `tools/gemini_face_art.cjs`(+ `face_looks.cjs` — 정옥선 흰머리 장발 · 두건) · `data/FacePortraits.ts` · `ui/FacePhoto.ts`(`face_<id>` 우선 · 주인공 팔레트 치환) ·
+  `ensureFacePortrait(…, who)` — 그림 0장(Gemini 결제 402). §4 R3에 쪽 넘김 한 줄.
+- 검증: core 332/332 · 빌드 3/3 · typecheck 0 · 하네스 4벌(지도 · 미끼 · 집 · 초상) pageerror 0 · 아티팩트 셋 Version 8.
+  상세: [267차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-267-first-feedback-six-fixes-face-portrait-path.md).
+
+**이전 변경 (2026-10-19 266차) — 탭 복귀 검정 화면(WebGL 컨텍스트 복구 뒤 다시 굽기) · 간판 자리 전수 검수(입구 옆 · 차도 밖) · main 반영 · 82차 배포**
 
 - 사용자 「다른 창에 들어갔다가 다시 픽셀앵글러로 돌아오면 로딩없는 대기 화면 … 검정 화면」 「도로 위에 표지판 … 입구 바로 옆에 표지판이 서있게」:
   컨텍스트 복구 때 RenderTexture(청크 · 지붕 · 레거시 건물 · 집 어둠)를 다시 굽는다(`RESTORE_WEBGL` → `rebakeAfterContextRestore` · `refreshLights`) · 유실 오버레이 「되살리는 중」.
@@ -330,22 +343,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 씬 init `legacy` 플래그(위키 캡처 · 폴백 전용) · 구 맵 15 캡처(`capture_wiki_maps.cjs` — 1,024px 블록 격자 · 축소판 1/2) · 생성기 · 템플릿(「○○ (구 맵)」 묶음 · 이웃 맵 링크 · 손그림 가게 핀).
 - 검증: core 325/325 · 빌드 3/3 · typecheck 0 · 하네스(속초 핀 1 · 스폰 · 옛 mapId 폴백 · legacy 부팅 · pageerror 0) · 캡처 15(30파일 5.7MB) · 위키 Playwright pageerror 0 ·
   아티팩트 4개(셋 Version 6 · 위키 64 — 파일 413 / 511). 상세: [265차 워크로그](../docs/wiki/03-WORKLOG/2026-10-19-265-sokcho-single-area-legacy-maps-wiki.md).
-
-**이전 변경 (2026-10-18 264차) — 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**
-
-- 사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일) … 확대/축소 … npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) …
-  조행록에서 지역을 누르면 지도로 … 다 하고나서 main 반영하고 81차 배포」:
-  `tools/capture_wiki_maps.cjs`(게임 렌더러로 심리스 14 + 홈타운 통째 캡처 — 정오 · 숨김 · 청크 3×3 블록 누적 · 타일당 8px · 4,096 WebP 시트) ·
-  `tools/dump_wiki_map_data.mjs` · 생성기 `maps` 블록 ·
-  템플릿 「지도」 탭(캔버스 뷰어 · 검색 · 레이어 11 · 격자 · 칸 좌표 · 핀 상세 · 해시 `#map/…`) ·
-  조행록 위치 · 의뢰인 · 「지도」 절 ↔ 핀 양방향 링크 ·
-  그림 사전 `G.inl`(20KB 이하 한 번만 — 파일 상한 511).
-- 게임 코드 변경 없음(도구 · 템플릿 · 문서). 씬의 가게 종류 규칙(`poiBuildingKind` · `isStallPoi` · `POI_LABEL`)을 덤프 도구가 복제한다 —
-  씬을 고치면 같이 고친다(백로그 B).
-- 검증: 캡처 15지도 pageerror 0 · Playwright 지도 탭(맞춤 · 인물 · 확대 · 검색 · 현장 · 홈타운 · 어두운 테마 · 폰 폭) pageerror 0 ·
-  아티팩트 Version 63(파일 383 / 511) · main 빨리 감기 ·
-  「테스트 배포」 81차(실행 10 · gh-pages `eb403f4` · 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
-  상세: [264차 워크로그](../docs/wiki/03-WORKLOG/2026-10-18-264-wiki-map-tab-region-atlas.md).
 
 ---
 

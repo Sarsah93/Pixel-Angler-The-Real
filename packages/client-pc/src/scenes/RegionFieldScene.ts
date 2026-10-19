@@ -272,6 +272,10 @@ const LEGACY_GRAIN_SEAM: Record<string, readonly number[]> = {
 /** 우하단 도움말 단추 한 변(px) — 화면 예약(198차)과 그리기가 같은 값을 쓴다 */
 const HELP_BTN = 64;
 
+/** 267차 — 할 일 화살표 색: 메인 노란 · 서브 파란(지도 핀 하늘색 0x5cd0ff와 갈린다) */
+const QUEST_ARROW_MAIN = 0xffd257;
+const QUEST_ARROW_SUB = 0x4f8dff;
+
 export class RegionFieldScene extends Phaser.Scene {
   private region!: string;
   private mapId!: string;
@@ -424,6 +428,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private questGuideLbl?: Phaser.GameObjects.Text;
   private questGuideAt = 0;
   private questTargetPos: { x: number; y: number; label: string } | null = null;
+  /** 267차 — 서브 할 일의 목표 자리(파란 화살표) — 메인과 따로 가리킨다 */
+  private questSubTargetPos: { x: number; y: number; label: string } | null = null;
+  private questSubGuideG?: Phaser.GameObjects.Graphics;
+  private questSubGuideLbl?: Phaser.GameObjects.Text;
   private guideItemNames = new Map<string, string>();
   private fullMapClose?: () => void;
   private lastMiniMarkers: MiniMarker[] = [];
@@ -644,10 +652,13 @@ export class RegionFieldScene extends Phaser.Scene {
     // 만들도록 참조와 관련 상태를 함께 초기화한다.
     this.questGuideG = undefined;
     this.questGuideLbl = undefined;
+    this.questSubGuideG = undefined;
+    this.questSubGuideLbl = undefined;
     this.pinArrowG = undefined;
     this.pinArrowLbl = undefined;
     this.questGuideAt = 0;
     this.questTargetPos = null;
+    this.questSubTargetPos = null;
     this.guideItemNames.clear();
     this.fullMapClose = undefined;
     this.lastMiniMarkers = [];
@@ -6927,16 +6938,13 @@ export class RegionFieldScene extends Phaser.Scene {
       this.questGuideAt = 0;
       const main = this.pickGuideQuest('main');
       const sub = this.pickGuideQuest('sub');
-      // 화살표는 메인을 먼저 가리킨다 — 메인이 없을 때만 서브로 내려간다
+      // 267차 — 화살표 둘: 메인(노란) · 서브(파란)를 **각각** 가리킨다(사용자 「두 개 별도로 indicator 분리 … 각각 추적되고 표시되도록」).
+      //   옛 규칙은 메인이 있으면 서브는 줄만 있고 화살표가 없어 「서브 체크 넣어도 메인 안내만 나옴」으로 보였다.
       this.questTargetPos = null;
+      this.questSubTargetPos = null;
       const entries: QuestTrackerEntry[] = [];
-      let arrowSet = false;
-      for (const pick of [main, sub]) {
-        if (!pick) continue;
-        const built = this.buildTrackerEntry(pick, !arrowSet);
-        if (built.tookArrow) arrowSet = true;
-        entries.push(built.entry);
-      }
+      if (main) { const b = this.buildTrackerEntry(main, true); if (b.pos) this.questTargetPos = b.pos; entries.push(b.entry); }
+      if (sub) { const b = this.buildTrackerEntry(sub, true); if (b.pos) this.questSubTargetPos = b.pos; entries.push(b.entry); }
       this.hud?.setQuestTracker(entries.length ? { entries } : null);
     }
     this.drawQuestArrow();
@@ -6946,7 +6954,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private buildTrackerEntry(
     pick: { q: StoryQuestDef; idx: number | null; kind: 'active' | 'offer' },
     claimArrow: boolean,
-  ): { entry: QuestTrackerEntry; tookArrow: boolean } {
+  ): { entry: QuestTrackerEntry; tookArrow: boolean; pos: { x: number; y: number; label: string } | null } {
     const names = this.guideNames();
     const { q, idx, kind } = pick;
     let target: QuestGuideTarget; let objective: string; let howTo: string;
@@ -6981,11 +6989,12 @@ export class RegionFieldScene extends Phaser.Scene {
     const res = stepTrigger ? this.resolveTriggerTarget(stepTrigger) : this.resolveGuideTarget(target);
     let distance: string | undefined;
     let tookArrow = false;
+    let pos: { x: number; y: number; label: string } | null = null;
     if (res && 'away' in res) {
       distance = `다른 지역 — ${res.away}`;
       if (!howTo || target.kind === 'npc') howTo = `${res.away}(으)로 이동 — 버스 정류장 [F] → 전국 지도`;
     } else if (res && claimArrow) {
-      this.questTargetPos = res;
+      pos = res;   // 267차 — 어느 화살표가 가져갈지는 부르는 쪽이 정한다(메인 · 서브 따로)
       tookArrow = true;
     }
     // 직전 목표가 「완료 직후 안내」를 갖고 있고 이번 목표를 아직 시작하지 않았다면,
@@ -7007,6 +7016,7 @@ export class RegionFieldScene extends Phaser.Scene {
         pinned: StoryStore.isPinned(q.id),
       },
       tookArrow,
+      pos,
     };
   }
 
@@ -7017,12 +7027,16 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.questGuideG) {
       this.questGuideG = this.add.graphics().setDepth(62);
       this.questGuideLbl = this.add.text(0, 0, '', worldLabelStyle(10)).setOrigin(0.5, 0.5).setDepth(62);
+      this.questSubGuideG = this.add.graphics().setDepth(62);
+      this.questSubGuideLbl = this.add.text(0, 0, '', worldLabelStyle(10)).setOrigin(0.5, 0.5).setDepth(62);
       this.pinArrowG = this.add.graphics().setDepth(62);
       this.pinArrowLbl = this.add.text(0, 0, '', worldLabelStyle(10)).setOrigin(0.5, 0.5).setDepth(62);
     }
     const blink = 0.55 + 0.45 * Math.abs(Math.sin(this.time.now / 260));
     // 178차 — 설정에서 끄면 할 일 화살표만 사라진다(직접 찍은 지도 핀 화살표는 그대로).
-    this.drawGuideArrow(this.questGuideG, this.questGuideLbl!, blocked || !this.showQuestGuide ? null : t, 46, 0xffd257, blink);
+    // 267차 — 메인 = 노란(반지름 46) · 서브 = 파란(반지름 54) · 지도 핀 = 하늘색(60) — 세 고리가 겹치지 않는다
+    this.drawGuideArrow(this.questGuideG, this.questGuideLbl!, blocked || !this.showQuestGuide ? null : t, 46, QUEST_ARROW_MAIN, blink);
+    this.drawGuideArrow(this.questSubGuideG!, this.questSubGuideLbl!, blocked || !this.showQuestGuide ? null : this.questSubTargetPos, 54, QUEST_ARROW_SUB, blink);
     const pin = MapPinStore.get(this.region);
     this.drawGuideArrow(this.pinArrowG!, this.pinArrowLbl!, blocked || !pin ? null : { x: pin.x, y: pin.y, label: '핀' }, 60, 0x5cd0ff, blink);
   }
@@ -7065,6 +7079,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const others: Phaser.Geom.Rectangle[] = [];
     if (this.npcHintText?.visible) others.push(this.npcHintText.getBounds());
     if (lbl !== this.questGuideLbl && this.questGuideLbl?.visible) others.push(this.questGuideLbl.getBounds());
+    if (lbl !== this.questSubGuideLbl && this.questSubGuideLbl?.visible) others.push(this.questSubGuideLbl.getBounds());
     if (!others.length) return;
     const hits = (): Phaser.Geom.Rectangle | undefined => {
       const r = lbl.getBounds();

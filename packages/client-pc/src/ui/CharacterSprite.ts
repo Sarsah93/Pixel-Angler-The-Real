@@ -22,6 +22,7 @@ import {
   hasUsableTexture,
   refreshCanvasTexture,
 } from './CanvasTextureGuard.js';
+import { photoPortraitKey } from './FacePhoto.js';
 
 /** 걷기 프레임 순서 — 접지 → 통과 → 접지(반대) → 통과 (144차 — 캐릭터 만들기 프리뷰가 공유) */
 export const WALK_SEQ: CharFrame[] = [1, 2, 3, 4];
@@ -135,7 +136,9 @@ export function ensureCharSheet(scene: Phaser.Scene, cfg: CharConfig, scale = CH
  * ⚠ 배율은 정수(AGENTS §8). `scale`은 **호출부가 원하는 표시 크기**(px)를 기준으로 받는다 —
  *   구 시그니처(16px 창 기준 배율)를 그대로 쓰면 초상이 두 배로 커지므로 창 크기로 환산한다.
  */
-export function ensureFacePortrait(scene: Phaser.Scene, cfg: CharConfig, scale = 10): string {
+export function ensureFacePortrait(scene: Phaser.Scene, cfg: CharConfig, scale = 10, who?: string): string {
+  // 267차 — 그림(Gemini) 초상이 있으면 그것부터(`ui/FacePhoto.ts` — 인물 id · 주인공은 옵션에 맞춰 팔레트 치환). 없으면 아래 절차 초상
+  if (who) { const photo = photoPortraitKey(scene, who, cfg); if (photo) return photo; }
   // 구 호출부는 "16 아트 px x scale"을 기대했다 — 같은 표시 크기를 유지하도록 32 격자 배율로 환산
   const s = Math.max(1, Math.round((16 * Math.max(1, scale)) / PORTRAIT_CELL));
   const baseKey = `face2_${shortHash(charCfgKey(cfg))}_${s}`;

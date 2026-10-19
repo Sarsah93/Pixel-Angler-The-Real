@@ -8,9 +8,9 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 7 — 266차 기준(266차 발행) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 7 — 266차 기준(266차 발행 — 화면 복구 · 간판 규칙 항목) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 7 — 266차 기준 · 채비 문법은 258차(266차 발행 — 「266차 기준」 줄만) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 8 — 267차 기준(267차 발행) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 8 — 267차 기준(267차 발행 — 대화창 쪽 넘김 · 화살표 둘 · 미끼 묶음 · 집 ESC · 그림 얼굴 초상 항목) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 8 — 267차 기준 · 채비 문법은 258차(267차 발행 — 「267차 기준」 줄만) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 66 — 266차(지도 시트 14지역 다시 찍음 — 65 · 66 두 묶음 · HTML은 64 그대로 · `maps/` 129파일 · 파일 413 / 511) |
 
 - 남은 과업 설계는 **비공개**(주인만 열림)다. 나머지 셋은 「링크가 있는 사람」 공유다. 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.

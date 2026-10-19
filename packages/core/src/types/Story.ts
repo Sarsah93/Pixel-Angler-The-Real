@@ -725,6 +725,9 @@ export interface QuestNarrative {
   objectivesEn?: string[];
   epilogue?: string;
   epilogueEn?: string;
+  /** 267차 — 받는 자리에서 의뢰인이 덧붙이는 주의(영업시간 등 — 대화창이 빨간 글로 따로 찍는다) */
+  hint?: string;
+  hintEn?: string;
 }
 
 // ─────────────────────────────────────────────

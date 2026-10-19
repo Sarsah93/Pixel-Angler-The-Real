@@ -345,6 +345,7 @@ export const EN_PANELS: Record<string, string> = {
   '미끼 · 소모품은 사들이지 않는다.': 'We don’t buy bait or consumables.',
   '가게에서 산 먹을거리는 되사지 않는다.': 'We don’t buy back food bought in a shop.',
   '포장 뜯기': 'Open pack',
+  '열기': 'Open',
   '뜯을 포장이 아니다.': 'That isn’t a pack.',
   '가방에 자리가 없다.': 'No room in the bag.',
   '뜯을 수 없다': 'Can’t open it',

@@ -33,9 +33,9 @@ export interface NarrativeEntry extends QuestNarrative {
   complete?: C[];
   offerChoices?: C[];
 }
-interface NpcLines { offer?: string; progress?: string; done?: string; obj?: string[]; epi?: string }
+interface NpcLines { offer?: string; progress?: string; done?: string; obj?: string[]; epi?: string; hint?: string }
 const N = (intro: string, npc: NpcLines = {}, complete?: C[], offerChoices?: C[]): NarrativeEntry =>
-  ({ intro, offer: npc.offer, progress: npc.progress, done: npc.done, objectives: npc.obj, epilogue: npc.epi, complete, offerChoices });
+  ({ intro, offer: npc.offer, progress: npc.progress, done: npc.done, objectives: npc.obj, epilogue: npc.epi, hint: npc.hint, complete, offerChoices });
 
 export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
   // ═══════════════════════════════════════════
@@ -81,7 +81,9 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     { offer: '그 대는 아까우니까 여기다 쓰지 마. 사이소 가서 싼 거 하나 사. 구멍치기는 부러져도 안 아까운 대로 하는 거야.',
       progress: '아직 빈손이네. 틈 바로 아래를 봐. 멀리 던질 필요 없어.',
       done: '…낚긴 낚았네. 사이소 영수증은 버리지 마. 낚시는 장비값부터 세는 거니까.',
-      obj: ['사이소에서 저가 릴대를 산다', '테트라포드 틈에서 한 마리를 올린다'] },
+      obj: ['사이소에서 저가 릴대를 산다', '테트라포드 틈에서 한 마리를 올린다'],
+      // 267차 — 사용자 지시: 영업시간 때문에 밤에는 못 사는 걸 받는 자리에서 미리 알린다(빨간 글)
+      hint: '아, 영업시간은 꼭 확인해. 사이소는 보통 아침 열 시부터 저녁 열 시까지야. 밤에 가면 문이 닫혀 있어.' },
     [
       c('retort', '아깝다는 건 네 손 이야기겠지. 내 손은 아니다.', '…말은 잘한다. 그럼 다음엔 그 대로 낚아 봐. 내가 볼게. (팔짱을 풀지 않는다.)', { affinity: -0.06, flag: 'choice.rival_hot' }),
       c('swallow', '충고로 듣겠다. 사이소 대, 나쁘지 않았다.', '충고 아니다. 사실이야. (그래도 잠깐 입꼬리가 올라간다.)', { affinity: 0.05, flag: 'choice.rival_cool' }),
@@ -2087,7 +2089,7 @@ function mergedNarrative(): Record<string, NarrativeEntry> {
     const en = STORY_NARRATIVE_EN[id];
     const base = en
       ? { ...n, introEn: n.introEn ?? en.intro, offerEn: en.offer, progressEn: en.progress,
-          doneEn: en.done, objectivesEn: en.objectives, epilogueEn: en.epilogue }
+          doneEn: en.done, objectivesEn: en.objectives, epilogueEn: en.epilogue, hintEn: en.hint }
       : { ...n };
     // 152차 — 선택지 영문도 같은 방식으로 얹는다. 없는 키는 한국어가 남는다(미수록 규칙).
     // ⚠ 키에 세트('c' 완료 / 'o' 발주)를 넣는다 — 한 퀘스트에 같은 id의 발주·완료 선택지가 함께 있다(예: 'decline').
@@ -2122,6 +2124,7 @@ export function allNarrativeLines(): [string, string][] {
     put(n.progress, n.progressEn);
     put(n.done, n.doneEn);
     put(n.epilogue, n.epilogueEn);
+    put(n.hint, n.hintEn);
     (n.objectives ?? []).forEach((s, i) => put(s, n.objectivesEn?.[i]));
   }
   return out;

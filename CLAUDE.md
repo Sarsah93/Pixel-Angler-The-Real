@@ -65,13 +65,27 @@
   → **263 지역 장 순서 잠금 · 속초 밖 인물 25명 배치 · 감천 bbox 확장(남항 · 부산공동어시장) · N18-6 인천 무대**
   → **264 위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포**
   → **265 속초 출조 지점 「속초항」 하나 · 출조 구역 규칙(걷기 30초) · 위키 지도 탭 구 맵 15**
-  → **266 탭 복귀 검정 화면(WebGL 복구 뒤 다시 굽기) · 간판 입구 옆 · 문 밀기 중심선 금지 · main 반영 · 82차 배포**.
+  → **266 탭 복귀 검정 화면(WebGL 복구 뒤 다시 굽기) · 간판 입구 옆 · 문 밀기 중심선 금지 · main 반영 · 82차 배포**
+  → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길(그림은 Gemini 결제 대기)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **267차**: **첫 실플레이 피드백 여섯 · 그림 얼굴 초상의 길** —
+  사용자 「지도가 작아서 끌리지 않는 것 같은데 … wiki에 반영된 지도 드래깅되는 것처럼」 「22시 이후로는 퀘스트 진행 불가 … 빨간색 텍스트로 단서」
+  「미끼(20개입, 8개입) … 한 번 사용하고 바로 사라짐 → 열기」 「집 안에서 esc 누르면 집 밖으로 나가짐 → 금지」 「대화가 앞에 내용이 겹쳐서 나옴」
+  「서브퀘 체크 넣어도 메인퀘 안내 표시만 → 노란 · 파란 indicator 각각」 「각 인물 별로 얼굴 이미지 … gemini imaging … 정옥선 흰머리 장발 · 모자」 →
+  전체 지도 `clampPan` 여백 48(작은 맵도 끌림) · 「끌어 보자」 실제 24px 이동 판정 · 처음 배율 ≤ 최대 0.7배 ·
+  대화창 쪽 단위(`play` 새 쪽 · `startNextPara` 단락 · 문장 끝 가름) · 진행 말하듯(core `rules/KoreanPhrase.ts` — `spokenProgressKo`) ·
+  `QuestNarrative.hint` 빨간 글(M1-04 사이소 10~22시) · `isBaitItem` 묶음 · 포장 제외 + 가방 「열기」(`InventoryStore.openBundle`) ·
+  `HomeInteriorScene.onEscape` 나가기 삭제 · `INDOOR_SEA` 0.04 · 메인 노랑(46) · 서브 파랑(54) 화살표(`questSubTargetPos`) ·
+  그림 얼굴 초상 길 = `tools/gemini_face_art.cjs`(인물 42 · 주인공 24 · `--dry` · `--install` 192px) · `data/FacePortraits.ts` · `ui/FacePhoto.ts`(치환) · `ensureFacePortrait(…, who)` —
+  **그림은 0장(Gemini 결제 402 — AI Studio 충전 뒤 생성)**.
+  검증 = core 332/332 · 빌드 3/3 · typecheck 0 · 하네스(가이드 흐름 Enter → 휠 6.61 → 끌기 144px · 한계 48 · 속초 184px · 화살표 둘 326m/298m · 집 ESC 나가기 0 · 「열기」 8마리 · 가짜 초상 치환 색 일치) pageerror 0 ·
+  아티팩트 셋 Version 8(위키는 입력 불변). **다음 = 사용자 실플레이 확인 · Gemini 충전 뒤 초상 66장 · 83차 배포(요청 시)**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-19-267-first-feedback-six-fixes-face-portrait-path.md`.
 - **266차**: **탭 복귀 검정 화면(WebGL 컨텍스트 복구 뒤 다시 굽기) · 간판 자리 전수 검수(입구 옆 · 차도 밖) · main 반영 · 82차 배포** —
   사용자 「브라우저에 창 두개 띄워놓고 다른 거 보고 있다가 다시 게임 창 켜면 검정 화면 … 로딩없는 대기 화면」 「도로 위에 표지판 … 입구 바로 옆에 표지판이 서있게」 →
   원인 = 브라우저가 끊은 WebGL 컨텍스트가 돌아와도 RenderTexture(청크 지면 · 지붕 · 레거시 건물 · 집 어둠)는 비어 있다 →
@@ -90,21 +104,6 @@
   아티팩트 4개(셋 Version 6 · 위키 64 — 파일 413 / 511).
   **다음 = 사용자 육안(월드맵 속초 카드 · 위키 구 맵 15) · 속초 기본 자리 ↔ 속초항 자리 통일 여부(백로그 D) · main 반영 · 82차 배포(요청 시)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-265-sokcho-single-area-legacy-maps-wiki.md`.
-- **264차**: **위키 「지도」 탭(게임 렌더 지역 지도 · 확대/축소 · 미니맵 정보 핀) · 조행록 ↔ 지도 연동 · main 반영 · 81차 배포** —
-  사용자 「wiki에 지역 지도를 볼 수 있게(실제 게임 내 탑다운 뷰 타일을 다 보여주기) … 확대/축소 …
-  npc · 퀘스트 · 상점 · 랜드마크(미니맵 정보) …
-  조행록에서 지역을 누르면 지도로 … 다 하고나서 main 반영하고 81차 배포해줘」 →
-  `tools/capture_wiki_maps.cjs`(dev 서버 + Playwright — `Date`를 정오 KST로 · 사람 · 차 · 날씨 · HUD · 글자 숨김 · 화면 3,072px ·
-  `chunks.update` 쥐기 · 청크 3×3 블록 누적 · 타일당 8px · 4,096 WebP 시트 · 2px 축소판) ·
-  `tools/dump_wiki_map_data.mjs`(인물 자리 · 장소 · 현장 · 가게 종류 — 씬 규칙 복제 ⚠) ·
-  생성기 `maps`(심리스 14 + 홈타운 · 가게 · 등대 · 어장 · 인물 · 현장 · 장소 · 내리는 자리 · 집 설치물 · 연결 색인) ·
-  템플릿 「지도」 탭(캔버스 뷰어 · 휠 · 끌기 · 핀치 · 검색 · 레이어 11 · 격자 · 칸 좌표 · 핀 상세 · 범례 · 해시 `#map/<지도>/<종류>/<id>`) ·
-  조행록 위치 · 의뢰인 · 「지도」 절 ↔ 핀 양방향 · 출조 지역 카드 링크 ·
-  그림 사전 `G.inl`(20KB 이하 352장 HTML 안 · 한 번만 — 파일 283 + 지도 99 + 1 = 383 / 511) ·
-  캡처 15지도 pageerror 0 · Playwright pageerror 0 · 위키 Version 63 · main 빨리 감기 ·
-  81차 배포(실행 10 · gh-pages `eb403f4` · 정적 파일 1,921 같음 · 하위 경로 기동 한 · 영 · pageerror 0).
-  **다음 = 사용자 육안(지도 탭 15지도 조감 · 핀 자리 · 8px 가독성) · 지형 · 가게 자리가 바뀐 지역은 그 지역만 다시 캡처(백로그 CL)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-18-264-wiki-map-tab-region-atlas.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -208,9 +207,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 7 = 266차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 7 = 266차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 7 = 266차 기준 · 문법은 258차) · 위키(위 줄).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 8 = 267차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 8 = 267차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 8 = 267차 기준 · 문법은 258차) · 위키(위 줄 — 267차는 입력 불변이라 그대로).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

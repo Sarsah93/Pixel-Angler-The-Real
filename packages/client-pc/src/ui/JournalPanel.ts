@@ -460,7 +460,7 @@ export class JournalPanel extends DraggablePanel {
     // 177차 — 발주자가 없는(스스로 정한) 할 일은 주인공 얼굴을 세운다. 회색 점은 잠긴 것에만 남긴다.
     if (!locked) {
       const cfg = q.giver ? characterOf(q.giver) : characterLook();
-      const key = ensureFacePortrait(this.scene, cfg, 2);
+      const key = ensureFacePortrait(this.scene, cfg, 2, q.giver ?? 'player');
       const fx = cx + C_FACE / 2;
       const plate = this.scene.add.graphics();
       plate.fillStyle(0x0b1a28, 1); plate.fillRect(fx - 15, y - 15, 30, 30);
@@ -1257,8 +1257,8 @@ export class JournalPanel extends DraggablePanel {
       g.fillStyle(0x12263a, 1); g.fillRect(DET_X + 4, py, faceW, faceW);
       g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(DET_X + 4, py, faceW, faceW);
       c.add(g);
-      const key = ensureFacePortrait(this.scene, q.giver ? characterOf(q.giver) : characterLook(), FACE);
-      c.add(this.scene.add.image(DET_X + 4, py, key).setOrigin(0, 0));
+      const key = ensureFacePortrait(this.scene, q.giver ? characterOf(q.giver) : characterLook(), FACE, q.giver ?? 'player');
+      c.add(this.scene.add.image(DET_X + 4, py, key).setOrigin(0, 0).setDisplaySize(faceW, faceW));   // 267차 — 그림 초상(192px)도 칸에 맞춘다
       const nm = this.scene.add.text(DET_X + 4 + faceW / 2, py + faceW + 4,
         q.giver ? (npc?.nameKo ?? '') : (GameState.player.nickname || '나'), {
         fontFamily: FONT, fontSize: '11px', color: C_TEXT,

@@ -55,6 +55,10 @@ const HDR = 28;
  * 지도를 잡아 옮긴다. 위로 드래그하면 지도는 위로 움직이고 남쪽(아래쪽) 지형이 드러난다.
  */
 const DRAG_DIR = 1;
+/** 267차 — 지도 가장자리가 뷰 안으로 들어올 수 있는 최대 여백(px) — 작은 지도도 이만큼은 끌린다 */
+const PAN_MARGIN = 48;
+/** 최대 배율 — 가이드 「휠 한 번」이 어느 방향으로든 통과하게 처음 배율은 이보다 낮게 연다(267) */
+const MAX_ZOOM = 8;
 
 export class FullMapPanel extends Phaser.GameObjects.Container {
   private readonly cfg: FullMapConfig;
@@ -175,7 +179,9 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     this.panY = (this.view.h - cfg.rows * this.zoom) / 2;
     // 플레이어가 있는 곳을 처음부터 크게
     const p = cfg.player();
-    this.zoomAt(this.view.w / 2, this.view.h / 2, Math.min(8, Math.max(this.minZoom, 2.2)),
+    // 267차 — 작은 맵(홈타운 73×59칸)은 2.2배로도 뷰에 다 들어와 끌 거리가 없었다 → 적어도 뷰의 1.6배가 되는 배율로 연다
+    //   최대 배율(8)로 열면 휠 확대가 막혀 가이드 「휠 한 번」이 확대 방향으로는 안 넘어갔다 → 0.7배 아래에서 연다
+    this.zoomAt(this.view.w / 2, this.view.h / 2, Math.min(MAX_ZOOM * 0.7, Math.max(this.minZoom * 1.6, 2.2)),
       (p.x / cfg.worldW) * cfg.cols, (p.y / cfg.worldH) * cfg.rows);
 
     // 입력 — 휠·드래그
@@ -186,7 +192,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       if (!inView(ptr.x, ptr.y)) return;
       const f = dy > 0 ? 1 / 1.18 : 1.18;
       const me = cfg.player();
-      this.zoomAt(this.view.w / 2, this.view.h / 2, Phaser.Math.Clamp(this.zoom * f, Math.min(this.minZoom, 0.6), 8),
+      this.zoomAt(this.view.w / 2, this.view.h / 2, Phaser.Math.Clamp(this.zoom * f, Math.min(this.minZoom, 0.6), MAX_ZOOM),
         (me.x / cfg.worldW) * cfg.cols, (me.y / cfg.worldH) * cfg.rows);
     };
     scene.input.on('wheel', this.wheelH);
@@ -217,10 +223,11 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     });
     this.moveH = (ptr) => {
       if (!this.dragging) { this.hoverAt(ptr.x, ptr.y); return; }
-      if (Math.hypot(ptr.x - this.dragging.sx, ptr.y - this.dragging.sy) > 40) this.tourDragged = true;
       this.panX = this.dragging.px + (ptr.x - this.dragging.sx) * DRAG_DIR;
       this.panY = this.dragging.py + (ptr.y - this.dragging.sy) * DRAG_DIR;
       this.clampPan();
+      // 267차 — 「끌어 보자」는 포인터가 아니라 **지도가 실제로 움직인 거리**로 통과한다(옛 판정은 지도가 못 박힌 채 넘어갔다)
+      if (Math.hypot(this.panX - this.dragging.px, this.panY - this.dragging.py) > 24) this.tourDragged = true;
       this.layout();
     };
     this.upH = () => { this.dragging = null; };
@@ -329,12 +336,16 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
     this.layout();
   }
 
+  /**
+   * 267차 — 위키 지도 뷰어처럼 **지도가 뷰보다 작아도 끌린다**(사용자 「지도가 작아서 끌리지 않는 것 같은데, wiki에 반영된
+   * 지도 드래깅되는 것처럼」). 옛 규칙은 작은 축에서 가운데에 못 박아, 홈타운 같은 작은 맵은 튜토리얼 「끌어 보자」가 끌리지 않았다.
+   * 지금은 지도 가장자리가 뷰 안쪽 여백(MARGIN)까지 들어오는 범위에서 어느 쪽으로든 움직인다.
+   */
   private clampPan(): void {
     const w = this.cfg.cols * this.zoom, h = this.cfg.rows * this.zoom;
-    if (w <= this.view.w) this.panX = (this.view.w - w) / 2;
-    else this.panX = Phaser.Math.Clamp(this.panX, this.view.w - w, 0);
-    if (h <= this.view.h) this.panY = (this.view.h - h) / 2;
-    else this.panY = Phaser.Math.Clamp(this.panY, this.view.h - h, 0);
+    const M = PAN_MARGIN;
+    this.panX = Phaser.Math.Clamp(this.panX, Math.min(this.view.w - w, M), Math.max(0, this.view.w - w - M));
+    this.panY = Phaser.Math.Clamp(this.panY, Math.min(this.view.h - h, M), Math.max(0, this.view.h - h - M));
   }
 
   private layout(): void {

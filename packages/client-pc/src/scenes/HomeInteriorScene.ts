@@ -208,6 +208,12 @@ interface Seat {
   standY: number;
 }
 
+/**
+ * 267차 — 집 안에서 들리는 먼 파도 세기(0~1). 0.12는 실내인데도 파도가 또렷해 「집 안에서도 파도 소리」 지적을 받았다 —
+ * 0.04(약 -10dB · 실내 먹먹함 0.6배는 별도)로 낮춘다. 사용자 「파도 소리를 좀 줄이거나(집 안이므로)」.
+ */
+const INDOOR_SEA = 0.04;
+
 export class HomeInteriorScene extends Phaser.Scene {
   /** 위치 판정용 논리 좌표 (스프라이트 발밑) */
   private px = 0;
@@ -277,7 +283,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   create(): void {
-    setAmbience({ sea: 0.12, indoor: true });   // 211차 — 집 안 — 창 너머 먼 파도(253차 — 날씨는 창이 생긴 뒤 `syncWeatherSound`)
+    setAmbience({ sea: INDOOR_SEA, indoor: true });   // 211차 — 집 안 — 창 너머 먼 파도(253차 — 날씨는 창이 생긴 뒤 `syncWeatherSound` · 267차 더 낮춤)
     void playMusic('home');   // 261차 — 배경 음악: 옛집(가 · 나 번갈아)
     this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
@@ -432,8 +438,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.cookPanel) { this.closeCook(); return; }
     if (this.fridgePanel) { this.closeFridge(); return; }
     if (this.menu) { this.menu.onCancel(); return; }
-    if (this.prologueHoldsDoor()) return;
-    this.exitToField();
+    // 267차 — ESC로는 집 밖으로 나가지 않는다(사용자 「집 안에서 esc 누르면 집 밖으로 나가짐 … 바로 나가지는 것 금지」).
+    //   나가는 길은 문 앞 매트 [F]뿐이다. 열린 창이 없을 때의 ESC는 아무것도 하지 않는다.
   }
 
   /**
@@ -1005,7 +1011,7 @@ export class HomeInteriorScene extends Phaser.Scene {
    */
   private syncWeatherSound(): void {
     const kind = this.ambience?.weather ?? 'clear';
-    setAmbience({ sea: 0.12, ...weatherSoundFrom(kind), indoor: true });
+    setAmbience({ sea: INDOOR_SEA, ...weatherSoundFrom(kind), indoor: true });
   }
 
   /** 지금 켜져 있는 불빛 — 스탠드(따뜻한 노랑) · 수조(푸른빛) */

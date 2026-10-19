@@ -24,7 +24,7 @@ import {
   InventoryStore, InvCategory, InvItem, InvItemTemplate,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
   CONDITION_NEXT, conditionRemainMs, formatDhms, plateWipProgress,
-} from '../store/InventoryStore.js';
+ isBundlePack } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
@@ -822,12 +822,25 @@ export class InventoryPanel extends DraggablePanel {
     // 224차 — 포장 뜯기(빵가루 반죽 200g → 경단 10개 등)
     if (item.unpack) {
       const split = item.subCategory === PRODUCE_SUB && !isProducePack(item.id);   // 241차 — 수박 한 통 · 무 한 개처럼 큰 수확물은 「나누기」 · 243차 팩은 「포장 뜯기」
+      // 267차 — 미끼 곽(곽크릴 등)은 「열기」(사용자 「열기 (unbox)하면 낱개의 미끼들이 나오도록」) · 수확물 팩은 「포장 뜯기」 그대로
       actions.push({
-        label: split ? '나누기' : '포장 뜯기',
+        label: split ? '나누기' : item.subCategory === PRODUCE_SUB ? '포장 뜯기' : '열기',
         color: '#4af2a1', hoverColor: '#8dffce',
         run: () => {
           const r = InventoryStore.unpack(item.id);
           this.setStatus(r.ok ? `${split ? '나눴다' : '포장을 뜯었다'} — ${r.name} ${r.qty}개` : (r.reason ?? '뜯을 수 없다'));
+          if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+        },
+      });
+    }
+    // 267차 — 묶음(청갯지렁이 1갑 · 혼무시 1갑 — 상점 `bundle`)은 「열기」로 낱개가 된다. 묶음째로는 바늘에 못 꿴다.
+    if (isBundlePack(item.id)) {
+      actions.push({
+        label: '열기',
+        color: '#4af2a1', hoverColor: '#8dffce',
+        run: () => {
+          const r = InventoryStore.openBundle(item.id);
+          this.setStatus(r.ok ? `열었다 — ${r.name} ${r.qty}개` : (r.reason ?? '열 수 없다'));
           if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
         },
       });

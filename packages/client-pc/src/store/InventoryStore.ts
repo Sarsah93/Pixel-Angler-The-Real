@@ -420,7 +420,23 @@ export type RigStepKey =
 
 /** 미끼로 취급하는 소분류 (생미끼/냉동미끼/반죽미끼/선어미끼 등 '미끼' 포함 전부) */
 export function isBaitItem(i: InvItem): boolean {
+  // 267차 — 곽 · 갑(묶음 — `unpack` · 상점 `bundle`)은 미끼가 아니다. 묶음을 바늘에 꿰면 한 번 먹히고 곽째 사라졌다
+  //   (사용자 「미끼(20개입, 8개입)들이 한 번 사용하고 바로 사라짐」). 「열기」로 낱개를 꺼내야 꿸 수 있다.
+  if (i.unpack || isBundlePack(i.id)) return false;
   return i.subCategory.includes('미끼') || i.subCategory === '생미끼';
+}
+
+/** 267차 — 상점 묶음(`bundle` — 청갯지렁이 1갑 등)인가. 구성품은 `bundlePartsOf` */
+export function isBundlePack(itemId: string): boolean {
+  return !!bundlePartsOf(itemId);
+}
+
+/** 상점 카탈로그에서 묶음 구성품을 찾는다(없으면 null) */
+export function bundlePartsOf(itemId: string): readonly { tpl: InvItemTemplate; qty: number }[] | null {
+  for (const def of Object.values(SHOP_CATALOG)) {
+    for (const e of def.sells) if (e.id === itemId && e.bundle) return e.bundle;
+  }
+  return null;
 }
 
 /** 바늘 소켓에 들어가는 아이템 — 단품 바늘 또는 루어(바늘 일체형) */
@@ -1975,6 +1991,22 @@ class InventoryStoreManager {
       : it.subCategory === PRODUCE_SUB && it.condition ? { condition: it.condition, conditionSinceMs: it.conditionSinceMs } : {};
     this.addItem({ ...tpl, ...carry }, n);
     return { ok: true, name: tpl.name, qty: n };
+  }
+
+  /**
+   * 267차 — 묶음 열기. 상점 묶음(`bundle` — 청갯지렁이 1갑 8마리 등)을 가방에 든 채면 하나를 열어 구성품으로 바꾼다.
+   * 산 자리에서 바로 풀리는 게 정상(`handleBuy`)이지만, 옛 세이브 · 이야기 보상 · 바닥 줍기로 묶음째 든 것을 위한 길.
+   */
+  openBundle(itemId: string): { ok: boolean; name?: string; qty?: number; reason?: string } {
+    const it = this.find(itemId);
+    const parts = it ? bundlePartsOf(it.id) : null;
+    if (!it || !parts) return { ok: false, reason: '열 묶음이 아니다.' };
+    const need = parts.filter((p) => !this.find(p.tpl.id)).length - (it.qty === 1 ? 1 : 0);
+    if (need > 0 && this.freeSlotCount(parts[0].tpl.category) < need) return { ok: false, reason: '가방에 자리가 없다.' };
+    if (!this.removeQty(it.id, 1)) return { ok: false, reason: '열 묶음이 아니다.' };
+    if (!this.addBundle(parts, 1)) { this.addItem(it, 1, { silent: true }); return { ok: false, reason: '가방에 자리가 없다.' }; }
+    const total = parts.reduce((a, p) => a + p.qty, 0);
+    return { ok: true, name: parts.map((p) => p.tpl.name).join(' · '), qty: total };
   }
 
   /**
