@@ -1,9 +1,9 @@
 {
- "date": "2026-10-19",
- "audited_commit": "384f5f3c1aea00c2c42f5b126721aeb40a0c6a84",
+ "date": "2026-10-20",
+ "audited_commit": "ed87113dfe81b31e9681f42ecbe392c639301ab6",
  "summary": {
   "harmony_index": 46.0,
-  "balance": 41.9,
+  "balance": 41.8,
   "weakest": "08-notes-memory",
   "measured_domains": 9
  },
@@ -151,10 +151,10 @@
   "08-notes-memory": {
    "name": "8 노트·메모리",
    "health": 6.0,
-   "mastery": 10.7,
+   "mastery": 10.6,
    "agency": null,
-   "overall": 7.8,
-   "scope_files": 224,
+   "overall": 7.7,
+   "scope_files": 226,
    "reviewed_current": 24,
    "reviewed_stale": 25,
    "open_findings": {
@@ -189,5 +189,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-10-18"
+ "previous_date": "2026-10-19"
 }
