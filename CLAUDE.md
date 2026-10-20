@@ -81,7 +81,8 @@
   기본 판을 3배로 키워 같은 인물 앵커 · 시범 4 → 44 · 실패 0 · 같은 사람 턱선만) · 입 4 · 볼 홍조 = `FacePhoto` 입술 픽셀 변형(`findMouth` 24/24 · 입꼬리 1~2px · 0.72배 · 2px 틈 · 타원 분홍) ·
   얼굴 114장 · 키 `<기본>_<얼굴형>` · `_m_<입>` · `_b` · PLAN 두 번 들어간 사본 삭제 · 스킬 `asset-pipeline` ⑧ ·
   검증 = 시트 · 몽타주 육안(7/7 · 48/48 · 입 24 × 5) · 하네스(부팅 114 · 아이템 7 키 · 격자 31키 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 라이브러리 11 · 과업 10 · 순서도 10.
-  **다음 = 사용자 육안(코드 그림 7 · 얼굴형 · 입 · 홍조) · 얼굴형 차이를 더 뚜렷하게 할지(24장 ≈ 1,500원) · 83차 배포(요청 시) · 잔액 약 6,200원(추정)**.
+  **83차 배포(2026-10-20 · 작업 브랜치 `1d4fa10` · 실행 12 · gh-pages `4707571` · 정적 파일 2,042 같음 · 하위 경로 기동 12.7초 · pageerror 0) — main은 사용자 빨리 감기 대기**.
+  **다음 = 사용자 실플레이(코드 그림 7 · 얼굴형 · 입 · 홍조) · 얼굴형 차이를 더 뚜렷하게 할지(24장 ≈ 1,500원) · 잔액 약 6,200원(추정)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-269-face-shapes-mouth-code-art-seven.md`.
 - **268차**: **그림 얼굴 초상 66장(Gemini) · 화풍 앵커 · 게임 · 위키 적용** —
   사용자 「Gemini 크레딧 충전했어. 계속해서 진행해줘」 → 시범 4장 밀도 제각각(정옥선 128칸급 · 나머지 32칸급) → 첫 정옥선 그림을 `--ref` 앵커로 66장 같은 밀도(실패 0 · 약 7분) ·
@@ -201,8 +202,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `bbf106c` — **최근 82차 배포 2026-10-19 = 266차까지 포함**(265 속초항 하나 · 266 WebGL 복구 · 간판 입구 옆) —
-  main `718d39e` · 실행 11).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `4707571` — **최근 83차 배포 2026-10-20 = 269차까지 포함**(267 피드백 여섯 · 268 얼굴 66 · 269 얼굴형 판 · 입 · 홍조 · 코드 그림 7) —
+  작업 브랜치 `1d4fa10` · 실행 12. ⚠ main은 `ed87113`(266차)에 멈춰 있다 — 원격 세션의 main 푸시가 분류기에 막혀 사용자가 빨리 감기(3커밋)해야 한다).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 67 = 268차**(인물 얼굴 35장 HTML 안 · 65 · 66 = 지도 시트 14지역 다시 찍음)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
