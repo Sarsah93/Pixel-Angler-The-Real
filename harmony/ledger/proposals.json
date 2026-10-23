@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "next_id": 21,
+ "next_id": 24,
  "proposals": [
   {
    "id": "P-0001",
@@ -368,13 +368,28 @@
    "title": "CropCareSim 테스트의 안 읽는 변수 제거 — main CI core 타입 검사 TS6133 해소",
    "pr": 12,
    "branch": "harmony/2026-10-19",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-23",
    "findings": [
     "F-0099",
     "F-0039"
    ],
    "origin": "2026-10-19 일일 점검 — PR #11 댓글의 제안 패치"
+  },
+  {
+   "id": "P-0023",
+   "date": "2026-10-24",
+   "domain": "08-notes-memory",
+   "kind": "적용",
+   "title": "butchery.md B2 제목을 머리 상태와 맞춤(F-0089 일부)",
+   "pr": 13,
+   "branch": "harmony/2026-10-24",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0089"
+   ],
+   "origin": "일일 점검 — P-0020 중 확인된 한 줄"
   }
  ]
 }

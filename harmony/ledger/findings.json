@@ -1661,10 +1661,10 @@
     "docs/wiki/02-SYSTEMS/world-field.md:46"
    ],
    "why": "조작 키가 F로 바뀌었는데 문서와 코드 JSDoc(TrapFieldSystem.ts:3)이 [E]로 남아 있다.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-11",
-   "last_seen": "2026-10-11",
-   "resolved_at": null
+   "last_seen": "2026-10-24",
+   "resolved_at": "2026-10-24"
   },
   {
    "id": "F-0096",
@@ -1722,10 +1722,10 @@
     "packages/core/src/simulation/CropCareSim.test.ts:197"
    ],
    "why": "안 읽는 let 변수 하나로 `@tra/core:typecheck`가 실패한다. 하모니 verify 명령(build · client-pc typecheck · core test)은 이 검사를 못 잡는다.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-19",
-   "last_seen": "2026-10-19",
-   "resolved_at": null
+   "last_seen": "2026-10-24",
+   "resolved_at": "2026-10-24"
   }
  ]
 }

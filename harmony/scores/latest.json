@@ -1,25 +1,25 @@
 {
- "date": "2026-10-23",
- "audited_commit": "ed87113dfe81b31e9681f42ecbe392c639301ab6",
+ "date": "2026-10-24",
+ "audited_commit": "96833eaaaad5e220ff5045278af25286aec50ab8",
  "summary": {
-  "harmony_index": 46.0,
-  "balance": 41.8,
+  "harmony_index": 48.8,
+  "balance": 64.2,
   "weakest": "08-notes-memory",
   "measured_domains": 9
  },
  "domains": {
   "01-engineering": {
    "name": "1 엔지니어링",
-   "health": 74.0,
+   "health": 80.0,
    "mastery": 12.5,
    "agency": null,
-   "overall": 50.9,
+   "overall": 54.7,
    "scope_files": 72,
    "reviewed_current": 9,
    "reviewed_stale": 9,
    "open_findings": {
     "심각": 0,
-    "보통": 3,
+    "보통": 2,
     "경미": 4
    },
    "decisions": {
@@ -34,7 +34,7 @@
    "mastery": 4.8,
    "agency": null,
    "overall": 44.3,
-   "scope_files": 414,
+   "scope_files": 420,
    "reviewed_current": 20,
    "reviewed_stale": 17,
    "open_findings": {
@@ -43,18 +43,18 @@
     "경미": 7
    },
    "decisions": {
-    "merged": 0,
+    "merged": 1,
     "closed": 0
    },
-   "open_proposals": 1
+   "open_proposals": 0
   },
   "03-files-docs": {
    "name": "3 파일·문서",
    "health": 86.0,
-   "mastery": 32.3,
+   "mastery": 32.1,
    "agency": null,
-   "overall": 65.9,
-   "scope_files": 1146,
+   "overall": 65.8,
+   "scope_files": 1153,
    "reviewed_current": 370,
    "reviewed_stale": 0,
    "open_findings": {
@@ -71,10 +71,10 @@
   "04-design-media": {
    "name": "4 디자인·미디어",
    "health": 70.0,
-   "mastery": 34.0,
+   "mastery": 32.5,
    "agency": null,
-   "overall": 56.5,
-   "scope_files": 1823,
+   "overall": 55.9,
+   "scope_files": 1903,
    "reviewed_current": 619,
    "reviewed_stale": 61,
    "open_findings": {
@@ -91,10 +91,10 @@
   "05-pipeline": {
    "name": "5 파이프라인",
    "health": 70.0,
-   "mastery": 3.6,
+   "mastery": 3.5,
    "agency": null,
    "overall": 45.1,
-   "scope_files": 223,
+   "scope_files": 228,
    "reviewed_current": 8,
    "reviewed_stale": 5,
    "open_findings": {
@@ -150,20 +150,20 @@
   },
   "08-notes-memory": {
    "name": "8 노트·메모리",
-   "health": 6.0,
-   "mastery": 10.6,
-   "agency": null,
-   "overall": 7.7,
-   "scope_files": 226,
-   "reviewed_current": 24,
-   "reviewed_stale": 25,
+   "health": 14.0,
+   "mastery": 10.0,
+   "agency": 100.0,
+   "overall": 30.0,
+   "scope_files": 231,
+   "reviewed_current": 23,
+   "reviewed_stale": 26,
    "open_findings": {
     "심각": 0,
-    "보통": 12,
-    "경미": 11
+    "보통": 11,
+    "경미": 10
    },
    "decisions": {
-    "merged": 2,
+    "merged": 3,
     "closed": 0
    },
    "open_proposals": 1
@@ -189,5 +189,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-10-22"
+ "previous_date": "2026-10-23"
 }
