@@ -143,7 +143,7 @@
   `boat_operator`는 기존 면허 재사용.
 - `fishery_member`(수협 조합원증)는 **별개 유지** — 실제로도 수협 조합원 ≠ 어촌계원.
   법 판정 `isFisher`는 셋 중 하나면 어업인으로 본다.
-- 4종은 **스킬 포인트 보너스 제외**(`SKILL_BONUS_EXCLUDED_LICENSES`) — Σ 215 = 만렙 200 + 면허 15 불변.
+- 4종은 **스킬 포인트 보너스 제외**(`SKILL_BONUS_EXCLUDED_LICENSES`) — Σ 216 = 만렙 200 + 면허 15 + 시작 보너스 1 (130차 당시 215, 193차 +1) — 면허 보너스 15 불변.
 - 취득은 `rewards.licenses`로 자동 지급 (M1-11 / M4-06 / M5-04).
 
 ---
