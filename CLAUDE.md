@@ -69,7 +69,7 @@
   → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길**
   → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**
   → **269 코드 그림 7 · 주인공 얼굴형 판 48(같은 인물 앵커) · 입 4 · 볼 홍조는 코드 · 약 3,500원**
-  → **270 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색) · 검수 도구**.
+  → **270 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색) · 검수 도구 · (2) 갇힌 흰 배경 23장 · 눈썹 밝기**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
@@ -81,7 +81,8 @@
   원인 셋(곱셈 칠하기 255 잘림 · 색조만으로 그늘 피부 ↔ 머리 못 가름 · 흰자 ±1줄 눈동자) → `ui/FaceRecolor.ts` 다시 씀 — 두 톤 칠하기 · 씨앗 경쟁 번짐(피부 · 머리 · 깊은 그늘 · 이음새 빼기 · 눈썹 · 수염 구역 · 윤곽선 벽) ·
   눈동자 2px 열림 덩어리 · 입술 밝기 비 · 수염 색 치환(`_bd_<수염>`) · `tools/face_recolor_qa.mjs`(72판 × 색 몽타주 · 분류 지도) ·
   검증 = Node 몽타주 288장 · 네모 넷 확대 · 분류 지도 · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 라이브러리 12 · 과업 11 · 순서도 11.
-  **다음 = 사용자 육안(네모 넷 · 색 조합) · 흰 머리 눈썹 잿빛 여부 · 다음 배포에 포함**. 상세 `docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md`.
+  **(2)** 다시 표시한 칸(머리 뒤 흰 배경 · 흰 눈썹) = 설치 배경 벗기기가 못 닿은 갇힌 흰 배경 23장 1,956px(`fillWhitePockets` · `--fill-pockets`) · 눈썹 `LABEL_BROW` 밝기 상한 ·
+  위키 68 · 라이브러리 13 · 과업 12 · 순서도 12. **다음 = 사용자 육안(네모 넷 · 색 조합 · 눈썹 · 머리 뒤) · 다음 배포에 포함**. 상세 `docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md`.
 - **269차**: **남은 코드 그림 7장 · 주인공 얼굴형 판 48장(Gemini) · 입 모양 4 · 볼 홍조는 코드로** —
   사용자 「Gemini API 크레딧이 약 9,900원 … 얼굴형 … 이 범위 내에서 … 코드그림 7장 먼저 진행할 지, 잘 견적내서 적용해봐」 → 268 로그 토큰 × 공식 단가 = 한 장 ≈ 60원 →
   코드 그림 7(약 440원 · `misc.cjs` 그대로 · 카드 230 · 코드 그림 0) · 얼굴형 둥근 · 각진 48장(약 3,100원 — `gemini_face_art.cjs --shapes round,square` ·
@@ -199,14 +200,14 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `4707571` — **최근 83차 배포 2026-10-20 = 269차까지 포함**(267 피드백 여섯 · 268 얼굴 66 · 269 얼굴형 판 · 입 · 홍조 · 코드 그림 7) —
   작업 브랜치 `1d4fa10` · 실행 12. ⚠ main은 `ed87113`(266차)에 멈춰 있다 — 원격 세션의 main 푸시가 분류기에 막혀 사용자가 빨리 감기(3커밋)해야 한다).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 67 = 268차**(인물 얼굴 35장 HTML 안 · 65 · 66 = 지도 시트 14지역 다시 찍음)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 68 = 270(2)**(인물 얼굴 7장 흰 주머니 투명 — HTML 안 그림 다시 · 67 = 268차 인물 얼굴 35장 · 65 · 66 = 지도 시트 14지역 다시 찍음)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 11 = 270차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 12 = 270차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 11 = 270차 기준 · 문법은 258차) · 위키(위 줄 — 269 · 270차는 입력 불변).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 12 = 270(2)차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 13 = 270(2)차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 12 = 270(2)차 기준 · 문법은 258차) · 위키(위 줄 — 68 = 270(2) 인물 얼굴 7장).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

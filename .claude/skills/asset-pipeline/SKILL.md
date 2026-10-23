@@ -344,7 +344,8 @@ node tools/dish_photos.cjs --from <폴더>         # 불요리 완성 요리(레
 NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set cast|player [--only okseon] --ref <화풍 앵커 png>   # 인물 42 · 주인공 24(계란형 · 다문 입)
 NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set player --shapes round,square --ref <앵커>       # 269 — 얼굴형 판 48(기본 판을 같은 인물 앵커로)
 node tools/gemini_face_art.cjs --out <폴더> --sheet <png>          # 12장씩 검수 시트
-node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 벗기기 → 정사각(어깨 바닥) → 96칸 → public/faces + data/FacePortraits.ts(+ 인물은 tools/wiki_img)
+node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 벗기기 → 정사각(어깨 바닥) → 96칸 → 갇힌 흰 배경 메우기 → public/faces + data/FacePortraits.ts(+ 인물은 tools/wiki_img)
+node tools/gemini_face_art.cjs --fill-pockets                       # 270(2) — 설치된 판 전부에서 갇힌 흰 배경(머리 뒤 · 목 옆)을 투명으로(인물은 wiki_img도)
 ```
 
 - **화풍 · 밀도 앵커 한 장은 필수**(268) — 앵커 없이는 128칸급 · 32칸급 밀도가 섞인다. 앵커가 없으면 `public/faces` 두 장을 자동으로 붙인다.
@@ -355,4 +356,7 @@ node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 �
 - **색 치환은 두 톤 + 씨앗 번짐**(270 — `ui/FaceRecolor.ts`): 곱셈 칠하기는 밝은 색에서 255에 잘려 하얗게 뜨고, 색조만으로는 그늘 피부와 머리를 못 가른다(거리 0.06 vs 0.16).
   규칙 표는 [270 워크로그 §3](../../../docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md). 판을 새로 뽑거나 틀을 바꾸면 `node tools/face_recolor_qa.mjs <폴더>`
   (72판 × 색 조합 몽타주 · `classmap:<키>` 분류 지도)로 목 · 귀 · 코 · 눈꺼풀 · 수염 · 늘어진 머리를 눈으로 본다 — 수치 어서션은 없다.
+- **갇힌 흰 배경은 설치 뒤에 센다**(270(2)) — 배경 벗기기는 테두리 BFS라 포니테일 · 땋은 머리 · 긴 머리가 에워싼 순백 조각(판마다 8~228px)에 못 닿는다.
+  `--install`이 96칸으로 구운 뒤 `fillWhitePockets`(순백 ≥ 8px 성분 · 눈 띠 밖 → 투명)를 부르고 로그에 「흰 주머니 Npx」를 찍는다. 새 판은 어두운 바탕 위에 놓고(scratchpad `pocket_view.mjs` 패턴) 머리 뒤 · 목 옆을 본다.
+  순백(≥ 246)만 지운다. 눈썹은 `LABEL_BROW` — 머리색의 색조만 따르고 밝기는 원래 눈썹까지(흰 머리 → 짙은 잿빛).
 - 값(269 실측 · 공식 단가): 한 장 ≈ $0.043~0.047(입력 2.7~4.1K 토큰 · 출력 1.8~1.9K — 이미지 1,120 + 글 · 생각) — 얼굴 66장 ≈ 4,400원 · 얼굴형 48장 ≈ 3,100원 · 아이템 7장 ≈ 440원.

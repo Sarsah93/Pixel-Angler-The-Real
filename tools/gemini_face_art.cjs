@@ -23,7 +23,8 @@
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set player --shapes round,square   # 269 — 얼굴형 판(기본 판을 같은 인물 앵커로)
  *        [--ref <화풍 · 밀도 앵커 png>[,png]] [--model gemini-nano-banana-2.1] [--jobs 3] [--tries 4] [--tag v2] [--force]
  *    node tools/gemini_face_art.cjs --out <폴더> --sheet <png>                     # 검수 시트(12장씩)
- *    node tools/gemini_face_art.cjs --out <폴더> --install [--only …] [--force]     # 배경 벗기기 → 정사각 → 96칸(셀 2px = 192px)
+ *    node tools/gemini_face_art.cjs --out <폴더> --install [--only …] [--force]     # 배경 벗기기 → 흰 주머니 메우기 → 정사각 → 96칸(셀 2px = 192px)
+ *    node tools/gemini_face_art.cjs --fill-pockets                                  # 270(2) — 설치된 public/faces 전부에서 갇힌 흰 배경(머리 뒤 · 목 옆)을 투명으로 · 인물은 wiki_img도
  *        → packages/client-pc/public/faces/<키>.png + src/data/FacePortraits.ts(자동 목록 — 부팅이 `face_<키>`로 싣는다)
  */
 'use strict';
@@ -202,7 +203,7 @@ function styleRefParts(outDir, refs, exclude) {
 }
 
 function parseArgs(argv) {
-  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [], shapes: [] };
+  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [], shapes: [], fillPockets: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -216,6 +217,7 @@ function parseArgs(argv) {
     else if (a === '--force') P.force = true;
     else if (a === '--dry') P.dry = true;
     else if (a === '--install') P.install = true;
+    else if (a === '--fill-pockets') P.fillPockets = true;
     else if (a === '--list') P.list = true;
     else if (a === '--sheet') P.sheet = path.resolve(next());
     else if (a === '--ref') P.refs.push(...next().split(',').map((f) => path.resolve(f.trim())).filter(Boolean));
@@ -302,6 +304,47 @@ function writeManifest() {
   console.log(`${path.relative(ROOT, MANIFEST)}: ${keys.length}키`);
 }
 
+/**
+ * 270(2) — 갇힌 흰 배경 메우기. 배경 벗기기(테두리 BFS)는 머리 뒤 · 목 옆처럼 머리카락과 몸에 둘러싸인 흰 주머니에 못 닿아
+ * 순백(최소 채널 ≥ 246) 조각이 남는다(포니테일 · 땋은 머리 · 긴 머리 수염판 · 인물 7명 — 사용자 「머리 뒷 부분에 흰색으로 배경이 잡혀져 있는 부분」).
+ * 눈 띠(세로 0.36~0.52 · 가로 0.2~0.8) 안의 조각(흰자)은 두고, 그 밖의 ≥ 8px 순백 8-연결 성분을 투명으로 만든다. 돌아온 값 = 지운 픽셀 수.
+ */
+function fillWhitePockets(data, w, h) {
+  const n = w * h, m = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { const o = i * 4; if (data[o + 3] >= 8 && Math.min(data[o], data[o + 1], data[o + 2]) >= 246) m[i] = 1; }
+  const seen = new Uint8Array(n); let cleared = 0;
+  for (let i = 0; i < n; i++) {
+    if (!m[i] || seen[i]) continue;
+    const st = [i]; seen[i] = 1; const mem = []; let minX = w, maxX = 0, minY = h, maxY = 0;
+    while (st.length) {
+      const p = st.pop(); mem.push(p); const x = p % w, y = (p / w) | 0;
+      if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue; const q = ny * w + nx; if (m[q] && !seen[q]) { seen[q] = 1; st.push(q); } }
+    }
+    const inBand = minY >= h * 0.36 && maxY <= h * 0.52 && minX >= w * 0.2 && maxX <= w * 0.8;
+    if (mem.length < 8 || inBand) continue;
+    for (const p of mem) { data[p * 4] = data[p * 4 + 1] = data[p * 4 + 2] = data[p * 4 + 3] = 0; cleared++; }
+  }
+  return cleared;
+}
+
+/** `--fill-pockets` — 설치된 판 전부(public/faces/*.png)에서 갇힌 흰 배경을 투명으로. 인물 판은 wiki_img 사본도 갱신 */
+function fillPocketsInstalled(targets) {
+  const { decode, encode } = require('./lib_png.cjs');
+  let n = 0;
+  for (const f of fs.readdirSync(FACES_DIR).filter((f) => f.endsWith('.png')).sort()) {
+    const key = f.slice(0, -4); const file = path.join(FACES_DIR, f);
+    const im = decode(file); const data = Buffer.from(im.data.buffer, im.data.byteOffset, im.data.byteLength);
+    const cleared = fillWhitePockets(data, im.w, im.h);
+    if (!cleared) continue;
+    encode(im.w, im.h, data, file);
+    if (targets[key] && targets[key].kind === 'cast' && fs.existsSync(WIKI_IMG)) fs.copyFileSync(file, path.join(WIKI_IMG, `face_${key}.png`));
+    console.log(`${key}: 흰 주머니 ${cleared}px 투명으로`);
+    n++;
+  }
+  console.log(`${n}장 고침`);
+}
+
 /** 검수를 마친 `<out>/<키>.png` → 배경 벗기기 → 번짐 벗기기 → 정사각(여백) → 96칸(셀 2px) → public/faces/<키>.png */
 async function install(P, targets, list) {
   const { DEFAULTS, decodeAny } = require('./pixelize_crops.cjs');
@@ -330,10 +373,11 @@ async function install(P, targets, list) {
     for (let y = 0; y < bh; y++) d.copy(sq, ((y + oy) * side + ox) * 4, ((y + y0) * w + x0) * 4, ((y + y0) * w + x1 + 1) * 4);
     for (let i = 0; i < side * side; i++) if (sq[i * 4 + 3] === 0) sq[i * 4] = sq[i * 4 + 1] = sq[i * 4 + 2] = 0;
     const g = regrid(sq, side, side, CELLS, CELL);
+    const pockets = fillWhitePockets(g.data, g.w, g.h);   // 270(2) — 머리 뒤 · 목 옆에 갇힌 흰 배경
     const bytes = encode(g.w, g.h, g.data, dst);
     // 268차 — 인물 얼굴은 위키 그림 폴더에도 둔다(지도 핀 상세 · 조행록 의뢰인 칸 — 생성기가 `face_<id>.png`를 찾는다). 주인공 판은 위키에 없다
     if (targets[key].kind === 'cast') { fs.mkdirSync(WIKI_IMG, { recursive: true }); fs.copyFileSync(dst, path.join(WIKI_IMG, `face_${key}.png`)); }
-    console.log(`${key} → ${path.relative(ROOT, dst)}: ${w}x${h} → ${g.w}x${g.h} (${(bytes / 1024).toFixed(0)}KB) · ${cut.note} · 번짐 ${pf.peeled}px`);
+    console.log(`${key} → ${path.relative(ROOT, dst)}: ${w}x${h} → ${g.w}x${g.h} (${(bytes / 1024).toFixed(0)}KB) · ${cut.note} · 번짐 ${pf.peeled}px · 흰 주머니 ${pockets}px`);
     n++;
   }
   writeManifest();
@@ -354,6 +398,7 @@ async function install(P, targets, list) {
     console.log(`\n${list.length}장 (cast ${list.filter((k) => targets[k].kind === 'cast').length} · player ${list.filter((k) => targets[k].kind === 'player').length})`);
     return;
   }
+  if (P.fillPockets) { fillPocketsInstalled(targets); return; }
   if (!P.out) throw new Error('--out <폴더>');
   fs.mkdirSync(P.out, { recursive: true });
   if (P.sheet) { sheet(P, targets, list); return; }

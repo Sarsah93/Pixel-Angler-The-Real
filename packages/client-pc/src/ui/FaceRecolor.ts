@@ -28,7 +28,7 @@ const FACE_BOX = { x0: 0.25, x1: 0.75, y0: 0.33, y1: 0.85 };
 const HAIR_TOP = 0.30;
 const HAIR_ERODE = 1;
 const HAIR_SEED_MIN_TOTAL = 150;
-/** 눈썹 = 눈 띠 위쪽의 납작한 머리색 조각(가로 ≥ 1.5 × 세로 · 세로 ≤ 0.07 · 흰자 위) — 머리색을 따른다(흰 머리 → 잿빛 눈썹) */
+/** 눈썹 = 눈 띠 위쪽의 납작한 머리색 조각(가로 ≥ 세로 · 세로 ≤ 0.07 · 흰자 위) — 머리색의 색조를 따르되 밝기는 원래 눈썹을 넘지 않는다(270(2) — 흰 머리에서 눈썹이 희게 떴다) */
 const BROW_BAND = { y0: 0.28, y1: 0.46, x0: 0.2, x1: 0.85 };
 const BROW_MIN = 12;
 const BROW_MAX_H = 0.07;
@@ -171,13 +171,13 @@ function erode4(mask: Uint8Array, w: number, h: number): Uint8Array {
   return out;
 }
 
-const LABEL_HAIR = 1, LABEL_SKIN = 2, LABEL_BEARD = 3, LABEL_EYE = 4;
+const LABEL_HAIR = 1, LABEL_SKIN = 2, LABEL_BEARD = 3, LABEL_EYE = 4, LABEL_BROW = 5;
 
 /**
  * 기준색 둘레의 픽셀을 고른 색으로 — 색조로 후보를 고르고 **자리로 가른다**(268 · 269(2) · 270). 색만으로는 그늘진 피부와 머리를 못 가른다
  * (그늘 피부의 색조 거리 = 머리 0.06 · 피부 0.16 — 268 · 270 실측). 270 규칙:
  *  - 씨앗: 머리 = 머리색 성분(1px 깎은 뒤 ≥ 40px)이 **정수리 쪽에 닿거나 피부와 직접 맞닿은 비율이 2% 미만**(윤곽선으로 끊긴 땋은 머리 · 곱슬)인 것 +
- *    눈썹 조각(눈 띠 위 · 납작 · 어두움) ·
+ *    눈썹 조각(눈 띠 위 · 납작 · 어두움 — 머리색 색조 · 밝기는 원래 눈썹까지) ·
  *    피부 = 피부색 큰 덩어리(≥ 100px) · 수염(수염판) = 수염 구역(입 위 0.08 ~ 어두운 결이 끝나는 줄 · 뺨 폭 + 8px) 안의 머리색 픽셀 ·
  *    눈동자 = 눈 띠 안 어두운 픽셀을 2px 열어(가는 속눈썹 · 눈꼬리 선 제거) 남은 덩어리 중 **흰자에 붙은** 것(줄은 흰자 위 끝 ~ 아래 끝 + 2px).
  *  - 번짐: 따뜻한 중간 톤(윤곽선 L < 34는 벽 · 흰색 · 입술 · 눈 제외)을 씨앗에서 4-이웃으로 경쟁해 가져간다 —
@@ -376,7 +376,7 @@ export function recolorFace(data: Uint8ClampedArray, w: number, h: number, swaps
       const bw = c.maxX - c.minX + 1, bh = c.maxY - c.minY + 1;
       const brow = c.size >= BROW_MIN && bw >= bh && bh <= h * BROW_MAX_H && c.maxY < whiteTop - 2 && mL[id - 1] <= BROW_MAX_L
         && c.minY >= h * BROW_BAND.y0 && c.maxY <= h * BROW_BAND.y1 && c.minX >= w * BROW_BAND.x0 && c.maxX <= w * BROW_BAND.x1;
-      if (brow) label[i] = LABEL_HAIR;
+      if (brow) label[i] = LABEL_BROW;
     }
   }
   // 수염(수염판) — 구역으로 가른다(연결로는 못 가른다 — 긴 머리는 수염에 붙고, 짧은 수염은 결이 끊긴다). 구역 안의 머리색 · 따뜻한 중간 톤은 전부 수염 씨앗(머리 씨앗도 바꾼다)
@@ -411,7 +411,7 @@ export function recolorFace(data: Uint8ClampedArray, w: number, h: number, swaps
   const amb = new Uint8Array(n);
   for (let i = 0; i < n; i++) if (alive[i] && !label[i] && !white[i] && warm[i] && Ls[i] >= AMB_L_MIN && !inMouth(i)) amb[i] = 1;
   const fronts: number[][] = [[], [], [], []];
-  for (let i = 0; i < n; i++) if (label[i] && label[i] !== LABEL_EYE) fronts[label[i]].push(i);
+  for (let i = 0; i < n; i++) if (label[i] && label[i] !== LABEL_EYE && label[i] !== LABEL_BROW) fronts[label[i]].push(i);
   const grow = (which: number): void => {
     const next: number[] = [];
     for (const i of fronts[which]) {
@@ -457,8 +457,15 @@ export function recolorFace(data: Uint8ClampedArray, w: number, h: number, swaps
     else if (lb === LABEL_SKIN) s = swaps.skin;
     else if (lb === LABEL_BEARD) { if (swaps.keepBeard) continue; s = swaps.beard; }
     else if (lb === LABEL_EYE) s = swaps.eye;
+    else if (lb === LABEL_BROW) { if (swaps.keepHair) continue; s = swaps.hair; }
     if (!s) continue;
-    paint(data, i * 4, s);
+    const o = i * 4;
+    paint(data, o, s);
+    if (lb === LABEL_BROW) {
+      // 눈썹은 머리색의 색조만 — 밝기가 원래 눈썹(L 45~70)을 넘으면 그만큼 줄인다(흰 머리 → 짙은 잿빛 · 검은 머리는 그대로)
+      const L2 = lum(data[o], data[o + 1], data[o + 2]);
+      if (L2 > Ls[i]) { const k = Ls[i] / L2; data[o] = Math.round(data[o] * k); data[o + 1] = Math.round(data[o + 1] * k); data[o + 2] = Math.round(data[o + 2] * k); }
+    }
     changed++;
   }
   return changed;

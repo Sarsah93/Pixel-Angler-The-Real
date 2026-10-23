@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 11 — 270차 기준(270차 발행 — 캐릭터 줄 · 실플레이 확인 줄) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 12 — 270차 기준(그림 얼굴 초상 — 치환 4색 · 두 톤 + 씨앗 번짐) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 11 — 270차 기준 · 채비 문법은 258차(270차 발행 — 「270차 기준」 줄만) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 67 — 268차(인물 얼굴 35장 HTML 안 — 지도 핀 상세 · 인물 목록 · 조행록 의뢰인 칸) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 12 — 270(2)차 기준(270(2) 발행 — 「기준」 줄 · 캐릭터 줄) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 13 — 270(2)차 기준(그림 얼굴 초상 — 두 톤 + 씨앗 번짐 · 갇힌 흰 배경 · 눈썹 밝기) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 12 — 270(2)차 기준 · 채비 문법은 258차(270(2) 발행 — 「270(2)차 기준」 줄만) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 68 — 270(2)차(인물 얼굴 7장 흰 주머니 투명 — HTML 안 그림 다시 · 67 = 268차 인물 얼굴 35장) |
 
 - 남은 과업 설계는 **비공개**(주인만 열림)다. 나머지 셋은 「링크가 있는 사람」 공유다. 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
