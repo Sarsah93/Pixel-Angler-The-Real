@@ -21,10 +21,14 @@
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --dry         # 프롬프트 + 참고 그림만(요청 없음)
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> [--set cast|player|all] [--only okseon,baram]
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set player --shapes round,square   # 269 — 얼굴형 판(기본 판을 같은 인물 앵커로)
+ *    NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set layers --only base_m_oval       # 271 — 층 원판(기본 머리 → 머리 모양 · 수염 · 얼굴형 — 앞 판을 같은 인물 앵커로)
+ *        층 키 = base_<m|f>_<oval|round|square> · hair_<m|f>_<머리 모양> · beard_m_<얼굴형>. 설치는 `node tools/face_layers.cjs`(정렬 · 차이로 층 뜨기 · 라벨 마스크)
  *        [--ref <화풍 · 밀도 앵커 png>[,png]] [--model gemini-nano-banana-2.1] [--jobs 3] [--tries 4] [--tag v2] [--force]
  *    node tools/gemini_face_art.cjs --out <폴더> --sheet <png>                     # 검수 시트(12장씩)
  *    node tools/gemini_face_art.cjs --out <폴더> --install [--only …] [--force]     # 배경 벗기기 → 흰 주머니 메우기 → 정사각 → 96칸(셀 2px = 192px)
  *    node tools/gemini_face_art.cjs --fill-pockets                                  # 270(2) — 설치된 public/faces 전부에서 갇힌 흰 배경(머리 뒤 · 목 옆)을 투명으로 · 인물은 wiki_img도
+ *    node tools/gemini_face_art.cjs --manifest                                      # 271 — public/faces/*.png 목록(FacePortraits.ts)만 다시 쓴다(판을 지운 뒤)
+ *    ⚠ 271부터 주인공은 `--set player` · `--shapes` 판(케이스별 72장)을 쓰지 않는다 — `--set layers`(층) + `node tools/face_layers.cjs`.
  *        → packages/client-pc/public/faces/<키>.png + src/data/FacePortraits.ts(자동 목록 — 부팅이 `face_<키>`로 싣는다)
  */
 'use strict';
@@ -132,8 +136,39 @@ async function buildTargets(set, shapes = []) {
       }
     }
   }
+  if (set === 'layers') {
+    // 271 — 층 원판: 기본 머리(민머리 · 민낯 — 성별 × 얼굴형 3) · 머리 모양 층(성별 × 8) · 수염 층(남 × 얼굴형 3). 앞 판을 같은 인물 앵커로 쓰므로
+    // 생성 순서 = base_<sex>_oval → (hair_* · base_<sex>_round · square) → beard_m_*. 설치 · 층 뜨기는 tools/face_layers.cjs
+    const npc = core.getStoryNpc('player');
+    for (const sex of ['m', 'f']) {
+      const sexKo = sex === 'm' ? '남' : '여';
+      const baseLook = { ...core.defaultAppearance(sex), hairStyle: 'buzz', hair: PLAYER_BASE.hair, skin: PLAYER_BASE.skin, eye: PLAYER_BASE.eye, faceShape: 'oval', mouth: 'neutral', blush: false, beard: -1 };
+      const mk = (key, nameKo, look, layer, anchor, text) => {
+        const cfg = { look, outfit: { ...core.bareOutfit(), shirt: 'tee', shirtColor: 0x3d5a80 } };
+        out[key] = { key, kind: 'layer', layer, anchor, nameKo, nameEn: key, cfg, text: `${layerIntro(core, sexKo, npc)} ${text}` };
+      };
+      mk(`base_${sex}_oval`, `주인공 ${sexKo} · 기본 머리(민머리 · 민낯)`, baseLook, 'base', `player_${sex}_short`, LAYER_BASE_TEXT);
+      for (const shape of ['round', 'square']) mk(`base_${sex}_${shape}`, `주인공 ${sexKo} · 기본 머리 · ${SHAPE_NAME[shape]} 얼굴`, { ...baseLook, faceShape: shape }, 'base', `base_${sex}_oval`, `${SHAPE_DETAIL[shape]} 민머리 · 민낯은 그대로.`);
+      for (const style of core.HAIR_STYLES) mk(`hair_${sex}_${style}`, `주인공 ${sexKo} · ${STYLE_NAME[style]} 층`, { ...baseLook, hairStyle: style }, 'hair', `base_${sex}_oval`, layerHairText(core, style));
+      if (sex === 'm') for (const shape of core.FACE_SHAPES) mk(`beard_m_${shape}`, `주인공 남 · 수염 층 · ${SHAPE_NAME[shape]} 얼굴`, { ...baseLook, faceShape: shape, beard: PLAYER_BASE.hair }, 'beard', `base_m_${shape}`, layerBeardText(core));
+    }
+  }
   return { core, targets: out };
 }
+
+/** 271 — 층 원판 공통 머리말(성별 · 배색 · 금지) */
+function layerIntro(core, sexKo, npc) {
+  const age = /(\d+)세/.exec(npc?.roleKo ?? '')?.[1];
+  return `${age ? `${age}세 ` : '이십 대 '}${sexKo === '남' ? '남성' : '여성'} 낚시꾼(주인공). 피부는 기준색 ${hex(core.SKIN_TONES[PLAYER_BASE.skin])}과 그 밝은 · 어두운 단계(3단)만, `
+    + `눈동자는 ${hex(core.EYE_COLORS[PLAYER_BASE.eye])}, 눈썹 · 머리카락 · 수염은 밤색 ${hex(core.HAIR_COLORS[PLAYER_BASE.hair])}과 그 3단만 — 게임이 그 색을 통째로 바꿔 입힙니다. `
+    + '모자 · 안경 · 장신구 없음, 다문 입, 계란형 얼굴(얼굴형 판은 따로 설명).';
+}
+const LAYER_BASE_TEXT = '**기본 머리 판**입니다. 아래 기본 초상과 같은 사람을 **머리카락이 전혀 없는 민머리**(두피가 매끈하게 다 드러난 상태 — 짧게 깎은 머리 · 그루터기 · 모자 없음)와 '
+  + '**수염 없는 말끔한 얼굴**로 그리세요. 귀 두 개가 다 보이고, 두피 · 이마 · 목은 피부색 3단 음영으로. 얼굴 · 귀 · 눈 · 눈썹 · 코 · 입 · 목 · 어깨 · 옷 · 구도 · 크기 · 자리 · 표정은 아래 그림 그대로.';
+const layerHairText = (core, style) => `**머리 모양 층**입니다. 아래 민머리 기본 초상과 같은 사람에게 **${STYLE_NAME[style]}**를 얹어 그리세요. 머리색은 밤색 ${hex(core.HAIR_COLORS[PLAYER_BASE.hair])}과 그 3단만. `
+  + '머리카락 말고는 **아무것도 바꾸지 마세요** — 얼굴 · 귀 · 눈 · 눈썹 · 코 · 입 · 목 · 어깨 · 옷이 같은 자리에 같은 크기로. 머리카락이 이마 · 귀 · 목을 자연스럽게 가리는 것은 좋습니다. 수염 없음.';
+const layerBeardText = (core) => `**수염 층**입니다. 아래 민머리 기본 초상과 같은 사람에게 **짧게 다듬은 턱수염 + 콧수염**을 그리세요. 수염색은 밤색 ${hex(core.HAIR_COLORS[PLAYER_BASE.hair])}과 그 3단만. `
+  + '머리는 그대로 민머리이고, 수염 말고는 **아무것도 바꾸지 마세요** — 얼굴 · 귀 · 눈 · 코 · 입 · 목 · 옷이 같은 자리에 같은 크기로.';
 
 const STYLE_INTRO = '픽셀 아트 **인물 초상(흉상)** 한 장을 그려 주세요. 머리 꼭대기부터 어깨선까지, 정면에서 아주 살짝 비스듬히 본 얼굴, 얼굴이 화면의 60% 이상을 차지하게 크게. '
   + '화풍: 레트로 어드벤처 게임의 대화창 초상 — 또렷한 도트, 얼굴 · 머리 · 옷 둘레를 감싸는 진한 윤곽선, 평평한 면과 3단 음영(밝음 · 기본 · 그늘), 색은 적게(12~20색). '
@@ -150,6 +185,24 @@ const SHAPE_DETAIL = {
 const SHAPE_ANCHOR_TEXT = '바로 위 그림은 **화풍 · 도트 밀도 참고**입니다 — 그 사람을 그리지 말고 밀도와 음영 방식만 따르세요. '
   + '아래 첫 그림은 **같은 인물의 기본(계란형) 초상**입니다 — 같은 사람 · 같은 머리 모양 · 수염 · 배색 · 옷 · 구도 · 표정을 그대로 두고, **얼굴형(턱선 · 볼)만** 설명대로 바꿔 다시 그리세요. '
   + '그다음 작은 도트 그림은 배색 · 머리 모양 앵커입니다(그대로 키우지는 마세요).';
+
+/** 271 — 층 원판 앵커 글: 설명한 것 말고는 자리 · 크기까지 그대로(층으로 겹치므로 픽셀 자리가 맞아야 한다) */
+const LAYER_ANCHOR_TEXT = '바로 위 그림은 **화풍 · 도트 밀도 참고**입니다 — 그 사람을 그리지 말고 밀도와 음영 방식만 따르세요. '
+  + '아래 첫 그림은 **같은 인물의 기본 초상**입니다. 이 그림은 게임이 여러 층으로 겹쳐 쓰는 부품이라, 설명한 것 말고는 **아무것도 바꾸지 마세요** — '
+  + '같은 사람 · 같은 구도 · 같은 크기 · 같은 자리(얼굴 · 귀 · 목 · 어깨 · 옷이 화면 안에서 픽셀 단위로 같은 위치) · 같은 표정 · 같은 배색 · 같은 조명. '
+  + '그다음 작은 도트 그림이 있으면 그것은 머리 모양 · 수염 모양 앵커입니다(모양만 참고 — 그대로 키우지는 마세요).';
+
+/** 271 — 층 앵커 그림: 같은 폴더의 원판(1024px → 576px)이 있으면 그것, 없으면 설치된 판(192px → 3배). 매번 새로 만든다(다시 뽑은 기본판이 앵커가 되게) */
+function anchorRefPart(outDir, key) {
+  const raw = path.join(outDir, `${key}.png`), installed = path.join(FACES_DIR, `${key}.png`);
+  const dir = path.join(outDir, '_refs');
+  fs.mkdirSync(dir, { recursive: true });
+  const dst = path.join(dir, `anchor_${key}.png`);
+  if (fs.existsSync(raw)) execFileSync('convert', [raw, '-background', 'white', '-alpha', 'remove', '-resize', '576x576', `PNG24:${dst}`]);
+  else if (fs.existsSync(installed)) execFileSync('convert', [installed, '-background', 'white', '-alpha', 'remove', '-scale', '300%', `PNG24:${dst}`]);
+  else return null;
+  return { inlineData: { mimeType: 'image/png', data: fs.readFileSync(dst).toString('base64') } };
+}
 
 /** 269 — 설치된 기본 판(192px)을 3배로 키워 같은 인물 앵커로 보낸다(없으면 null — 그때는 보통 생성) */
 function baseRefPart(outDir, baseKey) {
@@ -203,7 +256,7 @@ function styleRefParts(outDir, refs, exclude) {
 }
 
 function parseArgs(argv) {
-  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [], shapes: [], fillPockets: false };
+  const P = { out: '', only: null, set: 'all', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false, list: false, sheet: '', refs: [], shapes: [], fillPockets: false, manifest: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -218,6 +271,7 @@ function parseArgs(argv) {
     else if (a === '--dry') P.dry = true;
     else if (a === '--install') P.install = true;
     else if (a === '--fill-pockets') P.fillPockets = true;
+    else if (a === '--manifest') P.manifest = true;
     else if (a === '--list') P.list = true;
     else if (a === '--sheet') P.sheet = path.resolve(next());
     else if (a === '--ref') P.refs.push(...next().split(',').map((f) => path.resolve(f.trim())).filter(Boolean));
@@ -231,10 +285,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const outName = (key, tag) => `${key}${tag ? `.${tag}` : ''}`;
 
 async function generateOne(core, key, it, P) {
+  if (it.kind === 'layer') {
+    const anchor = anchorRefPart(P.out, it.anchor);
+    if (!anchor) return { ok: false, err: `앵커 ${it.anchor}가 없다 — 먼저 뽑는다(원판 폴더 또는 설치본)` };
+    const shapeRef = it.layer === 'base' ? [] : [procRefPart(core, P.out, it.key, it.cfg)];
+    return requestImage(it.key, [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, it.key), { text: LAYER_ANCHOR_TEXT }, anchor, ...shapeRef, { text: taskText(it) }], P);
+  }
   const baseRef = it.base ? baseRefPart(P.out, it.base) : null;
   const parts = baseRef
     ? [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, key), { text: SHAPE_ANCHOR_TEXT }, baseRef, procRefPart(core, P.out, key, it.cfg), { text: taskText(it) }]
     : [{ text: STYLE_INTRO }, ...styleRefParts(P.out, P.refs, key), { text: ANCHOR_TEXT }, procRefPart(core, P.out, key, it.cfg), { text: taskText(it) }];
+  return requestImage(key, parts, P);
+}
+
+/** 요청 한 장 — 재시도 · 저장 · 로그(토큰 수) */
+async function requestImage(key, parts, P) {
   const body = {
     contents: [{ role: 'user', parts }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },
@@ -356,6 +421,7 @@ async function install(P, targets, list) {
   for (const key of list) {
     const src = path.join(P.out, `${key}.png`);
     if (!fs.existsSync(src)) continue;
+    if (targets[key].kind === 'layer') { console.log(`${key}: 층 원판은 node tools/face_layers.cjs로 설치한다`); continue; }
     const dst = path.join(FACES_DIR, `${key}.png`);
     if (fs.existsSync(dst) && !P.force) { console.log(`${path.relative(ROOT, dst)}: 이미 있어 건너뛴다(--force로 덮기)`); continue; }
     const img = await decodeAny(src);
@@ -399,6 +465,7 @@ async function install(P, targets, list) {
     return;
   }
   if (P.fillPockets) { fillPocketsInstalled(targets); return; }
+  if (P.manifest) { writeManifest(); return; }
   if (!P.out) throw new Error('--out <폴더>');
   fs.mkdirSync(P.out, { recursive: true });
   if (P.sheet) { sheet(P, targets, list); return; }
@@ -406,8 +473,9 @@ async function install(P, targets, list) {
   if (P.dry) {
     for (const k of list) {
       procRefPart(core, P.out, k, targets[k].cfg); styleRefParts(P.out, P.refs, k);
-      const b = targets[k].base ? baseRefPart(P.out, targets[k].base) : null;
-      console.log(`\n=== ${k} (${targets[k].nameKo})${targets[k].base ? ` · 같은 인물 앵커 ${b ? '있음' : '없음(기본 판 미설치)'}` : ''} ===\n${taskText(targets[k])}`);
+      const b = targets[k].base ? baseRefPart(P.out, targets[k].base) : targets[k].kind === 'layer' ? anchorRefPart(P.out, targets[k].anchor) : null;
+      const anchorNote = targets[k].base ? ` · 같은 인물 앵커 ${b ? '있음' : '없음(기본 판 미설치)'}` : targets[k].kind === 'layer' ? ` · 층 앵커 ${targets[k].anchor} ${b ? '있음' : '없음'}` : '';
+      console.log(`\n=== ${k} (${targets[k].nameKo})${anchorNote} ===\n${taskText(targets[k])}`);
     }
     console.log(`\n[dry] ${list.length}장 — 참고 그림 ${path.join(P.out, '_refs')} · 요청은 보내지 않았다`);
     return;

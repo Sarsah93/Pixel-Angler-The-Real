@@ -69,13 +69,21 @@
   → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길**
   → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**
   → **269 코드 그림 7 · 주인공 얼굴형 판 48(같은 인물 앵커) · 입 4 · 볼 홍조는 코드 · 약 3,500원**
-  → **270 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색) · 검수 도구 · (2) 갇힌 흰 배경 23장 · 눈썹 밝기**.
+  → **270 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색) · 검수 도구 · (2) 갇힌 흰 배경 23장 · 눈썹 밝기**
+  → **271 주인공 얼굴 층 구조(민머리 기본 6 · 머리 모양 층 16 · 라벨 마스크 · 케이스별 판 72장 폐기 · 수염 층은 크레딧 대기)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **271차**: **주인공 얼굴 층 구조(민머리 기본판 + 머리 모양 층 + 라벨 마스크 — 케이스별 판 72장 폐기)** —
+  사용자 「기본 얼굴형에 머리/수염/입을 변경하는 것으로 적용해야지, 하나하나 케이스별로 다 뽑는 건 의미가 없지 않을까」 → 270(2) 동그라미 둘 = 경계 추측의 한계(밝기 같아져 경계 소실 · 전이 픽셀 주인 없음) →
+  시범 2장(이동 0 · 배율 1.000 · 코~턱 차이 0.29%) → 층 원판 22장(`--set layers` — 앞 판을 같은 인물 앵커로 · 약 1,300원) → `tools/face_layers.cjs`(정렬 · 공통 틀 · 차이로 층 · 라벨 마스크 ·
+  `face_layer_fixes.json` · 설치 28장) → `ui/FaceRecolor.ts composePlayerFace`(라벨 · 층 단위 — 추측 분류 삭제) · `FacePhoto.ts` 합성 · 옛 판 72장 삭제 · `tools/face_layers_qa.mjs` ·
+  검증 = 몽타주(boxed · mix 50 · mouth 16 · all 48 × 3 · mask) · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · 아티팩트 라이브러리 14 · 과업 13 · 순서도 13.
+  **다음 = 수염 층 3장(Gemini 크레딧 충전 뒤 `--only beard_m_oval,beard_m_round,beard_m_square` 약 200원 → `face_layers.cjs --install`) · 사용자 육안(동그라미 둘 · 48칸) · 다음 배포에 포함**.
+  상세 `docs/wiki/03-WORKLOG/2026-10-23-271-face-layers-base-hair-beard.md`.
 - **270차**: **주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색)** —
   사용자 「빨간색 네모로 표시한 부분 … 하얗게 뜬 부분, 컬러 품질이 맞지 않는 부분 … 차이도 분석하고 … 원인과 해결을 동시에」 → 네모 친 넷 = 기준색과 다른 머리 · 피부(치환 경로) · 안 친 것 = 치환 0픽셀 →
   원인 셋(곱셈 칠하기 255 잘림 · 색조만으로 그늘 피부 ↔ 머리 못 가름 · 흰자 ±1줄 눈동자) → `ui/FaceRecolor.ts` 다시 씀 — 두 톤 칠하기 · 씨앗 경쟁 번짐(피부 · 머리 · 깊은 그늘 · 이음새 빼기 · 눈썹 · 수염 구역 · 윤곽선 벽) ·
@@ -92,14 +100,7 @@
   **83차 배포(2026-10-20 · 작업 브랜치 `1d4fa10` · 실행 12 · gh-pages `4707571` · 정적 파일 2,042 같음 · 하위 경로 기동 12.7초 · pageerror 0) — main은 사용자 빨리 감기 대기**.
   **다음 = 사용자 실플레이(코드 그림 7 · 얼굴형 · 입 · 홍조) · 얼굴형 차이를 더 뚜렷하게 할지(24장 ≈ 1,500원) · 잔액 약 6,200원(추정)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-269-face-shapes-mouth-code-art-seven.md`.
-- **268차**: **그림 얼굴 초상 66장(Gemini) · 화풍 앵커 · 게임 · 위키 적용** —
-  사용자 「Gemini 크레딧 충전했어. 계속해서 진행해줘」 → 시범 4장 밀도 제각각(정옥선 128칸급 · 나머지 32칸급) → 첫 정옥선 그림을 `--ref` 앵커로 66장 같은 밀도(실패 0 · 약 7분) ·
-  정옥선 캐스트 표 장발 · 백발 · 피부 2(해시 4는 다른 인종으로 읽힘 — 필드 스프라이트도 같이) · 시트 검수 뒤 둘만 다시(모태조 「소품 없음」 · 여 곱슬 얼룩) ·
-  `--install` 66장(192×192 · 9~16KB) · `FacePortraits.ts` 66키 · `tools/wiki_img/face_*` 42 · 위키 지도 핀 상세(72px) · 인물 목록(34px) · 조행록 의뢰인(56px) 얼굴 ·
-  주인공 치환 = 색 + 자리(`FacePhoto.recolorFace` — 머리 성분 40픽셀 · 가지치기 · 어두운 띠 번짐 · 눈 = 흰자 3px 안 — 색조만으로는 코 · 입 · 목 그늘이 머리색) ·
-  검증 = 위키 Playwright pageerror 0 · 게임 하네스 2회(부팅 66 · 혼잣말 · 대화창 · 일지 · 치환 격자 26칸) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 셋 Version 9(라이브러리 10) · 위키 67.
-  **다음 = 사용자 육안(66장 · 대화창 인상 · 치환 색) · 주인공 얼굴형 · 입 판 결정 · 83차 배포(요청 시)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-19-268-face-portraits-66-gemini.md`.
+
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -121,8 +122,9 @@
   `food assets/tackle/` = 낚시 장비 원본 115장(249 — 사용자 그림 41 · Gemini 74) — 게임은 `node tools/tackle_cards.cjs`가 굽는 `public/tackle/` 카드 · 아이콘만 싣는다.
   `food assets/items/` = 장비 밖 아이템 원본 223장(255 — Gemini · 씨앗 봉투 틀 `_template/`) — 게임은 `node tools/item_cards.cjs`가 굽는 `public/items/` 카드 · 아이콘만 싣는다.
   `food assets/dishes/` = 완성 요리 사진 원본 7장(255) — `node tools/dish_photos.cjs`가 `public/food/` 사진 · 칸 아이콘으로 굽는다.
-  얼굴 초상(268)은 원본을 저장소에 두지 않는다 — `public/faces/<키>.png`(192px)가 정본이고, 더 뽑을 때는 `NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> [--ref 앵커]`
-  → `--sheet` 검수 → `--install`(스킬 `asset-pipeline` ⑧ — 269 얼굴형 판 `--shapes round,square` · 입 · 홍조는 코드).
+  얼굴 초상(268)은 원본을 저장소에 두지 않는다 — 인물은 `public/faces/<키>.png`(192px), 주인공은 **층**(271 — `public/faces/layers/` 기본 머리 · 라벨 마스크 · 머리 모양 · 수염)이 정본이다.
+  더 뽑을 때는 `NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set cast|layers [--ref 앵커]` → `--sheet` 검수 → 인물 `--install` ·
+  주인공 `node tools/face_layers.cjs --src <폴더> --install`(스킬 `asset-pipeline` ⑧ — 입 · 홍조는 코드).
 - `assets/` — 기타 원본 (2026-08-05 정리): `branding/`(타이틀·아이콘 소스) · `characters/`(man/girl 옛 캐릭터 원본 — 보존만. 소비본과 로드는 레거시 필드와 함께 삭제) · `guide/`(sashimi_pixel_guide.svg — pixelize_butchery 입력).
   `assets/cursor/` = 게임 마우스 포인터 원본(250 — 찌 화살 · Gemini 원본) — `node tools/gen_game_cursor.cjs`가 `data/GameCursorArt.ts`를 굽는다.
 - `docs/` — `reference/`(공공 API 활용가이드·09.수심.zip·경락 CSV 등 외부 데이터 원본) · `mockups/`(UI 목업 — game_guide_hub.html = 가이드 삽화 19장 재렌더 소스) ·
@@ -205,9 +207,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 12 = 270(2)차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 13 = 270(2)차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 12 = 270(2)차 기준 · 문법은 258차) · 위키(위 줄 — 68 = 270(2) 인물 얼굴 7장).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 13 = 271차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 14 = 271차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 13 = 271차 기준 · 문법은 258차) · 위키(위 줄 — 68 = 270(2) 인물 얼굴 7장 · 271은 입력 불변).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

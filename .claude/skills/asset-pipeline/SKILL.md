@@ -336,27 +336,30 @@ node tools/dish_photos.cjs --from <폴더>         # 불요리 완성 요리(레
   띠 색은 작물 갈래(잎 · 열매 · 뿌리 · 곡물 · 콩 · 향채 · 나물 · 싹)마다 색상만 돌린다(틀 초록이 짙어 밝기를 조금 올린다).
 - 위키: `dump_wiki_items.mjs`가 게임과 같은 순서로 `imgKey`를 적고, `gen_wiki_images.py`가 `ITEM_IMAGE_FILES`(원본) · `public/food/*.png`를 읽는다.
 
-## ⑧ 그림 얼굴 초상 — 인물 · 주인공 판 · 얼굴형 판 · 입 모양은 코드 (268 · 269차)
+## ⑧ 그림 얼굴 초상 — 인물 판 · 주인공은 층(민머리 기본 + 머리 모양 + 수염 + 라벨 마스크) (268 · 269 · 271차)
 
-대화창 · 혼잣말 · 일지 초상은 Gemini 흉상(192×192 · 셀 2px)이 먼저다(`ui/FacePhoto.ts`). 원본은 저장소에 두지 않고 `public/faces/<키>.png`가 정본이다.
+대화창 · 혼잣말 · 일지 초상은 Gemini 흉상(192×192 · 셀 2px)이 먼저다(`ui/FacePhoto.ts`). 원본은 저장소에 두지 않는다 —
+인물은 `public/faces/<키>.png`, 주인공은 `public/faces/layers/`의 층이 정본이다. **케이스별 주인공 판(성별 × 머리 모양 × 수염 × 얼굴형 72장)과
+색 규칙 분류 치환은 271에서 폐기했다** — 경계마다 추측이라 색 조합마다 새 결함이 났다(`--set player` · `--shapes`를 다시 쓰지 않는다).
 
 ```bash
-NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set cast|player [--only okseon] --ref <화풍 앵커 png>   # 인물 42 · 주인공 24(계란형 · 다문 입)
-NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set player --shapes round,square --ref <앵커>       # 269 — 얼굴형 판 48(기본 판을 같은 인물 앵커로)
+# 인물(42) — 설정 + face_looks.cjs 특징 · 화풍 앵커 한 장 필수(268)
+NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set cast [--only okseon] --ref <화풍 앵커 png>
 node tools/gemini_face_art.cjs --out <폴더> --sheet <png>          # 12장씩 검수 시트
-node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 벗기기 → 정사각(어깨 바닥) → 96칸 → 갇힌 흰 배경 메우기 → public/faces + data/FacePortraits.ts(+ 인물은 tools/wiki_img)
-node tools/gemini_face_art.cjs --fill-pockets                       # 270(2) — 설치된 판 전부에서 갇힌 흰 배경(머리 뒤 · 목 옆)을 투명으로(인물은 wiki_img도)
+node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 벗기기 → 정사각 → 96칸 → 갇힌 흰 배경 메우기 → public/faces + FacePortraits.ts(+ tools/wiki_img)
+# 주인공(271) — 층 원판: 앞 판을 같은 인물 앵커로. 순서 = base_<sex>_oval → hair_* · base_<sex>_round · square → beard_m_*
+NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set layers --only base_m_oval --ref <화풍 앵커>   # 민머리 · 민낯(앵커 = player_<sex>_short 원판 또는 설치본)
+NODE_USE_ENV_PROXY=1 node tools/gemini_face_art.cjs --out <폴더> --set layers --only hair_m_short,hair_m_bob --jobs 3  # 머리 모양 · 얼굴형 · 수염(앵커 = 같은 폴더의 기본판)
+node tools/face_layers.cjs --src <폴더> --preview <검수 폴더>      # 정렬 · 공통 틀 · 차이로 층 · 라벨 마스크 → 시트(기본색 합성 · 마스크 겹침)
+node tools/face_layers.cjs --src <폴더> --install                  # public/faces/layers/<키>.png(기본 · _mask · 머리 · 수염) + src/data/FaceLayers.ts
+node tools/face_layers_qa.mjs <폴더>                               # 게임 함수로 합성 몽타주(boxed · mix · mouth · all:<머리>:<피부>:<눈>[:<수염>] · mask)
 ```
 
-- **화풍 · 밀도 앵커 한 장은 필수**(268) — 앵커 없이는 128칸급 · 32칸급 밀도가 섞인다. 앵커가 없으면 `public/faces` 두 장을 자동으로 붙인다.
-- **얼굴형 판은 기본 판을 같은 인물 앵커로** 붙인다(`--shapes` — `_refs/base_<키>.png` 3배) — 같은 사람 · 머리 · 배색을 두고 턱선 · 볼만 바뀐다(시범 4장 실측 — 차이는 작지만 일관).
-  키 = `<기본 키>_<round|square>` · `FacePhoto.playerBaseKey`가 얼굴형 판을 먼저 찾고 없으면 계란형 판으로 돌아간다.
-- **입 모양 4 · 볼 홍조는 그림이 아니라 코드**(269 — 216장 ≈ 1만 3천 원이라) — `findMouth`(입술 선 성분 + 분홍 입술살) → `applyMouth`(웃는 입 = 입꼬리 1~2px ↑ · 작은 입 = 0.72배 · 벌린 입 = 2px 틈) ·
-  `applyBlush`(입 상자 기준 좌우 위 타원). 치환 전에 기준 피부 위에서 한다. 틀(96칸 · 어깨 바닥)을 바꾸면 `MOUTH_WIN` · 흰자 행을 다시 잰다(scratchpad `face_mouth_proto.cjs` · `face_lip_colors.cjs` 패턴).
-- **색 치환은 두 톤 + 씨앗 번짐**(270 — `ui/FaceRecolor.ts`): 곱셈 칠하기는 밝은 색에서 255에 잘려 하얗게 뜨고, 색조만으로는 그늘 피부와 머리를 못 가른다(거리 0.06 vs 0.16).
-  규칙 표는 [270 워크로그 §3](../../../docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md). 판을 새로 뽑거나 틀을 바꾸면 `node tools/face_recolor_qa.mjs <폴더>`
-  (72판 × 색 조합 몽타주 · `classmap:<키>` 분류 지도)로 목 · 귀 · 코 · 눈꺼풀 · 수염 · 늘어진 머리를 눈으로 본다 — 수치 어서션은 없다.
-- **갇힌 흰 배경은 설치 뒤에 센다**(270(2)) — 배경 벗기기는 테두리 BFS라 포니테일 · 땋은 머리 · 긴 머리가 에워싼 순백 조각(판마다 8~228px)에 못 닿는다.
-  `--install`이 96칸으로 구운 뒤 `fillWhitePockets`(순백 ≥ 8px 성분 · 눈 띠 밖 → 투명)를 부르고 로그에 「흰 주머니 Npx」를 찍는다. 새 판은 어두운 바탕 위에 놓고(scratchpad `pocket_view.mjs` 패턴) 머리 뒤 · 목 옆을 본다.
-  순백(≥ 246)만 지운다. 눈썹은 `LABEL_BROW` — 머리색의 색조만 따르고 밝기는 원래 눈썹까지(흰 머리 → 짙은 잿빛).
-- 값(269 실측 · 공식 단가): 한 장 ≈ $0.043~0.047(입력 2.7~4.1K 토큰 · 출력 1.8~1.9K — 이미지 1,120 + 글 · 생각) — 얼굴 66장 ≈ 4,400원 · 얼굴형 48장 ≈ 3,100원 · 아이템 7장 ≈ 440원.
+- **층 원판은 앞 판을 같은 인물 앵커로**(271) — 「설명한 것 말고는 자리 · 크기까지 그대로」를 요구하면 자리를 지킨다(시범 실측 이동 0 · 배율 1.000 · 코~턱 차이 0.29%).
+  따로 뽑은 판끼리는 차이로 층을 뜰 수 없다. 기본판을 다시 뽑으면 그 성별 머리 · 수염 층을 전부 다시 뽑고 같은 폴더에서 다시 굽는다(틀 = 성별마다 하나 · 합집합 상자).
+- **층 뜨기 규칙**(`face_layers.cjs`): 차이(알파 다름 · 채널 차 > 40) → 열기 2 · 성분 ≥ 400px · 닫기 2 → 칸 덮임 ≥ 50% · 순백 칸(갇힌 배경)은 비움 · 피부에 맞닿은 테 × 0.8.
+  마스크(피부 · 눈썹 · 눈동자 · 입술 · 흰자)가 틀린 자리는 `tools/face_layer_fixes.json`에 `{x, y, w, h, label}` 한 줄 — 라벨 규칙을 다시 만지지 않는다.
+- **색은 층 · 라벨 단위**(`ui/FaceRecolor.ts composePlayerFace`) — 두 톤 칠하기(270)는 그대로, 추측 분류는 없다. 눈썹은 머리색 색조 + 원래 밝기까지.
+  입 4 · 볼 홍조는 코드(269 — `mouthFromLabels` → `applyMouth` · `applyBlush`). 수염 층이 없으면 수염을 골라도 민낯이다(271 — 크레딧 충전 뒤 `beard_m_*` 3장).
+- **화풍 · 밀도 앵커 한 장은 필수**(268) — 앵커 없이는 128칸급 · 32칸급 밀도가 섞인다.
+- 값(269 · 271 실측): 한 장 ≈ 60원. 271 층 원판 22장 ≈ 1,300원. 결제가 비면 HTTP 402 — 충전 뒤 같은 명령(이미 뽑은 것은 건너뛴다).

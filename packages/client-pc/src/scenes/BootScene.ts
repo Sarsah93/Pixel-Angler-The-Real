@@ -21,6 +21,7 @@ import { ITEM_ART_ASSETS } from '../data/ItemArtManifest.js';
 import { TACKLE_IMAGE_FILES } from '../data/TackleTextures.js';
 import { ITEM_IMAGE_FILES } from '../data/ItemImages.js';
 import { FACE_PORTRAITS } from '../data/FacePortraits.js';
+import { FACE_LAYERS } from '../data/FaceLayers.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -224,6 +225,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('butchery_knife', 'butchery/knife_sashimi.png');
     // 267차 — 그림(Gemini) 얼굴 초상 — 있는 것만(FacePortraits.ts 자동 목록 · `tools/gemini_face_art.cjs --install`). 없으면 32×32 절차 초상 그대로
     for (const k of FACE_PORTRAITS) this.load.image(`face_${k}`, `faces/${k}.png`);
+    // 271차 — 주인공 얼굴 층(기본 머리 · 라벨 마스크 · 머리 모양 · 수염 — FaceLayers.ts 자동 목록 · `tools/face_layers.cjs --install`). 대화창이 합성한다(`ui/FacePhoto.ts`)
+    for (const k of FACE_LAYERS) this.load.image(`facelayer_${k}`, `faces/layers/${k}.png`);
     // 241차 — 작물 초상(사진 → 도트 · tools/pixelize_crops.cjs) — 있는 것만(CropPortraits.ts 자동 목록). 없으면 16px 손그림(px:) 그대로
     for (const id of CROP_PORTRAITS) {
       // 244차 — 상세 창 카드(≤ 228×90)를 싣는다. 셀 6px 원본(1,170px · 장당 텍스처 5MB)은 위키 재료라 싣지 않는다
