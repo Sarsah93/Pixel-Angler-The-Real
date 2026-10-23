@@ -188,7 +188,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
   `ui/FaceRecolor.ts composePlayerFace`(라벨 · 층 단위 두 톤 칠하기 — 추측 분류 삭제) · `FacePhoto.ts` 층 합성 · 옛 주인공 판 72장 · `face_recolor_qa.mjs` 삭제 · `face_layers_qa.mjs` 신설.
 - 검증: 몽타주(boxed · mix 50 · mouth 16 · all 48 × 3 · mask) · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · 아티팩트 라이브러리 14 · 과업 13 · 순서도 13.
   **(2)** 크레딧 충전 뒤 수염 층 3장(앵커 = 각 얼굴형 기본판 · 틀은 기본 · 머리 판으로만 — 기존 28장 바이트 동일) · 설치 31장 · 라이브러리 15 · 과업 14 · 순서도 14.
-  **84차 배포**(2026-10-23 · 「테스트 배포」 실행 13 · 작업 브랜치 `7d3d5cc` · gh-pages `5a7ded7` · 정적 2,001 같음 · 기동 12.0초 · pageerror 0 — main은 `ed87113`에 멈춰 사용자 빨리 감기 8커밋).
+  **84차 배포**(2026-10-23 · 「테스트 배포」 실행 13 · 작업 브랜치 `7d3d5cc` · gh-pages `5a7ded7` · 정적 2,001 같음 · 기동 12.0초 · pageerror 0 — main 빨리 감기 `44c8f10` 완료 · main CI는 하모니 PR #12 병합 뒤 초록).
 - 상세: [워크로그 271](../docs/wiki/03-WORKLOG/2026-10-23-271-face-layers-base-hair-beard.md)
 
 ### 270차 (2026-10-23) — 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색)

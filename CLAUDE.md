@@ -201,7 +201,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `5a7ded7` — **최근 84차 배포 2026-10-23 = 271(2)차까지 포함**(270 색 치환 · 270(2) 흰 주머니 · 271 얼굴 층 구조 · 271(2) 수염 층) —
-  작업 브랜치 `7d3d5cc` · 실행 13 · 기동 12.0초 · pageerror 0. ⚠ main은 `ed87113`(266차)에 멈춰 있다 — 원격 세션의 main 푸시가 분류기에 막혀 사용자가 빨리 감기(8커밋)해야 한다).
+  작업 브랜치 `7d3d5cc` · 실행 13 · 기동 12.0초 · pageerror 0. main은 2026-10-23에 `44c8f10`으로 빨리 감았다(이번엔 원격 세션의 push가 막히지 않았다) —
+  main CI 「검증」은 core TS6133(`CropCareSim.test.ts` — 하모니 PR #12가 고친다)로 붉다).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 68 = 270(2)**(인물 얼굴 7장 흰 주머니 투명 — HTML 안 그림 다시 · 67 = 268차 인물 얼굴 35장 · 65 · 66 = 지도 시트 14지역 다시 찍음)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
