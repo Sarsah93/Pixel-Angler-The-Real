@@ -353,8 +353,8 @@
    "title": "STORY_SPEC_v4 스킬 포인트 합 215 → 216 정정(F-0088 잔여 · 역사 서술 :74는 유지)",
    "pr": 11,
    "branch": "harmony/2026-10-17",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-23",
    "findings": [
     "F-0088"
    ],

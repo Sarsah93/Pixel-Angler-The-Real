@@ -1539,10 +1539,10 @@
     "packages/core/src/db-schema/SkillDatabase.ts:223"
    ],
    "why": "등식이 정본이라고 적힌 문서를 따르면 무결성 검사가 깨진다. progression.md 안에서도 215와 216이 섞여 있다.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-16",
-   "resolved_at": null,
+   "resolved_at": "2026-10-23",
    "decision": "2026-10-15 사용자 결정: 정본 = 코드 216(노드 95 = 유료 90 + 히든 5 · 200 + 면허 15 + 시작 1). 문서 쪽 옛 값 정정은 사용자 세션에서 진행 중 — main 반영 뒤 재확인해 해소."
   },
   {
