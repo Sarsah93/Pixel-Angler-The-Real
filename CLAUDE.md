@@ -83,7 +83,7 @@
   `face_layer_fixes.json` · 설치 28장) → `ui/FaceRecolor.ts composePlayerFace`(라벨 · 층 단위 — 추측 분류 삭제) · `FacePhoto.ts` 합성 · 옛 판 72장 삭제 · `tools/face_layers_qa.mjs` ·
   검증 = 몽타주(boxed · mix 50 · mouth 16 · all 48 × 3 · mask) · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · 아티팩트 라이브러리 14 · 과업 13 · 순서도 13.
   **(2)** 크레딧 충전 뒤 수염 층 3장 설치(앵커 = 각 얼굴형 기본판 · 틀은 기본 · 머리 판으로만 · 설치 31장 · 라이브러리 15 · 과업 14 · 순서도 14).
-  **다음 = 사용자 육안(동그라미 둘 · 48칸 · 수염 셋) · 다음 배포에 포함**.
+  **84차 배포(2026-10-23 · 실행 13 · gh-pages `5a7ded7` · 기동 12.0초 · pageerror 0). 다음 = 사용자 실검증(동그라미 둘 · 48칸 · 수염 셋)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-23-271-face-layers-base-hair-beard.md`.
 - **270차**: **주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색)** —
   사용자 「빨간색 네모로 표시한 부분 … 하얗게 뜬 부분, 컬러 품질이 맞지 않는 부분 … 차이도 분석하고 … 원인과 해결을 동시에」 → 네모 친 넷 = 기준색과 다른 머리 · 피부(치환 경로) · 안 친 것 = 치환 0픽셀 →
@@ -91,7 +91,7 @@
   눈동자 2px 열림 덩어리 · 입술 밝기 비 · 수염 색 치환(`_bd_<수염>`) · `tools/face_recolor_qa.mjs`(72판 × 색 몽타주 · 분류 지도) ·
   검증 = Node 몽타주 288장 · 네모 넷 확대 · 분류 지도 · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 라이브러리 12 · 과업 11 · 순서도 11.
   **(2)** 다시 표시한 칸(머리 뒤 흰 배경 · 흰 눈썹) = 설치 배경 벗기기가 못 닿은 갇힌 흰 배경 23장 1,956px(`fillWhitePockets` · `--fill-pockets`) · 눈썹 `LABEL_BROW` 밝기 상한 ·
-  위키 68 · 라이브러리 13 · 과업 12 · 순서도 12. **다음 = 사용자 육안(네모 넷 · 색 조합 · 눈썹 · 머리 뒤) · 다음 배포에 포함**. 상세 `docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md`.
+  위키 68 · 라이브러리 13 · 과업 12 · 순서도 12. **84차 배포에 포함 · 다음 = 사용자 실검증**. 상세 `docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md`.
 - **269차**: **남은 코드 그림 7장 · 주인공 얼굴형 판 48장(Gemini) · 입 모양 4 · 볼 홍조는 코드로** —
   사용자 「Gemini API 크레딧이 약 9,900원 … 얼굴형 … 이 범위 내에서 … 코드그림 7장 먼저 진행할 지, 잘 견적내서 적용해봐」 → 268 로그 토큰 × 공식 단가 = 한 장 ≈ 60원 →
   코드 그림 7(약 440원 · `misc.cjs` 그대로 · 카드 230 · 코드 그림 0) · 얼굴형 둥근 · 각진 48장(약 3,100원 — `gemini_face_art.cjs --shapes round,square` ·
@@ -200,8 +200,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `4707571` — **최근 83차 배포 2026-10-20 = 269차까지 포함**(267 피드백 여섯 · 268 얼굴 66 · 269 얼굴형 판 · 입 · 홍조 · 코드 그림 7) —
-  작업 브랜치 `1d4fa10` · 실행 12. ⚠ main은 `ed87113`(266차)에 멈춰 있다 — 원격 세션의 main 푸시가 분류기에 막혀 사용자가 빨리 감기(3커밋)해야 한다).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `5a7ded7` — **최근 84차 배포 2026-10-23 = 271(2)차까지 포함**(270 색 치환 · 270(2) 흰 주머니 · 271 얼굴 층 구조 · 271(2) 수염 층) —
+  작업 브랜치 `7d3d5cc` · 실행 13 · 기동 12.0초 · pageerror 0. ⚠ main은 `ed87113`(266차)에 멈춰 있다 — 원격 세션의 main 푸시가 분류기에 막혀 사용자가 빨리 감기(8커밋)해야 한다).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 68 = 270(2)**(인물 얼굴 7장 흰 주머니 투명 — HTML 안 그림 다시 · 67 = 268차 인물 얼굴 35장 · 65 · 66 = 지도 시트 14지역 다시 찍음)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
