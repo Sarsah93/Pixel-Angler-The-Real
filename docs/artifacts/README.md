@@ -8,9 +8,9 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 10 — 269차 기준(269차 발행 — 캐릭터 · Gemini 줄) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 11 — 269차 기준(얼굴 114 · 얼굴형 판 · 입 · 홍조 코드 · 아이템 230) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 10 — 269차 기준 · 채비 문법은 258차(269차 발행 — 「269차 기준」 줄만) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 11 — 270차 기준(270차 발행 — 캐릭터 줄 · 실플레이 확인 줄) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 12 — 270차 기준(그림 얼굴 초상 — 치환 4색 · 두 톤 + 씨앗 번짐) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 11 — 270차 기준 · 채비 문법은 258차(270차 발행 — 「270차 기준」 줄만) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 67 — 268차(인물 얼굴 35장 HTML 안 — 지도 핀 상세 · 인물 목록 · 조행록 의뢰인 칸) |
 
 - 남은 과업 설계는 **비공개**(주인만 열림)다. 나머지 셋은 「링크가 있는 사람」 공유다. 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.

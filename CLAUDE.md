@@ -68,13 +68,20 @@
   → **266 탭 복귀 검정 화면(WebGL 복구 뒤 다시 굽기) · 간판 입구 옆 · 문 밀기 중심선 금지 · main 반영 · 82차 배포**
   → **267 첫 실플레이 피드백 여섯(지도 끌기 · 대화창 쪽 넘김 · 영업시간 단서 · 미끼 묶음 「열기」 · 집 ESC · 화살표 둘) · 그림 얼굴 초상의 길**
   → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**
-  → **269 코드 그림 7 · 주인공 얼굴형 판 48(같은 인물 앵커) · 입 4 · 볼 홍조는 코드 · 약 3,500원**.
+  → **269 코드 그림 7 · 주인공 얼굴형 판 48(같은 인물 앵커) · 입 4 · 볼 홍조는 코드 · 약 3,500원**
+  → **270 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색) · 검수 도구**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **270차**: **주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색)** —
+  사용자 「빨간색 네모로 표시한 부분 … 하얗게 뜬 부분, 컬러 품질이 맞지 않는 부분 … 차이도 분석하고 … 원인과 해결을 동시에」 → 네모 친 넷 = 기준색과 다른 머리 · 피부(치환 경로) · 안 친 것 = 치환 0픽셀 →
+  원인 셋(곱셈 칠하기 255 잘림 · 색조만으로 그늘 피부 ↔ 머리 못 가름 · 흰자 ±1줄 눈동자) → `ui/FaceRecolor.ts` 다시 씀 — 두 톤 칠하기 · 씨앗 경쟁 번짐(피부 · 머리 · 깊은 그늘 · 이음새 빼기 · 눈썹 · 수염 구역 · 윤곽선 벽) ·
+  눈동자 2px 열림 덩어리 · 입술 밝기 비 · 수염 색 치환(`_bd_<수염>`) · `tools/face_recolor_qa.mjs`(72판 × 색 몽타주 · 분류 지도) ·
+  검증 = Node 몽타주 288장 · 네모 넷 확대 · 분류 지도 · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 라이브러리 12 · 과업 11 · 순서도 11.
+  **다음 = 사용자 육안(네모 넷 · 색 조합) · 흰 머리 눈썹 잿빛 여부 · 다음 배포에 포함**. 상세 `docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md`.
 - **269차**: **남은 코드 그림 7장 · 주인공 얼굴형 판 48장(Gemini) · 입 모양 4 · 볼 홍조는 코드로** —
   사용자 「Gemini API 크레딧이 약 9,900원 … 얼굴형 … 이 범위 내에서 … 코드그림 7장 먼저 진행할 지, 잘 견적내서 적용해봐」 → 268 로그 토큰 × 공식 단가 = 한 장 ≈ 60원 →
   코드 그림 7(약 440원 · `misc.cjs` 그대로 · 카드 230 · 코드 그림 0) · 얼굴형 둥근 · 각진 48장(약 3,100원 — `gemini_face_art.cjs --shapes round,square` ·
@@ -92,19 +99,6 @@
   검증 = 위키 Playwright pageerror 0 · 게임 하네스 2회(부팅 66 · 혼잣말 · 대화창 · 일지 · 치환 격자 26칸) · 빌드 3/3 · typecheck 0 · core 332/332 · 아티팩트 셋 Version 9(라이브러리 10) · 위키 67.
   **다음 = 사용자 육안(66장 · 대화창 인상 · 치환 색) · 주인공 얼굴형 · 입 판 결정 · 83차 배포(요청 시)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-19-268-face-portraits-66-gemini.md`.
-- **267차**: **첫 실플레이 피드백 여섯 · 그림 얼굴 초상의 길** —
-  사용자 「지도가 작아서 끌리지 않는 것 같은데 … wiki에 반영된 지도 드래깅되는 것처럼」 「22시 이후로는 퀘스트 진행 불가 … 빨간색 텍스트로 단서」
-  「미끼(20개입, 8개입) … 한 번 사용하고 바로 사라짐 → 열기」 「집 안에서 esc 누르면 집 밖으로 나가짐 → 금지」 「대화가 앞에 내용이 겹쳐서 나옴」
-  「서브퀘 체크 넣어도 메인퀘 안내 표시만 → 노란 · 파란 indicator 각각」 「각 인물 별로 얼굴 이미지 … gemini imaging … 정옥선 흰머리 장발 · 모자」 →
-  전체 지도 `clampPan` 여백 48(작은 맵도 끌림) · 「끌어 보자」 실제 24px 이동 판정 · 처음 배율 ≤ 최대 0.7배 ·
-  대화창 쪽 단위(`play` 새 쪽 · `startNextPara` 단락 · 문장 끝 가름) · 진행 말하듯(core `rules/KoreanPhrase.ts` — `spokenProgressKo`) ·
-  `QuestNarrative.hint` 빨간 글(M1-04 사이소 10~22시) · `isBaitItem` 묶음 · 포장 제외 + 가방 「열기」(`InventoryStore.openBundle`) ·
-  `HomeInteriorScene.onEscape` 나가기 삭제 · `INDOOR_SEA` 0.04 · 메인 노랑(46) · 서브 파랑(54) 화살표(`questSubTargetPos`) ·
-  그림 얼굴 초상 길 = `tools/gemini_face_art.cjs`(인물 42 · 주인공 24 · `--dry` · `--install` 192px) · `data/FacePortraits.ts` · `ui/FacePhoto.ts`(치환) · `ensureFacePortrait(…, who)` —
-  **그림은 0장(Gemini 결제 402 — AI Studio 충전 뒤 생성)**.
-  검증 = core 332/332 · 빌드 3/3 · typecheck 0 · 하네스(가이드 흐름 Enter → 휠 6.61 → 끌기 144px · 한계 48 · 속초 184px · 화살표 둘 326m/298m · 집 ESC 나가기 0 · 「열기」 8마리 · 가짜 초상 치환 색 일치) pageerror 0 ·
-  아티팩트 셋 Version 8(위키는 입력 불변). **다음 = 사용자 실플레이 확인 · Gemini 충전 뒤 초상 66장 · 83차 배포(요청 시)**.
-  상세 `docs/wiki/03-WORKLOG/2026-10-19-267-first-feedback-six-fixes-face-portrait-path.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -210,9 +204,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 10 = 269차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 11 = 269차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 10 = 269차 기준 · 문법은 258차) · 위키(위 줄 — 269차는 입력 불변).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 11 = 270차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 12 = 270차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 11 = 270차 기준 · 문법은 258차) · 위키(위 줄 — 269 · 270차는 입력 불변).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

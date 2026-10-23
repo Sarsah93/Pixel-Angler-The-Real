@@ -352,4 +352,7 @@ node tools/gemini_face_art.cjs --out <폴더> --install [--force]     # 배경 �
   키 = `<기본 키>_<round|square>` · `FacePhoto.playerBaseKey`가 얼굴형 판을 먼저 찾고 없으면 계란형 판으로 돌아간다.
 - **입 모양 4 · 볼 홍조는 그림이 아니라 코드**(269 — 216장 ≈ 1만 3천 원이라) — `findMouth`(입술 선 성분 + 분홍 입술살) → `applyMouth`(웃는 입 = 입꼬리 1~2px ↑ · 작은 입 = 0.72배 · 벌린 입 = 2px 틈) ·
   `applyBlush`(입 상자 기준 좌우 위 타원). 치환 전에 기준 피부 위에서 한다. 틀(96칸 · 어깨 바닥)을 바꾸면 `MOUTH_WIN` · 흰자 행을 다시 잰다(scratchpad `face_mouth_proto.cjs` · `face_lip_colors.cjs` 패턴).
+- **색 치환은 두 톤 + 씨앗 번짐**(270 — `ui/FaceRecolor.ts`): 곱셈 칠하기는 밝은 색에서 255에 잘려 하얗게 뜨고, 색조만으로는 그늘 피부와 머리를 못 가른다(거리 0.06 vs 0.16).
+  규칙 표는 [270 워크로그 §3](../../../docs/wiki/03-WORKLOG/2026-10-23-270-face-recolor-two-tone-seed-growth.md). 판을 새로 뽑거나 틀을 바꾸면 `node tools/face_recolor_qa.mjs <폴더>`
+  (72판 × 색 조합 몽타주 · `classmap:<키>` 분류 지도)로 목 · 귀 · 코 · 눈꺼풀 · 수염 · 늘어진 머리를 눈으로 본다 — 수치 어서션은 없다.
 - 값(269 실측 · 공식 단가): 한 장 ≈ $0.043~0.047(입력 2.7~4.1K 토큰 · 출력 1.8~1.9K — 이미지 1,120 + 글 · 생각) — 얼굴 66장 ≈ 4,400원 · 얼굴형 48장 ≈ 3,100원 · 아이템 7장 ≈ 440원.
