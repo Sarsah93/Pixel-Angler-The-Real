@@ -13,7 +13,7 @@
  *  절차(성별마다):
  *   1. 배경 벗기기(테두리 BFS) → 번짐 벗기기 → 계란형 기본판 틀에 **정렬**(이동 · 배율 탐색 · 눈~입 구역 차 최소). 얼굴형 판 · 머리 판은 계란형 기본판에,
  *      수염 판은 (정렬한) 그 얼굴형 기본판에 맞춘다.
- *   2. 틀 = 정렬한 판 전부의 합집합 상자를 정사각으로(아래 = 어깨선 · 가로 가운데). 전부 같은 틀로 96칸(셀 2px = 192px)에 굽는다 —
+ *   2. 틀 = 정렬한 기본 · 머리 판의 합집합 상자를 정사각으로(아래 = 어깨선 · 가로 가운데 · 위 · 양옆 여백 2% — 수염 판은 틀에 안 넣는다). 전부 같은 틀로 96칸(셀 2px = 192px)에 굽는다 —
  *      같은 틀이라 바뀌지 않은 곳은 같은 칸이 된다.
  *   3. 머리 · 수염 층 = 앵커 판과의 차이(알파가 다르거나 채널 차 > 40) → 열기 2px · 성분 ≥ 400px · 닫기 2px → 칸 덮임 ≥ 50%인 칸만.
  *      피부 칸에 맞닿은 층 테두리는 조금 어둡게(RIM — 흰 머리 + 밝은 피부도 갈라진다).
@@ -395,7 +395,8 @@ async function main() {
     }
     // 2) 틀 — 합집합 상자 → 정사각(아래 = 어깨선 · 가로 가운데)
     let ux0 = oval.w, uy0 = oval.h, ux1 = -1, uy1 = -1;
-    for (const a of Object.values(aligned)) { const b = a.bbox; if (b.x0 < ux0) ux0 = b.x0; if (b.y0 < uy0) uy0 = b.y0; if (b.x1 > ux1) ux1 = b.x1; if (b.y1 > uy1) uy1 = b.y1; }
+    // 수염 판은 틀에 안 넣는다(271(2)) — 수염은 머리 · 어깨 안에 있고, 뒤에 뽑은 판의 어깨 선 1~3px 차이가 틀을 밀어 설치된 층 전부를 바꾼다
+    for (const [k, a] of Object.entries(aligned)) { if (k.startsWith('beard_')) continue; const b = a.bbox; if (b.x0 < ux0) ux0 = b.x0; if (b.y0 < uy0) uy0 = b.y0; if (b.x1 > ux1) ux1 = b.x1; if (b.y1 > uy1) uy1 = b.y1; }
     const bw = ux1 - ux0 + 1, bh = uy1 - uy0 + 1, pad = Math.round(Math.max(bw, bh) * FRAME_MARGIN), side = Math.max(bw + 2 * pad, bh + pad);
     const frame = { side, x0: Math.round(ux0 - (side - bw) / 2), y0: uy1 - side + 1 };
     console.log(`${sex}: 틀 ${side}px (상자 ${bw}×${bh} · 왼쪽 위 ${frame.x0},${frame.y0}) → ${CELLS}칸`);

@@ -322,7 +322,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 층 원판 22장(`gemini_face_art.cjs --set layers` — 앞 판을 같은 인물 앵커로 · 시범 이동 0 · 배율 1.000) · `tools/face_layers.cjs`(정렬 · 공통 틀 · 차이로 층 · 라벨 마스크 · `face_layer_fixes.json`) ·
   설치 28장(`public/faces/layers/` · `FaceLayers.ts`) · `ui/FaceRecolor.ts composePlayerFace`(라벨 · 층 단위 — 추측 분류 삭제) · `FacePhoto.ts` 합성 · 옛 판 72장 삭제 · `face_layers_qa.mjs`.
 - 검증: 몽타주(boxed · mix 50 · mouth 16 · all 48 × 3 · mask 6) · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · 아티팩트 라이브러리 14 · 과업 13 · 순서도 13.
-  수염 층 3장은 Gemini 크레딧 소진(HTTP 402)으로 보류(충전 뒤 약 200원). 상세: [271차 워크로그](../docs/wiki/03-WORKLOG/2026-10-23-271-face-layers-base-hair-beard.md).
+  **(2)** 크레딧 충전 뒤 수염 층 3장 설치(앵커 = 각 얼굴형 기본판 · 틀은 기본 · 머리 판으로만 — 기존 28장 그대로 · 설치 31장 · 라이브러리 15 · 과업 14 · 순서도 14).
+  상세: [271차 워크로그](../docs/wiki/03-WORKLOG/2026-10-23-271-face-layers-base-hair-beard.md).
 
 **이전 변경 (2026-10-23 270차) — 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색)**
 

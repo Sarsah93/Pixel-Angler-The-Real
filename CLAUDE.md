@@ -70,7 +70,7 @@
   → **268 그림 얼굴 초상 66장(Gemini · 화풍 앵커) · 정옥선 장발 · 백발 · 피부 2 · 위키 인물 얼굴**
   → **269 코드 그림 7 · 주인공 얼굴형 판 48(같은 인물 앵커) · 입 4 · 볼 홍조는 코드 · 약 3,500원**
   → **270 주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색) · 검수 도구 · (2) 갇힌 흰 배경 23장 · 눈썹 밝기**
-  → **271 주인공 얼굴 층 구조(민머리 기본 6 · 머리 모양 층 16 · 라벨 마스크 · 케이스별 판 72장 폐기 · 수염 층은 크레딧 대기)**.
+  → **271 주인공 얼굴 층 구조(민머리 기본 6 · 머리 모양 층 16 · 라벨 마스크 · 케이스별 판 72장 폐기 · (2) 수염 층 3장)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
@@ -82,7 +82,8 @@
   시범 2장(이동 0 · 배율 1.000 · 코~턱 차이 0.29%) → 층 원판 22장(`--set layers` — 앞 판을 같은 인물 앵커로 · 약 1,300원) → `tools/face_layers.cjs`(정렬 · 공통 틀 · 차이로 층 · 라벨 마스크 ·
   `face_layer_fixes.json` · 설치 28장) → `ui/FaceRecolor.ts composePlayerFace`(라벨 · 층 단위 — 추측 분류 삭제) · `FacePhoto.ts` 합성 · 옛 판 72장 삭제 · `tools/face_layers_qa.mjs` ·
   검증 = 몽타주(boxed · mix 50 · mouth 16 · all 48 × 3 · mask) · 하네스(격자 32 · 확대 6 · 404 0 · pageerror 0) · 빌드 3/3 · typecheck 0 · 아티팩트 라이브러리 14 · 과업 13 · 순서도 13.
-  **다음 = 수염 층 3장(Gemini 크레딧 충전 뒤 `--only beard_m_oval,beard_m_round,beard_m_square` 약 200원 → `face_layers.cjs --install`) · 사용자 육안(동그라미 둘 · 48칸) · 다음 배포에 포함**.
+  **(2)** 크레딧 충전 뒤 수염 층 3장 설치(앵커 = 각 얼굴형 기본판 · 틀은 기본 · 머리 판으로만 · 설치 31장 · 라이브러리 15 · 과업 14 · 순서도 14).
+  **다음 = 사용자 육안(동그라미 둘 · 48칸 · 수염 셋) · 다음 배포에 포함**.
   상세 `docs/wiki/03-WORKLOG/2026-10-23-271-face-layers-base-hair-beard.md`.
 - **270차**: **주인공 얼굴 색 치환 다시 쓰기(두 톤 칠하기 · 씨앗 경쟁 번짐 · 눈동자 덩어리 · 수염 색)** —
   사용자 「빨간색 네모로 표시한 부분 … 하얗게 뜬 부분, 컬러 품질이 맞지 않는 부분 … 차이도 분석하고 … 원인과 해결을 동시에」 → 네모 친 넷 = 기준색과 다른 머리 · 피부(치환 경로) · 안 친 것 = 치환 0픽셀 →
@@ -207,9 +208,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 13 = 271차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 14 = 271차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 13 = 271차 기준 · 문법은 258차) · 위키(위 줄 — 68 = 270(2) 인물 얼굴 7장 · 271은 입력 불변).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 14 = 271(2)차 기준 · 비공개) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 15 = 271(2)차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 14 = 271(2)차 기준 · 문법은 258차) · 위키(위 줄 — 68 = 270(2) 인물 얼굴 7장 · 271은 입력 불변).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

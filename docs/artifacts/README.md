@@ -8,9 +8,9 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 13 — 271차 기준(271 발행 — 「기준」 줄 · 캐릭터 줄 · 수염 층 대기) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 14 — 271차 기준(그림 얼굴 초상 — 층 구조 · 라벨 마스크 · 수염 층 대기) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 13 — 271차 기준 · 채비 문법은 258차(271 발행 — 「271차 기준」 줄만) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 14 — 271(2)차 기준(수염 층 3장 설치 — 「기준」 줄 · 캐릭터 줄) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 15 — 271(2)차 기준(그림 얼굴 초상 — 층 구조 · 라벨 마스크 · 수염 층 3) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 14 — 271(2)차 기준 · 채비 문법은 258차(「271(2)차 기준」 줄만) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 68 — 270(2)차(인물 얼굴 7장 흰 주머니 투명 — HTML 안 그림 다시 · 67 = 268차 인물 얼굴 35장) |
 
 - 남은 과업 설계는 **비공개**(주인만 열림)다. 나머지 셋은 「링크가 있는 사람」 공유다. 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
