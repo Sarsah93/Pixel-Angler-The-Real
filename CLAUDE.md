@@ -85,7 +85,8 @@
   재질 3(나일론 늘어남 · 젖음 −8% · 카본 쓸림 0.55 · 합사 쓸림 1.8 · 가이드 1.4) · 세기 = 공칭 × (1 − 마모 × 0.5) · 단계 4(0.2 · 0.5 · 0.8) · 스풀 바꿈 · 잘림 · 다시 매기(목줄 1.5m · 원줄 3m)로 0 ·
   `InventoryStore.lineWearView/retieLine`(세이브 `lineWear` — 구세이브 0) · 1인칭 `bumpLineWear` + 흰 테 알림 · 채비 창 배지(쓸림 · 심함 · 위험) · 목록 「줄 끝을 잘라 다시 매기」(고정 중에도) ·
   가이드 2 · 상세 「성질」 · 도움말 · 영어 · 채비 탭 토스트가 다시 그리기에 지워지던 결함 고침 · 검증 = core 345/345 · 하네스 18/18 · 빌드 3/3 · typecheck 0 ·
-  아티팩트 과업 16 · 라이브러리 18 · 순서도 16 · 위키 71. **다음 = 86차 배포 · main 빨리 감기 · 사용자 실검증 · 계수 조율(백로그 CP)**.
+  아티팩트 과업 16 · 라이브러리 18 · 순서도 16 · 위키 71 · **86차 배포**(실행 15 · gh-pages `8e5bf34` · 기동 15.6초 · pageerror 0) · main 빨리 감기 완료.
+  **다음 = 사용자 실검증(배지 · 다시 매기 · 알림 빈도) · 계수 조율(백로그 CP)**.
   상세 `docs/wiki/03-WORKLOG/2026-10-26-273-line-wear-durability.md`.
 - **272차**: **소모 채비 묶음 판매(바늘 10 · 봉돌 6 · 묶음추 4 · 좁쌀봉돌 20 · 반달구슬 16 · 도래 10) · 구멍봉돌 그림(관통 구멍) · 하모니 PR #12 · #11 병합** —
   사용자 「바늘 1개를 저 가격에 팔지 않아 … 한 묶음으로 팔아야 해 … 구멍봉돌 이미지에서 일부가 고리봉돌 이미지」 → `ShopEntry.packQty`(진열 값 = 묶음 값 · 기준가 · 되팔기 = 한 개 값) ·
@@ -200,9 +201,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `d15b6cd` — **최근 85차 배포 2026-10-26 = 272(2)차까지 포함**(272 소모 채비 묶음 판매 16종 · 구멍봉돌 그림 · 272(2) 쿠션고무 5 · 트레블 훅 3) —
-  작업 브랜치 `14542a7` · 실행 14 · 정적 2,004 · 기동 9.4초 · pageerror 0. main은 2026-10-26 하모니 PR #12 · #11 병합으로 `0415a0d`(CI 「검증」 초록)다 —
-  **272차 두 커밋(`63afeb1` · `14542a7`)은 아직 main에 없다**(작업 브랜치 → main 빨리 감기는 사용자 결정).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `8e5bf34` — **최근 86차 배포 2026-10-26 = 273차까지 포함**(273 원줄 · 목줄 내구도 · 272 묶음 판매 16종 · 구멍봉돌 그림) —
+  작업 브랜치 `f9ed6d0` · 실행 15 · 정적 2,004(같음 2,001 · 다름 0) · 기동 15.6초 · pageerror 0. main은 2026-10-26 사용자 지시로 작업 브랜치에 빨리 감기했다(272 · 273차 포함 — 86차 기록 커밋이 머리).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 70 = 272(2)차**(묶음 16종 — 69 = 272 「묶음 판매」 줄 · 구멍봉돌 그림 · 68 = 270(2) 인물 얼굴 7장)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
