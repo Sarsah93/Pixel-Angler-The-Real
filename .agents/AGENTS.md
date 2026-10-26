@@ -327,6 +327,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   든 채로는 집어 든 칸이 축 · 냉장고 · 옷장 `upright` · 위 · 옆 그림 15종 · 세로 수조 물고기 · 도움말 · 영어.
 - 검증: 하네스(말풍선 위 끝 258 = 기둥 240 + 18 · 찍는 동안 고정 · 서두 · 되짚기 · 맺음 0건 · 소파 네 자리 · 막힘 · 들고 돌리기 · 침대 · 냉장고 · 수조 · pageerror 0) ·
   빌드 3/3 · typecheck 0 · core 345/345. 상세: [274차 워크로그](../docs/wiki/03-WORKLOG/2026-10-26-274-coach-dock-dialogue-narration-furniture-turn.md).
+- **87차 배포**(2026-10-26 · 실행 16 · main `6a78414` · gh-pages `8425ca0` · 정적 2,004 · 기동 26.0초 · pageerror 0) · main 빨리 감기 완료(사용자 지시).
 
 **이전 변경 (2026-10-26 273차) — 원줄 · 목줄 내구도(묶인 줄의 마모 · 재질 · 「줄 끝 잘라 다시 매기」)**
 
