@@ -82,7 +82,8 @@
   사용자 「바늘 1개를 저 가격에 팔지 않아 … 한 묶음으로 팔아야 해 … 구멍봉돌 이미지에서 일부가 고리봉돌 이미지」 → `ShopEntry.packQty`(진열 값 = 묶음 값 · 기준가 · 되팔기 = 한 개 값) ·
   봉돌 한 개 값 납값 근사(core `SINKER_PACK_QTY` 6 · 4) · `handleBuy` 묶음 × 낱개 · 칸 「10개입」 · 장바구니 「묶음당」 · 구세이브 기준가 정정 · `sinker_pillar.png` Gemini 다시(관통 구멍 · 줄) ·
   카드 채비 봉돌 아이콘 고리 · 검증 = 하네스(구매 · 구세이브 · 칸 · 상세 · 404 0 · pageerror 0) · core 332/332 · 빌드 3/3 · 아티팩트 과업 15 · 라이브러리 16 · 순서도 15 · 위키 69.
-  **다음 = 사용자 실검증(상점 칸 · 장바구니 · 봉돌 그림) · 쿠션고무 · 트레블 훅 묶음 여부(사용자 판단) · 다음 배포에 포함**. 상세 `docs/wiki/03-WORKLOG/2026-10-26-272-pack-sale-hole-sinker-art.md`.
+  **(2)** 쿠션고무 5개입 · 트레블 훅 3개입(직판장 신규 · 프롤로그 바늘 판정 제외 — 묶음 16종 · 라이브러리 17 · 위키 70) · **85차 배포(2026-10-26 · 실행 14 · gh-pages `d15b6cd` · 기동 9.4초 · pageerror 0)**.
+  **다음 = 사용자 실검증(상점 칸 「10개입」 · 장바구니 · 봉돌 그림) · 봉돌 주조 레시피 손익(백로그 CO)**. 상세 `docs/wiki/03-WORKLOG/2026-10-26-272-pack-sale-hole-sinker-art.md`.
 - **271차**: **주인공 얼굴 층 구조(민머리 기본판 + 머리 모양 층 + 라벨 마스크 — 케이스별 판 72장 폐기)** —
   사용자 「기본 얼굴형에 머리/수염/입을 변경하는 것으로 적용해야지, 하나하나 케이스별로 다 뽑는 건 의미가 없지 않을까」 → 270(2) 동그라미 둘 = 경계 추측의 한계(밝기 같아져 경계 소실 · 전이 픽셀 주인 없음) →
   시범 2장(이동 0 · 배율 1.000 · 코~턱 차이 0.29%) → 층 원판 22장(`--set layers` — 앞 판을 같은 인물 앵커로 · 약 1,300원) → `tools/face_layers.cjs`(정렬 · 공통 틀 · 차이로 층 · 라벨 마스크 ·
@@ -197,18 +198,18 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `5a7ded7` — **최근 84차 배포 2026-10-23 = 271(2)차까지 포함**(270 색 치환 · 270(2) 흰 주머니 · 271 얼굴 층 구조 · 271(2) 수염 층) —
-  작업 브랜치 `7d3d5cc` · 실행 13 · 기동 12.0초 · pageerror 0. main은 2026-10-23에 `44c8f10`으로 빨리 감았다(이번엔 원격 세션의 push가 막히지 않았다) —
-  2026-10-26 하모니 PR #12 · #11을 병합해 main은 `0415a0d`(CI 「검증」 초록)다.
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `d15b6cd` — **최근 85차 배포 2026-10-26 = 272(2)차까지 포함**(272 소모 채비 묶음 판매 16종 · 구멍봉돌 그림 · 272(2) 쿠션고무 5 · 트레블 훅 3) —
+  작업 브랜치 `14542a7` · 실행 14 · 정적 2,004 · 기동 9.4초 · pageerror 0. main은 2026-10-26 하모니 PR #12 · #11 병합으로 `0415a0d`(CI 「검증」 초록)다 —
+  **272차 두 커밋(`63afeb1` · `14542a7`)은 아직 main에 없다**(작업 브랜치 → main 빨리 감기는 사용자 결정).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 69 = 272차**(아이템 「묶음 판매」 줄 · 구멍봉돌 그림 — HTML 안 · 68 = 270(2) 인물 얼굴 7장 · 67 = 268차 인물 얼굴 35장)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 70 = 272(2)차**(묶음 16종 — 69 = 272 「묶음 판매」 줄 · 구멍봉돌 그림 · 68 = 270(2) 인물 얼굴 7장)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
   남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 15 = 272차 기준 · 비공개) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 16 = 272차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 15 = 272차 기준 · 문법은 258차) · 위키(위 줄 — 69 = 272차 묶음 판매 줄 · 구멍봉돌 그림).
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 17 = 272(2)차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 15 = 272차 기준 · 문법은 258차) · 위키(위 줄 — 70 = 272(2) 묶음 16종 · 69 = 272 묶음 판매 줄 · 구멍봉돌 그림).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
