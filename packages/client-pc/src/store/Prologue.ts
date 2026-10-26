@@ -225,7 +225,7 @@ export function buyKindOf(e: BuyView): PrologueBuyKind | null {
   const sub = e.subCategory ?? '';
   if (sub === '원줄 스풀') return 'line';
   if (sub === '목줄 스풀') return 'leader';
-  if (sub === '바늘/훅') return 'hook';
+  if (sub === '바늘/훅') return e.id === 'inv_treble' ? null : 'hook';   // 272(2) — 트레블 훅(루어용)은 원투 채비 바늘이 아니다
   if (e.sinkerKind) return prologueHeavySinker(e) ? null : 'sinker';
   if (sub === '냉동미끼' || sub === '선어미끼' || sub === '생미끼') return 'bait';
   return null;

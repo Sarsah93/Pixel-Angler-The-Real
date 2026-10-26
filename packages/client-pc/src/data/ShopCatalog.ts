@@ -109,7 +109,7 @@ export interface ShopEntry extends InvItemTemplate {
   /** 1회 구매 최대 수량 (1이면 단건 확인만) — 묶음 판매(`packQty`)면 묶음 수 */
   maxPerPurchase: number;
   /**
-   * 272차 — 묶음 판매: 한 번 사면 이만큼 가방에 들어온다(바늘 10 · 봉돌 6 · 묶음추 4 · 좁쌀봉돌 20 · 반달구슬 16 · 도래 10).
+   * 272차 — 묶음 판매: 한 번 사면 이만큼 가방에 들어온다(바늘 10 · 봉돌 6 · 묶음추 4 · 좁쌀봉돌 20 · 반달구슬 16 · 도래 10 · 쿠션고무 5 · 트레블 훅 3).
    * 사용자 지시 「바늘 1개를 저 가격에 팔지 않아. 바늘 10개 정도를 3,500원 … 한 묶음으로 팔아야 해」.
    * `price`는 **묶음 값**, `basePrice`(가방 기준가 · 되파는 값 · 위키)는 **한 개 값**. 장바구니 · 재고 수량은 묶음 수.
    */
@@ -290,6 +290,8 @@ const TACKLE_CORNER: ShopEntry[] = [
   // 256차 — 「카본 목줄 3호 · 150m」를 `shop_carbon3`(14,000원)로 한 번 더 팔던 줄을 뺐다 — 같은 물건이 위 `inv_carbon15`(10,500원)로 이미 있다
   // 272차 — 바늘 · 좁쌀봉돌 · 도래 · 반달구슬은 묶음으로 판다(packQty) — price = 묶음 값 · basePrice = 한 개 값
   { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   basePrice: 300,   price: 3500,  packQty: 10, maxPerPurchase: 5, equippable: false, desc: '범용 바늘 (미끼 채비). 한 봉지에 10개.' },
+  // 272(2) — 트레블 훅은 시작 아이템뿐이라 잃으면 살 곳이 없었다 → 직판장 3개입(사용자 「트레블 훅은 3개씩으로」)
+  { id: 'inv_treble',   name: '루어용 트레블 훅',   icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   basePrice: 900,   price: 3200,  packQty: 3,  maxPerPurchase: 5, equippable: false, desc: '루어의 바늘을 갈아 끼우는 세 갈래 바늘. 한 봉지에 3개.' },
   ...['inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
   { id: 'inv_float08', name: '구멍찌 0.8호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },
@@ -309,8 +311,9 @@ const TACKLE_CORNER: ShopEntry[] = [
   ...TAIRABA_HEAD_WEIGHTS.map(tairabaHeadEntry),
   { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', basePrice: 3500, price: 4200, maxPerPurchase: 10, equippable: false, rigPart: 'tairaba_skirt', desc: '헤드 뒤에 다는 고무 스커트 — 새우·게 다리처럼 흔들린다.' },
   { id: 'inv_tairaba_necktie_orange', name: '타이라바 넥타이 (주황)', icon: '', iconTexture: 'tairaba_necktie_orange', category: 'tackle', subCategory: '채비 부속', basePrice: 2500, price: 3000, maxPerPurchase: 10, equippable: false, rigPart: 'tairaba_necktie', desc: '길게 늘어뜨린 넥타이 — 등속 릴링에서 꼬리처럼 흐른다.' },
-  { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호', icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 종형 쿠션고무.' },
-  { id: 'inv_cushion_round', name: '원형 쿠션고무 2호', icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 원형 쿠션고무.' },
+  // 272(2) — 쿠션고무도 묶음(5개입 — 사용자 「쿠션고무도 묶음으로」)
+  { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호', icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', basePrice: 250, price: 1500, packQty: 5, maxPerPurchase: 5, equippable: false, desc: '찌·채비 충격을 흡수하는 종형 쿠션고무. 한 봉지에 5개.' },
+  { id: 'inv_cushion_round', name: '원형 쿠션고무 2호', icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', basePrice: 250, price: 1500, packQty: 5, maxPerPurchase: 5, equippable: false, desc: '찌·채비 충격을 흡수하는 원형 쿠션고무. 한 봉지에 5개.' },
   { id: 'inv_bead_halfmoon', name: '반달구슬 3호', icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', basePrice: 90, price: 1800, packQty: 16, maxPerPurchase: 5, equippable: false, desc: '채비 위치를 고정하는 반달구슬. 한 팩에 16개.' },
 ];
 

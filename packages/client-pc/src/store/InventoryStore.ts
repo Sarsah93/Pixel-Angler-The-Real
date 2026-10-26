@@ -702,7 +702,7 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
 }
 
 /** 272차 — 묶음으로 파는 시드 소모품(한 개 기준가로 바뀐 것) — 구세이브 기준가 정정 대상 */
-const PACK_UNIT_IDS = new Set(['inv_chinu3', 'inv_sinkerG2', 'inv_swivel', 'inv_swivel_barrel', 'inv_bead_halfmoon']);
+const PACK_UNIT_IDS = new Set(['inv_chinu3', 'inv_sinkerG2', 'inv_swivel', 'inv_swivel_barrel', 'inv_bead_halfmoon', 'inv_cushion_bell', 'inv_cushion_round', 'inv_treble']);
 
 function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
@@ -758,7 +758,7 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
     // 272차 — 묶음으로 파는 소모품(바늘 · 좁쌀봉돌 · 도래 · 반달구슬 · 봉돌)의 basePrice는 **한 개** 값(상점 묶음 값은 ShopCatalog `price`)
     { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 300,   equippable: false },
-    { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
+    { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 900,   equippable: false },
     // 256차 — 「지그헤드 3g」(`inv_jighead` · 낚시용품 탭)는 루어 카탈로그의 `lure_jighead_3`과 같은 물건이라 시드에서 뺐다(`ItemIdAlias`)
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
     { id: 'inv_minnow',   name: '미노우 90F (플로팅)',      icon: '', iconTexture: 'item_minnow', category: 'tackle', subCategory: '루어',      qty: 2,  basePrice: 14000, equippable: false },
@@ -779,8 +779,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 100,   equippable: false },
     { id: 'inv_swivel',   name: '핀 도래 8호',              icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 250,   equippable: false, rigPart: 'swivel_snap' },
     { id: 'inv_cushion',  name: '쿠션고무 / 반달구슬',      icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 12, basePrice: 2000,  equippable: false },
-    { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호',    icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
-    { id: 'inv_cushion_round', name: '원형 쿠션고무 2호',   icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
+    { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호',    icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 250, equippable: false },
+    { id: 'inv_cushion_round', name: '원형 쿠션고무 2호',   icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 250, equippable: false },
     { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 90, equippable: false },
     // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드·스커트·넥타이)
     // 193차 — 카드 채비 완제품(반짝이 깃 바늘 3·5단 · 민바늘 7단)

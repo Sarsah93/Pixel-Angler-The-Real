@@ -47,6 +47,18 @@
 | 교체 | `food assets/tackle/sinker_pillar.png` · `public/tackle/sinker_pillar.png` · `public/tackle/icon/sinker_pillar.png` | 732×1164(격자 120×192칸) · 카드 57×90 · 아이콘 40×64(`tackle_cards.cjs --only`) |
 | 갱신 | `docs/artifacts/{library,tasks,rig_flow}.html` · 위키 | 라이브러리 「소모 채비 묶음 판매」 항목 · 「272차 기준」 · 위키 Version 69 |
 
+### 3-1. (2) 쿠션고무 5개입 · 트레블 훅 3개입(사용자 「쿠션고무도 묶음으로 넣고, 트레블 훅은 3개씩으로 하고, 배포해줘」)
+
+| 구분 | 위치 | 내용 |
+|---|---|---|
+| 수정 | `data/ShopCatalog.ts` | 종형 · 원형 쿠션고무 2호 `packQty` 5 · 기준가 250 · 진열 1,500원 · **트레블 훅 직판장 신규**(`inv_treble` — 3개입 3,200원 · 기준가 900 · 시작 아이템뿐이라 잃으면 살 곳이 없었다) |
+| 수정 | `store/InventoryStore.ts` | 시드 기준가 트레블 900 · 쿠션고무 250 · `PACK_UNIT_IDS`에 셋 추가(구세이브 정정) |
+| 수정 | `store/Prologue.ts` | 첫 장보기 「바늘」 판정에서 `inv_treble` 제외(루어용 — 원투 채비 바늘이 아니다) |
+| 수정 | 도움말 · `en_help.ts` · 라이브러리 · 위키 | 묶음 목록 16종 |
+
+검증(하네스 `shop272b.cjs`): 묶음 16종 · 트레블 `buyKindOf` null(감성돔 바늘 hook) · 구매(트레블 1 · 종형 1 · 원형 2) → 3 · 5 · 10개 · −7,700원 ·
+구세이브 4,000 → 900 · 1,200 → 250 · 404 0 · pageerror 0 · typecheck 0 · 라이브러리 점검 PASS(Version 17) · 위키 Version 70(묶음 16).
+
 ## 4. 구조상 위치 — 어느 계층의 무엇인가
 
 `S6 경제·상점 → 상점 → 묶음 판매`. 층은 셋이다 — **데이터**(`packQty` · 한 개 기준가 · core 봉돌 표) · **판정**(`handleBuy` 지급 수 · 되팔기 `basePrice` ·
@@ -73,7 +85,7 @@
 
 ## 6. 잔여 — 이번에 안 한 것
 
-- **쿠션고무 2종(1,500원 낱개 — 실제 4~6개입) · 트레블 훅(상점 미판매 · 기준가 4,000원)** — 사용자가 든 목록 밖이라 두었다. 같은 방식이면 `packQty` 한 줄이다(사용자 판단).
+- ~~쿠션고무 · 트레블 훅 묶음 여부~~ → (2)에서 사용자 지시로 넣었다(쿠션고무 5개입 · 트레블 훅 3개입 직판장 판매).
 - **봉돌 주조 레시피**(`bp_sinker_ring` · `bp_sinker_hole` · 묶음추 — 2개 산출)의 산출 가치가 한 개 값으로 줄었다(20호 2개 = 7,500 → 1,360원) — 제작 손익 재조율은 별도 차수.
 - 사용자 실검증(상점 칸 · 장바구니 · 구멍봉돌 그림 — 가방 · 상세 · 채비창) · 다음 배포에 포함.
 
@@ -92,6 +104,6 @@
 - [x] `IMPLEMENTATION_PLAN.md` §2-3 · §3
 - [x] `CLAUDE.md` 이어받기 요약 · 아티팩트 판
 - [x] 아티팩트 4개 — 남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 15) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 16) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 16 → (2) 17) ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 15 · 문법 258차) ·
-  전체 위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c (Version 69)
+  전체 위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c (Version 69 → (2) 70)
