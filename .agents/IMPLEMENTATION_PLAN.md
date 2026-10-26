@@ -202,7 +202,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
   `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null · `setRigNode` 칸 종류 검사 · 불러올 때 칸 비움 · 정리 무리는 미끼 곁.
 - QA 「집 내부 … 항상 밝고, 가구 배치할 때 … 어두움 처리 하되, 배치할 가구 및 영역을 하이라이트」: 집 어둠 배율 0(스탠드 · 수조 번짐만) ·
   배치 어둠 막(α 0.6) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부를 뚫고 테두리 · 가게 실내는 이미 밝음(depth 70~99).
-- 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · 89차 배포.
+- 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 기동 15.9초 · pageerror 0).
 - 상세: [워크로그 279](../docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md)
 
 ### 278차 (2026-10-27) — 채집 놀이 멈춤 · 오류 · 조작 가이드 · 건널 수 없던 보행 다리 전 지역 보정

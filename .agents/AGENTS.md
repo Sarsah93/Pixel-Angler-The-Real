@@ -326,7 +326,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   `setRigNode`가 칸 종류(`RIG_SLOTS[slot].accepts`)를 본다 · 불러올 때 그 칸 비움(묶음은 가방에) · 「정리」 무리는 미끼 곁.
 - 집: 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만 시각을 따른다) · 배치 어둠 막(`HomeDecorMode.veil` α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부를 뚫고 테두리 ·
   WebGL 복구 때 `repaint()` · 가이드 · 도움말 · 영어. 가게 실내는 이미 밝다(depth 70~99 — 바꾸지 않음).
-- 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · 89차 배포. 상세: [279차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md).
+- 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(라이브러리 23 · 과업 21 · 순서도 21 · 위키 74) · main 빨리 감기(`f650407`) · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 정적 2,004 다름 0 · 기동 15.9초 · pageerror 0). 상세: [279차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md).
 
 **이전 변경 (2026-10-27 278차) — 채집 놀이 멈춤 · 오류(닫은 창의 가이드) · 조작 가이드 보강 · 건널 수 없던 보행 다리 전 지역 보정**
 

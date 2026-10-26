@@ -89,7 +89,7 @@
   QA 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 · 「집 내부(다른 상점 내부들도 마찬가지겠지?)는 항상 밝고, 가구 배치할 때, 어두움(DIMMING)처리 하되, 배치할 가구 및 영역을 하이라이트」 →
   267은 `isBaitItem`만 막아 채비 창 미끼 칸(`partKindOf`)이 열려 있었다 · `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null · `setRigNode` 칸 종류 검사(`RIG_SLOTS[slot].accepts`) · 불러올 때 칸 비움 ·
   집 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만) · `HomeDecorMode.veil`(α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부(`checkPlace`) 뚫기 + 테두리 · WebGL 복구 `repaint()` · 가게 실내는 이미 밝음(depth 70~99) ·
-  검증 = 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · 89차 배포.
+  검증 = 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 기동 15.9초 · pageerror 0).
   **다음 = 사용자 실검증 · 막 세기 조율 · 미끼 갑 불러오기 자동 열기 결정(백로그 CV · CW)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md`.
 - **278차**: **채집 놀이 멈춤 · 오류 · 조작 가이드 · 건널 수 없던 보행 다리 전 지역 보정** —
   사용자 「갯강구 … 미니게임 어떻게 하는 지 모르겠고 … esc 눌렀더니 … 에러 문구가 뜨고 화면이 freeze」 · 「태안 안흥 … 캐릭터가 지나갈 수 없는 다리 … 전체 맵 검수 … 지형을 너무 늘리지 않는 선에서」 →
@@ -203,17 +203,17 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `7982192` — **최근 88차 배포 2026-10-26 = 275차까지 포함**(275 가구는 바라보는 쪽에서만 · 274 안내 말풍선 자리 · 대화창 배경 나레이션 → 일지 · 가구 네 방위 회전) —
-  main `cccd289` · 실행 17 · 정적 2,004(같음 2,001 · 다름 0) · 기동 14.5초(헤드리스) · pageerror 0. main은 2026-10-26 사용자 지시로 작업 브랜치에 빨리 감기했다(275차 포함 — 88차 기록 커밋이 머리).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `74cd4fd` — **최근 89차 배포 2026-10-27 = 279차까지 포함**(279 미끼 갑 채비 칸 금지 · 집 늘 밝음 · 가구 배치 어둠 막 · 278 채집 놀이 멈춤 · 보행 다리 · 277 가방 정리 · 차도 위 가게 자리) —
+  main `f650407` · 실행 18 · 정적 2,004(같음 2,001 · 다름 0) · 기동 15.9초(헤드리스) · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(277 · 278 · 279차 — 89차 기록 커밋이 머리).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 73 = 278차**(시스템 페이지 갱신분 — 72 = 277 「시스템」 탭 새 절 셋)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 74 = 279차**(도움말 집 쪽 · 시스템 페이지 갱신분 — 73 = 278 시스템 페이지)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 20 = 278차 기준) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 22 = 278차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 20 = 278차 기준 · 문법은 258차) · 위키(위 줄 — 73 = 278 시스템 페이지).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 21 = 279차 기준) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 23 = 279차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 21 = 279차 기준 · 문법은 258차) · 위키(위 줄 — 74 = 279 도움말 · 시스템 페이지).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
