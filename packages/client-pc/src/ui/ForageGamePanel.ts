@@ -6,6 +6,8 @@
  *  - 마우스를 판 위에서 움직이면 손이 따라간다(덮치기 · 줍기). 누르면 덮친다 · 뗀다 · 판다 · 당긴다.
  *  - Space도 누르기/누르고 있기와 같다.
  *  - 창에 조작 글자를 쓰지 않는다(R11) — 갈래마다 처음 열 때 체험 가이드가 짚어 준다.
+ *  - 278차 — 가이드가 다른 말풍선(물가 캐스팅 · 코치) 뒤에 줄 서서 판이 영영 멈추던 것을 고쳤다: 놀이 가이드는 세상 안 말풍선을
+ *    밀어내고(`preempt`) 1.5초 안에 자기 가이드가 뜨지 않으면 판을 그냥 시작한다. 제목줄 「방법」으로 언제든 다시 본다.
  *  - ESC · ✕ = 포기 → 그 생물은 사라진다(사용자 지시 「놓친 생물은 사라지도록」).
  */
 
@@ -18,7 +20,7 @@ import {
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH } from '../PhaserConfig.js';
 import { t } from '../i18n/I18n.js';
-import { maybeStartTour, tourSeen, guideTipsEnabled, type TourOptions } from './GuideTour.js';
+import { GuideTour, tourSeen, guideTipsEnabled, type TourOptions } from './GuideTour.js';
 import { forageSpotTexKey } from '../scenes/field/ForageSystem.js';
 import { ensureForageBed, bedKindFor, toolSpriteKey, addToolSprite, makeForageDemo, DEMO_H } from './ForageBoardArt.js';
 import { InventoryStore } from '../store/InventoryStore.js';
@@ -40,30 +42,32 @@ export const FORAGE_GAME_LABEL: Record<ForageGameKind, string> = {
   snatch: '덮치기', pick: '줍기', pry: '떼기', dig: '파기', pull: '당기기',
 };
 
-/** 처음 열 때 가이드 문장(갈래마다 다르다 — R11) */
+/** 처음 열 때 가이드 문장(갈래마다 다르다 — R11). 278차 — 첫 문장에 조작(마우스 · 왼쪽 버튼 · Space)을 또렷이, 끝에 남은 시간 · 그만두기 */
 const TOUR_TEXT: Record<ForageGameKind, string[]> = {
   snatch: [
-    '달아나는 녀석이다. 마우스를 움직이면 손이 따라가고, 누르면 그 자리를 덮친다.',
+    '달아나는 녀석을 손으로 덮쳐 잡는다. 판 위에서 마우스를 좌우로 움직이면 손이 따라가고, 왼쪽 버튼(또는 Space)을 누르면 그 자리를 덮친다.',
     '손이 내려가는 데 잠깐 걸린다. 녀석이 움찔하면 곧 튀어 나간다 — 지금 자리가 아니라 내려갈 때의 자리를 노리자. 손을 너무 빨리 들이대면 놀라 바위 틈으로 숨는다.',
   ],
   pick: [
-    '느리게 기는 녀석이다. 손을 가져가 눌러서 집는다.',
+    '느리게 기는 녀석이다. 판 위에서 마우스로 손을 녀석 위에 가져가 왼쪽 버튼(또는 Space)을 눌러 집는다.',
     '가시나 껍데기가 날카로운 것은 맨손이면 다칠 수 있다. 장갑을 끼거나 집게를 쓰자.',
   ],
   pry: [
-    '바위에 꽉 붙은 녀석이다. 집게 끝(맨손이면 손끝)이 껍데기 가장자리를 따라 왔다 갔다 한다.',
-    '껍데기가 살짝 들린 틈(초록)에 집게 끝이 닿는 순간 눌러 비집어 넣는다. 동그라미를 다 채우면 떨어진다.',
+    '바위에 꽉 붙은 녀석이다. 집게 끝(맨손이면 손끝)이 껍데기 가장자리를 따라 저절로 왔다 갔다 한다 — 마우스는 움직이지 않아도 된다.',
+    '껍데기가 살짝 들린 틈(초록)에 끝이 닿는 순간 왼쪽 버튼(또는 Space)을 눌러 비집어 넣는다. 동그라미를 다 채우면 떨어진다.',
     '헛짚으면 녀석이 놀라 더 꽉 붙는다 — 틈이 좁아지고 손이 급해진다.',
   ],
   dig: [
-    '묻힌 녀석이다. 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.',
-    '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 쉬면 조용히 올라오지만 판 구멍도 조금씩 메워진다. 파고 쉬는 박자를 찾자.',
+    '묻힌 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.',
+    '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 손을 떼고 쉬면 조용히 올라오지만 판 구멍도 조금씩 메워진다. 파고 쉬는 박자를 찾자.',
   ],
   pull: [
-    '바위 틈에 숨은 녀석이다. 누르고 있으면 끌어낸다. 아래 막대가 줄의 긴장이다 — 밝은 칸 안에서만 끌려 나온다.',
-    '녀석이 몸을 부풀리면 곧 버틴다. 그때는 놓아야 한다. 계속 당기면 다리가 끊기고 먹물을 쏘며 달아난다.',
+    '바위 틈에 숨은 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 끌어낸다. 아래 막대가 줄의 긴장이다 — 밝은 칸 안에서만 끌려 나온다.',
+    '녀석이 몸을 부풀리면 곧 버틴다. 그때는 손을 떼야 한다. 계속 당기면 다리가 끊기고 먹물을 쏘며 달아난다.',
   ],
 };
+/** 278차 — 모든 갈래 끝 문장: 남은 시간 · 그만두기 · 다시 보기 */
+const TOUR_TAIL = '판 위의 가는 줄이 남은 시간이다. 시간이 다 되거나 ESC로 그만두면 녀석은 달아난다. 제목줄 「방법」을 누르면 이 안내를 다시 본다.';
 
 export class ForageGamePanel extends DraggablePanel {
   private gs: ForageGameState;
@@ -90,6 +94,11 @@ export class ForageGamePanel extends DraggablePanel {
   private readonly onEnd: (s: ForageGameState) => void;
   private readonly underwater: boolean;
   private keySpace?: Phaser.Input.Keyboard.Key;
+  /** 278차 — 이 판의 가이드 id · 가이드를 기다린 시간(못 뜨면 판을 그냥 시작한다) */
+  private readonly tourId: string;
+  private tourWaitMs = 0;
+  /** 278차 — 가이드를 Space · 클릭으로 닫은 그 누름이 판의 첫 수(덮치기 · 헛짚기)가 되지 않게 잠깐 입력을 버린다 */
+  private graceMs = 0;
 
   constructor(
     scene: Phaser.Scene, creature: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean },
@@ -159,12 +168,51 @@ export class ForageGamePanel extends DraggablePanel {
 
     // 처음이면 가이드가 끝날 때까지 판을 멈춘다(R11)
     // 225차 — 떼기 가이드 문장을 고쳐 다시 보여 준다(_v2)
-    const tourId = `forage_${state.kind}${state.kind === 'pry' ? '_v2' : ''}`;
-    this.paused = guideTipsEnabled() && !tourSeen(tourId);   // 277차 — 안내 말풍선을 끈 동안은 멈추지 않는다
-    if (this.paused) maybeStartTour(scene, () => this.buildTour(tourId));
+    // 278차 — 조작 문장을 고쳐 갈래마다 다시 보여 준다(_v3)
+    this.tourId = `forage_${state.kind}_v3`;
+    this.paused = guideTipsEnabled() && !tourSeen(this.tourId);   // 277차 — 안내 말풍선을 끈 동안은 멈추지 않는다
+    if (this.paused) GuideTour.request(scene, () => this.buildTour(this.tourId), { preempt: true });
+    this.buildHowButton();
     this.draw();
     this.applyFix();
   }
+
+  /**
+   * 278차 — 제목줄 「방법」: 언제든 이 판의 안내를 다시 본다(안내 말풍선을 꺼 둬도). 보는 동안 판은 멈춘다.
+   * 사용자 리포트 「미니게임 어떻게 하는 지 모르겠고 … 가이드가 충분하지 않으며 없음」.
+   */
+  private buildHowButton(): void {
+    const w = 52, h = 22, x = W - 34 - w, y = 5;
+    const g = this.scene.add.graphics();
+    const paint = (hover: boolean): void => {
+      g.clear();
+      g.fillStyle(hover ? 0x1d4a6e : 0x13324c, 1).fillRoundedRect(x, y, w, h, 4);
+      g.lineStyle(1.5, hover ? 0x7fd0ff : 0x3d7fae, 1).strokeRoundedRect(x, y, w, h, 4);
+    };
+    paint(false);
+    const label = this.scene.add.text(x + w / 2, y + h / 2, '방법', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => paint(true));
+    hit.on('pointerout', () => paint(false));
+    hit.on('pointerdown', () => this.replayTour());
+    this.add([g, label, hit]);
+  }
+
+  /** 278차 — 「방법」: 판을 멈추고 안내를 처음부터(본 것으로 치지 않는 다시 보기) */
+  private replayTour(): void {
+    if (this.finished || GuideTour.active?.opts.id === `${this.tourId}_again`) return;
+    this.paused = true;
+    this.tourWaitMs = 0;
+    GuideTour.request(this.scene, () => {
+      const o = this.buildTour(`${this.tourId}_again`);
+      return o ? { ...o, ephemeral: true } : null;
+    }, { preempt: true, force: true });
+  }
+
+  /** 하네스용 — 「방법」 누르기 */
+  devReplayTour(): void { this.replayTour(); }
 
   private onPointerUp = (): void => { this.holding = false; };
 
@@ -195,9 +243,11 @@ export class ForageGamePanel extends DraggablePanel {
     this.aimX = Phaser.Math.Clamp((lx - BX) / BW, 0, 1);
   }
 
-  private buildTour(id: string): TourOptions {
+  private buildTour(id: string): TourOptions | null {
+    // 278차 — 요청 ~ 실행 사이에 창이 닫혔다(ESC로 포기) — 파괴된 창은 `scene`이 없다(「reading 'textures'」 오류 · 화면 멈춤)
+    if (!this.active || !this.scene) return null;
     // 251차 — 색 구분 보정(적록)이면 「틈(초록)」이 파랗게 보인다 — 글의 색 이름을 맞춘다
-    const texts = TOUR_TEXT[this.gs.kind].map((t) => (colorVisionMode() === 'redgreen' ? t.replace('(초록)', '(파랑)') : t));
+    const texts = [...TOUR_TEXT[this.gs.kind], TOUR_TAIL].map((t) => (colorVisionMode() === 'redgreen' ? t.replace('(초록)', '(파랑)') : t));
     // 229차 — 말풍선마다 그림(바닥 · 생물 · 손 · 화살표)을 넣는다 — 글자만으로 설명하지 않는다
     const boardKey = `forageboard_${this.creature.id}`;
     const picKey = this.wormImg ? 'honmushi_straight_px' : this.scene.textures.exists(boardKey) ? boardKey : forageSpotTexKey(this.creature);
@@ -206,12 +256,21 @@ export class ForageGamePanel extends DraggablePanel {
       id,
       alive: () => this.active,
       anchor: () => this.localRect(0, 0, W, H),
-      onDone: () => { this.paused = false; },
+      onDone: () => { this.resumeAfterTour(); },
       steps: texts.map((text) => ({
         text, target: () => this.localRect(BX, this.boardTop, BW, BOARD_H),
         picture: () => makeForageDemo(this.scene, kind, picKey, tool, gloves, uw), pictureH: DEMO_H,
       })),
     };
+  }
+
+  /** 278차 — 가이드가 끝나면 판을 연다. 가이드를 닫은 누름은 판에 넘기지 않는다(손을 뗐다가 다시 눌러야 한다) */
+  private resumeAfterTour(): void {
+    this.paused = false;
+    this.tourWaitMs = 0;
+    this.pressed = false;
+    this.holding = false;
+    this.graceMs = 250;
   }
 
   /** 하네스용 — 이 판의 상태 */
@@ -221,7 +280,22 @@ export class ForageGamePanel extends DraggablePanel {
 
   private tick(_time: number, delta: number): void {
     if (!this.active || this.finished) return;
-    if (this.paused) { this.pressed = false; this.draw(); return; }
+    if (this.paused) {
+      this.pressed = false;
+      // 278차 — 이 판의 가이드가 떠 있지도 열릴 차례도 아니면 1.5초 뒤 판을 그냥 시작한다(멈춘 채 남지 않게)
+      const mine = GuideTour.active?.opts.id;
+      if (mine === this.tourId || mine === `${this.tourId}_again`) this.tourWaitMs = 0;
+      else if ((this.tourWaitMs += delta) > 1500) this.resumeAfterTour();
+      this.draw();
+      return;
+    }
+    if (this.graceMs > 0) {
+      this.graceMs -= delta;
+      this.pressed = false;
+      this.holding = false;
+      this.draw();
+      return;
+    }
     const input: ForageGameInput = { aimX: this.aimX, press: this.pressed, hold: this.holding };
     this.pressed = false;
     const g = this.gs;

@@ -367,6 +367,28 @@ export const EN_PANELS: Record<string, string> = {
   '[채집] 장화를 신고 얕은 물에 들어섰다.': '[Gather] Stepped into the shallows in wading boots.',
   '가방이 가득 찼습니다 — 놓아주었습니다': 'Your bag is full — you let it go',
   // 가이드(첫 열기) — 놀이 갈래마다
+  // 278차 — 조작을 또렷이 쓴 판(_v3) · 끝 문장 · 「방법」 단추
+  '방법': 'How to',
+  '달아나는 녀석을 손으로 덮쳐 잡는다. 판 위에서 마우스를 좌우로 움직이면 손이 따라가고, 왼쪽 버튼(또는 Space)을 누르면 그 자리를 덮친다.':
+    'Pounce on this runner with your hand. Move the mouse left and right over the board and your hand follows; press the left button (or Space) to pounce on that spot.',
+  '느리게 기는 녀석이다. 판 위에서 마우스로 손을 녀석 위에 가져가 왼쪽 버튼(또는 Space)을 눌러 집는다.':
+    'This one crawls slowly. Move your hand over it with the mouse and press the left button (or Space) to pick it up.',
+  '바위에 꽉 붙은 녀석이다. 집게 끝(맨손이면 손끝)이 껍데기 가장자리를 따라 저절로 왔다 갔다 한다 — 마우스는 움직이지 않아도 된다.':
+    'This one is clamped to the rock. The tip of your tongs (or your fingertip, bare-handed) slides back and forth along the shell edge on its own — you don’t need to move the mouse.',
+  '껍데기가 살짝 들린 틈(초록)에 끝이 닿는 순간 왼쪽 버튼(또는 Space)을 눌러 비집어 넣는다. 동그라미를 다 채우면 떨어진다.':
+    'The moment the tip reaches the gap where the shell lifts a little (green), press the left button (or Space) to wedge it in. Fill every circle and it comes free.',
+  '껍데기가 살짝 들린 틈(파랑)에 끝이 닿는 순간 왼쪽 버튼(또는 Space)을 눌러 비집어 넣는다. 동그라미를 다 채우면 떨어진다.':
+    'The moment the tip reaches the gap where the shell lifts a little (blue), press the left button (or Space) to wedge it in. Fill every circle and it comes free.',
+  '묻힌 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.':
+    'This one is buried. Hold the left button (or Space) to dig. The bar on the right is how much noise you are making.',
+  '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 손을 떼고 쉬면 조용히 올라오지만 판 구멍도 조금씩 메워진다. 파고 쉬는 박자를 찾자.':
+    'Too much noise and it flinches and burrows deeper. Let go and rest and it creeps back up — but your hole slowly fills in. Find the rhythm of digging and resting.',
+  '바위 틈에 숨은 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 끌어낸다. 아래 막대가 줄의 긴장이다 — 밝은 칸 안에서만 끌려 나온다.':
+    'This one hides in a crevice. Hold the left button (or Space) to draw it out. The bar below is the tension — it only comes out while the marker is in the bright band.',
+  '녀석이 몸을 부풀리면 곧 버틴다. 그때는 손을 떼야 한다. 계속 당기면 다리가 끊기고 먹물을 쏘며 달아난다.':
+    'When it puffs up it is about to brace. Let go then. Keep pulling and an arm tears off and it escapes in a cloud of ink.',
+  '판 위의 가는 줄이 남은 시간이다. 시간이 다 되거나 ESC로 그만두면 녀석은 달아난다. 제목줄 「방법」을 누르면 이 안내를 다시 본다.':
+    'The thin bar above the board is the time left. When it runs out, or you quit with ESC, it gets away. Press “How to” in the title bar to see this guide again.',
   '달아나는 녀석이다. 마우스를 움직이면 손이 따라가고, 누르면 그 자리를 덮친다.': 'This one runs. Move the mouse and your hand follows; click to pounce on that spot.',
   '손이 내려가는 데 잠깐 걸린다. 녀석이 움찔하면 곧 튀어 나간다 — 지금 자리가 아니라 내려갈 때의 자리를 노리자. 손을 너무 빨리 들이대면 놀라 바위 틈으로 숨는다.':
     'Your hand takes a moment to come down. When it twitches it is about to dart — aim for where it will be, not where it is. Bring your hand in too fast and it bolts into the rocks.',

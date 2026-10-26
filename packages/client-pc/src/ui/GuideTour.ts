@@ -80,6 +80,12 @@ export interface TourStep {
   pictureH?: number;
 }
 
+/** 278차 — 요청 선택: `preempt` = 떠 있는 세상 안 말풍선을 밀어낸다 · `force` = 안내 말풍선을 꺼 둬도 연다(사용자가 직접 부른 다시 보기) */
+export interface TourRequestOpts {
+  preempt?: boolean;
+  force?: boolean;
+}
+
 export interface TourOptions {
   /** 세이브 플래그 키 `tour.<id>` */
   id: string;
@@ -124,7 +130,7 @@ export function maybeStartTour(scene: Phaser.Scene, build: () => TourOptions | n
 export class GuideTour {
   /** 지금 떠 있는 가이드 (씬과 무관하게 하나뿐) */
   static active: GuideTour | null = null;
-  private static queue: { scene: Phaser.Scene; build: () => TourOptions | null }[] = [];
+  private static queue: { scene: Phaser.Scene; build: () => TourOptions | null; opt?: TourRequestOpts }[] = [];
   /** 다음 프레임에 열기로 한 요청 수 (request ~ 첫 update 사이) */
   private static pending = 0;
 
@@ -179,8 +185,11 @@ export class GuideTour {
     return true;
   }
 
-  static request(scene: Phaser.Scene, build: () => TourOptions | null): void {
-    if (!guideTipsOn) return;   // 277차 — 설정에서 안내 말풍선을 껐다
+  static request(scene: Phaser.Scene, build: () => TourOptions | null, opt?: TourRequestOpts): void {
+    if (!guideTipsOn && !opt?.force) return;   // 277차 — 설정에서 안내 말풍선을 껐다(278 — 사용자가 직접 부른 다시 보기는 연다)
+    // 278차 — 판을 멈추고 기다리는 놀이 창의 안내는 세상 안 말풍선(물가 캐스팅 · 프롤로그 코치 — passive)을 밀어낸다.
+    //   그 말풍선 뒤에 줄을 서면 영영 안 뜨고 판도 멈춘 채였다(사용자 리포트 — 갯강구 놀이). 밀린 쪽은 본 것으로 치지 않아 다시 뜬다.
+    if (opt?.preempt) GuideTour.preemptPassive();
     // 191차 — 씬이 내려가면 그 씬이 걸어 둔 요청은 버린다. 씬 인스턴스·`scene.events`는 재사용되므로
     //   남겨 두면 다음 세대(재시작·새 게임)에서 **파괴된 창을 붙잡은 build**가 실행된다.
     let armed = false;
@@ -191,7 +200,7 @@ export class GuideTour {
       GuideTour.queue = GuideTour.queue.filter((q) => q.scene !== scene);
     };
     const enqueue = (): void => {
-      GuideTour.queue.push({ scene, build });
+      GuideTour.queue.push({ scene, build, opt });
       scene.events.once('shutdown', purge);
     };
     // 창이 자리를 잡은 다음 프레임에 연다(생성자 안에서 바로 열면 좌표가 0이다)
@@ -199,9 +208,12 @@ export class GuideTour {
       scene.events.off('update', once);
       scene.events.off('shutdown', purge);
       disarm();
-      if (!guideTipsOn) return;   // 277차 — 요청과 다음 프레임 사이에 꺼졌다
+      if (!guideTipsOn && !opt?.force) return;   // 277차 — 요청과 다음 프레임 사이에 꺼졌다
+      if (opt?.preempt) GuideTour.preemptPassive();
       if (GuideTour.active) { enqueue(); return; }
-      const opts = build();
+      // 278차 — 닫힌 창의 build가 파괴된 씬 참조로 던지면(갯강구 놀이를 ESC로 닫은 뒤 「reading 'textures'」 — 화면 멈춤) 이 요청만 버린다
+      let opts: TourOptions | null = null;
+      try { opts = build(); } catch (e) { console.warn('[GuideTour] 안내를 만들지 못해 건너뜀', e); }
       // 235차 — 요청 ~ 다음 프레임 사이에 창이 닫혔으면 열지 않는다(파괴된 창의 사각형을 읽다가 게임 오류 배너가 떴다 —
       //   처음 연 가게를 바로 ESC로 닫으면 재현). 다음에 그 창을 다시 열 때 처음부터 다시 안내한다
       if (!opts || tourSeen(opts.id) || opts.steps.length === 0 || (opts.alive && !opts.alive())) { GuideTour.next(); return; }
@@ -214,6 +226,16 @@ export class GuideTour {
     scene.events.once('shutdown', purge);
   }
 
+  /** 278차 — 지금 떠 있는 것이 세상 안 말풍선(passive 단계)이면 접는다 — 기다리던 요청은 그대로 줄에 남긴다 */
+  private static preemptPassive(): void {
+    const a = GuideTour.active;
+    if (!a || !a.opts.steps[a.index]?.passive) return;
+    const q = GuideTour.queue;
+    GuideTour.queue = [];   // teardown → next()가 줄의 다른 안내를 먼저 열지 않게
+    a.teardown(false);
+    GuideTour.queue = q;
+  }
+
   /** 277차 — 떠 있는 말풍선 · 기다리는 요청을 모두 닫는다(본 것으로 치지 않음 — 다시 켜면 다시 뜬다) */
   static dismissAll(): void {
     GuideTour.queue = [];
@@ -224,7 +246,7 @@ export class GuideTour {
     while (GuideTour.queue.length && !GuideTour.active) {
       const n = GuideTour.queue.shift()!;
       if (!n.scene.sys.isActive() && !n.scene.sys.isPaused()) continue;
-      GuideTour.request(n.scene, n.build);
+      GuideTour.request(n.scene, n.build, n.opt);
       return;
     }
   }

@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 19 — 277차 기준(「기준」 줄 · 머리 · §06 「277차 실플레이 확인」 줄) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 21 — 277차 기준(「인벤토리」 정리 · 「도로 벡터 · 교통」 · 「체험 가이드」 끄고 켜기 · 새 항목 「일시정지 메뉴」 · 머리 작업 차수 277 · 바닥 줄 워크로그 198) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 19 — 277차 기준 · 채비 문법은 258차(「277차 기준」 줄만) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 72 — 277차(「시스템」 탭 새 절 셋: 가방 정리 · 길가 가게 자리와 차 · 일시정지 메뉴 · 안내 말풍선 + 시스템 페이지 갱신분). 지도 핀은 `pois.json` 좌표라 다시 찍지 않았다 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 20 — 278차 기준(「기준」 줄 · 머리 · §06 「278차 실플레이 확인」 줄) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 22 — 278차 기준(「해루질 현실화」 「방법」 · 「OSM 타일맵 파이프라인」 꼭짓점 이음 보정 · 「체험 가이드」 밀어내기 · 머리 작업 차수 278 · 바닥 줄 워크로그 199) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 20 — 278차 기준 · 채비 문법은 258차(「278차 기준」 줄만) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 73 — 278차(시스템 페이지 갱신분 — 해루질 · UI · 필드). 지도 탭 그림은 12지역 1칸짜리 변화(합계 137칸)라 다시 찍지 않았다 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

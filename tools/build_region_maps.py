@@ -316,6 +316,74 @@ def classify_osm(r, g, b):
             best, best_d = ch, d
     return best
 
+def _locally_linked(grid, gw, gh, ax, ay, bx, by, R=4):
+    """A에서 걷기 칸만 4-연결로 밟아 (A·B를 감싼 R칸 여유 상자 안에서) B에 닿는가."""
+    x0, x1 = min(ax, bx) - R, max(ax, bx) + R
+    y0, y1 = min(ay, by) - R, max(ay, by) + R
+    seen = {(ax, ay)}
+    dq = deque([(ax, ay)])
+    while dq:
+        x, y = dq.popleft()
+        if x == bx and y == by:
+            return True
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if x0 <= nx <= x1 and y0 <= ny <= y1 and 0 <= nx < gw and 0 <= ny < gh \
+               and (nx, ny) not in seen and grid[ny][nx] in OSM_WALKABLE:
+                seen.add((nx, ny)); dq.append((nx, ny))
+    return False
+
+
+def bridge_osm_pinches(gw, gh, grid):
+    """278차 — 꼭짓점으로만 맞닿은 걷기 칸을 4-연결로 잇는다(사용자 「OSM 좌표를 그대로 반영하려다 보니 …
+    캐릭터가 지나갈 수 없는 다리」 — 태안 안흥 나래교).
+
+    OSM 보행 다리(`bridge=yes` 보도 → 'D')와 보행로('w') · 방파제 선('b')은 1칸 폭으로 그어져 대각으로 꺾이면
+    칸끼리 꼭짓점만 닿는다. 걷기 · 충돌은 칸 4-연결이라 그런 다리는 그림만 있고 건널 수 없었다.
+    2×2 창에서 대각 두 칸만 걷기이고 나머지에 물('~')이 있으며 두 칸이 가까이서(R=4) 이어져 있지 않으면,
+    **물 모서리 한 칸만** 채운다(지형을 넓히지 않게 — 13개 지역 합계 약 140칸). 채우는 문자는 데크 > 방파제 > 보도 순.
+    반환 = 채운 칸 [(x, y, 문자)].
+    """
+    def fill_char(a, b):
+        for k in ('D', 'b', 'w'):
+            if k in (a, b):
+                return k
+        if a == b:
+            return a
+        return 'w' if 'r' in (a, b) else a
+
+    def nbr_walk(px, py):
+        return sum(1 for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+                   if (dx or dy) and 0 <= px + dx < gw and 0 <= py + dy < gh and grid[py + dy][px + dx] in OSM_WALKABLE)
+
+    added = []
+    for _pass in range(3):
+        before = len(added)
+        for y in range(gh - 1):
+            r0, r1 = grid[y], grid[y + 1]
+            for x in range(gw - 1):
+                a, b, c, d = r0[x], r0[x + 1], r1[x], r1[x + 1]
+                if a in OSM_WALKABLE and d in OSM_WALKABLE and b not in OSM_WALKABLE and c not in OSM_WALKABLE \
+                   and '~' in (b, c):
+                    A, B, corners = (x, y), (x + 1, y + 1), [(x + 1, y), (x, y + 1)]
+                elif b in OSM_WALKABLE and c in OSM_WALKABLE and a not in OSM_WALKABLE and d not in OSM_WALKABLE \
+                   and '~' in (a, d):
+                    A, B, corners = (x + 1, y), (x, y + 1), [(x, y), (x + 1, y + 1)]
+                else:
+                    continue
+                if _locally_linked(grid, gw, gh, A[0], A[1], B[0], B[1]):
+                    continue
+                cand = [p for p in corners if grid[p[1]][p[0]] == '~']
+                cand.sort(key=lambda p: -nbr_walk(*p))   # 이웃 걷기 칸이 많은 쪽 — 계단이 덜 삐죽하다
+                px, py = cand[0]
+                ch = fill_char(grid[A[1]][A[0]], grid[B[1]][B[0]])
+                grid[py][px] = ch
+                added.append((px, py, ch))
+        if len(added) == before:
+            break
+    return added
+
+
 def osm_walk_components(gw, gh, grid):
     """걷기 컴포넌트 라벨링 — (컴포넌트 수, 최대 컴포넌트 크기, 라벨 그리드)."""
     comp = [[-1] * gw for _ in range(gh)]
@@ -370,6 +438,14 @@ def build_seamless(root, region):
             if 0 <= c < w and 0 <= r < h and tch in OSM_PALETTE:
                 grid[r][c] = tch; applied += 1
         print(f'    패치 적용: 타일 {applied}개 · 프롭 {len(patch["props"])}개 · 지붕 {len(patch["roofs"])}개')
+
+    # 278차 — 꼭짓점만 맞닿은 다리 · 보도 · 방파제 선을 4-연결로(물 모서리 한 칸씩 — 패치 뒤에 건다)
+    pinch = bridge_osm_pinches(w, h, grid)
+    if pinch:
+        kinds = {}
+        for _, _, k in pinch:
+            kinds[k] = kinds.get(k, 0) + 1
+        print(f'    대각 이음 보정: {len(pinch)}칸 ' + ' '.join(f'{k}:{n}' for k, n in sorted(kinds.items())))
 
     # 검증 리포트 — §9 체크리스트 보조 (자동 카브는 하지 않는다: OSM 벡터가 정본)
     n_comp, max_comp, comp = osm_walk_components(w, h, grid)

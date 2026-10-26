@@ -74,6 +74,11 @@ tools/regions_config.py 에 지역 bbox 등록 (v4 — 262차: 속초 크기 bbo
   누수 — PNG에서 막고 재실행) · 스폰이 최대 걷기 컴포넌트에 있는지(build_region_maps 리포트) ·
   섬은 도보 불가.
 - terrain.png = **손수정 정본**(파이프라인 재실행이 덮어쓴다 — 수정본은 별도 백업 후 재실행 주의).
+- **꼭짓점만 맞닿은 걷기 칸은 빌더가 잇는다**(278차) — OSM 1칸 폭 선(보행 다리 `D` · 보도 `w` · 방파제 선 `b`)이 대각으로 꺾이면 칸끼리 꼭짓점만 닿아
+  4-연결 걷기에서 끊긴다(그림만 다리 — 태안 나래교). `build_seamless`가 패치 뒤에 `bridge_osm_pinches`(물 모서리 한 칸 · 멱등)를 건다 — 리포트 줄 「대각 이음 보정: N칸」.
+  ⚠ **seamless.json을 굽고 나서 손본 지역(속초 `sokcho_v2` — `author_sokcho_coast.py` · `author_yeonggeumjeong.py`)은 `build_region_maps`로 다시 굽지 않는다** —
+  손본 칸 1,640개가 terrain.png 상태로 돌아간다. 그런 지역은 `python3 tools/fix_walk_pinches.py <지역>`(제자리 · `--dry`).
+  재빌드 뒤에는 `git diff`로 seamless.json의 바뀐 칸이 보정 칸뿐인지 대조한다. `public/data/*/pois.json`은 압축 한 줄로 다시 쓰인다(내용 같음 — 커밋 전 되돌림).
 - ⚠ 대형 지역 수집은 수백 MB·수십 분 가능(요청 간 5초 대기). 서해(taean)는 seaEdges 경고 시 조정.
 - ⚠ `pointer.worldX/Y` 사용 금지 — 스크롤 카메라에서 미갱신. `RegionFieldScene.pointerWorld` 경유.
 - 청크 크기(64) 변경 시 `SeamlessChunks` 기본값과 `RegionFieldScene.SEAMLESS_CHUNK_TILES` 동시 수정.
