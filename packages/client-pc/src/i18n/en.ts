@@ -821,6 +821,10 @@ export const EN_RULES: Rule[] = [
   [/^\[수거\] 다른 사람이 먼저 (.+)을\(를\) 거둬 갔습니다\.$/, (m, tr) => `[Collect] Someone else hauled in the ${tr(m[1])} first.`],
   // ── 224차 미끼 경제 · 해루질 현실화 ──
   [/^(.+) \(중고\)$/, (m, tr) => `${tr(m[1])} (used)`],
+  // ── 272차 묶음 판매(바늘 10 · 봉돌 6 · 묶음추 4 · 좁쌀봉돌 20 · 반달구슬 16 · 도래 10) ──
+  [/^(.+) \((\d+)개입\)$/, (m, tr) => `${tr(m[1])} (pack of ${m[2]})`],
+  [/^(\d+)개입$/, 'pack of $1'],
+  [/^한 묶음 (\d+)개 · 개당 약 ([\d,]+)원$/, 'Pack of $1 · about ₩$2 each'],
   [/^포장을 뜯었다 — (.+) (\d+)개$/, (m, tr) => `Opened the pack — ${tr(m[1])} ×${m[2]}`],
   [/^(.+) — 물속이다\. 장화를 신어야 들어간다$/, (m, tr) => `${tr(m[1])} — it’s in the water. You need wading boots to go in`],
   [/^(.+) — 물이 차서 들어갈 수 없다$/, (m, tr) => `${tr(m[1])} — the water is too high to go in`],

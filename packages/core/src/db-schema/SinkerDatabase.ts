@@ -7,6 +7,10 @@
  *
  * 무게(g) = 호수 × 3.75 (반올림)
  *
+ * 272차 — 봉돌은 **묶음으로 판다**(사용자 지시 「구멍봉돌 20호 75g 하나 4,500원? 너무 비싸고 현실적으로 맞지 않아 … 봉돌은 6개씩, 묶음추 봉돌은 4개씩」).
+ * `price`는 **한 개** 기준가(납값 근사 — 고리 · 구멍 150원 + 7원/g, 묶음추는 바늘까지 든 완제품이라 500원 + 8원/g)이고,
+ * 상점은 `packQty`개 묶음을 `price × packQty × 1.2`에 판다(`ShopCatalog.sinkerShopEntry`). 가방 · 되팔기 · 위키 기준가는 한 개 값.
+ *
  * 종류별 특성:
  *  - 고리 봉돌 (HaeDong): 표준 고리형. 특성 보정 없음.
  *  - 구멍 봉돌 (BaekKyung): 원줄이 봉돌 구멍을 관통 — 물고기가 봉돌 무게를 덜 느껴
@@ -24,6 +28,13 @@ export const SINKER_KIND_LABEL: Record<WeightSinkerKind, string> = {
   ring: '고리 봉돌',
   hole: '구멍 봉돌',
   bundle: '묶음추 봉돌',
+};
+
+/** 272차 — 한 묶음에 든 개수(고리 · 구멍 6 · 묶음추 4) */
+export const SINKER_PACK_QTY: Record<WeightSinkerKind, number> = {
+  ring: 6,
+  hole: 6,
+  bundle: 4,
 };
 
 /** 종류별 제조 브랜드(가상 명칭) */
@@ -57,8 +68,10 @@ export interface WeightSinkerSpec {
   weightG: number;
   /** 표시 이름 (예: '고리봉돌 20호') */
   nameKo: string;
-  /** 기준가 (원) — 무게 비례 목업 */
+  /** 기준가 (원) — **한 개** 값(272차 — 납값 근사). 묶음 값은 상점이 `packQty`를 곱한다 */
   price: number;
+  /** 한 묶음에 든 개수(272차 — 상점은 이 단위로 판다) */
+  packQty: number;
 }
 
 /**
@@ -86,7 +99,9 @@ function buildSinkerDb(): WeightSinkerSpec[] {
         ho,
         weightG,
         nameKo: `${label} ${ho}호`,
-        price: 1500 + weightG * 30,
+        // 272차 — 한 개 값(10원 단위). 20호(75g) 구멍봉돌 680원 × 6개 × 1.2 = 상점 4,900원 · 25호 묶음추 1,250원 × 4 × 1.2 = 6,000원
+        price: kind === 'bundle' ? Math.round((500 + weightG * 8) / 10) * 10 : Math.round((150 + weightG * 7) / 10) * 10,
+        packQty: SINKER_PACK_QTY[kind],
       });
     }
   });

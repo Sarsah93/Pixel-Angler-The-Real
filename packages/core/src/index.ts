@@ -93,7 +93,7 @@ export { SPOT_DATABASE, getSpotById, getSpotsByRegion, getSpotsByType } from './
 export { BAIT_DATABASE, getBaitById, getForagableBaits } from './db-schema/BaitDatabase.js';
 export type { WeightSinkerKind, WeightSinkerSpec } from './db-schema/SinkerDatabase.js';
 export {
-  WEIGHT_SINKER_DB, SINKER_KIND_LABEL, SINKER_KIND_BRAND,
+  WEIGHT_SINKER_DB, SINKER_KIND_LABEL, SINKER_KIND_BRAND, SINKER_PACK_QTY,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   sinkerWeightByHo, getWeightSinkerSpec,
 } from './db-schema/SinkerDatabase.js';

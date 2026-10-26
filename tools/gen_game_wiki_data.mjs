@@ -450,6 +450,7 @@ const items = itemCatalog.map((it) => ({
   price: it.basePrice ?? 0,
   desc: it.desc ?? '',
   soldAt: it.soldAt ?? [],
+  pack: it.pack ?? null,   // 272차 — 묶음 판매: { qty, price }(basePrice는 한 개 값)
   seed: !!it.isSeed,
   img: imgOf(it.imgKey) ?? imgOf(it.iconTexture),   // 255차 — 게임과 같은 그림 고르기(`dump_wiki_items.mjs` imgKey)
   spec: itemSpec(it.tpl ?? {}, it),

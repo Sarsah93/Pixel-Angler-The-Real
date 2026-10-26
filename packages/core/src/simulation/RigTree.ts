@@ -359,7 +359,8 @@ export function childrenOf(n: RigNode, idx: number, item: RigItemView | null): R
         }));
         out.push(node('bait', idx, { kit: 'card_rig', hookNo: i, label: `미끼 ${i}` }));
       }
-      out.push(node('fixed', idx, { fixedLabel: '봉돌', fixedIcon: 'sinker_pillar', kit: 'card_rig' }));
+      // 272차 — 카드 채비 아래 봉돌은 스냅에 거는 고리봉돌 그림(구멍봉돌 그림은 줄이 관통하는 기둥이라 맞지 않는다)
+      out.push(node('fixed', idx, { fixedLabel: '봉돌', fixedIcon: 'sinker_ring', kit: 'card_rig' }));
       return out;
     }
     case 'hook':

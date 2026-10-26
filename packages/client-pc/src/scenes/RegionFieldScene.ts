@@ -201,7 +201,7 @@ import { hideLoadingAfterRender, isLoadingShown, setLoadingProgress, setLoadingS
 import { setAmbience } from '../audio/Ambience.js';
 import { playMusic, type MusicPlace } from '../audio/Music.js';
 import { weatherSoundLevels } from '../audio/WeatherSound.js';
-import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry } from '../data/ShopCatalog.js';
+import { BuildingKind, BUILDING_LABEL, BUILDING_GOODS, BUILDING_HOURS, shopHoursState, BUILDING_KIND_CYCLE, SHOP_CATALOG, ShopEntry, packQtyOf, packLabelOf } from '../data/ShopCatalog.js';
 import { playSfx } from '../audio/SfxBank.js';
 
 interface RegionFieldInit {
@@ -3833,18 +3833,21 @@ export class RegionFieldScene extends Phaser.Scene {
         this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${cost.toLocaleString()}원)`);
         continue;
       }
+      // 272차 — 묶음 판매(바늘 10 · 봉돌 6 · 묶음추 4 …): 장바구니 수량 = 묶음 수, 가방에는 낱개로(`packQty`는 가방에 싣지 않는다)
+      const { packQty: _packQty, ...tpl } = entry;
+      const units = qty * packQtyOf(entry);
       // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
       if (entry.furnKind) {
         for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
-      } else if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(entry, qty))) {
+      } else if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(tpl, units))) {
         // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
         failed.push(`${entry.name}(가방에 자리 없음)`);
         continue;
       }
       paid += cost;
       if (ctx) ShopStore.take(ctx, entryKey(entry), qty);
-      done.push(`${entry.name} x${qty}`);
-      this.hud?.pushLog(`[구매] ${entry.name} x${qty} (-${cost.toLocaleString()}원)`);
+      done.push(`${entry.name}${packLabelOf(entry)} x${qty}`);
+      this.hud?.pushLog(`[구매] ${entry.name}${packLabelOf(entry)} x${qty} (-${cost.toLocaleString()}원)`);
       // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
       StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
       noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기

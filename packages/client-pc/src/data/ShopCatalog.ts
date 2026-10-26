@@ -106,8 +106,14 @@ export interface ShopEntry extends InvItemTemplate {
    * 아이콘은 가구 그림을 구운 텍스처 `furn_<kind>`(`ensureFurnitureIcon` — BootScene에서 굽는다).
    */
   furnKind?: FurnKind;
-  /** 1회 구매 최대 수량 (1이면 단건 확인만) */
+  /** 1회 구매 최대 수량 (1이면 단건 확인만) — 묶음 판매(`packQty`)면 묶음 수 */
   maxPerPurchase: number;
+  /**
+   * 272차 — 묶음 판매: 한 번 사면 이만큼 가방에 들어온다(바늘 10 · 봉돌 6 · 묶음추 4 · 좁쌀봉돌 20 · 반달구슬 16 · 도래 10).
+   * 사용자 지시 「바늘 1개를 저 가격에 팔지 않아. 바늘 10개 정도를 3,500원 … 한 묶음으로 팔아야 해」.
+   * `price`는 **묶음 값**, `basePrice`(가방 기준가 · 되파는 값 · 위키)는 **한 개 값**. 장바구니 · 재고 수량은 묶음 수.
+   */
+  packQty?: number;
   /** 224차 — 손님이 판 중고 장비(가게가 되판다). 사면 가게 중고 칸에서 빠진다 */
   usedUid?: string;
   /** 235차 — 이 달(KST)에만 진열한다(모종 · 종구 — 심는 철) */
@@ -186,13 +192,19 @@ function lureTemplate(lureId: string): InvItemTemplate {
   };
 }
 
-/** 무게추 봉돌 id → 상점 판매 항목 (채비 코너) */
+/** 272차 — 묶음 판매 항목의 한 묶음 개수(없으면 1) · 진열 이름 꼬리 「(10개입)」 */
+export const packQtyOf = (e: Pick<ShopEntry, 'packQty'>): number => Math.max(1, Math.round(e.packQty ?? 1));
+export const packLabelOf = (e: Pick<ShopEntry, 'packQty'>): string => (packQtyOf(e) > 1 ? ` (${packQtyOf(e)}개입)` : '');
+/** 묶음 값 = 한 개 기준가 × 묶음 수 × 1.2(가게 마진) — 100원 단위 */
+const packShopPrice = (unit: number, qty: number): number => Math.max(100, Math.round(unit * qty * 1.2 / 100) * 100);
+
+/** 무게추 봉돌 id → 상점 판매 항목 (채비 코너) — 272차 묶음(고리 · 구멍 6개 · 묶음추 4개 — core `SINKER_PACK_QTY`) */
 function sinkerShopEntry(id: string): ShopEntry {
   const s = WEIGHT_SINKER_DB.find((x) => x.id === id)!;
   return {
     id: s.id, name: `${s.nameKo} (${s.weightG}g)`, icon: '', iconTexture: s.kind === 'ring' ? 'sinker_ring' : s.kind === 'hole' ? 'sinker_pillar' : s.kind === 'bundle' ? 'sinker_bundle' : undefined,
     category: 'tackle', subCategory: '채비 부속', basePrice: s.price,
-    price: Math.round(s.price * 1.2), maxPerPurchase: 10, equippable: false,
+    price: packShopPrice(s.price, s.packQty), packQty: s.packQty, maxPerPurchase: 5, equippable: false,
     // 236차 — 3호(11g)는 찌낚시대 · 민물대로 던지는 가벼운 처박기 원투용(프롤로그 첫 장보기)
     desc: s.ho <= 5
       ? `${s.brand} ${s.ho}호 가벼운 원투 봉돌. 찌낚시대 · 민물대로도 던질 수 있는 무게.${s.kind === 'hole' ? ' 이물감↓(예신 피드백 +15%).' : ''}`
@@ -276,7 +288,8 @@ const TACKLE_CORNER: ShopEntry[] = [
   { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', basePrice: 9000, price: 10500, maxPerPurchase: 5, equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5, desc: '카본 쇼크리더. 직경 0.285mm · 인장 10.5lb · 나일론보다 강하고 합사보다 쓸림에 유리한 목줄.' },
   { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', basePrice: 6000, price: 7000, maxPerPurchase: 5, equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8, desc: '나일론 모노라인. 신축성과 쓸림 내성이 있어 찌낚시에 적합.' },
   // 256차 — 「카본 목줄 3호 · 150m」를 `shop_carbon3`(14,000원)로 한 번 더 팔던 줄을 뺐다 — 같은 물건이 위 `inv_carbon15`(10,500원)로 이미 있다
-  { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   basePrice: 3000,  price: 3500,  maxPerPurchase: 20, equippable: false, desc: '범용 바늘 (미끼 채비).' },
+  // 272차 — 바늘 · 좁쌀봉돌 · 도래 · 반달구슬은 묶음으로 판다(packQty) — price = 묶음 값 · basePrice = 한 개 값
+  { id: 'inv_chinu3',   name: '감성돔 바늘 3호',   icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   basePrice: 300,   price: 3500,  packQty: 10, maxPerPurchase: 5, equippable: false, desc: '범용 바늘 (미끼 채비). 한 봉지에 10개.' },
   ...['inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinker_ring_20', 'inv_sinker_ring_25', 'inv_sinker_hole_15', 'inv_sinker_hole_20',
     'inv_sinker_hole_25', 'inv_sinker_bundle_25'].map(sinkerShopEntry),
   { id: 'inv_float08', name: '구멍찌 0.8호', icon: '', iconTexture: 'float_hole', category: 'tackle', subCategory: '채비 부속', basePrice: 8000, price: 9000, maxPerPurchase: 10, equippable: false, desc: '얕은 수심·약한 조류용 저부력 구멍찌.', floatBuoyG: 8 },
@@ -286,19 +299,19 @@ const TACKLE_CORNER: ShopEntry[] = [
   { id: 'inv_subfloat_2b', name: '수중찌 -2B', icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', basePrice: 5200, price: 6200, maxPerPurchase: 10, equippable: false, desc: '작은 부력 보정용 고무 수중찌.', floatBuoyG: -2 },
   { id: 'inv_subfloat_20', name: '수중찌 -2.0', icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', basePrice: 6800, price: 7800, maxPerPurchase: 10, equippable: false, desc: '2.0호 구멍찌에 맞춘 금속 수중찌.', floatBuoyG: -20 },
   { id: 'inv_subfloat', name: '수중찌 -0.8호', icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, desc: '부력찌 아래에 다는 침력체.', floatBuoyG: -8 },
-  { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', basePrice: 2000, price: 2500, maxPerPurchase: 20, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌.' },
-  { id: 'inv_swivel', name: '핀 도래 8호', icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, rigPart: 'swivel_snap', desc: '핀(스냅)이 달린 도래 — 묶음추·타이라바 같은 간편 채비를 걸고 뺀다.' },
+  { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2', icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', basePrice: 100, price: 2500, packQty: 20, maxPerPurchase: 5, equippable: false, desc: '찌낚시 목줄 미세 조정용 좁쌀 봉돌. 한 통에 20개.' },
+  { id: 'inv_swivel', name: '핀 도래 8호', icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', basePrice: 250, price: 3000, packQty: 10, maxPerPurchase: 5, equippable: false, rigPart: 'swivel_snap', desc: '핀(스냅)이 달린 도래 — 묶음추·타이라바 같은 간편 채비를 걸고 뺀다. 한 봉지에 10개.' },
   // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드 60/80/100g · 스커트 · 넥타이)
   // 196차 — 열기(빨간 깃)·전갱이(녹색 깃) 카드 채비 3~7단 — 사용자 제공 포장 사진(tools/gen_card_rig_icons.py)
   ...CARD_RIG_ENTRIES,
-  { id: 'inv_swivel_barrel', name: '바렐 도래 6호', icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', basePrice: 1800, price: 2200, maxPerPurchase: 20, equippable: false, rigPart: 'swivel_plain', desc: '통 모양 몸통의 일반 도래 — 원줄과 목줄의 꼬임을 줄인다.' },
+  { id: 'inv_swivel_barrel', name: '바렐 도래 6호', icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', basePrice: 180, price: 2200, packQty: 10, maxPerPurchase: 5, equippable: false, rigPart: 'swivel_plain', desc: '통 모양 몸통의 일반 도래 — 원줄과 목줄의 꼬임을 줄인다. 한 봉지에 10개.' },
 // 194차 — 헤드 무게별 라인업(40~200g · 사용자 참고 이미지). 그림은 하나 — 크기는 ItemIcon.iconWeightScale이 무게로 조절
   ...TAIRABA_HEAD_WEIGHTS.map(tairabaHeadEntry),
   { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', basePrice: 3500, price: 4200, maxPerPurchase: 10, equippable: false, rigPart: 'tairaba_skirt', desc: '헤드 뒤에 다는 고무 스커트 — 새우·게 다리처럼 흔들린다.' },
   { id: 'inv_tairaba_necktie_orange', name: '타이라바 넥타이 (주황)', icon: '', iconTexture: 'tairaba_necktie_orange', category: 'tackle', subCategory: '채비 부속', basePrice: 2500, price: 3000, maxPerPurchase: 10, equippable: false, rigPart: 'tairaba_necktie', desc: '길게 늘어뜨린 넥타이 — 등속 릴링에서 꼬리처럼 흐른다.' },
   { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호', icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 종형 쿠션고무.' },
   { id: 'inv_cushion_round', name: '원형 쿠션고무 2호', icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, desc: '찌·채비 충격을 흡수하는 원형 쿠션고무.' },
-  { id: 'inv_bead_halfmoon', name: '반달구슬 3호', icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', basePrice: 1500, price: 1800, maxPerPurchase: 20, equippable: false, desc: '채비 위치를 고정하는 반달구슬.' },
+  { id: 'inv_bead_halfmoon', name: '반달구슬 3호', icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', basePrice: 90, price: 1800, packQty: 16, maxPerPurchase: 5, equippable: false, desc: '채비 위치를 고정하는 반달구슬. 한 팩에 16개.' },
 ];
 
 /** 직판장 채집·통발 코너 (121차) — 시행령 허용 도구(집게·갈고리·통발) + 헤드랜턴. 통발은 아이템 소유·설치 소모·수거 반환 */

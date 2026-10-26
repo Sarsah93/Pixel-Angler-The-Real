@@ -28,6 +28,8 @@ export interface WikiItemEntry {
   desc?: string;
   /** 판매처 이름 목록 — 미발견 카드의 입수 힌트 */
   soldAt: string[];
+  /** 272차 — 묶음 판매(한 묶음 개수 · 묶음 값). `basePrice`는 한 개 값 */
+  pack?: { qty: number; price: number };
   /** 시드(초기 지급) 여부 */
   isSeed: boolean;
   /** 원본 아이템 템플릿 — dev 콘솔 지급(addItem) 등 실지급용 */
@@ -63,14 +65,16 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
     const shopName = BUILDING_LABEL[shop.kind] ?? shop.name;
     for (const e of shop.sells) {
       const prev = map.get(e.id);
+      const pack = e.packQty && e.packQty > 1 ? { qty: e.packQty, price: e.price } : undefined;
       if (prev) {
         if (!prev.desc && e.desc) prev.desc = e.desc;
         if (!prev.soldAt.includes(shopName)) prev.soldAt.push(shopName);
+        if (pack && !prev.pack) prev.pack = pack;
       } else {
         map.set(e.id, {
           id: e.id, name: e.name, icon: e.icon, iconTexture: e.iconTexture,
           category: e.category, subCategory: e.subCategory, basePrice: e.basePrice,
-          desc: e.desc, soldAt: [shopName], isSeed: false,
+          desc: e.desc, soldAt: [shopName], isSeed: false, pack,
           tpl: e,
         });
       }

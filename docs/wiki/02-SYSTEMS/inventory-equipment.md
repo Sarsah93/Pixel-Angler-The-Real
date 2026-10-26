@@ -108,6 +108,8 @@
 - **그림을 바꿀 때 아이템의 `iconTexture`를 고치지 않는다**(255) — 옛 키(`art_*` · `px:*`)를 그대로 두고 그림 표(`ItemImages.ts` — `node tools/item_cards.cjs`가 생성)로 잇는다.
   세이브에 굳은 키가 그대로 맞으므로 이전이 필요 없다. 요리처럼 **키 자체가 계열 그림**이던 것만 불러올 때 바꾼다(`refreshDishPhoto`).
 - **장비 그림 키는 아이템 정의에 손으로 적지 않는다**(249) — 대 · 릴 · 줄은 `rodArtKey(id, name)` · `reelArtKey` · `lineArtKey`로 고른다.
+- **봉돌 그림은 생김새가 곧 종류다**(272) — 구멍봉돌(`sinker_pillar`)은 몸통을 줄이 관통하는 원통(고리 · 도래 · 소켓 없음), 고리봉돌(`sinker_ring`)은 위에 고리.
+  Gemini 생김새 설명에 「고리 없음」을 명시하지 않으면 고리가 달려 나온다. 묶음으로 파는 소모 채비의 `basePrice`는 한 개 값이다(구세이브는 불러올 때 정정 — `PACK_UNIT_IDS`).
   새 낚싯대는 core `rodSpecFor().use`가 맞으면 그림이 따라온다. 옛 세이브는 불러올 때 빌려 쓰던 키(`item_spinning_rod` · `px:it_rod` · `line_spool_saiso` 등)일 때만 바꾼다.
 
 - **[234] 「넣다 실패하면 사라지는」 지급을 만들지 않는다** — `addItem`이 false를 돌려줄 수 있는 모든 지급(퀘스트 보상 · 거치대 회수 · 거래 반환)은

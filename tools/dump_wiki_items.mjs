@@ -49,6 +49,7 @@ const list = buildItemWikiCatalog().map((e) => ({
   id: e.id, name: e.name, iconTexture: e.iconTexture, imgKey: imgKeyOf(e),
   category: e.category, subCategory: e.subCategory, basePrice: e.basePrice,
   desc: e.desc ?? '', soldAt: e.soldAt, isSeed: e.isSeed, tpl: e.tpl,
+  pack: e.pack ?? null,   // 272차 — 묶음 판매(한 묶음 개수 · 묶음 값)
 }));
 console.log(JSON.stringify(list));
 `);

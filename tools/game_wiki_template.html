@@ -1832,7 +1832,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         title: i.name, sub: i.groupLabel + ' · ' + i.sub, lede: i.desc, img: i.img,
         tags: [i.groupLabel, i.sub].concat(i.seed ? ['처음부터 보유'] : []),
         body: '<div class="ssec"><h3>거래</h3>' + kvRows([
-          ['기준가', i.price ? '<b>' + nfw(i.price) + '</b>' : '판매하지 않음'],
+          ['기준가', i.price ? '<b>' + nfw(i.price) + '</b>' + (i.pack ? ' <span class="dim">(한 개)</span>' : '') : '판매하지 않음'],
+          ['묶음 판매', i.pack ? i.pack.qty + '개입 <b>' + nfw(i.pack.price) + '</b> <span class="dim">(개당 약 ' + nfw(Math.round(i.pack.price / i.pack.qty)) + ')</span>' : null],
           ['파는 곳', i.soldAt.length ? esc(i.soldAt.join(' · ')) : '<span class="dim">상점에서 팔지 않습니다.</span>'],
         ]) + '</div>' +
         (i.spec.length

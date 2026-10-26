@@ -14,7 +14,7 @@
 
 import { LedgerStore } from './LedgerStore.js';
 import {
-  evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind,
+  evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind, getWeightSinkerSpec,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
@@ -701,6 +701,9 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
   });
 }
 
+/** 272차 — 묶음으로 파는 시드 소모품(한 개 기준가로 바뀐 것) — 구세이브 기준가 정정 대상 */
+const PACK_UNIT_IDS = new Set(['inv_chinu3', 'inv_sinkerG2', 'inv_swivel', 'inv_swivel_barrel', 'inv_bead_halfmoon']);
+
 function createSeedItems(): InvItem[] {
   const defs: Omit<InvItem, 'slot'>[] = [
     // ── 장비 (손/의류) ──
@@ -753,7 +756,8 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_pe1',      name: 'AMSTRONG 합사 원줄 1호 · 150m', icon: '', iconTexture: 'item_line_pe', category: 'tackle', subCategory: '원줄 스풀', qty: 1,  basePrice: 18000, equippable: false, lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: 150, lineNo: 1, lineDiameterMm: 0.165, lineStrengthLb: 18 },
     { id: 'inv_carbon15', name: 'AMSTRONG 카본 목줄 3호 · 150m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 9000,  equippable: false, lineMaterial: 'fluorocarbon', lineForm: 'suspend', lineLengthM: 150, lineNo: 3, lineDiameterMm: 0.285, lineStrengthLb: 10.5 },
     { id: 'inv_nylon2',   name: 'AMSTRONG 나일론 목줄 2호 · 200m', icon: '', iconTexture: 'item_line_leader', category: 'tackle', subCategory: '목줄 스풀', qty: 1,  basePrice: 6000,  equippable: false, lineMaterial: 'nylon', lineForm: 'float', lineLengthM: 200, lineNo: 2, lineDiameterMm: 0.235, lineStrengthLb: 8 },
-    { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 3000,  equippable: false },
+    // 272차 — 묶음으로 파는 소모품(바늘 · 좁쌀봉돌 · 도래 · 반달구슬 · 봉돌)의 basePrice는 **한 개** 값(상점 묶음 값은 ShopCatalog `price`)
+    { id: 'inv_chinu3',   name: '감성돔 바늘 3호',          icon: '', iconTexture: 'item_hook_chinu', category: 'tackle', subCategory: '바늘/훅',   qty: 12, basePrice: 300,   equippable: false },
     { id: 'inv_treble',   name: '루어용 트레블 훅',         icon: '', iconTexture: 'item_treble', category: 'tackle', subCategory: '바늘/훅',   qty: 6,  basePrice: 4000,  equippable: false },
     // 256차 — 「지그헤드 3g」(`inv_jighead` · 낚시용품 탭)는 루어 카탈로그의 `lure_jighead_3`과 같은 물건이라 시드에서 뺐다(`ItemIdAlias`)
     // 루어 — 바늘 일체형 가짜미끼. 바늘 소켓에 장착하며 미끼 소켓이 비활성화된다.
@@ -772,16 +776,16 @@ function createSeedItems(): InvItem[] {
     { id: 'inv_subfloat10', name: '수중찌 -1.0호',          icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6500,  equippable: false, floatBuoyG: -10 },
     { id: 'inv_subfloat_2b', name: '수중찌 -2B',             icon: '', iconTexture: 'subfloat_light', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 5200,  equippable: false, floatBuoyG: -2 },
     { id: 'inv_subfloat_20', name: '수중찌 -2.0',            icon: '', iconTexture: 'subfloat_heavy', category: 'tackle', subCategory: '채비 부속', qty: 2,  basePrice: 6800,  equippable: false, floatBuoyG: -20 },
-    { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 2000,  equippable: false },
-    { id: 'inv_swivel',   name: '핀 도래 8호',              icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 2500,  equippable: false, rigPart: 'swivel_snap' },
+    { id: 'inv_sinkerG2', name: '좁쌀봉돌 G2',              icon: '', iconTexture: 'splitshot', category: 'tackle', subCategory: '채비 부속', qty: 20, basePrice: 100,   equippable: false },
+    { id: 'inv_swivel',   name: '핀 도래 8호',              icon: '', iconTexture: 'swivel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 250,   equippable: false, rigPart: 'swivel_snap' },
     { id: 'inv_cushion',  name: '쿠션고무 / 반달구슬',      icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 12, basePrice: 2000,  equippable: false },
     { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호',    icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
     { id: 'inv_cushion_round', name: '원형 쿠션고무 2호',   icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1200, equippable: false },
-    { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 1500, equippable: false },
+    { id: 'inv_bead_halfmoon', name: '반달구슬 3호',         icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', qty: 6, basePrice: 90, equippable: false },
     // 192차 — 채비 모딩: 바렐 도래 · 타이라바 조립 부품(헤드·스커트·넥타이)
     // 193차 — 카드 채비 완제품(반짝이 깃 바늘 3·5단 · 민바늘 7단)
     { id: 'inv_card_flasher_3', name: '전갱이 카드 채비 3단', icon: '', iconTexture: 'card_rig_jeongaengi', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 3000, equippable: false, rigPart: 'card_rig', kitHooks: 3, cardFlasher: true, cardTarget: 'horse_mackerel', sinkerWeightG: 38 },
-    { id: 'inv_swivel_barrel', name: '바렐 도래 6호',       icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 1800, equippable: false, rigPart: 'swivel_plain' },
+    { id: 'inv_swivel_barrel', name: '바렐 도래 6호',       icon: '', iconTexture: 'swivel_barrel', category: 'tackle', subCategory: '채비 부속', qty: 10, basePrice: 180, equippable: false, rigPart: 'swivel_plain' },
     { id: 'inv_tairaba_head_80', name: '타이라바 헤드 80g', icon: '', iconTexture: 'tairaba_head_red', category: 'tackle', subCategory: '채비 부속', qty: 2, basePrice: 9000, equippable: false, rigPart: 'tairaba_head', sinkerWeightG: 80 },
     { id: 'inv_tairaba_skirt_red', name: '타이라바 스커트 (빨강)', icon: '', iconTexture: 'tairaba_skirt_red', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 3500, equippable: false, rigPart: 'tairaba_skirt' },
     { id: 'inv_tairaba_necktie_orange', name: '타이라바 넥타이 (주황)', icon: '', iconTexture: 'tairaba_necktie_orange', category: 'tackle', subCategory: '채비 부속', qty: 3, basePrice: 2500, equippable: false, rigPart: 'tairaba_necktie' },
@@ -822,6 +826,7 @@ function createSeedItems(): InvItem[] {
   // ── 원투 메인 싱커(무게추 봉돌) — SinkerDatabase(core)에서 생성 ──
   // 대표 호수 3종만 초기 지급 (나머지는 낚시점 구매). 종류별 물리 특성은 sinkerKind로 분기.
   const seedSinkerIds = new Set(['inv_sinker_ring_20', 'inv_sinker_hole_20', 'inv_sinker_bundle_25']);
+  // (272차 — `s.price`는 한 개 값. 상점은 6개 · 4개 묶음으로 판다)
   for (const s of WEIGHT_SINKER_DB) {
     if (!seedSinkerIds.has(s.id)) continue;
     defs.push({
@@ -1445,6 +1450,8 @@ class InventoryStoreManager {
         tool: i.tool ?? sd?.tool ?? (knife ? ('knife' as const) : undefined),
         equippable: i.equippable ?? sd?.equippable ?? (knife ? true : undefined),
         placeKey: i.placeKey ?? sd?.placeKey,
+        // 272차 — 묶음으로 팔게 된 소모품의 기준가는 「한 개」 값이 됐다(구세이브는 묶음 값 3,000원짜리 바늘 한 개를 들고 있다) — 정적 값만 바로잡는다
+        basePrice: PACK_UNIT_IDS.has(i.id) ? (sd?.basePrice ?? i.basePrice) : (getWeightSinkerSpec(i.id)?.price ?? i.basePrice),
         // 167차 — 도트 아이콘이 나중에 생긴 시드(혼무시·감성돔 바늘)는 구세이브가 이모지만 들고 있다.
         //  iconTexture가 비었고 시드에 있으면 채우고, 그때는 이모지도 지운다(아이콘 이중 표시 방지).
         // 170차 — 과증식 해양생물은 필드 도트(`nui_*`)를 슬롯에 그대로 쓰고 있었다.

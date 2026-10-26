@@ -29,9 +29,11 @@ export interface CartLine {
   iconTexture?: string;
   speciesId?: string;
   lengthCm?: number;
-  /** 개당 값(구매가 · 매입가) */
+  /** 개당 값(구매가 · 매입가) — 묶음 판매(`pack` > 1)면 묶음당 값 */
   unit: number;
   qty: number;
+  /** 272차 — 한 묶음 개수(구매 줄 — 바늘 10 · 봉돌 6 …). 1이면 낱개 */
+  pack?: number;
   /** 한 번에 담을 수 있는 최대 수량(구매 = 1회 최대 · 판매 = 가진 수) */
   max: number;
 }
@@ -143,7 +145,10 @@ export class ShopCartDialog extends DraggablePanel {
     const name = this.scene.add.text(52, y + 6, line.name, { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd' });
     clampTextWidth(name, 170);
     this.rows.add(name);
-    const each = getLocale() === 'en' ? `₩${line.unit.toLocaleString()} each` : `개당 ${line.unit.toLocaleString()}원`;
+    const pack = line.pack ?? 1;
+    const each = pack > 1
+      ? (getLocale() === 'en' ? `₩${line.unit.toLocaleString()} per pack of ${pack}` : `묶음당 ${line.unit.toLocaleString()}원 · ${pack}개입`)
+      : (getLocale() === 'en' ? `₩${line.unit.toLocaleString()} each` : `개당 ${line.unit.toLocaleString()}원`);
     this.rows.add(this.scene.add.text(52, y + 23, each, { fontFamily: FONT, fontSize: '10px', color: '#8faabf' }));
 
     // 수량 −  n  +

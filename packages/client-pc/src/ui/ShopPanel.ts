@@ -25,7 +25,7 @@ import { TitleStore } from '../store/TitleStore.js';
 import { ShopCartDialog, type CartLine } from './ShopCartDialog.js';
 import { TextInput } from './TextInput.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
-import { ShopDef, ShopEntry, shopBuysItem, NPC_SHOP_EXTRAS } from '../data/ShopCatalog.js';
+import { ShopDef, ShopEntry, shopBuysItem, NPC_SHOP_EXTRAS, packQtyOf, packLabelOf } from '../data/ShopCatalog.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { ShopStore, type ShopContext, type UsedGood } from '../store/ShopStore.js';
@@ -174,6 +174,8 @@ interface ShopCell {
   stock?: string; soldOut?: boolean;
   /** 221차 — 즐겨찾기 별(구매 · 즐겨찾기 탭만) */
   fav?: boolean; onFav?: () => void;
+  /** 272차 — 묶음 판매 글자(「10개입」 — 칸 왼쪽 위 · 추천 띠가 있으면 그 아래) */
+  packLabel?: string;
 }
 
 export interface ShopPanelCallbacks {
@@ -385,10 +387,14 @@ export class ShopPanel extends DraggablePanel {
     const soldOut = left === 0;
     const fav = ShopStore.isFavorite(this.ctx.key, k);
     const stockLine = left === null ? '' : soldOut ? t('오늘은 다 팔렸다 — 새벽에 다시 들어온다') : `${t('남은 수')} ${left}`;
+    // 272차 — 묶음 판매는 이름 꼬리 「(10개입)」 · 값은 묶음 값 · 말풍선에 개당 값
+    const pack = packQtyOf(entry);
+    const packLine = pack > 1 ? `\n한 묶음 ${pack}개 · 개당 약 ${Math.round(this.buyPriceOf(entry) / pack).toLocaleString()}원` : '';
     return {
-      icon: entry.icon, iconTexture: entry.iconTexture, name: entry.name,
+      icon: entry.icon, iconTexture: entry.iconTexture, name: `${entry.name}${packLabelOf(entry)}`,
       speciesId: entry.speciesId, lengthCm: entry.lengthCm,
       priceLabel: `${this.buyPriceOf(entry).toLocaleString()}원`,
+      packLabel: pack > 1 ? `${pack}개입` : undefined,
       qtyLabel: inCart && inCart.qty > 1 ? `×${inCart.qty}` : '',
       condition: entry.condition,
       recommended,
@@ -402,7 +408,7 @@ export class ShopPanel extends DraggablePanel {
         this.setStatus(on ? `${t(entry.name)} — ${t('즐겨찾기에 넣었다')}` : `${t(entry.name)} — ${t('즐겨찾기에서 뺐다')}`);
         this.renderGrid();
       },
-      tooltip: `${recommended ? '[추천] ' : ''}${entry.name}\n${this.buyPriceOf(entry).toLocaleString()}원 · ${entry.desc}${stockLine ? `\n${stockLine}` : ''}`,
+      tooltip: `${recommended ? '[추천] ' : ''}${entry.name}${packLabelOf(entry)}\n${this.buyPriceOf(entry).toLocaleString()}원 · ${entry.desc}${packLine}${stockLine ? `\n${stockLine}` : ''}`,
       onSelect: () => {
         // 220차 — 누를 때마다 담고 뺀다(장바구니)
         if (this.buyCart.has(k)) { this.buyCart.delete(k); if (this.lastPick === k) this.lastPick = null; }
@@ -968,8 +974,8 @@ export class ShopPanel extends DraggablePanel {
     this.stopSearch();
     const lines: CartLine[] = mode === 'buy'
       ? [...this.buyCart.entries()].map(([key, { entry, qty }]) => ({
-        key, name: entry.name, icon: entry.icon, iconTexture: entry.iconTexture, speciesId: entry.speciesId, lengthCm: entry.lengthCm,
-        unit: this.buyPriceOf(entry), qty, max: this.buyMaxOf(entry),
+        key, name: `${entry.name}${packLabelOf(entry)}`, icon: entry.icon, iconTexture: entry.iconTexture, speciesId: entry.speciesId, lengthCm: entry.lengthCm,
+        unit: this.buyPriceOf(entry), qty, max: this.buyMaxOf(entry), pack: packQtyOf(entry),
       }))
       : [...this.sellCart.entries()].map(([key, { item, qty }]) => ({
         key, name: item.name, icon: item.icon, iconTexture: item.iconTexture, speciesId: item.speciesId, lengthCm: item.lengthCm,
@@ -1191,6 +1197,13 @@ export class ShopPanel extends DraggablePanel {
     const icon = createItemIcon(this.scene, sx + SLOT / 2, sy + SLOT / 2 - 10, cell, 28);
     if (cell.soldOut) icon.setAlpha(0.35);   // 221차 — 품절은 흐리게
     this.gridContainer.add(icon);
+    // 272차 — 묶음 판매는 칸에서도 보인다(「10개입」 — 값은 묶음 값이라 글자 없이는 낱개 값으로 읽힌다)
+    if (cell.packLabel) {
+      const pk = this.scene.add.text(sx + 4, sy + (cell.recommended ? 13 : 3), cell.packLabel, {
+        fontFamily: FONT, fontSize: '8px', color: '#9fd3ff', fontStyle: 'bold',
+      }).setOrigin(0, 0);
+      this.gridContainer.add(pk);
+    }
     // 221차 — 남은 수 · 품절(값 바로 위 — 넉넉하면 비운다)
     if (cell.stock) {
       const st = this.scene.add.text(sx + SLOT / 2, sy + SLOT - 27, cell.stock, {
