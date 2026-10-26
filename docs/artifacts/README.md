@@ -8,12 +8,12 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 17 — 274차 기준(「기준」 줄 · §06 「274차 실플레이 확인」 줄) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 19 — 274차 기준(「가구 배치」 · 「대화창 · 받는 자리 답」 · 「체험 가이드」 항목 · 머리 작업 차수 274 · 바닥 줄 실측) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 17 — 274차 기준 · 채비 문법은 258차(「274차 기준」 줄만) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 71 — 273차(「시스템」 탭 「원줄 · 목줄 내구도」 절). 274차는 위키 내용 변화 없음(가구 회전 · 대화 규칙 항목이 없다) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 18 — 275차 기준(「기준」 줄 · §06 「275차 실플레이 확인」 줄 · 274차 줄의 가구 앞자리 결정 끝) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 20 — 275차 기준(「가구 배치」 항목 — 바라보는 쪽에서만 쓰기 · 쓰는 쪽 꺾쇠 · 머리 작업 차수 275 · 바닥 줄 워크로그 196) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 18 — 275차 기준 · 채비 문법은 258차(「275차 기준」 줄만) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 71 — 273차(「시스템」 탭 「원줄 · 목줄 내구도」 절). 274 · 275차는 위키 내용 변화 없음(가구 회전 · 쓰는 쪽 · 대화 규칙 항목이 없다 — 생성기가 도움말 · 가구 정의를 싣지 않는다) |
 
-- 남은 과업 설계는 **비공개**(주인만 열림)다. 나머지 셋은 「링크가 있는 사람」 공유다. 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
+- 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
 
 ## 2. 언제 · 무엇을

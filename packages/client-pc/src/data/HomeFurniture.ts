@@ -14,6 +14,8 @@
  *
  * 190차: 협탁 스탠드 켜고 끄기(`lamp`) · 라디오(`radio`) · 관상 수조(`aquarium`) · 벽 장식 기능화(`WALL_DECOR`).
  *   러그 그림의 고양이는 떼어 내 방을 돌아다니는 개체가 됐다(`ui/HomeCat.ts`).
+ * 275차: **가구는 바라보는 쪽에서만 쓴다**(`useSideOf` · `useReach` · `useCells`) — 사용자 「가구는 바라보는 쪽에서만 쓰게 해줘」.
+ *   침대는 발치 · 식탁을 바라보는 의자는 등받이 쪽(뒤)에서 빼 앉는다 · 앞뒤가 없는 화분만 어느 쪽에서나.
  *
  * 좌표는 칸(tile) 단위. 방은 12×10칸이고, 위 2줄은 벽이라 바닥은 2~9행이다.
  * 그림 함수는 **footprint 좌상단 = (0,0)** 인 지역 좌표로 그린다(씬이 Graphics를 그 자리로 옮긴다).
@@ -741,6 +743,119 @@ export function frontCell(f: FurnInstance): { c: number; r: number } {
     case 'left': return { c: f.tx - 1, r: f.ty };
     case 'right': return { c: f.tx + w, r: f.ty };
   }
+}
+
+// ─────────────────────────────────────────────
+// 275차 — 가구를 쓰는 쪽 (사용자 결정 「가구는 바라보는 쪽에서만 쓰게 해줘」 — 274차 백로그 CQ)
+// 걷는 동안의 [F](씬 `updateProximity`)와 배치 판정(`HomeStore.checkPlace`)이 같은 기준을 쓴다.
+// ─────────────────────────────────────────────
+
+/** 가구를 쓰는 쪽 — 한 변(그 변 바깥에 선다) 또는 네 변 어디서나('any') */
+export type FurnUseSide = FurnDir | 'any';
+
+const OPPOSITE_DIR: Record<FurnDir, FurnDir> = { up: 'down', down: 'up', left: 'right', right: 'left' };
+
+/** 쓰는 쪽 변 끝에서 옆으로 벗어나도 닿는 거리(px) — 앞 모서리 칸에서 가구 모서리에 바짝 붙어 서면 닿는다 */
+export const USE_SIDE_SLIP_PX = 20;
+
+/** 안내 글의 쪽 이름 — 「냉장고 앞으로 돌아가자」 · 「의자 뒤로」 · 「침대 발치로」 */
+export const USE_SIDE_WORD = {
+  front: { to: '앞으로', subj: '앞이' },
+  back: { to: '뒤로', subj: '뒤가' },
+  foot: { to: '발치로', subj: '발치가' },
+} as const;
+export type UseSideWord = keyof typeof USE_SIDE_WORD;
+
+/** 가구가 덮은 칸 */
+export function furnCells(f: FurnInstance): { c: number; r: number }[] {
+  const { w, h } = footprint(f.kind, f.dir);
+  const out: { c: number; r: number }[] = [];
+  for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) out.push({ c: f.tx + dx, r: f.ty + dy });
+  return out;
+}
+
+/** 이 의자가 식탁을 바라보고 붙어 있는가 (앞 칸이 식탁 칸 — 190차 씬 `chairAtTable`을 옮겼다) */
+export function chairFacesTable(f: FurnInstance, layout: readonly FurnInstance[]): boolean {
+  if (f.kind !== 'chair') return false;
+  const fc = frontCell(f);
+  return layout.some((o) => {
+    if (o.kind !== 'island') return false;
+    const { w, h } = footprint(o.kind, o.dir);
+    return fc.c >= o.tx && fc.c < o.tx + w && fc.r >= o.ty && fc.r < o.ty + h;
+  });
+}
+
+/**
+ * 가구를 쓰는 쪽. 기능 없는 가구(식탁 · 러그)는 null.
+ *  - 기본 = 바라보는 쪽(`dir`) — 냉장고 · 옷장 문, 서랍 손잡이, 다이얼, 유리면, 걸쇠가 그쪽에 그려져 있다. 침대는 발치다.
+ *  - 식탁을 바라보고 붙은 의자 = 등받이 쪽(뒤) — 앞이 식탁이라 뒤에서 빼 앉는다.
+ *  - 화분 = 네 변 어디서나 — 둥근 화분이라 앞뒤가 없다(방향은 잎이 기우는 모양뿐이다).
+ */
+export function useSideOf(f: FurnInstance, layout: readonly FurnInstance[]): FurnUseSide | null {
+  if (!FURN_DEFS[f.kind].action) return null;
+  if (f.kind === 'plant') return 'any';
+  if (chairFacesTable(f, layout)) return OPPOSITE_DIR[f.dir];
+  return f.dir;
+}
+
+/** 쓰는 쪽이 그 가구의 앞 · 뒤 · 발치 중 무엇인가 (안내 글) */
+export function useSideWord(f: FurnInstance, side: FurnUseSide): UseSideWord {
+  if (side !== 'any' && side !== f.dir) return 'back';
+  return f.kind === 'bed' ? 'foot' : 'front';
+}
+
+/**
+ * 쓰는 쪽에 선 칸들 — 그 변에 맞닿은 칸(+ `corners`면 양 끝 모서리 칸 — `useReach`가 모서리에 붙어 선 발도 받는다).
+ * 'any'는 네 변에 맞닿은 칸(모서리 없음 — 275차 전 판정과 같다). 방 밖 칸도 그대로 돌려준다(쓰는 쪽이 거른다).
+ */
+export function useCells(f: FurnInstance, side: FurnUseSide, corners = true): { c: number; r: number }[] {
+  const { w, h } = footprint(f.kind, f.dir);
+  const out: { c: number; r: number }[] = [];
+  const edge = (s: FurnDir, k: number): void => {
+    if (s === 'down' || s === 'up') {
+      const r = s === 'down' ? f.ty + h : f.ty - 1;
+      for (let c = f.tx - k; c < f.tx + w + k; c++) out.push({ c, r });
+    } else {
+      const c = s === 'right' ? f.tx + w : f.tx - 1;
+      for (let r = f.ty - k; r < f.ty + h + k; r++) out.push({ c, r });
+    }
+  };
+  if (side === 'any') for (const s of DIR_CYCLE) edge(s, 0);
+  else edge(side, corners ? 1 : 0);
+  return out;
+}
+
+/** 쓰는 쪽 칸 가운데 서 있을 수 있는 칸(방 바닥 · 부딪히는 가구 없음)이 하나라도 있는가 — 「앞이 막혀 있다」 판정 */
+export function useSideOpen(f: FurnInstance, side: FurnUseSide, layout: readonly FurnInstance[]): boolean {
+  const taken = new Set<string>();
+  for (const o of layout) {
+    if (o.id === f.id || !FURN_DEFS[o.kind].collides) continue;
+    for (const k of furnCells(o)) taken.add(`${k.c},${k.r}`);
+  }
+  return useCells(f, side).some(({ c, r }) => inFloor(c, r) && !taken.has(`${c},${r}`));
+}
+
+/**
+ * 발밑(방 원점 기준 px — `lx, ly`)에서 쓰는 쪽 변까지의 거리. 쓰는 쪽에 서 있지 않으면 Infinity.
+ *  - 발이 그 변의 선 바깥이어야 한다. 위를 보는 가구는 씬 충돌 상자가 윗변 8px 안까지 발을 들이므로 8px 봐준다.
+ *  - 변 끝에서 옆으로 `USE_SIDE_SLIP_PX`를 넘게 벗어나면 옆에 선 것이다.
+ *  - 'any' = 가구 둘레(네 변)까지의 거리(275차 전 판정).
+ */
+export function useReach(f: FurnInstance, side: FurnUseSide, lx: number, ly: number): number {
+  const { w, h } = footprint(f.kind, f.dir);
+  const x0 = f.tx * IT, y0 = f.ty * IT, x1 = x0 + w * IT, y1 = y0 + h * IT;
+  const alongX = Math.max(x0 - lx, 0, lx - x1);
+  const alongY = Math.max(y0 - ly, 0, ly - y1);
+  if (side === 'any') return Math.hypot(alongX, alongY);
+  let out = 0, along = 0, slack = 0;
+  switch (side) {
+    case 'down': out = ly - y1; along = alongX; break;
+    case 'up': out = y0 - ly; along = alongX; slack = 8; break;
+    case 'left': out = x0 - lx; along = alongY; break;
+    case 'right': out = lx - x1; along = alongY; break;
+  }
+  if (out < -slack || along > USE_SIDE_SLIP_PX) return Infinity;
+  return Math.hypot(Math.max(0, out), along);
 }
 
 /**

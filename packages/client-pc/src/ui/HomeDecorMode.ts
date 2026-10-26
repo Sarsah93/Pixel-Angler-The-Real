@@ -22,6 +22,7 @@ import { HomeStore } from '../store/HomeStore.js';
 import { GameState } from '../store/GameState.js';
 import {
   IT, ROOM_W, ROOM_H, FLOOR_TOP, DOOR_MAT, FURN_DEFS, footprint, drawFurnitureArt, nextDir, turnLocal, turnedAround, placementsHolding,
+  useSideOf, useCells, inFloor,
   type FurnInstance, type FurnArtState,
 } from '../data/HomeFurniture.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -333,6 +334,7 @@ export class HomeDecorMode {
       const { w, h } = footprint(f.kind, f.dir);
       this.hoverG.lineStyle(2, 0xffd257, 1);
       this.hoverG.strokeRoundedRect(ox + f.tx * IT - 2, oy + f.ty * IT - 2, w * IT + 4, h * IT + 4, 5);
+      this.drawUseMarks(this.hoverG, f, HomeStore.placed);
       this.nameText.setText(FURN_DEFS[f.kind].nameKo).setPosition(ox + (f.tx + w / 2) * IT, oy + f.ty * IT - 6).setVisible(true);
       return;
     }
@@ -347,10 +349,38 @@ export class HomeDecorMode {
       this.cellG.strokeRect(ox + k.c * IT + 2, oy + k.r * IT + 2, IT - 4, IT - 4);
       if (!k.ok) drawBlockedX(this.cellG, ox + k.c * IT + 2, oy + k.r * IT + 2, IT - 4, IT - 4, 0xffffff, 0.9, 6);   // 251차
     }
+    this.drawUseMarks(this.cellG, cand, this.othersOf(cand.id).concat(cand));
     this.ghostArt.clear();
     drawFurnitureArt(this.ghostArt, cand.kind, cand.dir, this.host.artState());
     this.ghostC.setPosition(ox + cand.tx * IT, oy + cand.ty * IT).setVisible(true);
     if (!chk.ok && chk.reason) this.showReason(chk.reason, cand);
+  }
+
+  /**
+   * 275차 — 가구를 쓰는 쪽(바라보는 쪽 · 식탁 의자는 뒤) 칸마다 가구를 가리키는 노란 꺾쇠.
+   * 「가구는 바라보는 쪽에서만 쓴다」를 글 없이 보여 준다(규칙 R11). 앞뒤가 없는 화분 · 기능 없는 가구는 그리지 않는다.
+   */
+  private drawUseMarks(g: Phaser.GameObjects.Graphics, f: FurnInstance, layout: readonly FurnInstance[]): void {
+    const side = useSideOf(f, layout);
+    if (!side || side === 'any') return;
+    // 칸 가운데 기준 「위(가구 쪽)를 가리키는」 꺾쇠를 쓰는 쪽에 맞춰 돌린다 — 아래 칸이면 위로, 왼쪽 칸이면 오른쪽으로
+    const rot = { down: 0, up: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 }[side];
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    const { ox, oy } = this.host;
+    const pt = (cx: number, cy: number, x: number, y: number): [number, number] => [cx + x * cos - y * sin, cy + x * sin + y * cos];
+    for (const { c, r } of useCells(f, side, false)) {
+      if (!inFloor(c, r)) continue;
+      const cx = ox + (c + 0.5) * IT, cy = oy + (r + 0.5) * IT;
+      g.fillStyle(0xffd257, 0.1);
+      g.fillRect(ox + c * IT + 3, oy + r * IT + 3, IT - 6, IT - 6);
+      for (const [dy, a] of [[-IT / 2 + 9, 0.95], [-IT / 2 + 17, 0.55]] as const) {
+        const tip = pt(cx, cy, 0, dy), l = pt(cx, cy, -8, dy + 7), rr = pt(cx, cy, 8, dy + 7);
+        g.lineStyle(5, 0x2a1e06, 0.45 * a);
+        g.beginPath(); g.moveTo(l[0], l[1]); g.lineTo(tip[0], tip[1]); g.lineTo(rr[0], rr[1]); g.strokePath();
+        g.lineStyle(3, 0xffd257, a);
+        g.beginPath(); g.moveTo(l[0], l[1]); g.lineTo(tip[0], tip[1]); g.lineTo(rr[0], rr[1]); g.strokePath();
+      }
+    }
   }
 
   private showReason(reason: string, f: FurnInstance): void {
@@ -512,8 +542,8 @@ export class HomeDecorMode {
           wait: () => this.places > placesAt,
         },
         {
-          // 274차 — 모든 가구 · 네 방위 · 누른 칸이 축
-          text: '가구는 네 방향으로 돌릴 수 있다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 막힌 방향은 건너뛴다. 한 번 돌려 보자.',
+          // 274차 — 모든 가구 · 네 방위 · 누른 칸이 축 / 275차 — 가구는 바라보는 쪽에서만 쓴다(노란 꺾쇠 칸)
+          text: '가구는 바라보는 쪽에서만 쓴다. 가리키거나 든 가구 앞에 뜨는 노란 꺾쇠 칸이 그 자리다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 앞이 막히는 방향은 건너뛴다. 한 번 돌려 보자.',
           target: room,
           skipIf: () => HomeStore.placed.length === 0,
           wait: () => this.rotates > 0 && !this.holding,

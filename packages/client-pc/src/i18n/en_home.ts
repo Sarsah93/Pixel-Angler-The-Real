@@ -8,6 +8,7 @@ export const EN_HOME: Record<string, string> = {
   '냉장고': 'Fridge', '개수대': 'Sink', '가스레인지': 'Gas stove', '침대': 'Bed', '협탁': 'Nightstand',
   '식탁': 'Table', '의자': 'Chair', '소파': 'Sofa', '러그': 'Rug', '옷장': 'Wardrobe', '수납 선반': 'Storage shelf',
   '화분': 'Potted plant', '낚시 상자': 'Tackle box',
+  '콩나물 시루': 'Sprouting jar', '수경 재배기': 'Hydroponic rack',   // 275차 — 「…앞으로 돌아가자」 문장 속 이름
 
   // ── 머리 위 [F] ──
   '[F] 앉기': '[F] Sit', '[F] 옷장 열기': '[F] Open wardrobe', '[F] 선반 열기': '[F] Open shelf', '[F] 물 주기': '[F] Water',
@@ -26,8 +27,8 @@ export const EN_HOME: Record<string, string> = {
     'The old two-seater sofa. Dad used to doze off here with the tide report on the radio.\nPress [F] in front of it to sit. I can rest there for a bit, too.',
   '수납 선반. 낚시 잡지 몇 권과 쓰다 만 채비 상자가 그대로 올려져 있다.\n[F]로 열어 낚시용품이나 자잘한 물건을 올려 둘 수 있다.':
     'A storage shelf. A few fishing magazines and a half-used tackle box, right where he left them.\nOpen it with [F] to keep tackle and odds and ends.',
-  '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.\n의자 앞에서 [F]를 누르면 앉는다.':
-    'The table. Just the right size for two. We always ate here.\nPress [F] in front of a chair to sit.',
+  '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.\n식탁에 붙은 의자는 등받이 뒤에서 [F]를 누르면 빼서 앉는다.':
+    'The table. Just the right size for two. We always ate here.\nFor a chair tucked under it, press [F] behind the backrest to pull it out and sit.',
   '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.':
     'The bedside table. The lamp still turns on. Only dust where he always kept his glasses.',
   '옷장. 아버지 옷가지가 아직 걸려 있다.\n[F]로 열어 장비를 걸어 둘 수 있다. 가방이 한결 가벼워진다.':
@@ -48,7 +49,6 @@ export const EN_HOME: Record<string, string> = {
   '다른 가구와 겹친다': 'It overlaps other furniture',
   '내가 서 있는 자리다': "That's where I'm standing",
   '나갈 길이 막힌다': 'It blocks my way out',
-  '가구 앞으로 갈 길이 막힌다': 'It blocks the way to some furniture',
   '침대는 넣어 둘 수 없다 — 잠잘 곳은 있어야 한다': "The bed can't be stored — I need somewhere to sleep",
   '가구 배치 중에는 바닥에 칸이 보인다. 옮길 가구를 눌러 들어 올려 보자.':
     'While arranging, the floor shows a grid. Click a piece of furniture to pick it up.',
@@ -56,8 +56,8 @@ export const EN_HOME: Record<string, string> = {
     "The furniture follows your cursor. Green squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
   '들어 올린 가구는 손을 따라온다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.':
     "The furniture follows your cursor. Blue squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
-  '가구는 네 방향으로 돌릴 수 있다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 막힌 방향은 건너뛴다. 한 번 돌려 보자.':
-    'Furniture turns four ways. Right-click a piece and it turns one step around the square you clicked. Directions that cannot fit are skipped. Try turning one.',
+  '가구는 바라보는 쪽에서만 쓴다. 가리키거나 든 가구 앞에 뜨는 노란 꺾쇠 칸이 그 자리다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 앞이 막히는 방향은 건너뛴다. 한 번 돌려 보자.':
+    'Furniture is used only from the side it faces — the yellow chevron squares in front of the piece you point at or hold mark that spot. Right-click a piece and it turns one step around the square you clicked. Directions whose front would be blocked are skipped. Try turning one.',
   '오른쪽은 넣어 둔 가구 자리다. 가구를 들어 이 칸에 내려놓으면 방에서 치워 둔다. 하나 넣어 보자.':
     'The panel on the right holds stored furniture. Pick something up and drop it here to clear it from the room. Store one.',
   '넣어 둔 가구를 누르면 다시 든다. 방에 다시 놓아 보자.':
@@ -184,7 +184,7 @@ export const EN_HOME: Record<string, string> = {
   '부엌 냉장고 앞에서 [F]로 냉동고를 열자. 얼려 둔 오징어를 챙겨야 한다.': 'Press [F] at the kitchen fridge to open the freezer. I need to grab the frozen squid.',
   '「저장하고 쉬기」를 골라 오늘을 저장하자.': 'Pick "Save & rest" to save today.',
   '창을 닫고 침대로 가자. 떠나기 전에 저장해 두어야 한다.': 'Close the windows and go to the bed. I should save before I leave.',
-  '떠나기 전에 침대 앞에서 [F]를 눌러 저장해 두자.': 'Before leaving, press [F] at the bed to save.',
+  '떠나기 전에 침대 발치에서 [F]를 눌러 저장해 두자.': 'Before leaving, press [F] at the foot of the bed to save.',
   '이제 집을 나서자. 현관 매트를 밟고 아래로 걸어 나가면 된다.': 'Time to head out. Step on the doormat and walk out downward.',
   '아직 집에서 챙길 것이 남았다.': 'There is still something to take care of at home.',
   '마당의 우물 앞에서 [F]를 눌러 물을 한 모금 마시자.': 'Press [F] at the well in the yard to take a drink.',
@@ -196,8 +196,19 @@ export const EN_HOME: Record<string, string> = {
   '직판장 앞에서 [F]를 눌러, 얼려 온 오징어를 팔아 보자.': 'Press [F] at the fish market and sell the squid you brought.',
 };
 
+/** 275차 — 쓰는 쪽 이름(앞 · 뒤 · 발치) */
+const USE_PART: Record<string, string> = { '앞으로': 'front', '뒤로': 'back', '발치로': 'foot', '앞이': 'front', '뒤가': 'back', '발치가': 'foot' };
+/** 문장 가운데 가구 이름 — 「Fridge」 → 「fridge」 */
+const furnLower = (tr: (s: string) => string, ko: string): string => tr(ko).toLowerCase();
+
 /** 이름·수치가 끼어 있는 문장 */
 export const EN_HOME_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
+  // 275차 — 가구는 바라보는 쪽에서만 쓴다(옆 · 뒤에서 [F] · 배치 판정 까닭)
+  [/^(.+) (앞으로|뒤로|발치로) 돌아가자\.$/, (m, tr) => `I should go around to the ${USE_PART[m[2]]} of the ${furnLower(tr, m[1])}.`],
+  [/^(.+) (앞이|뒤가|발치가) 막혀 있다\. 가구 배치에서 돌려 놓아야겠다\.$/, (m, tr) =>
+    `The ${USE_PART[m[2]]} of the ${furnLower(tr, m[1])} is blocked. I should turn it around in Arrange.`],
+  [/^(.+) (앞으로|뒤로|발치로) 갈 길이 막힌다$/, (m, tr) => `It blocks the way to the ${USE_PART[m[2]]} of the ${furnLower(tr, m[1])}`],
+  [/^(.+) (앞이|뒤가|발치가) 막혀 쓸 수 없다$/, (m, tr) => `The ${USE_PART[m[2]]} of the ${furnLower(tr, m[1])} would be blocked — it could not be used`],
   [/^소파에서 잠깐 눈을 붙였다 — 피로 (\d+)% → (\d+)%$/, (m) => `Dozed off on the sofa for a moment — fatigue ${m[1]}% → ${m[2]}%`],
   [/^(\d+)물$/, (m) => `Tide day ${m[1]}`],
   // 191차 — 직판장 코치(남은 채비 목록)

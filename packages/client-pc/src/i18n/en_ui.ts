@@ -340,7 +340,7 @@ export const EN_UI: Record<string, string> = {
   '가스레인지 두 구. 집 화구는 가스가 떨어질 일이 없다.\n[F]로 조리를 시작한다 — 재료는 가방에서 꺼내 넣는다.': "A two-burner gas stove. The gas here never runs out.\nPress [F] to start cooking — ingredients come out of my bag.",
   '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.': 'The table. Just the right size for two. We always ate here.',
   '러그 위에서 고양이가 자고 있다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.': "A cat is asleep on the rug. Who was feeding it? I suppose that's my job now.",
-  '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 앞에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.': "Dad's bed. The edge of the blanket is folded neatly.\nPress [F] at the bed to rest. This bed is also the only place to record (save) the day.",
+  '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 발치에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.': "Dad's bed. The edge of the blanket is folded neatly.\nPress [F] at the foot of the bed to rest. This bed is also the only place to record (save) the day.",
   '머리맡 협탁. 안경을 늘 두던 자리에 먼지만 앉았다.': 'The bedside table. Only dust where he always kept his glasses.',
   '서랍장 위 스탠드가 아직 켜진다. 서랍 안에는 아버지 옷가지가 그대로다.': "The lamp on the dresser still turns on. His clothes are still in the drawers.",
   '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.': 'The wall clock is still ticking. Someone must have changed the battery.',

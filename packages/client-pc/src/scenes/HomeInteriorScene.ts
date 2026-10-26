@@ -65,8 +65,9 @@ import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import { getLocale } from '../i18n/I18n.js';
 import { HomeStore, type HomeStorageKind } from '../store/HomeStore.js';
 import {
-  IT, ROOM_W, ROOM_H, DOOR_MAT, FLOOR_TOP, FURN_DEFS, WALL_DECOR, footprint, seatsOf, drawFurnitureArt, frontCell, ensureFurnitureIcon,
-  tankFaceTop, type FurnInstance, type FurnAction, type WallDecorId,
+  IT, ROOM_W, ROOM_H, DOOR_MAT, FLOOR_TOP, FURN_DEFS, WALL_DECOR, footprint, seatsOf, drawFurnitureArt, ensureFurnitureIcon,
+  tankFaceTop, chairFacesTable, useSideOf, useSideWord, useSideOpen, useReach, USE_SIDE_WORD,
+  type FurnInstance, type FurnAction, type WallDecorId,
 } from '../data/HomeFurniture.js';
 import { HomeAmbience, type AmbienceLight } from '../ui/HomeAmbience.js';
 import { HomeCat, CAT_FULL_MS } from '../ui/HomeCat.js';
@@ -122,13 +123,13 @@ const LOOK_TEXT: Record<string, string> = {
   fridge: '냉장고는 아직 돌아간다. 위칸은 얼리고 아래칸은 차게 둔다.\n[F]로 열어 잡은 고기나 먹을 것을 넣어 두면, 넣어 둔 동안은 상하지 않는다.',
   sink: '개수대에서 수돗물이 나온다. 요리할 때 물 걱정은 없겠다.\n개수대나 가스레인지 앞에서 [F]를 누르면 요리를 시작한다.',
   stove: '가스레인지 두 구. 집 화구는 가스가 떨어질 일이 없다.\n[F]로 조리를 시작한다 — 재료는 가방에서 꺼내 넣는다.',
-  island: '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.\n의자 앞에서 [F]를 누르면 앉는다.',
+  island: '식탁. 둘이 앉으면 딱 맞는 크기다. 밥은 늘 여기서 먹었다.\n식탁에 붙은 의자는 등받이 뒤에서 [F]를 누르면 빼서 앉는다.',
   rug: '러그. 볕이 드는 자리라 고양이가 여기서 자주 잔다.',
   cat: '고양이 한 마리가 집을 지키고 있었다. 누가 밥을 챙겨 줬던 걸까. 이제는 내 몫이겠지.\n앞에서 [F]를 누르면 쓰다듬는다. 손질하고 남은 부산물을 가방에 넣어 오면 밥도 줄 수 있다.',
   radio: '아버지 라디오. 소파에 앉아 물때 방송을 듣곤 했다.\n[F]로 켜면 오늘과 내일 물때, 바다 날씨를 알려 준다. 소파에 앉아서도 켤 수 있다.',
   calendar: '벽에 걸린 달력. 아버지 글씨로 납부일이 적혀 있다.\n[F]로 보면 다가오는 납부일을 알 수 있다.',
   fishprint: '어탁 액자. 언젠가 내가 낚은 큰 고기로 바꿔 걸고 싶다.\n[F]로 보면 지금까지 낚은 가장 큰 고기의 기록이 나온다.',
-  bed: '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 앞에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.',
+  bed: '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 발치에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.',
   stand: '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.\n밤에는 방이 어둡다. 협탁 앞에서 [F]로 스탠드를 켜고 끈다.',
   wardrobe: '옷장. 아버지 옷가지가 아직 걸려 있다.\n[F]로 열어 장비를 걸어 둘 수 있다. 가방이 한결 가벼워진다.',
   clock: '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.',
@@ -299,6 +300,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.fridgePanel = undefined;
     this.cookPanel = undefined;
     this.near = null;
+    this.nearBlocked = null;
+    this.nearWrong = null;
     this.tankSwim = [];
     this.radioWaves = undefined;
     GameState.mealAtTable = false;
@@ -692,7 +695,7 @@ export class HomeInteriorScene extends Phaser.Scene {
         return { key: 'save_menu', text: '「저장만 하기」를 골라 오늘을 저장해 두자.', target: () => this.menuRect(), anchor: room, side: 'auto', focus: ['bed'] };
       }
       if (anyPopup) return dock('save_close', '창을 닫고 침대로 가자. 떠나기 전에 저장해 두어야 한다.');
-      return { key: 'save', text: '떠나기 전에 침대 앞에서 [F]를 눌러 저장해 두자.',
+      return { key: 'save', text: '떠나기 전에 침대 발치에서 [F]를 눌러 저장해 두자.',
         target: () => this.tourRect('bed'), anchor: room, side: 'auto', focus: ['bed'] };
     }
     if (!prologueStepDone('leave')) {
@@ -1243,7 +1246,11 @@ export class HomeInteriorScene extends Phaser.Scene {
     return InventoryStore.getHandEquipped('R')?.tool === 'watering_can' || InventoryStore.getHandEquipped('L')?.tool === 'watering_can';
   }
 
-  /** 발밑에서 가구 footprint 가장자리까지 가장 가까운 것 (닿는 거리 안에서만) */
+  /**
+   * 발밑에서 닿는 것 가운데 가장 가까운 것.
+   * 275차 — 가구는 **쓰는 쪽(바라보는 쪽)**에 섰을 때만 닿는다(`useSideOf` · `useReach` — 사용자 「가구는 바라보는 쪽에서만 쓰게 해줘」).
+   *   옆 · 뒤에서 닿는 거리면 `nearWrong`에 남겨 [F]를 눌렀을 때 「냉장고 앞으로 돌아가자」를 띄운다.
+   */
   private updateProximity(): void {
     let best: NearTarget | null = null;
     let bestD = REACH_PX;
@@ -1251,6 +1258,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     //   닿는 것이 막힌 대상뿐이면 [F]를 눌렀을 때 말풍선이 흔들려 지금 할 일을 다시 짚는다.
     let blocked: NearTarget | null = null;
     let blockedD = REACH_PX;
+    let wrong: FurnInstance | null = null;
+    let wrongD = REACH_PX;
     const consider = (t: NearTarget, d: number): boolean => {
       if (!GuideTour.allows(this.nearActionId(t))) {
         if (d < blockedD) { blockedD = d; blocked = t; }
@@ -1258,14 +1267,19 @@ export class HomeInteriorScene extends Phaser.Scene {
       }
       return true;
     };
-    for (const f of HomeStore.placed) {
+    const layout = HomeStore.placed;
+    const lx = this.px - OX, ly = this.py - OY;
+    for (const f of layout) {
       const action = this.actionOf(f);
       if (!action) continue;
-      const { w, h } = footprint(f.kind, f.dir);
-      const x0 = OX + f.tx * IT, y0 = OY + f.ty * IT;
-      const dx = Math.max(x0 - this.px, 0, this.px - (x0 + w * IT));
-      const dy = Math.max(y0 - this.py, 0, this.py - (y0 + h * IT));
-      const d = Math.hypot(dx, dy);
+      const side = useSideOf(f, layout);
+      if (!side) continue;
+      const d = useReach(f, side, lx, ly);
+      if (d === Infinity) {
+        const around = useReach(f, 'any', lx, ly);
+        if (around < wrongD) { wrongD = around; wrong = f; }
+        continue;
+      }
       if (d < bestD && consider({ kind: 'furn', f, action }, d)) { bestD = d; best = { kind: 'furn', f, action }; }
     }
     // 190차 — 벽 장식: 바로 아래 바닥(벽에 붙어 선 자리)에서
@@ -1285,6 +1299,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
     this.near = best;
     this.nearBlocked = best ? null : blocked;
+    this.nearWrong = best || blocked ? null : wrong;
     if (best) {
       // 204차 — 머리 위 타이틀이 있으면 그 위로 비켜 선다
       const lift = this.homeTitle?.visible ? this.homeTitle.height + 2 : 0;
@@ -1303,10 +1318,16 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 219차 — 닿는 것이 가이드가 막은 대상뿐일 때(그것에 [F]를 누르면 말풍선이 흔들린다) */
   private nearBlocked: NearTarget | null = null;
+  /** 275차 — 옆 · 뒤에서 닿는 가구(쓰는 쪽이 아니다) — [F]를 누르면 어디로 돌아가야 하는지 알려 준다 */
+  private nearWrong: FurnInstance | null = null;
 
   private tryInteract(): void {
     if (this.menu || this.fridgePanel || this.cookPanel || this.decor) return;
-    if (!this.near) { if (this.nearBlocked) GuideTour.nudge(); return; }
+    if (!this.near) {
+      if (this.nearBlocked) GuideTour.nudge();
+      else if (this.nearWrong) this.flashWrongSide(this.nearWrong);
+      return;
+    }
     const t = this.near;
     if (!GuideTour.allows(this.nearActionId(t))) { GuideTour.nudge(); return; }
     if (t.kind === 'cat') { this.openCatMenu(); return; }
@@ -1513,14 +1534,24 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.flash(`소파에서 잠깐 눈을 붙였다 — 피로 ${Math.round((before / max) * 100)}% → ${Math.round((after / max) * 100)}%`);
   }
 
-  /** 이 의자가 식탁을 바라보고 붙어 있는가 */
+  /** 이 의자가 식탁을 바라보고 붙어 있는가 (275차 — 판정은 `chairFacesTable` 하나 · 쓰는 쪽 판정과 같다) */
   private chairAtTable(f: FurnInstance): boolean {
-    const fc = frontCell(f);
-    return HomeStore.placed.some((o) => {
-      if (o.kind !== 'island') return false;
-      const { w, h } = footprint(o.kind, o.dir);
-      return fc.c >= o.tx && fc.c < o.tx + w && fc.r >= o.ty && fc.r < o.ty + h;
-    });
+    return chairFacesTable(f, HomeStore.placed);
+  }
+
+  /**
+   * 275차 — 옆 · 뒤에서 [F]를 눌렀을 때. 쓰는 쪽에 설 자리가 있으면 「냉장고 앞으로 돌아가자.」,
+   * 벽이나 다른 가구가 쓰는 쪽을 다 막았으면(275차 전에 돌려 둔 배치) 돌려 놓으라고 한다.
+   */
+  private flashWrongSide(f: FurnInstance): void {
+    const layout = HomeStore.placed;
+    const side = useSideOf(f, layout);
+    if (!side || side === 'any') return;
+    const name = FURN_DEFS[f.kind].nameKo;
+    const word = USE_SIDE_WORD[useSideWord(f, side)];
+    this.flash(useSideOpen(f, side, layout)
+      ? `${name} ${word.to} 돌아가자.`
+      : `${name} ${word.subj} 막혀 있다. 가구 배치에서 돌려 놓아야겠다.`);
   }
 
   /** 소파 곁(몇 칸 안)의 라디오 */

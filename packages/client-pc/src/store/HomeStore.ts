@@ -5,6 +5,8 @@
  *  - 가구 배치: `placed`(방에 놓인 가구) + `stored`(넣어 둔 가구). 배치 모드가 둘 사이를 옮기고 돌린다.
  *    판정(`checkPlace`)은 칸 단위 — 방 바닥 안 · 현관 매트 밖 · 겹침 금지 · 내가 선 자리 금지 ·
  *    **문까지 가는 길과 쓸 수 있는 가구 앞자리가 막히지 않을 것**(BFS). 막히는 배치는 놓이지 않는다.
+ *    275차 — 앞자리 = **쓰는 쪽**(바라보는 쪽 — `useSideOf`). 벽을 보게 돌린 냉장고는 놓이지 않는다.
+ *    이미 쓰는 쪽이 막혀 있던 가구(구세이브)는 봐준다(`unusableIds`) — 그 하나 때문에 배치 모드가 잠기지 않게.
  *  - 옷장(장비만) · 수납 선반(낚시용품·소모품·기타) — 냉장고(FridgeStore)와 같은 칸 보관함.
  *    보관 중에는 아이템 상태를 그대로 둔다(신선도가 있는 음식은 받지 않는다).
  *  - 화분: 마지막으로 물을 준 시각. 사흘이 넘으면 잎이 처진다(그림만 — 죽지는 않는다).
@@ -18,6 +20,7 @@ import type { InvItem, InvCategory } from './InventoryStore.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
 import {
   DEFAULT_LAYOUT, FURN_DEFS, DOOR_MAT, WALL_DECOR, footprint, inFloor, onDoorMat, wallDecorCols, ROOM_W, ROOM_H, FLOOR_TOP,
+  useSideOf, useSideWord, useCells, USE_SIDE_WORD,
   type FurnInstance, type FurnKind, type FurnDir,
 } from '../data/HomeFurniture.js';
 import type { CatchMethod } from '@tra/core';
@@ -234,16 +237,17 @@ class HomeStoreManager {
         return { ok: false, reason: '내가 서 있는 자리다', cells: cells.map((k) => ({ ...k, ok: false })) };
       }
     }
-    const path = this.pathReason(others.concat(cand), player);
+    // 275차 — 지금 배치에서 이미 쓰는 쪽이 막혀 있던 가구(275차 전 규칙으로 놓은 구세이브)는 이번 판정에서 봐준다.
+    //   봐주지 않으면 그 가구 하나 때문에 다른 가구를 하나도 못 옮긴다. 들고 있는 가구 자신은 새 자리에서 늘 따진다.
+    const before = this.unusableIds(this.placed);
+    before.delete(cand.id);
+    const path = this.pathReason(others.concat(cand), player, before);
     if (path) return { ok: false, reason: path, cells: cells.map((k) => ({ ...k, ok: false })) };
     return { ok: true, cells };
   }
 
-  /**
-   * 길 판정 — 현관 매트에서 4방향으로 퍼져 나가며
-   *  ① 내가 선 칸 ② 쓸 수 있는 가구(기능 있는 가구)의 앞자리 하나 이상 에 닿는지 본다. 막히면 까닭을 돌려준다.
-   */
-  private pathReason(layout: FurnInstance[], player?: { x: number; y: number }): string | null {
+  /** 현관 매트에서 4방향으로 퍼져 나가 닿는 바닥 칸(`seen`)과 부딪히는 가구가 덮은 칸(`blocked`) */
+  private floodFromDoor(layout: readonly FurnInstance[]): { seen: Set<string>; blocked: Set<string> } {
     const blocked = new Set<string>();
     for (const f of layout) if (FURN_DEFS[f.kind].collides) for (const k of cellsOf(f)) blocked.add(`${k.c},${k.r}`);
     const seen = new Set<string>();
@@ -258,6 +262,40 @@ class HomeStoreManager {
         q.push([nc, nr]);
       }
     }
+    return { seen, blocked };
+  }
+
+  /**
+   * 275차 — 이 가구를 쓰는 쪽(바라보는 쪽 · 식탁 의자는 뒤 · 화분은 어디서나 — `useSideOf`)에 닿지 못하면 까닭.
+   * 쓰는 쪽 칸이 벽 · 가구로 다 막혔으면 「냉장고 앞이 막혀 쓸 수 없다」, 비었는데 길이 없으면 「냉장고 앞으로 갈 길이 막힌다」.
+   */
+  private useReason(f: FurnInstance, layout: readonly FurnInstance[], seen: Set<string>, blocked: Set<string>): string | null {
+    const side = useSideOf(f, layout);
+    if (!side) return null;
+    const own = new Set(cellsOf(f).map((k) => `${k.c},${k.r}`));
+    const cells = useCells(f, side).filter((k) => !own.has(`${k.c},${k.r}`));
+    if (cells.some((k) => seen.has(`${k.c},${k.r}`))) return null;
+    const name = FURN_DEFS[f.kind].nameKo;
+    const word = USE_SIDE_WORD[useSideWord(f, side)];
+    const open = cells.some((k) => inFloor(k.c, k.r) && !blocked.has(`${k.c},${k.r}`));
+    return open ? `${name} ${word.to} 갈 길이 막힌다` : `${name} ${word.subj} 막혀 쓸 수 없다`;
+  }
+
+  /** 275차 — 이 배치에서 쓰는 쪽에 닿지 못하는 가구 id들 */
+  unusableIds(layout: readonly FurnInstance[]): Set<string> {
+    const { seen, blocked } = this.floodFromDoor(layout);
+    const out = new Set<string>();
+    for (const f of layout) if (this.useReason(f, layout, seen, blocked)) out.add(f.id);
+    return out;
+  }
+
+  /**
+   * 길 판정 — 현관 매트에서 4방향으로 퍼져 나가며
+   *  ① 내가 선 칸 ② 벽 장식 앞 ③ 쓸 수 있는 가구(기능 있는 가구)의 **쓰는 쪽** 칸 하나 이상(275차 — 전에는 네 변 아무 칸)에
+   *  닿는지 본다. 막히면 까닭을 돌려준다. `tolerate` = 이미 막혀 있던 가구(봐준다).
+   */
+  private pathReason(layout: FurnInstance[], player?: { x: number; y: number }, tolerate?: ReadonlySet<string>): string | null {
+    const { seen, blocked } = this.floodFromDoor(layout);
     if (player) {
       const pc = Math.floor(player.x), pr = Math.floor(player.y);
       if (inFloor(pc, pr) && !seen.has(`${pc},${pr}`) && !blocked.has(`${pc},${pr}`)) return '나갈 길이 막힌다';
@@ -267,14 +305,9 @@ class HomeStoreManager {
       if (!wallDecorCols(d).some((c) => seen.has(`${c},${FLOOR_TOP}`))) return '벽 장식 앞으로 갈 길이 막힌다';
     }
     for (const f of layout) {
-      if (!FURN_DEFS[f.kind].action) continue;
-      const own = new Set(cellsOf(f).map((k) => `${k.c},${k.r}`));
-      const reach = cellsOf(f).some(({ c, r }) =>
-        ([[1, 0], [-1, 0], [0, 1], [0, -1]] as const).some(([dc, dr]) => {
-          const k = `${c + dc},${r + dr}`;
-          return !own.has(k) && seen.has(k);
-        }));
-      if (!reach) return '가구 앞으로 갈 길이 막힌다';
+      if (tolerate?.has(f.id)) continue;
+      const why = this.useReason(f, layout, seen, blocked);
+      if (why) return why;
     }
     return null;
   }
