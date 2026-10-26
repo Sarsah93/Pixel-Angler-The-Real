@@ -10,7 +10,8 @@
  *     ④ 화분 = 물뿌리개를 손에 들었을 때만 [F] 물 주기. ⑤ 옷장 = 장비 보관함. ⑥ 의자 = [F] 앉기.
  *     ⑦ 문 대신 현관 매트 — [F] 「나가기」 판정을 없애고, 매트를 밟고 아래로 걸어 나가면 바로 밖이다.
  *   · 190차 집 살림 — 사용자 지시 7건:
- *     ① 창·조명 = 시각·날씨(`ui/HomeAmbience.ts`) — 밤엔 방이 어둡고 협탁 스탠드 [F] 켜고 끄기, 창밖에 비·노을.
+ *     ① 창·조명 = 시각·날씨(`ui/HomeAmbience.ts`) — 협탁 스탠드 [F] 켜고 끄기, 창밖에 비·노을
+ *        (279차부터 방 안은 늘 밝다 — 어두워지는 것은 가구 배치 모드뿐).
  *     ② 라디오 [F](소파에 앉아서도) = 오늘·내일 물때와 날씨 예보 방송(`data/RadioBroadcast.ts`).
  *     ③ 식탁 앞 의자에 앉아 먹으면 허기 +25%(「식사하기」 → 가방 음식 탭).
  *     ④ 고양이(`ui/HomeCat.ts`) — 방을 돌아다니고 [F] 쓰다듬기 · 손질 부산물로 밥 주기.
@@ -131,7 +132,7 @@ const LOOK_TEXT: Record<string, string> = {
   calendar: '벽에 걸린 달력. 아버지 글씨로 납부일이 적혀 있다.\n[F]로 보면 다가오는 납부일을 알 수 있다.',
   fishprint: '어탁 액자. 언젠가 내가 낚은 큰 고기로 바꿔 걸고 싶다.\n[F]로 보면 지금까지 낚은 가장 큰 고기의 기록이 나온다.',
   bed: '아버지 침대. 이불 끝이 반듯하게 접혀 있다.\n침대 발치에서 [F]를 누르면 쉴 수 있다. 오늘 한 일을 기록(저장)하는 것도 이 침대에서만 된다.',
-  stand: '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.\n밤에는 방이 어둡다. 협탁 앞에서 [F]로 스탠드를 켜고 끈다.',
+  stand: '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.\n밤에는 협탁 앞에서 [F]로 스탠드를 켜고 끈다.',
   wardrobe: '옷장. 아버지 옷가지가 아직 걸려 있다.\n[F]로 열어 장비를 걸어 둘 수 있다. 가방이 한결 가벼워진다.',
   clock: '벽시계는 멈추지 않고 가고 있다. 누가 건전지를 갈아 두었나.',
   books: '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.\n책 아래에서 [F]를 누르면 도감이나 물때표를 펼쳐 본다.',
@@ -336,7 +337,8 @@ export class HomeInteriorScene extends Phaser.Scene {
       ox: OX, oy: OY, w: ROOM_W * IT, h: ROOM_H * IT,
       win: { x: OX + ROOM_W * IT - IT * 3.4, y: OY + 10, w: IT * 2.2, h: wallH - 30 },
       lights: () => this.litSources(),
-      dimMul: () => (this.decor ? 0.45 : 1),
+      // 279차 — 실내는 늘 밝다(QA). 가구 배치 중의 어둠은 배치 모드가 따로 깐다(배치할 가구 · 놓을 자리만 밝게)
+      dimMul: () => 0,
     });
     this.syncWeatherSound();
     // 190차 — 고양이
@@ -362,7 +364,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.events.on('resume', onResume);
     this.events.once('shutdown', () => this.events.off('resume', onResume));
     // 266차 — WebGL 컨텍스트 복구 뒤 어둠 RenderTexture는 비어 있다 — 불빛을 다시 그린다(필드 청크는 RegionFieldScene이 굽는다)
-    const onWebglRestored = (): void => { this.ambience?.refreshLights(); console.warn('[PixelAngler] WebGL 복구 — 집 어둠 다시 그리기'); };
+    const onWebglRestored = (): void => { this.ambience?.refreshLights(); this.decor?.repaint(); console.warn('[PixelAngler] WebGL 복구 — 집 어둠 다시 그리기'); };
     this.game.renderer.on(Phaser.Renderer.Events.RESTORE_WEBGL, onWebglRestored);
     this.events.once('shutdown', () => this.game.renderer.off(Phaser.Renderer.Events.RESTORE_WEBGL, onWebglRestored));
 

@@ -18,7 +18,7 @@
  */
 
 import type { InvCategory, InvCondition, InvItem } from './InventoryStore.js';
-import { partKindOf } from './RigParts.js';
+import { partKindOf, isPackItem } from './RigParts.js';
 import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB } from '../data/CropItems.js';
 import { getLocale, t } from '../i18n/I18n.js';
 import type { RigPartKind } from '@tra/core';
@@ -66,7 +66,8 @@ const UNLISTED = 10_000;
 export function sortGroupOf(it: InvItem): [number, string] {
   const sub = it.subCategory ?? '';
   if (it.category === 'tackle' || it.category === 'lure') {
-    const kind = partKindOf(it);
+    // 279차 — 곽 · 갑은 채비 부품이 아니지만(`partKindOf` = null) 정리할 때는 미끼 무리에 둔다
+    const kind = partKindOf(it) ?? (isPackItem(it) && (sub.includes('미끼') || sub === '생미끼') ? 'bait' : null);
     if (kind) {
       const k = TACKLE_KIND_ORDER.indexOf(kind);
       if (kind === 'bait') {

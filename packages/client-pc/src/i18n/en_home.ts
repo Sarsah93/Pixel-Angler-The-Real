@@ -50,12 +50,12 @@ export const EN_HOME: Record<string, string> = {
   '내가 서 있는 자리다': "That's where I'm standing",
   '나갈 길이 막힌다': 'It blocks my way out',
   '침대는 넣어 둘 수 없다 — 잠잘 곳은 있어야 한다': "The bed can't be stored — I need somewhere to sleep",
-  '가구 배치 중에는 바닥에 칸이 보인다. 옮길 가구를 눌러 들어 올려 보자.':
-    'While arranging, the floor shows a grid. Click a piece of furniture to pick it up.',
-  '들어 올린 가구는 손을 따라온다. 초록 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.':
-    "The furniture follows your cursor. Green squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
-  '들어 올린 가구는 손을 따라온다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.':
-    "The furniture follows your cursor. Blue squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
+  '가구 배치 중에는 방이 어두워지고 바닥에 칸이 보인다. 손 아래 가구만 밝아진다. 옮길 가구를 눌러 들어 올려 보자.':
+    'While arranging, the room dims and the floor shows a grid; only the furniture under your cursor stays lit. Click a piece of furniture to pick it up.',
+  '들어 올린 가구는 손을 따라온다. 밝게 테를 두른 곳이 이 가구를 놓을 수 있는 자리다. 초록 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.':
+    "The furniture follows your cursor. The lit, outlined area is everywhere this piece can go. Green squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
+  '들어 올린 가구는 손을 따라온다. 밝게 테를 두른 곳이 이 가구를 놓을 수 있는 자리다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.':
+    "The furniture follows your cursor. The lit, outlined area is everywhere this piece can go. Blue squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
   '가구는 바라보는 쪽에서만 쓴다. 가리키거나 든 가구 앞에 뜨는 노란 꺾쇠 칸이 그 자리다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 앞이 막히는 방향은 건너뛴다. 한 번 돌려 보자.':
     'Furniture is used only from the side it faces — the yellow chevron squares in front of the piece you point at or hold mark that spot. Right-click a piece and it turns one step around the square you clicked. Directions whose front would be blocked are skipped. Try turning one.',
   '오른쪽은 넣어 둔 가구 자리다. 가구를 들어 이 칸에 내려놓으면 방에서 치워 둔다. 하나 넣어 보자.':
@@ -151,8 +151,8 @@ export const EN_HOME: Record<string, string> = {
     "The calendar on the wall, with payment dates in Dad's handwriting.\nCheck it with [F] to see what's due soon.",
   '어탁 액자. 언젠가 내가 낚은 큰 고기로 바꿔 걸고 싶다.\n[F]로 보면 지금까지 낚은 가장 큰 고기의 기록이 나온다.':
     "A fish-print frame. Someday I want to hang one of my own catches there.\nCheck it with [F] for the record of the biggest fish I've caught.",
-  '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.\n밤에는 방이 어둡다. 협탁 앞에서 [F]로 스탠드를 켜고 끈다.':
-    'The bedside table. The lamp still turns on. Only dust where he always kept his glasses.\nThe room gets dark at night. Turn the lamp on and off with [F] at the nightstand.',
+  '머리맡 협탁. 스탠드가 아직 켜진다. 안경을 늘 두던 자리에 먼지만 앉았다.\n밤에는 협탁 앞에서 [F]로 스탠드를 켜고 끈다.':
+    'The bedside table. The lamp still turns on. Only dust where he always kept his glasses.\nAt night, turn the lamp on and off with [F] at the nightstand.',
   '벽 선반의 책. 물때표, 어류 도감, 손때 묻은 매듭 책.\n책 아래에서 [F]를 누르면 도감이나 물때표를 펼쳐 본다.':
     'Books on the wall shelf: a tide table, a fish guide, a well-thumbed book of knots.\nPress [F] below them to open the guide or the tide table.',
   '창 너머로 바다가 보인다. 해가 지면 노을이, 비가 오면 빗줄기가 보인다.':

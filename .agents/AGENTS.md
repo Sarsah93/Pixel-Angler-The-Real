@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 278차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 279차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-27 278차) — 채집 놀이 멈춤 · 오류(닫은 창의 가이드) · 조작 가이드 보강 · 건널 수 없던 보행 다리 전 지역 보정**
+**최근 변경 (2026-10-27 279차) — 열지 않은 미끼 묶음은 채비 칸에 못 끼운다 · 집 안은 늘 밝다 · 가구 배치 때만 어둡게(손 아래 가구 · 놓을 자리 밝힘)**
+
+- QA 둘: 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 · 「집 내부(다른 상점 내부들도 마찬가지겠지?)는 항상 밝고, 가구 배치할 때, 어두움(DIMMING)처리 하되, 배치할 가구 및 영역을 하이라이트」.
+- 미끼 갑: 267은 `isBaitItem`(낚시 중 고르기)만 막아 채비 창 미끼 칸(`partKindOf`)에 곽크릴 · 청갯지렁이 1갑이 꿰였다 → `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null ·
+  `setRigNode`가 칸 종류(`RIG_SLOTS[slot].accepts`)를 본다 · 불러올 때 그 칸 비움(묶음은 가방에) · 「정리」 무리는 미끼 곁.
+- 집: 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만 시각을 따른다) · 배치 어둠 막(`HomeDecorMode.veil` α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부를 뚫고 테두리 ·
+  WebGL 복구 때 `repaint()` · 가이드 · 도움말 · 영어. 가게 실내는 이미 밝다(depth 70~99 — 바꾸지 않음).
+- 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · 89차 배포. 상세: [279차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md).
+
+**이전 변경 (2026-10-27 278차) — 채집 놀이 멈춤 · 오류(닫은 창의 가이드) · 조작 가이드 보강 · 건널 수 없던 보행 다리 전 지역 보정**
 
 - 사용자 리포트 둘: 「갯강구 … 미니게임 어떻게 하는 지 모르겠고 … esc 눌렀더니 … 에러 문구가 뜨고 화면이 freeze」 · 「태안 안흥 … 캐릭터가 지나갈 수 없는 다리 … 전체 맵 검수 … 지형을 너무 늘리지 않는 선에서」.
 - 놀이: 가이드가 물가 캐스팅 안내(passive — 스스로 안 끝남) 뒤에 영영 줄 서서 판이 멈췄고, ESC 뒤 닫힌 창의 `build()`가 `scene.textures`를 읽어 던졌다 →
@@ -335,14 +344,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   문 BFS ≤ 4(길 건너 금지 `crossesRoad`) · 가게 사람 `poiNpcSpot` · 인물 `nearestStandable` · 걷기 `offRoad` · 차 `crossBlocked`(가까운 쪽 먼저 · 10초 교착 풀기) · 주인공 대기 = 지나갈 통로 · 사고 정지 180 → 20초.
 - 설정 「화면」 「안내 말풍선」(`setGuideTipsEnabled` — 끄면 본 것으로 치지 않음) · `ui/PauseMenu` 공용 — 가게 안 · 집 안 ESC도 일시정지 메뉴(나가기는 문 매트).
 - 검증: 감사 13지역 [F] 차도 위 972 → 371 · 가게 사람 66 → 0 · 이야기 인물 5 → 0 · 다른 도로 차 겹침 488 → 55 · 하네스 21/21 · 빌드 3/3 · typecheck 0. 상세: [277차 워크로그](../docs/wiki/03-WORKLOG/2026-10-26-277-bag-sort-road-spots-guide-toggle-pause-menu.md).
-
-**이전 변경 (2026-10-26 276차) — dev 전용 「모든 지역 열기」(F10 · 세계 지도 장 순서 잠금 건너뛰기)**
-
-- 사용자 「혹시 dev 서버에서 맵도 다 해금되어 있을까?」 → 아니었다(세계 지도는 dev 여부 없이 263 장 잠금만 본다 · F10 「전체 해금」은 도감만) → 「응, 넣어줘. main 반영도 해줘.」
-- `DevMode.isAllRegionsOpen` · `setAllRegionsOpen`(브라우저 저장소 `tra_dev_all_regions` — 세이브 무관) · `WorldMapScene.regionOpen` 한 곳에서 장 잠금만 건너뜀(지도 없는 울릉도 · 독도는 그대로) ·
-  F10 콘솔 「①-2 모든 지역 열기」 체크 상자 — 세계 지도가 열려 있으면 다시 그린다. 이야기 진행 · 장은 그대로.
-- 검증: 하네스 16/16(꺼짐 · 켜기 · 새로 고침 유지 · 끄기 · 세이브 무관 · pageerror 0) · 1장 그대로 부산 감천항 입장 · 프로덕션 번들 0건 · 빌드 3/3 · typecheck 0.
-  아티팩트는 dev 도구라 갱신하지 않음. main 빨리 감기 완료(사용자 지시). 상세: [276차 워크로그](../docs/wiki/03-WORKLOG/2026-10-26-276-dev-all-regions-open.md).
 
 ---
 

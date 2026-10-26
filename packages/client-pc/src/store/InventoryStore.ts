@@ -21,7 +21,7 @@ import {
   speciesStandardWeightG, SASHIMI_PLATE_SPECS, type SashimiPlateMeta, type SashimiKnifeTier,
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
-  newRigTree, setRigValue, dropMissingItems, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy, migrateRigTree,
+  newRigTree, setRigValue, dropMissingItems, RIG_SLOTS, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy, migrateRigTree,
   type RigTreeState, type RigValue, type RigSummary, type RigPartKind, type RigSlotKind, type RigItemView,
   FLASHER_TARGET_SPECIES,
 } from '@tra/core';
@@ -47,7 +47,7 @@ import { PRODUCE_SUB, cropItemTemplate, migrateLegacyPackItem } from '../data/Cr
 import { StoryStore } from './StoryStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
-import { rigViewOf } from './RigParts.js';
+import { rigViewOf, isPackItem } from './RigParts.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
 import { canonicalItemId } from './ItemIdAlias.js';
 
@@ -2475,6 +2475,12 @@ class InventoryStoreManager {
       if (this.baitStockLeft(value.itemId, idx) < need) return false;
     }
     const item = 'itemId' in value && value.itemId ? this.rigView(value.itemId) : null;
+    // 279차 — 칸이 받지 않는 물건은 넣지 않는다(채비 창 후보 `nodeAccepts`와 같은 판정).
+    //   곽 · 갑(곽크릴 · 청갯지렁이 1갑)은 채비 부품이 아니라 미끼 칸에 꿰이지 않는다 — 「열기」 · 「포장 뜯기」로 낱개를 꺼낸다
+    if ('itemId' in value && value.itemId) {
+      const accepts = target ? RIG_SLOTS[target.slot]?.accepts : undefined;
+      if (!item?.partKind || !accepts?.includes(item.partKind)) return false;
+    }
     const next = setRigValue(this._tree, idx, value, item);
     if (next === this._tree) return false;
     this._tree = next;
@@ -2487,7 +2493,8 @@ class InventoryStoreManager {
 
   /** 사라진 아이템(소모·판매·손실)을 가리키는 칸을 비우고 투영을 다시 만든다 */
   private syncTreeWithItems(): void {
-    const next = dropMissingItems(this._tree, (id) => !!this.find(id));
+    // 279차 — 곽 · 갑이 칸에 남은 세이브(채비 창이 묶음째 꿰게 두던 때)도 그 칸을 비운다 — 묶음은 가방에 그대로 있다
+    const next = dropMissingItems(this._tree, (id) => { const it = this.find(id); return !!it && !isPackItem(it); });
     if (next !== this._tree) this._tree = next;
     this.projectTree();
   }

@@ -13,6 +13,9 @@
  *    ESC = 들고 있던 것 내려놓기 취소 → 한 번 더 누르면 배치를 마친다.
  *  - 판정은 `HomeStore.checkPlace` — 문까지 가는 길과 쓸 수 있는 가구 앞자리를 막는 배치는 놓이지 않는다.
  *  - 조작 안내 문구는 화면에 쓰지 않는다(규칙 R11) — 처음 들어올 때 체험 가이드(`home_decorate`)가 하나씩 해 보게 한다.
+ *  - 279차 — 배치 중에는 방에 어둠 막(`veil`)을 깐다(QA 「가구 배치할 때 어두움 처리하되, 배치할 가구 및 영역을 하이라이트」 —
+ *    전에는 반대로 밤에 어둡던 방이 배치 때 밝아졌다). 손 아래 가구는 막을 뚫어 밝게, 들고 있으면 **그 가구를 지금 방향으로
+ *    놓을 수 있는 칸 전부**를 밝히고 테두리를 두른다. 들고 있는 그림 · 칸 색 · 이름은 막 위에 있다.
  */
 
 import Phaser from 'phaser';
@@ -40,6 +43,13 @@ const SLOT_GAP = 8;
 const PAGER_H = 24;
 /** 트레이 최소 높이 — 머리 + 한 줄 + 쪽 넘김 + [완료] */
 const TRAY_MIN_H = 42 + SLOT_H + PAGER_H + 56;
+/** 279차 — 배치 중 어둠 막: 방(벽 · 문틀 포함) 둘레 여유 · 색 · 세기 · depth(가구 · 캐릭터 20대 위, 입력 판 55 · 들고 있는 그림 57 아래) */
+const VEIL_PAD = 22;
+const VEIL_COLOR = 0x040812;
+const VEIL_ALPHA = 0.6;
+const VEIL_DEPTH = 50;
+/** 손 아래 가구를 밝힐 때 발자국 위로 더 여는 높이(px) — 스탠드 갓처럼 발자국 위로 조금 솟은 그림 */
+const VEIL_TOP_PX = 12;
 
 export interface DecorHost {
   ox: number;
@@ -75,6 +85,13 @@ export class HomeDecorMode {
   private trayBody: Phaser.GameObjects.Container;
   private trayFrame: Phaser.GameObjects.Graphics;
   private holding: Holding | null = null;
+  /** 279차 — 어둠 막 · 막을 뚫는 붓(화면에 올리지 않는다) · 놓을 수 있는 칸 테두리 */
+  private veil: Phaser.GameObjects.RenderTexture;
+  private veilCut: Phaser.GameObjects.Graphics;
+  private areaG: Phaser.GameObjects.Graphics;
+  /** 들고 있는 가구를 지금 방향으로 놓을 수 있는 칸(r * ROOM_W + c) — 집어 들 때 · 돌릴 때 다시 센다 */
+  placeArea: Set<number> | null = null;
+  private areaKey = '';
   private lastPointer = { x: 0, y: 0 };
   private overTray = false;
   /** 트레이 높이(198차 — HUD를 피한 빈 구간에 맞춘다) */
@@ -105,6 +122,13 @@ export class HomeDecorMode {
     for (let c = 0; c < DOOR_MAT.fw; c++) for (let r = 0; r < DOOR_MAT.fh; r++) {
       drawBlockedX(this.gridG, ox + (DOOR_MAT.tx + c) * IT, oy + (DOOR_MAT.ty + r) * IT, IT, IT, cv(0xff6a5a), 0.6, 6);
     }
+
+    // 279차 — 어둠 막(방 전체) · 놓을 수 있는 칸 테두리(막 위)
+    this.veil = scene.add.renderTexture(ox - VEIL_PAD, oy - VEIL_PAD, ROOM_W * IT + VEIL_PAD * 2, ROOM_H * IT + VEIL_PAD * 2)
+      .setOrigin(0, 0).setDepth(VEIL_DEPTH);
+    this.veilCut = scene.make.graphics({}, false);
+    this.areaG = scene.add.graphics().setDepth(VEIL_DEPTH + 1);
+    this.paintVeil(null);
 
     this.hoverG = scene.add.graphics().setDepth(58);
     this.cellG = scene.add.graphics().setDepth(57.5);   // 들고 있는 가구 그림 위 — 칸 색이 가려지지 않게
@@ -295,12 +319,20 @@ export class HomeDecorMode {
     this.exit();
   }
 
+  /** 279차 — 어둠 막(RenderTexture)을 다시 칠한다 — WebGL 컨텍스트가 돌아오면 비어 있다(home-base §6-52) */
+  repaint(): void {
+    if (!this.alive) return;
+    this.areaKey = '\u0000';   // 놓을 자리 테두리(Graphics)는 남아 있지만 다시 센다
+    this.refreshPreview();
+  }
+
   exit(): void {
     if (!this.alive) return;
     this.alive = false;
     if (this.holding) { this.holding = null; }
     this.host.redraw(null);
-    for (const o of [this.gridG, this.hoverG, this.cellG, this.ghostC, this.reasonText, this.nameText, this.roomZone, this.tray]) o.destroy();
+    for (const o of [this.gridG, this.hoverG, this.cellG, this.ghostC, this.reasonText, this.nameText, this.roomZone, this.tray,
+      this.veil, this.veilCut, this.areaG]) o.destroy();
     restoreHandCursor(this.scene);
     this.host.onExit();
   }
@@ -327,10 +359,13 @@ export class HomeDecorMode {
     const p = this.lastPointer;
     this.overTray = this.trayRect().contains(p.x, p.y);
     this.paintTrayFrame();
+    this.refreshPlaceArea();
     if (!this.holding) {
       this.ghostC.setVisible(false);
       const f = this.furnAt(p.x, p.y);
-      if (!f || !this.roomRect().contains(p.x, p.y)) return;
+      const hover = f && this.roomRect().contains(p.x, p.y) ? f : null;
+      this.paintVeil(hover);
+      if (!f || !hover) return;
       const { w, h } = footprint(f.kind, f.dir);
       this.hoverG.lineStyle(2, 0xffd257, 1);
       this.hoverG.strokeRoundedRect(ox + f.tx * IT - 2, oy + f.ty * IT - 2, w * IT + 4, h * IT + 4, 5);
@@ -338,6 +373,7 @@ export class HomeDecorMode {
       this.nameText.setText(FURN_DEFS[f.kind].nameKo).setPosition(ox + (f.tx + w / 2) * IT, oy + f.ty * IT - 6).setVisible(true);
       return;
     }
+    this.paintVeil(null);
     const cand = this.candidate()!;
     if (this.overTray || !this.roomRect().contains(p.x, p.y)) { this.ghostC.setVisible(false); return; }
     const chk = HomeStore.checkPlace(cand, this.othersOf(cand.id), this.host.playerTile());
@@ -354,6 +390,68 @@ export class HomeDecorMode {
     drawFurnitureArt(this.ghostArt, cand.kind, cand.dir, this.host.artState());
     this.ghostC.setPosition(ox + cand.tx * IT, oy + cand.ty * IT).setVisible(true);
     if (!chk.ok && chk.reason) this.showReason(chk.reason, cand);
+  }
+
+  /**
+   * 279차 — 들고 있는 가구를 지금 방향으로 놓을 수 있는 칸을 다시 센다(집어 든 가구 · 방향이 바뀔 때만).
+   * 자리마다 `HomeStore.checkPlace`(문까지 가는 길 · 쓰는 쪽 앞자리 · 겹침)를 그대로 돌려 붙는 발자국 칸을 모은다.
+   */
+  private refreshPlaceArea(): void {
+    const h = this.holding;
+    const key = h ? `${h.f.id}|${h.f.dir}` : '';
+    if (key === this.areaKey) return;
+    this.areaKey = key;
+    this.areaG.clear();
+    if (!h) { this.placeArea = null; return; }
+    const { w, h: fh } = footprint(h.f.kind, h.f.dir);
+    const others = this.othersOf(h.f.id);
+    const me = this.host.playerTile();
+    const area = new Set<number>();
+    for (let ty = 0; ty + fh <= ROOM_H; ty++) {
+      for (let tx = 0; tx + w <= ROOM_W; tx++) {
+        if (!HomeStore.checkPlace({ ...h.f, tx, ty }, others, me).ok) continue;
+        for (let r = ty; r < ty + fh; r++) for (let c = tx; c < tx + w; c++) area.add(r * ROOM_W + c);
+      }
+    }
+    this.placeArea = area;
+    // 테두리 — 놓을 수 있는 칸 묶음의 바깥 변만(칸마다 네모를 그리면 바둑판이 된다)
+    const { ox, oy } = this.host;
+    const has = (c: number, r: number): boolean => c >= 0 && r >= 0 && c < ROOM_W && r < ROOM_H && area.has(r * ROOM_W + c);
+    this.areaG.fillStyle(0xfff3c4, 0.07);
+    this.areaG.lineStyle(2, 0xfff3c4, 0.75);
+    for (const k of area) {
+      const c = k % ROOM_W, r = Math.floor(k / ROOM_W);
+      const x = ox + c * IT, y = oy + r * IT;
+      this.areaG.fillRect(x, y, IT, IT);
+      if (!has(c, r - 1)) this.areaG.lineBetween(x, y, x + IT, y);
+      if (!has(c, r + 1)) this.areaG.lineBetween(x, y + IT, x + IT, y + IT);
+      if (!has(c - 1, r)) this.areaG.lineBetween(x, y, x, y + IT);
+      if (!has(c + 1, r)) this.areaG.lineBetween(x + IT, y, x + IT, y + IT);
+    }
+  }
+
+  /**
+   * 279차 — 어둠 막을 다시 칠한다. 손 아래 가구(`hover`)와 놓을 수 있는 칸(`placeArea`)만 뚫어 밝게 둔다.
+   */
+  private paintVeil(hover: FurnInstance | null): void {
+    const rt = this.veil;
+    rt.clear();
+    rt.fill(VEIL_COLOR, VEIL_ALPHA);
+    const g = this.veilCut;
+    g.clear();
+    g.fillStyle(0xffffff, 1);
+    const lx = this.host.ox - rt.x, ly = this.host.oy - rt.y;   // 방 좌상단의 막 안 좌표
+    let cut = false;
+    if (hover) {
+      const { w, h } = footprint(hover.kind, hover.dir);
+      g.fillRect(lx + hover.tx * IT - 3, ly + hover.ty * IT - VEIL_TOP_PX, w * IT + 6, h * IT + VEIL_TOP_PX + 3);
+      cut = true;
+    }
+    if (this.placeArea) {
+      for (const k of this.placeArea) g.fillRect(lx + (k % ROOM_W) * IT, ly + Math.floor(k / ROOM_W) * IT, IT, IT);
+      cut = cut || this.placeArea.size > 0;
+    }
+    if (cut) rt.erase(g, 0, 0);
   }
 
   /**
@@ -530,13 +628,13 @@ export class HomeDecorMode {
       alive: () => this.alive,
       steps: [
         {
-          text: '가구 배치 중에는 바닥에 칸이 보인다. 옮길 가구를 눌러 들어 올려 보자.',
+          text: '가구 배치 중에는 방이 어두워지고 바닥에 칸이 보인다. 손 아래 가구만 밝아진다. 옮길 가구를 눌러 들어 올려 보자.',
           target: room,
           wait: () => !!this.holding,
         },
         {
-          text: cvText('들어 올린 가구는 손을 따라온다. 초록 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.',
-            '들어 올린 가구는 손을 따라온다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.'),
+          text: cvText('들어 올린 가구는 손을 따라온다. 밝게 테를 두른 곳이 이 가구를 놓을 수 있는 자리다. 초록 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.',
+            '들어 올린 가구는 손을 따라온다. 밝게 테를 두른 곳이 이 가구를 놓을 수 있는 자리다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.'),
           target: room,
           onEnter: () => { placesAt = this.places; },
           wait: () => this.places > placesAt,

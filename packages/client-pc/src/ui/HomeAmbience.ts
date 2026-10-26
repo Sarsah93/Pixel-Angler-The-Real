@@ -11,6 +11,10 @@
  *  - 창: 유리 안쪽에 하늘 · 바다 수평선 · 해/달/별 · 구름 · 비/눈 줄기를 2px 도트로 그린다. 강수는 매 프레임 흐른다.
  *  - 어둠: 방을 덮는 RenderTexture에 어둠을 채우고, 켜진 불빛 자리를 **부드러운 원으로 지운다**(+ 따뜻한 가산 광).
  *    어둠은 가구·캐릭터 위, [F] 힌트·메뉴·창(UI) 아래 depth에 둔다.
+ *  - 279차 — **실내는 늘 밝다**(QA 「집 내부(다른 상점 내부들도 마찬가지)는 항상 밝고, 가구 배치할 때 어두움 처리」).
+ *    집 씬은 어둠 배율(`dimMul`)을 0으로 준다 — 창밖 하늘 · 창으로 드는 빛은 그대로 시각을 따른다.
+ *    켜 둔 스탠드 · 수조의 따뜻한 번짐은 밤 정도(`roomDarkness`)만큼 그대로 돌아 스탠드를 켜고 끄는 맛은 남긴다.
+ *    가구 배치 중의 어둠은 배치 모드(`HomeDecorMode`)가 따로 깐다.
  *  - 창으로 드는 빛: 낮은 햇살, 노을은 주황, 맑은 밤은 푸른 달빛 — 마루 위 띠(구 drawRoom의 고정 햇살을 대신한다).
  */
 
@@ -61,7 +65,7 @@ export interface AmbienceHost {
   win: { x: number; y: number; w: number; h: number };
   /** 지금 켜져 있는 불빛들 */
   lights(): AmbienceLight[];
-  /** 어둠 배율 (가구 배치 중에는 바닥 칸이 보이게 옅게) */
+  /** 어둠 배율 — 279차부터 집은 0(실내는 늘 밝다). 1이면 시각 · 날씨대로 어두워진다 */
   dimMul(): number;
 }
 
@@ -156,19 +160,23 @@ export class HomeAmbience {
 
   /** 불빛만 다시 (스탠드를 켜고 끌 때) */
   refreshLights(): void {
-    const d = roomDarkness(this.phase, this.weather) * this.host.dimMul();
+    const natural = roomDarkness(this.phase, this.weather);
+    const d = natural * this.host.dimMul();
     this.darkness = d;
     const rt = this.dark;
     rt.clear();
     this.glowC.removeAll(true);
-    if (d <= 0.01) return;
-    rt.fill(DARK_COLOR[this.phase], d);
+    if (natural <= 0.01) return;
+    if (d > 0.01) rt.fill(DARK_COLOR[this.phase], d);
     for (const l of this.host.lights()) {
-      this.brush.setScale((l.r * 2) / 256);
-      rt.erase(this.brush, l.x - rt.x, l.y - rt.y);
-      // 빛 번짐 — 같은 부드러운 원 브러시를 색을 입혀 가산으로 (어두울수록 또렷하다)
+      if (d > 0.01) {
+        this.brush.setScale((l.r * 2) / 256);
+        rt.erase(this.brush, l.x - rt.x, l.y - rt.y);
+      }
+      // 빛 번짐 — 같은 부드러운 원 브러시를 색을 입혀 가산으로 (밤일수록 또렷하다).
+      //   279차 — 방이 밝아도(어둠 0) 밤 정도만큼은 번진다 — 스탠드를 켜면 따뜻한 빛이 돈다
       const glow = this.scene.add.image(l.x, l.y, BRUSH).setTint(l.color).setBlendMode(Phaser.BlendModes.ADD)
-        .setScale((l.r * 1.5) / 256).setAlpha(0.32 * d);
+        .setScale((l.r * 1.5) / 256).setAlpha(d > 0.01 ? 0.32 * d : 0.2 * natural);
       this.glowC.add(glow);
     }
   }

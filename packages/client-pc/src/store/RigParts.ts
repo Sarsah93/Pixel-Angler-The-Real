@@ -8,9 +8,29 @@
 
 import { getLureSpec, type RigPartKind, type RigItemView, type BaitKey } from '@tra/core';
 import type { InvItem } from './InventoryStore.js';
+import { SHOP_CATALOG } from '../data/ShopCatalog.js';
+
+/** 상점 묶음(`bundle`) 아이템 id — 처음 물을 때 한 번 모은다 */
+let bundleIds: Set<string> | null = null;
+
+/**
+ * 279차 — 곽 · 갑인가(포장 `unpack` — 곽크릴 · 빵가루 반죽 / 상점 묶음 `bundle` — 청갯지렁이 1갑 · 혼무시 1갑).
+ * 그 자체는 채비 부품이 아니다 — 「열기」 · 「포장 뜯기」로 낱개를 꺼내야 바늘에 꿴다
+ * (QA 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 — 267은 `isBaitItem`만 막아 채비 창 미끼 칸은 열려 있었다).
+ */
+export function isPackItem(i: Pick<InvItem, 'id' | 'unpack'>): boolean {
+  if (i.unpack) return true;
+  if (!bundleIds) {
+    bundleIds = new Set();
+    for (const def of Object.values(SHOP_CATALOG)) for (const e of def.sells) if (e.bundle) bundleIds.add(e.id);
+  }
+  return bundleIds.has(i.id);
+}
 
 /** 아이템이 들어갈 수 있는 채비 칸 종류 (없으면 채비 부품이 아니다) */
-export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rigPart' | 'sinkerKind' | 'floatBuoyG'>): RigPartKind | null {
+export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rigPart' | 'sinkerKind' | 'floatBuoyG' | 'unpack'>): RigPartKind | null {
+  // 279차 — 곽 · 갑은 어느 칸에도 들어가지 않는다(채비 창 후보 · 끌어 놓기 · 트리 판정이 모두 이 함수를 본다)
+  if (isPackItem(i)) return null;
   if (i.rigPart) return i.rigPart;
   const sub = i.subCategory ?? '';
   const n = i.name ?? '';
