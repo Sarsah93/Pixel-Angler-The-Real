@@ -37,6 +37,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { worldLabelStyle, WORLD_LABEL_WARN } from '../ui/WorldLabel.js';
+import { isAllRegionsOpen } from '../dev/DevMode.js';
 
 // ── 뷰 상태 머신 ────────────────────────────────────────
 // region    : 전국 지도 + 지역 핀/리스트 선택
@@ -613,8 +614,10 @@ export class WorldMapScene extends Phaser.Scene {
   /**
    * 263차 — 지역은 장 순서대로 열린다(사용자 결정). 타일맵이 있어도 그 지역을 여는 장이 오기 전에는 잠긴다.
    * 장 번호는 화면에 내지 않는다(R2 — 「아직 갈 수 없는 곳」).
+   * 276차 — dev 「모든 지역 열기」(F10)가 켜져 있으면 장 잠금만 건너뛴다(지도가 없는 지역은 그대로 잠금).
    */
   private regionOpen(regionId: string): boolean {
+    if (isAllRegionsOpen()) return isRegionUnlocked(regionId);
     return isRegionOpenAtChapter(regionId, StoryStore.currentChapter());
   }
 

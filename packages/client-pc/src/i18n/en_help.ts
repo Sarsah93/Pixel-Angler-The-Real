@@ -184,7 +184,7 @@ export const EN_HELP: Record<string, string> = {
   '맵 편집기 (속초 — 지형 · 프롭 · 지붕 · 도로 · 층 · 계단 · 피복, 저장 = patch.json)': 'Map editor (Sokcho — terrain · props · roofs · roads · levels · stairs · armour; saves to patch.json)',
   '튜닝 슬라이더': 'Tuning sliders',
   '손질 가이드 좌표 편집': 'Edit butchery guide coordinates',
-  '크리에이티브 콘솔 (재화 · 아이템 · 어종 · 도감 · 무적 · 면허 · 할 일 단계)': 'Creative console (money · items · fish · codex · invincibility · licences · task stages)',
+  '크리에이티브 콘솔 (재화 · 아이템 · 어종 · 도감 · 무적 · 모든 지역 열기 · 면허 · 할 일 단계)': 'Creative console (money · items · fish · codex · invincibility · open all regions · licences · task stages)',
   'Ctrl+클릭': 'Ctrl+click',
   '순간이동 (속초 맵 · 미니맵)': 'Teleport (Sokcho map · minimap)',
   '전국 지도 핀 편집': 'Edit National Map pins',

@@ -8,17 +8,19 @@
  *  - 아이템 지급·제거 (시드+상점 전 카탈로그 검색)
  *  - 어종 어획물 지급 (FISH_DATABASE 전 어종 — 활어·평균 밴드 랜덤)
  *  - 도감/위키 전체 해금·초기화 (DiscoveryStore)
+ *  - 276차 — 모든 지역 열기(세계 지도 장 순서 잠금 건너뛰기 · 세이브 무관)
  *
  * DevTuningPanel(F8)과 동일한 DOM 오버레이 패턴 —
  * 프로덕션 빌드에서는 initDevConsolePanel()이 즉시 반환하고 vite가 데드코드 제거.
  */
 
+import type Phaser from 'phaser';
 import { FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUESTS } from '@tra/core';
 import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
-import { DevMode } from './DevMode.js';
+import { DevMode, setAllRegionsOpen } from './DevMode.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { StoryStore } from '../store/StoryStore.js';
 
@@ -91,6 +93,7 @@ function buildPanel(): HTMLDivElement {
   box.appendChild(note);
 
   buildGodSection(box);
+  buildRegionSection(box);
   buildPlayerSection(box);
   buildItemSection(box);
   buildFishSection(box);
@@ -126,6 +129,31 @@ function buildGodSection(box: HTMLElement): void {
   cb.onchange = () => { DevMode.god = cb.checked; };
   const txt = document.createElement('span');
   txt.textContent = '신선도 동결 · 채비/미끼 손실 없음 · 줄터짐 없음';
+  label.appendChild(cb);
+  label.appendChild(txt);
+  body.appendChild(label);
+}
+
+/**
+ * ①-2 모든 지역 열기 (276차) — 세계 지도의 장 순서 잠금을 건너뛴다.
+ * 이야기 진행 · 세이브는 그대로다(브라우저 저장소에만 기억). 지도가 없는 지역은 계속 잠긴다.
+ * 세계 지도가 열려 있으면 그 자리에서 다시 그린다.
+ */
+function buildRegionSection(box: HTMLElement): void {
+  const body = section(box, '①-2 모든 지역 열기');
+  const label = document.createElement('label');
+  Object.assign(label.style, { display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' });
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.id = 'dev-all-regions';
+  cb.checked = DevMode.allRegions;
+  cb.onchange = () => {
+    setAllRegionsOpen(cb.checked);
+    const game = (globalThis as { __PIXEL_ANGLER_GAME?: Phaser.Game }).__PIXEL_ANGLER_GAME;
+    if (game?.scene.isActive('WorldMapScene')) game.scene.getScene('WorldMapScene').scene.restart();
+  };
+  const txt = document.createElement('span');
+  txt.textContent = '세계 지도 장 잠금 건너뛰기 (이야기 · 세이브는 그대로)';
   label.appendChild(cb);
   label.appendChild(txt);
   body.appendChild(label);

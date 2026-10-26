@@ -16,7 +16,7 @@
 | tools | `regions_config.py` · `fetch_region_osm.py` · `build_osm_tilemap.py` | **OSM 파이프라인** — 지역 bbox 레지스트리(v4 — 속초 크기 13 데이터 지역 + 분할 전 부산 3 · 섬 2) · Overpass 수집 캐시 · 5m/타일 래스터라이즈(**262 바다 = 해안선 방향 투표** · 마스킹 · 스폰 스냅 + 전역 폴백) |
 | CI | `.github/workflows/osm-region.yml` · `pixelazed/_osm_request.txt` | **262 OSM 지역 수집 워크플로** — 러너가 fetch → build → 건물 · 등대 · 게임 상호(`--auto`)까지 굽고 실행한 브랜치에 커밋. main에 없는 브랜치는 요청 파일 푸시로 깨운다 |
 | tools | `build_region_maps.py` · `build_depth_profiles.py` | 지형 PNG → 타일 JSON(**심리스 분기 포함**) / 수심 ZIP → 프로필 |
-| client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 · 지점 이름 흰 테 글자(259) |
+| client | `WorldMapScene` | 핀·툴팁·줌인 진입·교통비 결제·귀가 · 지점 이름 흰 테 글자(259) · 잠금 판정 `regionOpen` 한 곳(276 dev 「모든 지역 열기」 우회 — F10) |
 | client | `RegionFieldScene` | legacy 전맵 베이킹 / **심리스 분기**(meta 스폰·OSM POI·엣지 비활성) · 캐스팅 · 조명/날씨 · 설치 모드 |
 | client | `scenes/SeamlessChunks.ts` | **청크 스트리밍** — 64타일 청크 · RT 풀 12 LRU · 3×3 상주 · 프레임당 1베이킹 · 근접 충돌 · 벡터 차선 마킹 · 프롭 10종 · `invalidateTiles`(편집 반영) |
 | client(dev) | `dev/MapEditorPanel.ts` + `vite.config.ts` 미들웨어 | **맵 편집기(F7)** — 지형/프롭/지붕 페인트 · Ctrl+Z · `patch.json` 저장 · Ctrl+클릭 순간이동(맵·미니맵) |
@@ -65,7 +65,7 @@
 | **달리기(Shift 홀드 + 방향키)** — ×1.55(210 → 326 px/s) · 피로 85%·허기·수분 게이트 · 걷기 프레임 1.55배 | ✅ | 144 |
 | 씬 전환 안전망(SceneFade 17곳) | ✅ | 73 |
 | 교통비·귀가·잠금 지역 | ✅ | 44 |
-| **지역 장 순서 잠금**(사용자 결정 — `chapterOfRegion` · `isRegionOpenAtChapter` · 월드맵 「아직 갈 수 없는 곳」 · 장 번호 안 냄) | ✅ | **263** |
+| **지역 장 순서 잠금**(사용자 결정 — `chapterOfRegion` · `isRegionOpenAtChapter` · 월드맵 「아직 갈 수 없는 곳」 · 장 번호 안 냄 · 276 dev 우회 F10 「모든 지역 열기」) | ✅ | **263** · 276 |
 | **부산 남항 · 공동어시장 구역**(감천 bbox 북쪽 35.095 · 요청 5 refetch · 1.17M 타일 · 위판장 = `shop` 이름 규칙) | ✅ | **263** |
 | 래스터 보강 — Sentinel-2 fetch·분류·terrain 병합(Phase 1·2, 속초) | ✅ | 109 |
 | 래스터 Phase 3 — DEM 경사(해안 변형·음영) | ⬜ | DEM 도엽 재확보 후 |
@@ -189,6 +189,8 @@
   카메라 bounds는 떼야 가장자리 블록 중심을 잡을 수 있다.
 
 - **구역 노드를 더하면 지역이 열리는 게 아니다(263)** — 월드맵은 `isRegionOpenAtChapter`(노드 + `STORY_CHAPTERS.regionIds`의 여는 장)를 본다. 새 지역을 추가할 때 장 데이터에 지역 id가 있어야 한다(없으면 처음부터 열림).
+- **dev에서 지역이 다 열려 보이면 F10 「모든 지역 열기」부터 본다(276)** — 브라우저 저장소 `tra_dev_all_regions`에 기억돼 새로 고쳐도 켜져 있다.
+  장 잠금을 시험할 때는 끄고 본다. 장은 그대로라 열린 지역의 인물 · 의뢰는 원래 장 조건을 따른다. 프로덕션 번들에는 없다(`import.meta.env.DEV`).
 - **bbox를 바꾸면 그 데이터 지역의 모든 칸 좌표가 바뀐다**(263 감천) — 구역 스폰은 위도 · 경도(`spawnLatLon`)라 그대로지만, 인물 배치 · 트리거 · 장소의 `tx/ty`는 다시 잰다(감천은 bbox 확장 뒤에 배치했다).
 
 - **bbox 가장자리 시드로 바다를 채우면 그 변이 육지를 지날 때 내륙이 잠긴다**(262차 — 지세포 'E' 99% · 감천 북쪽 확장 'S' 94%).
