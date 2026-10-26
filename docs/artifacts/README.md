@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 18 — 275차 기준(「기준」 줄 · §06 「275차 실플레이 확인」 줄 · 274차 줄의 가구 앞자리 결정 끝) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 20 — 275차 기준(「가구 배치」 항목 — 바라보는 쪽에서만 쓰기 · 쓰는 쪽 꺾쇠 · 머리 작업 차수 275 · 바닥 줄 워크로그 196) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 18 — 275차 기준 · 채비 문법은 258차(「275차 기준」 줄만) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 71 — 273차(「시스템」 탭 「원줄 · 목줄 내구도」 절). 274 · 275차는 위키 내용 변화 없음(가구 회전 · 쓰는 쪽 · 대화 규칙 항목이 없다 — 생성기가 도움말 · 가구 정의를 싣지 않는다) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 19 — 277차 기준(「기준」 줄 · 머리 · §06 「277차 실플레이 확인」 줄) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 21 — 277차 기준(「인벤토리」 정리 · 「도로 벡터 · 교통」 · 「체험 가이드」 끄고 켜기 · 새 항목 「일시정지 메뉴」 · 머리 작업 차수 277 · 바닥 줄 워크로그 198) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 19 — 277차 기준 · 채비 문법은 258차(「277차 기준」 줄만) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 72 — 277차(「시스템」 탭 새 절 셋: 가방 정리 · 길가 가게 자리와 차 · 일시정지 메뉴 · 안내 말풍선 + 시스템 페이지 갱신분). 지도 핀은 `pois.json` 좌표라 다시 찍지 않았다 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

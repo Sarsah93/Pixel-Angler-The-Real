@@ -54,7 +54,7 @@ export interface InteriorHost {
   onAction(action: Exclude<InteriorAction, 'sit'>): void;
   /** 의자에서 「식사하기」 — 가방(음식) */
   onMeal(): void;
-  /** 매트를 밟고 나가거나 ESC — 필드가 페이드 후 `destroy` */
+  /** 매트를 밟고 나간다 — 필드가 페이드 후 `destroy` (277차 — ESC는 나가기가 아니라 일시정지 메뉴) */
   onLeave(): void;
   /** 216차 — 집 주인에게 [F] 「말 걸기」 */
   onTalk?(npcId: string): void;
@@ -372,8 +372,13 @@ export class InteriorSystem {
     this.host.onAction(f.action);
   }
 
-  /** ESC — 앉아 있으면 일어선다(true). 아니면 false(필드가 나가기 처리) */
+  /**
+   * ESC — 고를 거리가 떠 있으면 접고, 앉아 있으면 일어선다(true). 아니면 false.
+   * 277차 — false일 때 필드는 **일시정지 메뉴**를 연다(구: 밖으로 나가기). 나가기는 매트를 밟는다(사용자 지시 —
+   * 「편의점이나 마트에서 esc 버튼 누르면 나가지도록 되어있는데, 그러면 안됨 … pause menu가 나오도록」 · 267 집과 같은 규칙).
+   */
   escape(): boolean {
+    if (this.menu) { this.closeMenu(); return true; }
     if (this.seat) { this.standUp(); return true; }
     return false;
   }

@@ -37,6 +37,8 @@ description: Pixel Angler Phaser 씬 전환·페이드 규칙 (SceneFade 안전�
 ## 기타 규칙
 
 - 씬 키 = 파일명. 신규 씬은 `game.ts` 씬 등록 목록에 추가 (main.ts 아님).
-- ESC LIFO: 팝업이 열려 있으면 팝업부터 (RegionFieldScene popupStack — depth 최고 우선), 팝업 없을 때만 일시정지 메뉴/씬 이탈.
+- ESC LIFO: 팝업이 열려 있으면 팝업부터 (RegionFieldScene popupStack — depth 최고 우선), 팝업 없을 때만 일시정지 메뉴.
+  **실내(가게 겹층 `InteriorSystem` · 집 `HomeInteriorScene`)는 ESC로 나가지 않는다**(267 · 277 사용자 지시) — 고를 거리 · 앉기 · 창을 접고 그다음은 일시정지 메뉴(`ui/PauseMenu` 공용). 나가기는 문 매트.
+  하위 씬(집)에서 「타이틀 화면」은 아래에 멈춘 필드도 `scene.stop('RegionFieldScene')` 한 뒤 `MainMenuScene`을 시작한다.
 - 팝업 닫힘 직후 클릭 관통: 같은 프레임 pointerdown이 씬으로 흘러 캐스팅 힌트 등이 뜬다 — `suppressClickUntil` 유예(250ms, 1인칭 복귀 400ms) 패턴 사용.
 - 검증: 전환 연타·fadeIn 중 재진입·왕복 2회차까지 실렌더로 확인 (verify-render 스킬 — 73차 검증 시나리오 참조).

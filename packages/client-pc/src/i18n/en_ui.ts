@@ -83,6 +83,9 @@ export const EN_UI: Record<string, string> = {
   '할 일 위치 안내': 'Task direction guide',
   '지금 할 일의 목표 방향을 가리키는 화살표를 캐릭터 주변에 띄웁니다. 끄면 화살표만 사라지고, 일지(J)와 「지금 할 일」의 안내 문구는 그대로 남습니다.':
     'Shows an arrow near your character pointing toward the current task. Turn it off and only the arrow goes — the journal (J) and the Current Task panel still tell you where to go.',
+  '안내 말풍선': 'Guide bubbles',
+  '창을 처음 열거나 물가에서 처음 캐스팅 · 구멍치기를 할 때 뜨는 안내 말풍선을 띄웁니다. 끄면 떠 있던 말풍선도 닫히고, 다시 켜면 못 본 안내가 그 자리에서 다시 뜹니다.':
+    'Shows the guide bubbles that appear when you first open a window or first cast or drop into a gap at the water. Turn it off and any open bubble closes too; turn it back on and the guides you missed show up again in place.',
   '슬라이더 조절 후 자동 저장됩니다.': 'Saved automatically when you move a slider.',
   // ── 설정 · 접근성 (251차) ──
   '접근성': 'Accessibility',

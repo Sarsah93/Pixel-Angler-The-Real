@@ -1973,6 +1973,33 @@ export class SeamlessChunks {
   }
 
   /**
+   * 277차 — 월드 px 두 점을 잇는 선분이 **차도 중심선을 가로지르는가**(길 건너편인가).
+   * 문 · 인물 자리를 차도 밖으로 옮길 때 길 건너로 보내지 않으려고 쓴다(266 `nudgeOffRoad`와 같은 원칙).
+   * 두 끝점이 든 청크의 도로만 본다(옮기는 거리는 몇 칸이다).
+   */
+  crossesRoad(ax: number, ay: number, bx: number, by: number): boolean {
+    if (!this.cfg.roads) return false;
+    const tr = this.cfg.tr, N = this.cfg.chunkTiles;
+    const x1 = ax / tr, y1 = ay / tr, x2 = bx / tr, y2 = by / tr;
+    const roads = new Set<number>();
+    for (const [x, y] of [[x1, y1], [x2, y2]]) {
+      for (const ri of this.roadsByChunk.get(Math.floor(y / N) * this.chunkCols + Math.floor(x / N)) ?? []) roads.add(ri);
+    }
+    const side = (px: number, py: number, qx: number, qy: number, rx: number, ry: number): number =>
+      (qx - px) * (ry - py) - (qy - py) * (rx - px);
+    for (const ri of roads) {
+      const pts = this.cfg.roads[ri].pts;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [cx, cy] = pts[i], [dx, dy] = pts[i + 1];
+        const d1 = side(cx, cy, dx, dy, x1, y1), d2 = side(cx, cy, dx, dy, x2, y2);
+        const d3 = side(x1, y1, x2, y2, cx, cy), d4 = side(x1, y1, x2, y2, dx, dy);
+        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * 239차 — 월드 px 점이 건물 그림에 가려지는가 — 발자국 안이거나, 벽 높이만큼 위로 올라간 **지붕 아래**.
    * 지붕은 발자국을 `wallH`만큼 위로 든 모양이라 건물 북쪽 한 타일 반까지 덮는다(간판이 그 뒤에 서면 안 보인다).
    */

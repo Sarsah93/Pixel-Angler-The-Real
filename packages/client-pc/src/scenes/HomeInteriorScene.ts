@@ -76,6 +76,7 @@ import { AquariumPanel, tankFishTexture } from '../ui/AquariumPanel.js';
 import { FarmPanel } from '../ui/FarmPanel.js';
 import { FarmStore, INDOOR_PLOT } from '../store/FarmStore.js';
 import { ConfirmDialog } from '../ui/Dialogs.js';
+import { PauseMenu } from '../ui/PauseMenu.js';
 import type { FarmFacility } from '@tra/core';
 import { buildRadioBroadcast } from '../data/RadioBroadcast.js';
 import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
@@ -298,6 +299,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 0, 10, 20);
     this.menu = undefined;
     this.fridgePanel = undefined;
+    this.pauseMenu = undefined;   // 277차 — 재진입 시 파괴된 메뉴를 다시 쓰지 않게
+    this.pauseTitleArmed = false;
     this.cookPanel = undefined;
     this.near = null;
     this.nearBlocked = null;
@@ -421,6 +424,14 @@ export class HomeInteriorScene extends Phaser.Scene {
       if (!GuideTour.blocking && ['Escape', 'Enter', 'Space', 'KeyF'].includes(ev.code)) this.wakeUp(false);
       return;
     }
+    // 277차 — 일시정지 메뉴가 떠 있으면 키는 메뉴만 받는다(ESC = 닫기)
+    if (this.pauseMenu) {
+      if (ev.code === 'Escape') this.closePause();
+      else if (ev.code === 'ArrowUp') this.pauseMenu.move(-1);
+      else if (ev.code === 'ArrowDown') this.pauseMenu.move(1);
+      else if (ev.code === 'Enter' || ev.code === 'Space') this.pauseMenu.activate();
+      return;
+    }
     if (ev.code === 'Escape') { this.onEscape(); return; }
     if (this.decor) {
       if (ev.code === 'KeyR' && !GuideTour.blocksKey('KeyR')) this.decor.rotate();
@@ -446,7 +457,59 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.fridgePanel) { this.closeFridge(); return; }
     if (this.menu) { this.menu.onCancel(); return; }
     // 267차 — ESC로는 집 밖으로 나가지 않는다(사용자 「집 안에서 esc 누르면 집 밖으로 나가짐 … 바로 나가지는 것 금지」).
-    //   나가는 길은 문 앞 매트 [F]뿐이다. 열린 창이 없을 때의 ESC는 아무것도 하지 않는다.
+    //   나가는 길은 문 앞 매트 [F]뿐이다.
+    // 277차 — 열린 창이 없을 때의 ESC = 일시정지 메뉴(필드 · 가게 안과 같은 메뉴 — 사용자 지시 「esc는 … pause menu가 나오도록」)
+    this.openPause();
+  }
+
+  // ── 일시정지 메뉴 (277차) ─────────────────────────────
+
+  private pauseMenu?: PauseMenu;
+  private pauseTitleArmed = false;
+
+  /** 계속하기 · 환경설정 · 타이틀 화면 — 저장은 침대, 집으로 가기는 이미 집이라 없다 */
+  private openPause(): void {
+    if (this.pauseMenu || this.leaving) return;
+    this.pauseTitleArmed = false;
+    this.pauseMenu = new PauseMenu(this, [
+      { label: '계속하기', action: () => this.closePause() },
+      { label: '환경설정', action: () => this.openSettingsFromPause() },
+      {
+        label: '타이틀 화면',
+        action: () => {
+          // 필드와 같다 — 저장하지 않은 진행이 있으면 한 번 더 고를 때 나간다
+          if (GameState.isDirty && !this.pauseTitleArmed) {
+            this.pauseTitleArmed = true;
+            this.flash('저장되지 않은 진행이 있습니다 — 한 번 더 선택하면 이동합니다', 1010);
+            return;
+          }
+          this.gotoTitle();
+        },
+      },
+    ]);
+  }
+
+  private closePause(): void {
+    this.pauseMenu?.close();
+    this.pauseMenu = undefined;
+  }
+
+  /** 환경설정 — 설정 씬을 위에 띄우고(pause + launch) 닫으면 이 씬으로 돌아온다 */
+  private openSettingsFromPause(): void {
+    this.closePause();
+    this.scene.pause();
+    this.scene.launch('SettingsScene', { returnScene: 'HomeInteriorScene' });
+  }
+
+  /** 타이틀 화면 — 아래에 멈춰 있는 필드도 함께 끝낸다 */
+  private gotoTitle(): void {
+    if (this.leaving) return;
+    this.closePause();
+    this.leaving = true;
+    fadeOutThen(this, () => {
+      this.scene.stop('RegionFieldScene');
+      this.scene.start('MainMenuScene');
+    }, 280);
   }
 
   /**
@@ -533,7 +596,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 단축키를 받아도 되는가 — 대화·안내·메뉴·배치 중이 아니고, 가이드·프롤로그 단계가 허용할 때 */
   private hotkeyOk(code: string): boolean {
-    if (this.tourPanel || this.menu?.kind === 'bed' || this.fridgePanel || this.cookPanel || this.decor || this.leaving) return false;
+    if (this.tourPanel || this.menu?.kind === 'bed' || this.fridgePanel || this.cookPanel || this.decor || this.leaving || this.pauseMenu) return false;
     return !GuideTour.blocksKey(code) && prologueKeyAllowed(code);
   }
 
@@ -1171,7 +1234,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       return;
     }
     const tourBlocks = !!GuideTour.active && GuideTour.blocksKey('ArrowUp');
-    if (this.menu || this.fridgePanel || this.cookPanel || this.tourPanel || this.popups.length || this.decor || this.leaving || tourBlocks) {
+    if (this.menu || this.fridgePanel || this.cookPanel || this.tourPanel || this.popups.length || this.decor || this.leaving || tourBlocks || this.pauseMenu) {
       this.charSprite.update(delta, false);
       this.hintText.setVisible(false);
       return;
@@ -1975,11 +2038,11 @@ export class HomeInteriorScene extends Phaser.Scene {
   }
 
   private flashMsg?: Phaser.GameObjects.Text;
-  private flash(msg: string): void {
+  private flash(msg: string, depth = 120): void {
     this.flashMsg?.destroy();
     // 198차 — 방 아래 바깥(구 y = 방 밑변 + 26)은 필드 HUD 퀵슬롯 띠 윗변을 덮었다 → 방 안 바닥 아래쪽(현관 위)
     // 257차 — 「슬롯 1에 저장했다」 같은 알림도 바탕 상자 없이 흰 테 글자(사용자 지시 · 상점 실내 `InteriorSystem.flash`와 같은 모양)
-    this.flashMsg = this.add.text(OX + (ROOM_W * IT) / 2, OY + ROOM_H * IT - 44, msg, worldLabelStyle(13, { align: 'center' })).setOrigin(0.5).setDepth(120);
+    this.flashMsg = this.add.text(OX + (ROOM_W * IT) / 2, OY + ROOM_H * IT - 44, msg, worldLabelStyle(13, { align: 'center' })).setOrigin(0.5).setDepth(depth);
     const mine = this.flashMsg;
     this.time.delayedCall(2600, () => { if (this.flashMsg === mine) { mine.destroy(); this.flashMsg = undefined; } });
   }

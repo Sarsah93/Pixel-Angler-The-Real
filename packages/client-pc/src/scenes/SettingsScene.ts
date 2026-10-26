@@ -21,6 +21,7 @@ import { GUIDE_VOICE } from '@tra/core';
 import { DEFAULT_CURSOR_OPTIONS, applyCursorOptions, type CursorEdge, type CursorOptions, type CursorScale, type CursorStyle } from '../ui/GameCursor.js';
 import { renderAccessTab } from '../ui/AccessSettingsTab.js';
 import { setColorVisionMode, setShapeCues, type ColorVisionMode } from '../ui/ColorAssist.js';
+import { setGuideTipsEnabled } from '../ui/GuideTour.js';
 
 // ─────────────────────────────────────────────
 // 설정 저장 구조체
@@ -55,6 +56,11 @@ export interface GameSettings {
    * 일지(J)·「지금 할 일」의 안내 문구는 그대로 남는다.
    */
   showQuestGuide: boolean;
+  /**
+   * 277차 — 안내 말풍선(처음 여는 창 · 처음 하는 일의 체험 가이드 · 프롤로그 코치 · 물가의 캐스팅 · 구멍치기 안내) 켜고 끄기.
+   * 기본 켬. 끄면 새 말풍선이 뜨지 않고 떠 있던 것도 닫힌다(본 것으로 치지 않는다 — `ui/GuideTour.setGuideTipsEnabled`).
+   */
+  showGuideTips: boolean;
   /** 251차 — 마우스 포인터 색: 찌(빨강) · 야광찌(형광 연두노랑 — 색약 배려) · 운영체제 기본 */
   cursorStyle: CursorStyle;
   /** 251차 — 기본 포인터 흰 테: 0 없음 · 1 옅게 · 2 또렷하게 (누를 수 있는 곳은 한 단계 더 진하게) */
@@ -75,6 +81,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   hudStatusSize: 0, hudStatusAlpha: 0, hudChatSize: 0, hudChatAlpha: 0,
   showFieldLabels: false,
   showQuestGuide: true,
+  showGuideTips: true,
   cursorStyle: DEFAULT_CURSOR_OPTIONS.style,
   cursorEdge: DEFAULT_CURSOR_OPTIONS.edge,
   cursorScale: DEFAULT_CURSOR_OPTIONS.scale,
@@ -420,6 +427,44 @@ export class SettingsScene extends Phaser.Scene {
         this.settings.showQuestGuide = opt.v;
         saveSettings(this.settings);
         this.game.events.emit('quest-guide-changed', opt.v);
+        this.contentContainer.removeAll(true);
+        this.renderTab();
+      });
+      this.contentContainer.add([bg, txt, hit]);
+    });
+
+    // ── 안내 말풍선 (277차) — 처음 여는 창 · 처음 하는 일의 체험 가이드를 켜고 끈다 ──
+    const ty = guideBy + 40 + 24;
+    const tLabel = this.add.text(startX, ty, '안내 말풍선', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#d0e8f5', fontStyle: 'bold',
+    });
+    const tDesc = this.add.text(startX, ty + 22,
+      '창을 처음 열거나 물가에서 처음 캐스팅 · 구멍치기를 할 때 뜨는 안내 말풍선을 띄웁니다. 끄면 떠 있던 말풍선도 닫히고, 다시 켜면 못 본 안내가 그 자리에서 다시 뜹니다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#607b8e',
+        wordWrap: { width: 640 },
+      });
+    this.contentContainer.add([tLabel, tDesc]);
+    const tipsBy = Math.max(ty + 62, Math.ceil(tDesc.y + tDesc.height + 8));
+
+    ([{ v: true, t: '켬' }, { v: false, t: '끔' }] as const).forEach((opt, j) => {
+      const bx = startX + j * 180;
+      const by = tipsBy;
+      const selected = (this.settings.showGuideTips !== false) === opt.v;
+      const bg = this.add.graphics();
+      bg.fillStyle(selected ? 0x162a40 : 0x0e1c2d, 0.9);
+      bg.fillRoundedRect(bx, by, 164, 40, 5);
+      bg.lineStyle(2, selected ? 0x4af2a1 : 0x2a5a8a, selected ? 1 : 0.5);
+      bg.strokeRoundedRect(bx, by, 164, 40, 5);
+      const txt = this.add.text(bx + 82, by + 20, opt.t, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px',
+        color: selected ? '#4af2a1' : '#a0b8c8', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      const hit = this.add.rectangle(bx + 82, by + 20, 164, 40, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => {
+        this.settings.showGuideTips = opt.v;
+        saveSettings(this.settings);
+        setGuideTipsEnabled(opt.v);
         this.contentContainer.removeAll(true);
         this.renderTab();
       });

@@ -1,6 +1,6 @@
 # S10·S11·S13. UI 프레임워크 · 가이드 허브 · dev 도구
 
-> 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`) · 250(게임 마우스 포인터 `GameCursor`) · 251(접근성 탭 · 색 신호 한 벌 `ColorAssist`)
+> 상태 **🟢 운영**. 관련 차수 13·26·27·31·33·54·71·73·76 · 247(필드 글자 한 벌 `WorldLabel`) · 250(게임 마우스 포인터 `GameCursor`) · 251(접근성 탭 · 색 신호 한 벌 `ColorAssist`) · 277(안내 말풍선 끄고 켜기 · 일시정지 메뉴 `PauseMenu`)
 > · 252(타이틀 로고 코드 굽기 `TitleLogo` · 효과음 뱅크 `SfxBank` · 창 소리 · 단추 딸깍)
 > · 253(집 고양이 소리 8 · 날씨 환경음 — 비 · 바람 · 천둥 · 실내 먹먹함 `Ambience` · `WeatherSound`)
 > · 257(대사 문장 쉼 — core `paceSentences` · 떠오르는 안내 글 흰 테 28곳 — `worldLabelStyle` · `WORLD_LABEL_WARN`)
@@ -24,6 +24,7 @@
 | `core/config/tuning.ts` · `dev/DevTuningPanel.ts` | TUNING/META → **F8 슬라이더** + 스냅샷 복사 |
 | `ui/RegionHud.ts` | HUD 계열 — 상태/채널 **크기 3단·투명 4단**(117차, `GameSettings.hud*`) |
 | `ui/GuideTour.ts` | **체험 가이드**(188차) — 창을 처음 열 때 말풍선(좌/우 자동 · 191차 `side`·`alignTo`·`dockY`)·타이핑·금색 하이라이트·허용 구멍 입력 방패·`wait()` 직접 해 보기·`passive` 세상 안 단계(짚을 대상이 없으면 꼬리 없음) · 키 게이트 `GuideTour.blocksKey` · 세상 정지 판정 `GuideTour.blocking` · 대기열(씬 shutdown에 정리) · 플래그 `tour.<id>`(`ephemeral`이면 없음) · 14개 창 |
+| `ui/PauseMenu.ts` | **일시정지 메뉴**(277) — 필드 · 가게 안 · 집 안이 같은 그림 · 같은 조작(↑↓ · Enter · 마우스). 줄은 부르는 씬이 넘긴다(필드 = 계속 · 저장 · 환경설정 · 집으로 가기(홈타운 밖) · 타이틀 / 집 = 계속 · 환경설정 · 타이틀) |
 | `ui/PrologueCoach.ts` | **프롤로그 말풍선 코치**(191차) — 씬이 매 프레임 넘기는 「지금 단계」(`CoachStage`)의 말풍선 하나 · 단계가 바뀌면 접고 새로 · 다른 가이드가 있으면 대기(`GuideTour.busy`) · 씬 pause에 접힘 · 집(`HomeInteriorScene.coachStage`)·필드(`RegionFieldScene.coachStage`) |
 | `ui/WorldLabel.ts` | **필드 글자 한 벌**(247) — `worldLabelStyle(size)` = 배경 없이 검은 글자 + 흰 테(11px 이상 3px). 머리 위 [F] 안내 · 떠오르는 안내 · 퀘스트 거리 · 이름표 · 설치물 꼬리표 · 지도 표시 이름(259) |
 | `ui/GameCursor.ts` · `data/GameCursorArt.ts` | **게임 마우스 포인터**(250 · 251) — 찌 화살(사용자 선택 시안 1번 · 23px) · 설정으로 색(찌 · 야광찌 · 운영체제 기본) · 흰 테 4단 · 크기 1 · 2배. 누를 수 있는 곳은 테 한 단계 진하게(`handEdgeLevel`). 1 · 2 · 3배 data URI `image-set` · Phaser `InputManager.setCursor`의 `'pointer'`만 대체 · `handCursorCss()` · `applyCursorOptions` |
@@ -75,6 +76,8 @@ ESC: depth 최고(시각적 최상단)부터 닫는다 (동률이면 LIFO)
 | **게임 마우스 포인터**(찌 화살 · 손 커서 = 흰 테 · 고해상도 `image-set` · `restoreHandCursor` 정리) — 원본 `assets/cursor/` · 생성 `tools/gen_game_cursor.cjs` | ✅ | **250** |
 | **접근성 탭 · 색 구분 보정 · 모양으로도 표시**(포인터 색 · 테 · 크기 · 색약 보정 2방식 · 모양 단서 · HUD 전수 검토 30파일 · 가이드 문장 적록판 · 도움말 쪽) — 그림 색 · 낮음 묶음은 잔여 | 🔶 | **251** |
 | **체험 가이드**(`GuideTour`) — 기능창 14종 첫 열기 · 창 안 조작 안내 문구 삭제(규칙 R11) · 189차 집 4종 추가(`home_decorate` · `home_wardrobe` · `home_shelf` · `home_fridge`) | ✅ | **188 · 189** |
+| **안내 말풍선 끄고 켜기** — 설정 「화면」 탭 `showGuideTips` · `setGuideTipsEnabled`(끄면 새 요청 거절 · 떠 있던 것 · 기다리던 것 닫기 · 본 것으로 치지 않음) · 코치 · 물가 안내도 같은 문 · 부팅 때 적용 | ✅ | **277** |
+| **ESC = 일시정지 메뉴(가게 안 · 집 안 포함)** — 가게 안은 고를 거리 접기 → 일어서기 → 메뉴 · 집은 열린 창이 없을 때 메뉴(267 「나가기 금지」를 이어) · 나가기는 문 매트 | ✅ | **277** |
 | **프롤로그 말풍선 코치** — 상단 「지금 할 일」 띠·금색 자리 표시 폐지 → 집(상자 → I → 대 → E·릴 → 사진 → J → 오징어 → 저장 → 매트) · 마당(우물 → S → M → 막차) · 속초 직판장(남은 품목 → 오징어 판매)까지 말풍선 연속 · **274 필드 자리 = HUD 왼쪽 기둥(상태 창 · 물때 칩 · 제작 칩 · 상태이상 띠) 아래 + 18px · 지역 채널 위에서 멈춤** | ✅ | **191** · 274 |
 | **가이드 ↔ 창 겹침 · 단계 밖 행동 막기** — 단계가 시작된 뒤 열린 창(모달 포함)은 가리는 창: 어둡게 깔기 끔 · 가려진 대상 테두리 숨김 · 말풍선은 창 바깥 후보 자리로 · 새 창은 방패 구멍(✕ 눌림) · `TourStep.focus` + `GuideTour.allows/nudge`(집 메뉴 회색 · 필드 [F] 후보 거르기) · 매 프레임 `skipIf` · **258 — 작은 모달(수량 창 · 확인 창)은 대상을 품어도 가리지 않는다 → 말풍선이 그 옆(오른쪽 → 왼쪽 → 아래 → 위 · `dialogOcc`)** | ✅ | **219** · 258 |
 | **상점 즐겨찾기 탭 · 칸 별 · 재고 글자 · 판매 수량 창 · 가방→상점 끌어 놓기**(`inventory-drop` 계약 재사용) · 짧은 가이드 `shop_fav` | ✅ | **221** |
@@ -144,6 +147,10 @@ dev 전용 문자열(순간이동 로그·맵 편집기·손질 dev 버튼)은 *
 `import.meta.env.DEV` 게이트라 프로덕션 빌드에 없다.
 
 ## 6. 함정·불변조건
+
+- **안내 말풍선을 끄면 「본 것」으로 치지 않는다**(277) — `setGuideTipsEnabled(false)`는 `dismissAll`(대기열 비움 + `teardown(false)`)이라 `tour.<id>` 플래그가 남지 않는다.
+  다시 켜면 그 창을 다음에 열 때 처음부터 뜬다. 가이드에 기대어 멈추는 화면(갯것 놀이 판 `paused`)은 `guideTipsEnabled()`도 함께 본다 — 안 보면 끈 동안 영영 멈춘다.
+- **ESC로 실내를 나가지 않는다**(267 집 · 277 가게) — 나가는 길은 문 매트 하나다. ESC는 고를 거리 · 앉기 · 창을 먼저 접고, 그다음은 일시정지 메뉴(`PauseMenu`).
 
 ### [274차] 가이드 말풍선은 다 찍은 높이로 자리를 잡는다 — 찍는 동안 위 끝이 움직이면 안 된다
 

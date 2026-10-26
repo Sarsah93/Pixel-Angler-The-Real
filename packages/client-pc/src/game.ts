@@ -34,6 +34,7 @@ import { installTextQuality } from './ui/TextQuality.js';
 import { installGameCursor } from './ui/GameCursor.js';
 import { applyColorAssist, cursorOptionsOf, loadSettings } from './scenes/SettingsScene.js';
 import { installUiClickSound } from './audio/UiClickHook.js';
+import { setGuideTipsEnabled } from './ui/GuideTour.js';
 
 /** 싱글턴 보관 키 — HMR/재평가를 넘어 유지된다 */
 const GAME_KEY = '__PIXEL_ANGLER_GAME';
@@ -56,6 +57,8 @@ export function createGame(): Phaser.Game {
   installTextQuality();
   // 251차 — 색 구분 보정 · 모양으로도 표시(HUD가 처음 그려지기 전에)
   applyColorAssist(loadSettings());
+  // 277차 — 안내 말풍선 켜고 끄기(설정 「화면」 탭)
+  setGuideTipsEnabled(loadSettings().showGuideTips !== false);
   // 다국어 훅 — Phaser Text 생성 전에 설치해야 모든 텍스트가 사전을 탄다 (117차)
   installI18n(loadSettings().language === 'en' ? 'en' : 'ko');
   // dev 전용 튜닝 슬라이더 오버레이 (F8) — 프로덕션에서는 즉시 반환/데드코드 제거

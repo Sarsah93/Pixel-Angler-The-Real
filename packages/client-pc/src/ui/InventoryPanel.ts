@@ -37,7 +37,8 @@ import { GEAR_FAULTS, TUNING, rawEatStatus, packOfLoose, isProducePack, biteNutr
 import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB, looseCountKo } from '../data/CropItems.js';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
-import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
+import { inventorySortCompare } from '../store/InventorySort.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { itemKeepReason } from '../store/ItemKeepGuard.js';
 import { CraftingStore } from '../store/CraftingStore.js';
@@ -139,6 +140,10 @@ export class InventoryPanel extends DraggablePanel {
   /** 드래그 중 가장자리 자동 스크롤 — 마지막 스크롤 시각 */
   private lastAutoScrollMs = 0;
 
+  /** 277차 — 「정리」 단추(재화 줄 오른쪽 안 · 패널 로컬 좌표) · 가이드 대기용 눌림 표시 */
+  private sortBtnRect = new Phaser.Geom.Rectangle(0, 0, 0, 0);
+  private sortedOnce = false;
+
   /** 신선도 실시간 갱신 타이머 + 마지막 상태 시그니처 (변화 시에만 리랜더) */
   private freshnessTimer?: Phaser.Time.TimerEvent;
   private condSig = '';
@@ -162,6 +167,8 @@ export class InventoryPanel extends DraggablePanel {
     this.buildFooter();
     this.renderGrid();
     maybeStartTour(scene, () => this.buildTour());
+    // 277차 — 가방 가이드를 이미 본 사람(또는 방금 끝낸 사람)에게 「정리」 단추만 한 번 짚는다
+    maybeStartTour(scene, () => (tourSeen('inventory') ? this.buildSortTour() : null));
 
     // 퀵슬롯 배정용 숫자 키 리스너
     this.keyHandler = (ev: KeyboardEvent) => {
@@ -1208,6 +1215,25 @@ export class InventoryPanel extends DraggablePanel {
     };
   }
 
+  /** 277차 — 「정리」 단추 가이드(가방 가이드를 본 사람에게 한 번) */
+  private buildSortTour(): TourOptions {
+    const btn = (): Phaser.Geom.Rectangle => this.localRect(this.sortBtnRect.x, this.sortBtnRect.y, this.sortBtnRect.width, this.sortBtnRect.height);
+    return {
+      id: 'inventory_sort',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '「정리」를 누르면 지금 칸의 물건이 비슷한 것끼리 모이고, 같은 무리 안에서는 이름 순으로 놓인다. 한 번 눌러 보자.',
+          target: btn,
+          allow: () => [btn()],
+          onEnter: () => { this.sortedOnce = false; },
+          wait: () => this.sortedOnce,
+        },
+      ],
+    };
+  }
+
   /** 열린 우클릭 메뉴의 화면 사각형 */
   private contextMenuRect(): Phaser.Geom.Rectangle | null {
     if (!this.contextMenu) return null;
@@ -1319,6 +1345,53 @@ export class InventoryPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffe28a', fontStyle: 'bold',
       }).setOrigin(0.5);
     this.add(this.footerText);
+    this.buildSortButton(fy);
+  }
+
+  /**
+   * 277차 — 「정리」 단추. 재화 줄(금테 띠) 오른쪽 안쪽에 둔다 — 패널 콘텐츠에 붙인 자리라 화면 끝 상수가 아니다(절대 규칙 10).
+   * 누르면 지금 탭만 정리한다(`InventoryStore.sortCategory` + `InventorySort` 순서).
+   */
+  private buildSortButton(fy: number): void {
+    const w = 56, h = 24;
+    const x = PANEL_W - 14 - 6 - w, y = fy + 4;
+    this.sortBtnRect.setTo(x, y, w, h);
+    const g = this.scene.add.graphics();
+    const paint = (hover: boolean): void => {
+      g.clear();
+      g.fillStyle(hover ? 0x1d4a6e : 0x13324c, 1);
+      g.fillRoundedRect(x, y, w, h, 4);
+      g.lineStyle(1.5, hover ? 0x7fd0ff : 0x3d7fae, 1);
+      g.strokeRoundedRect(x, y, w, h, 4);
+    };
+    paint(false);
+    const label = this.scene.add.text(x + w / 2, y + h / 2, '정리', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const hit = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => { paint(true); label.setColor('#ffffff'); });
+    hit.on('pointerout', () => { paint(false); label.setColor('#d0e8f5'); });
+    hit.on('pointerdown', () => this.sortCurrentTab());
+    this.add([g, label, hit]);
+  }
+
+  /** 277차 — 지금 탭 정리: 비슷한 물건끼리(무리 순서) → 이름 가나다 · 알파벳 순 */
+  private sortCurrentTab(): void {
+    if (this.itemDrag) return;
+    this.closeContextMenu();
+    const moved = InventoryStore.sortCategory(this.currentTab, inventorySortCompare());
+    this.sortedOnce = true;
+    if (moved === 0) {
+      this.setStatus('이미 정리되어 있습니다.');
+      return;
+    }
+    playSfx('item_move');
+    this.scrollRow = 0;
+    GameState.markDirty();
+    this.renderGrid();
+    this.scene.events.emit('inventory-changed');
+    this.setStatus('비슷한 물건끼리 모아 이름 순으로 정리했습니다.');
   }
 
   /**

@@ -1824,6 +1824,22 @@ class InventoryStoreManager {
   }
 
   /**
+   * 277차 — 한 탭 자동 정리. 가방 칸에 있는 아이템(착용 · 장착 중 = 칸 밖은 제외)을 `compare` 순으로
+   * 0번 칸부터 빈틈 없이 다시 놓는다. 칸 자리(`slot`)만 바꾸고 수량 · 신선도 · 퀵슬롯 · 채비는 그대로다
+   * (퀵슬롯 · 채비 트리는 아이템 id를 가리킨다). 용량 밖 '잠긴 칸'에 있던 것도 빈자리가 있으면 안으로 들어온다.
+   * 자리가 바뀐 아이템 수를 돌려준다(0이면 이미 정리돼 있었다).
+   */
+  sortCategory(cat: InvCategory, compare: (a: InvItem, b: InvItem) => number): number {
+    const inGrid = this._items.filter((i) => i.category === cat && typeof i.slot === 'number' && i.slot >= 0);
+    const ordered = [...inGrid].sort(compare);
+    let moved = 0;
+    ordered.forEach((it, idx) => {
+      if (it.slot !== idx) { it.slot = idx; moved++; }
+    });
+    return moved;
+  }
+
+  /**
    * 현재 인벤토리 칸 수 (135차 가방 사다리) — 기본 `GRID_CAPACITY`(25) + 착용 가방의 `bagSlots`.
    * 상한은 `GRID_CAPACITY_MAX`(148차 37 = 25 + 최대 가방 12).
    * 가방을 **두 개 이상** 착용할 수는 없지만(등 슬롯 1개), 방어적으로 가장 큰 것을 쓴다.

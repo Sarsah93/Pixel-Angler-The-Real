@@ -18,7 +18,7 @@ import {
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH } from '../PhaserConfig.js';
 import { t } from '../i18n/I18n.js';
-import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
+import { maybeStartTour, tourSeen, guideTipsEnabled, type TourOptions } from './GuideTour.js';
 import { forageSpotTexKey } from '../scenes/field/ForageSystem.js';
 import { ensureForageBed, bedKindFor, toolSpriteKey, addToolSprite, makeForageDemo, DEMO_H } from './ForageBoardArt.js';
 import { InventoryStore } from '../store/InventoryStore.js';
@@ -160,7 +160,7 @@ export class ForageGamePanel extends DraggablePanel {
     // 처음이면 가이드가 끝날 때까지 판을 멈춘다(R11)
     // 225차 — 떼기 가이드 문장을 고쳐 다시 보여 준다(_v2)
     const tourId = `forage_${state.kind}${state.kind === 'pry' ? '_v2' : ''}`;
-    this.paused = !tourSeen(tourId);
+    this.paused = guideTipsEnabled() && !tourSeen(tourId);   // 277차 — 안내 말풍선을 끈 동안은 멈추지 않는다
     if (this.paused) maybeStartTour(scene, () => this.buildTour(tourId));
     this.draw();
     this.applyFix();

@@ -30,6 +30,11 @@ export interface NpcFieldHost {
   tr: number;
   terrainAt(c: number, r: number): RegionTerrain | undefined;
   isWalkable(c: number, r: number): boolean;
+  /**
+   * 277차 — 사람이 서도 되는 칸인가(차도 밖). 지형 'road'뿐 아니라 그림의 아스팔트(차도 벡터 밴드)도 뺀다 —
+   * 차는 플레이어만 알아서 차도 위 사람을 그대로 지나간다. 없으면 지형 'road'만 본다.
+   */
+  offRoad?(c: number, r: number): boolean;
 }
 
 /** y-sort 깊이 — 씬의 캐릭터 규약(`20 + y*0.001 + 0.0006`)과 동일 */
@@ -228,6 +233,7 @@ export class AmbientNpcSystem {
       const r = 2 + Math.floor(rand() * (this.host.rows - 4));
       const t = this.host.terrainAt(c, r);
       if (!t || !AMBIENT_GROUND.has(t) || !this.host.isWalkable(c, r)) continue;
+      if (this.host.offRoad && !this.host.offRoad(c, r)) continue;   // 277차 — 그림의 아스팔트 위에 세우지 않는다
       // 3x3이 전부 걸을 수 있어야 한다 — 벽 틈·부두 끝에 낀 사람을 만들지 않는다
       let open = true;
       for (let dr = -1; dr <= 1 && open; dr++) for (let dc = -1; dc <= 1; dc++) if (!this.host.isWalkable(c + dc, r + dr)) { open = false; break; }
@@ -240,7 +246,10 @@ export class AmbientNpcSystem {
       const walker = new NpcWalker(this.scene, this.host, cfg, c, r);
       walker.speed = 52 + Math.floor(rand() * 30);
       // 마을 사람은 차도로 내려서지 않는다 (교통은 보행자를 모른다)
-      walker.canStand = (cc, rr) => this.host.terrainAt(cc, rr) !== 'road';
+      // 277차 — 차도 벡터 밴드(그림의 아스팔트)도 뺀다
+      walker.canStand = this.host.offRoad
+        ? (cc, rr) => this.host.offRoad!(cc, rr)
+        : (cc, rr) => this.host.terrainAt(cc, rr) !== 'road';
       walker.face(DIRS[Math.floor(rand() * 4)]);
       this.npcs.push({ walker, homeC: c, homeR: r, radius: 3 + Math.floor(rand() * 4), state: 'idle', timer: 800 + rand() * 4000 });
       placed.push({ c, r });
@@ -331,6 +340,8 @@ export class StoryNpcActor {
   ) {
     this.walker = new NpcWalker(scene, host, cfg, anchorC, anchorR);
     this.walker.speed = 58;
+    // 277차 — 이야기 인물도 배회하다 차도로 내려서지 않는다(앵커는 씬이 차도 밖으로 잡는다 — `nearestStandable`)
+    if (host.offRoad) this.walker.canStand = (c, r) => host.offRoad!(c, r);
     this.walker.face(facing);
     this.timer = rnd(1000, 3000);
     if (behavior === 'fishing') {

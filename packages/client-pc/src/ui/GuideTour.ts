@@ -104,6 +104,18 @@ export function tourSeen(id: string): boolean {
   return GameState.getFlag(`tour.${id}`);
 }
 
+/**
+ * 277차 — 안내 말풍선 켜고 끄기(설정 「화면」 탭 · 사용자 지시 「테스트해야 하는데, 계속 떠서 방해돼」).
+ * 끄면 새 가이드 요청을 받지 않고, 떠 있던 말풍선과 기다리던 요청도 닫는다 — **본 것으로 치지 않는다**
+ * (다시 켜면 그 창 · 그 자리에서 다시 뜬다). 부팅 때 `game.ts`가 설정값으로 한 번 넣는다.
+ */
+let guideTipsOn = true;
+export function guideTipsEnabled(): boolean { return guideTipsOn; }
+export function setGuideTipsEnabled(on: boolean): void {
+  guideTipsOn = on;
+  if (!on) GuideTour.dismissAll();
+}
+
 /** 처음이면 가이드를 띄운다 — 다른 가이드가 진행 중이면 끝난 뒤 이어서 */
 export function maybeStartTour(scene: Phaser.Scene, build: () => TourOptions | null): void {
   GuideTour.request(scene, build);
@@ -168,6 +180,7 @@ export class GuideTour {
   }
 
   static request(scene: Phaser.Scene, build: () => TourOptions | null): void {
+    if (!guideTipsOn) return;   // 277차 — 설정에서 안내 말풍선을 껐다
     // 191차 — 씬이 내려가면 그 씬이 걸어 둔 요청은 버린다. 씬 인스턴스·`scene.events`는 재사용되므로
     //   남겨 두면 다음 세대(재시작·새 게임)에서 **파괴된 창을 붙잡은 build**가 실행된다.
     let armed = false;
@@ -186,6 +199,7 @@ export class GuideTour {
       scene.events.off('update', once);
       scene.events.off('shutdown', purge);
       disarm();
+      if (!guideTipsOn) return;   // 277차 — 요청과 다음 프레임 사이에 꺼졌다
       if (GuideTour.active) { enqueue(); return; }
       const opts = build();
       // 235차 — 요청 ~ 다음 프레임 사이에 창이 닫혔으면 열지 않는다(파괴된 창의 사각형을 읽다가 게임 오류 배너가 떴다 —
@@ -198,6 +212,12 @@ export class GuideTour {
     GuideTour.pending++;
     scene.events.on('update', once);
     scene.events.once('shutdown', purge);
+  }
+
+  /** 277차 — 떠 있는 말풍선 · 기다리는 요청을 모두 닫는다(본 것으로 치지 않음 — 다시 켜면 다시 뜬다) */
+  static dismissAll(): void {
+    GuideTour.queue = [];
+    GuideTour.active?.teardown(false);
   }
 
   private static next(): void {

@@ -181,7 +181,8 @@ import { ShopStore } from '../store/ShopStore.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
 import { paintHudPanel, paintTitlePlate } from '../ui/HudPanelStyle.js';
-import { DraggablePanel, applyScreenFixed, restoreHandCursor } from '../ui/DraggablePanel.js';
+import { DraggablePanel, restoreHandCursor } from '../ui/DraggablePanel.js';
+import { PauseMenu, type PauseMenuItem } from '../ui/PauseMenu.js';
 import { cv, drawBlockedX, okBadLegend, shapeCuesOn } from '../ui/ColorAssist.js';
 import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
@@ -406,10 +407,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   // ESC 일시정지 메뉴
   private isPaused = false;
-  private pauseMenu?: Phaser.GameObjects.Container;
-  private pauseSelIndex = 0;
-  private pauseItems: { label: string; action: () => void }[] = [];
-  private pauseRowBgs: Phaser.GameObjects.Graphics[] = [];
+  private pauseMenu?: PauseMenu;
 
   // HUD
   private hud?: RegionHud;
@@ -641,9 +639,6 @@ export class RegionFieldScene extends Phaser.Scene {
     this.castBusy = false;
     this.isPaused = false;
     this.pauseMenu = undefined;
-    this.pauseSelIndex = 0;
-    this.pauseItems = [];
-    this.pauseRowBgs = [];
     this.hud = undefined;
     // 씬 재시작 때 이전 디스플레이 리스트는 Phaser가 파괴하지만, 필드 씬의
     // 지연 생성 UI 참조는 클래스 필드에 남는다. 특히 퀘스트 화살표 라벨은
@@ -1708,6 +1703,30 @@ export class RegionFieldScene extends Phaser.Scene {
     return true;
   }
 
+  /**
+   * 277차 — 사람이 설 칸: 6칸 안에서 걷기 가능 + 차도 밖(`offRoadAt` — 지형 'road' · 차도 벡터 밴드 제외).
+   * 없으면 `nearestWalkable`(옛 규칙). 이야기 인물 앵커 · 집 문 앞이 쓴다(사용자 리포트 — 차도 위 사람 옆에 차가 엉켰다).
+   */
+  private nearestStandable(c0: number, r0: number): { col: number; row: number } {
+    const ok = (c: number, r: number): boolean =>
+      c >= 1 && r >= 1 && c <= this.cols - 2 && r <= this.rows - 2 && this.isWalkable(c, r)
+      && this.offRoadAt(c * TR + TR / 2, r * TR + TR / 2) && this.offRoadAt(c * TR + TR / 2, r * TR + TR - 2);
+    if (ok(c0, r0)) return { col: c0, row: r0 };
+    for (let radius = 1; radius <= 6; radius++) {
+      let best: { col: number; row: number; d: number } | null = null;
+      for (let dc = -radius; dc <= radius; dc++) {
+        for (let dr = -radius; dr <= radius; dr++) {
+          if (Math.abs(dc) !== radius && Math.abs(dr) !== radius) continue;
+          const c = c0 + dc, r = r0 + dr;
+          const d = dc * dc + dr * dr;
+          if ((!best || d < best.d) && ok(c, r)) best = { col: c, row: r, d };
+        }
+      }
+      if (best) return { col: best.col, row: best.row };
+    }
+    return this.nearestWalkable(c0, r0);
+  }
+
   /** (c,r)에서 가장 가까운 걷기 가능 타일을 나선형 탐색 (테두리 제외) */
   private nearestWalkable(c0: number, r0: number): { col: number; row: number } {
     const lo = 1, hiC = this.cols - 2, hiR = this.rows - 2;
@@ -2109,6 +2128,53 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   /** POI 문 위치·청크 배정·거래 가능 목록 사전 계산 (create 1회) */
+  /** 277차 — 칸(또는 점)이 차도 밖인가 — 지형 'road'도 아니고 차도 벡터 밴드(그림의 아스팔트)도 아니다 */
+  private offRoadAt(x: number, y: number): boolean {
+    if (this.terrainAt(Math.floor(x / TR), Math.floor(y / TR)) === 'road') return false;
+    return !this.chunks || !this.chunks.onRoadBand(x, y);
+  }
+
+  /**
+   * 277차 — 바깥에 서는 가게 사람(경찰 · 좌판 상인 · 사무실 · 선원)의 자리. 문 옆 18px(osmId로 좌우)이 기본이고,
+   * 거기가 차도면 반대쪽 → 조금 위 → 조금 멀리를 본다. 다 차도면 null(세우지 않는다).
+   * 사용자 리포트(백운포) — 차도 위에 선 가게 사람 · [F] 자리 옆으로 차가 멈추고 엉켰다.
+   */
+  private poiNpcSpot(door: { x: number; y: number }, side: 1 | -1): { x: number; y: number } | null {
+    const cands: [number, number][] = [[side * 18, 8], [-side * 18, 8], [side * 18, -4], [-side * 18, -4], [side * 30, 8], [-side * 30, 8]];
+    for (const [dx, dy] of cands) {
+      const x = door.x + dx, y = door.y + dy;
+      const t = this.terrainAt(Math.floor(x / TR), Math.floor(y / TR));
+      if (t === undefined || t === 'water' || t === 'building' || t === 'cliff') continue;
+      if (!this.offRoadAt(x, y) || !this.offRoadAt(x, y - 10)) continue;
+      if (this.chunks && (this.chunks.insideBuildingArt(x, y) || this.chunks.crossesRoad(door.x, door.y, x, y))) continue;
+      return { x, y };
+    }
+    return null;
+  }
+
+  /**
+   * 277차 — 문 자리가 끝내 차도 위면(건물 문이 정해지지 않은 가게 · 옛 BFS 폴백) 반경 3칸 안의 차도 밖 칸으로.
+   * 길 건너는 받지 않는다. 못 찾으면 그대로.
+   */
+  private doorOffRoad(door: { x: number; y: number }): { x: number; y: number } {
+    if (!this.chunks || this.offRoadAt(door.x, door.y)) return door;
+    const c0 = Math.floor(door.x / TR), r0 = Math.floor(door.y / TR);
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let dr = -3; dr <= 3; dr++) {
+      for (let dc = -3; dc <= 3; dc++) {
+        const c = c0 + dc, r = r0 + dr;
+        const t = this.terrainAt(c, r);
+        if (t === undefined || t === 'water' || t === 'building' || t === 'cliff' || t === 'road' || !this.chunks.tileFitsBody(c, r)) continue;
+        const x = c * TR + TR / 2, y = r * TR + TR / 2;
+        const d = Math.hypot(x - door.x, y - door.y);
+        if (best && d >= best.d) continue;
+        if (!this.offRoadAt(x, y) || this.chunks.insideBuildingArt(x, y) || this.chunks.crossesRoad(door.x, door.y, x, y)) continue;
+        best = { x, y, d };
+      }
+    }
+    return best ? { x: best.x, y: best.y } : door;
+  }
+
   private prepareSeamlessPois(): void {
     this.buildings = [];
     this.poiDoors = [];
@@ -2147,15 +2213,19 @@ export class RegionFieldScene extends Phaser.Scene {
         }
         // 266차 — 넷이 다 막히면(이웃 윤곽 · 좁은 틈 · 물) 문 앞 칸에서 BFS ≤ 3칸 — [F] 자리가 그림의 문 곁을 떠나지 않게.
         //   옛 폴백(앵커 기준 `resolvePoiDoor` BFS ≤ 12)은 큰 건물에서 문 변 반대편(최대 9칸)에 [F]를 두어 벽 간판과 갈라졌다.
-        if (!door && !fallback) {
+        // 277차 — 문 앞 넷이 **전부 차도 밴드**여도 찾는다(사용자 리포트 — 백운포 사거리 모서리 가게의 [F] 자리가 아스팔트라
+        //   거래하러 선 주인공이 차에 치이고 차가 엉켰다). 그때는 4칸까지 · 길 건너(차도 중심선을 넘는 자리)는 받지 않는다 ·
+        //   끝내 못 찾을 때만 차도 위 자리(`fallback`)를 쓴다.
+        if (!door) {
+          const reach = fallback ? 4 : 3;
           const seen = new Set<number>([drr * this.cols + dc]);
           const queue: [number, number, number][] = [[dc, drr, 0]];
           while (queue.length > 0 && !door) {
             const [c, r, d] = queue.shift()!;
-            if (d > 3) break;
+            if (d > reach) break;
             if (d >= 2) {
               const got = probe(c, r, c * TR + TR / 2);
-              if (got && got !== 'band') { door = got; break; }
+              if (got && got !== 'band' && !this.chunks!.crossesRoad(dp[0], dp[1], got.x, got.y)) { door = got; break; }
             }
             for (const [ddc, ddr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
               const nc = c + ddc, nr = r + ddr;
@@ -2167,7 +2237,7 @@ export class RegionFieldScene extends Phaser.Scene {
         }
         door ??= fallback;
       }
-      if (!door) door = this.nudgePoiDoor(this.resolvePoiDoor(poi));
+      if (!door) door = this.doorOffRoad(this.nudgePoiDoor(this.resolvePoiDoor(poi)));
       this.poiDoors.push(door);
       const key = `${Math.floor(poi.tx / N)},${Math.floor(poi.ty / N)}`;
       const list = this.poiByChunk.get(key);
@@ -2223,16 +2293,17 @@ export class RegionFieldScene extends Phaser.Scene {
       //   건물은 청크 아틀라스의 벡터 건물(합성 발자국 포함)이고, 가림 · 충돌 · 문도 거기서 온다(`SeamlessChunks`).
       // NPC (정적 — 문 옆에 선다, 충돌 있음)
       const role = this.poiNpcRole(poi);
-      if (role) {
-        const side = (poi.osmId & 1) === 0 ? 1 : -1;
-        const nx = door.x + side * 18, ny = door.y + 8;
+      // 277차 — 서는 자리는 차도 밖(`poiNpcSpot`) · 차도뿐이면 세우지 않는다(차는 사람을 모르고 지나간다)
+      const npcAt = role ? this.poiNpcSpot(door, (poi.osmId & 1) === 0 ? 1 : -1) : null;
+      if (role && npcAt) {
+        const nx = npcAt.x, ny = npcAt.y;
         // 깊이 = max(자기 y, 소속 건물 하단 y) — 문이 건물 북쪽이면 지붕 RT 뒤로 숨던 것(리포트 6)
         const bb = this.chunks?.buildingBoundsAt(poi.tx, poi.ty);
         const depthY = Math.max(ny, bb ? (bb.r1 + 1) * TR + 1 : 0);
         const sheet = ensureCharSheet(this, characterOf(`poi_${poi.osmId}`, { role }), CHAR_SCALE);
         const pad = (CHAR_CELL - 1 - CHAR_FOOT_Y) * CHAR_SCALE;
         // 좌판 상인은 손님(앞)을 본다
-        const face = role === 'vendor' ? 'down' : side > 0 ? 'left' : 'right';
+        const face = role === 'vendor' ? 'down' : nx > door.x ? 'left' : 'right';
         const img = this.add.image(nx, ny + pad, sheet, charFrameName(face, 0))
           .setOrigin(0.5, 1).setDepth(20 + depthY * 0.001 + 0.0006);
         objs.push(img);
@@ -3023,8 +3094,10 @@ export class RegionFieldScene extends Phaser.Scene {
       if (this.trapField?.placing) { this.trapField.cancelPlacement(); return; }
       if (this.stoveField?.placing) { this.stoveField.cancelPlacement(); return; }
       if (this.closeTopPopup()) return;
-      // 215차 — 실내: 앉아 있으면 일어서고, 아니면 밖으로 (일시정지 메뉴는 밖에서)
-      if (this.interior && !this.isPaused) { if (!this.interior.escape()) this.interior.leave(); return; }
+      // 215차 — 실내: 고를 거리 접기 · 앉아 있으면 일어서기.
+      // 277차 — 그 밖의 ESC는 **밖으로 나가지 않고 일시정지 메뉴**다(사용자 지시 — 가게 · 직판장 · 마트 모두. 267 집과 같은 규칙).
+      //   나가기는 문 매트를 밟는다.
+      if (this.interior && !this.isPaused && this.interior.escape()) return;
       this.togglePauseMenu();
     });
 
@@ -4908,7 +4981,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const cam = this.cameras.main;
       const pl = this.playerBody ? { x: this.playerBody.x / TR, y: this.playerBody.y / TR } : null;
       this.traffic.update(delta, cam.midPoint.x, cam.midPoint.y, pl);
-      // 캐릭터가 차량에 부딪힘 — 진행 방향 뒤로 넉백 + HP −20% (차량은 180초 정지)
+      // 캐릭터가 차량에 부딪힘 — 진행 방향 뒤로 넉백 + HP −20% (차량은 잠시 정지 — 277차 20초)
       if (pl) {
         const hit = this.traffic.playerInteract(pl.x, pl.y);
         const now = this.time.now;
@@ -6089,6 +6162,7 @@ export class RegionFieldScene extends Phaser.Scene {
       cols: this.cols, rows: this.rows, tr: TR,
       terrainAt: (c, r) => this.terrainAt(c, r),
       isWalkable: (c, r) => this.isWalkable(c, r),
+      offRoad: (c, r) => this.offRoadAt(c * TR + TR / 2, r * TR + TR / 2) && this.offRoadAt(c * TR + TR / 2, r * TR + TR - 2),
     };
   }
 
@@ -6103,7 +6177,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (def.dataRegion && def.dataRegion !== this.seamlessDef?.dataRegion) continue;   // 263차 — 데이터 지역이 여럿인 지역은 그 필드에서만
       // 178차 — 좌표 없는 등록은 **지역 안내 전용**이다(무대가 아직 없는 인물). 세우지 않는다.
       if (def.tx === undefined || def.ty === undefined) continue;
-      const { col, row } = this.nearestWalkable(def.tx, def.ty);
+      const { col, row } = this.nearestStandable(def.tx, def.ty);   // 277차 — 차도 밖 칸
       const ai = new StoryNpcActor(this, this.npcHost, characterOf(def.npcId), col, row, def.behavior ?? 'wander', def.facing ?? 'down');
       const x = ai.x, y = ai.y;
       const actor = ai.image;
@@ -6154,7 +6228,7 @@ export class RegionFieldScene extends Phaser.Scene {
    * 문은 건물 아랫변에 붙인 작은 나무문 — 집에 있으면 문 위 창(채광창)에 불이 켜진다.
    */
   private buildNpcDoor(n: (typeof this.storyNpcs)[number], home: { tx: number; ty: number; labelKo: string }): void {
-    const { col, row } = this.nearestWalkable(home.tx, home.ty);
+    const { col, row } = this.nearestStandable(home.tx, home.ty);   // 277차 — 차도 밖 칸
     const x = col * TR + TR / 2, y = row * TR + TR;
     n.door = { x, y, c: col, r: row };
     const top = row * TR;   // 건물 아랫변 = 문 앞 칸의 윗변
@@ -8448,7 +8522,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.chargeBar?.clear();
     this.playerBody.setVelocity(0, 0);
 
-    this.pauseItems = [
+    const items: PauseMenuItem[] = [
       { label: '계속하기', action: () => this.closePauseMenu() },
       {
         label: '저장하기',
@@ -8487,115 +8561,16 @@ export class RegionFieldScene extends Phaser.Scene {
       },
     ];
     this.titleConfirmArmed = false;
-    this.pauseSelIndex = 0;
-    this.pauseRowBgs = [];
-
-    const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT / 2;
-    const menu = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
-
-    // 반투명 딤 배경
-    const dim = this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55)
-      .setInteractive();  // 뒤 클릭 차단
-    menu.add(dim);
-
-    // ── 목재/양피지 톤 패널 (도트 스타일 이중 테두리) ──
-    const panelW = 300;
-    const rowH = 52;
-    const headH = 58;
-    const panelH = headH + this.pauseItems.length * (rowH + 10) + 22;
-    const px = cx - panelW / 2;
-    const py = cy - panelH / 2;
-
-    const panel = this.add.graphics();
-    // 바깥 어두운 목재 테두리
-    panel.fillStyle(0x2a1c12, 1);
-    panel.fillRoundedRect(px - 6, py - 6, panelW + 12, panelH + 12, 10);
-    // 밝은 목재 프레임
-    panel.fillStyle(0x6b4a2e, 1);
-    panel.fillRoundedRect(px, py, panelW, panelH, 8);
-    // 안쪽 패널 면
-    panel.fillStyle(0x8a6a44, 1);
-    panel.fillRoundedRect(px + 6, py + 6, panelW - 12, panelH - 12, 6);
-    panel.lineStyle(2, 0x3d2817, 1);
-    panel.strokeRoundedRect(px + 6, py + 6, panelW - 12, panelH - 12, 6);
-    menu.add(panel);
-
-    // 헤더
-    const header = this.add.text(cx, py + 26, '일시정지', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '18px', color: '#3d2817', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    menu.add(header);
-
-    // 메뉴 항목 버튼
-    this.pauseItems.forEach((item, i) => {
-      const ry = py + headH + i * (rowH + 10);
-      const rowBg = this.add.graphics();
-      this.pauseRowBgs.push(rowBg);
-      this.paintPauseRow(rowBg, px + 22, ry, panelW - 44, rowH, i === this.pauseSelIndex);
-      const label = this.add.text(cx, ry + rowH / 2, item.label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '16px', color: '#33220f', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      const hit = this.add.rectangle(cx, ry + rowH / 2, panelW - 44, rowH, 0xffffff, 0)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerover', () => { this.pauseSelIndex = i; this.refreshPauseRows(); });
-      hit.on('pointerdown', () => { this.pauseSelIndex = i; item.action(); });
-      menu.add([rowBg, label, hit]);
-    });
-
-    // 힌트
-    const hint = this.add.text(cx, py + panelH - 4, '↑↓ 이동 · Enter 선택 · ESC 닫기', {
-      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#4a3322',
-    }).setOrigin(0.5, 1);
-    menu.add(hint);
-
-    // 화면 고정 히트 영역 보정 (카메라 스크롤 시 클릭 어긋남 방지)
-    applyScreenFixed(menu);
-
-    // 등장 연출
-    menu.setScale(0.92);
-    this.tweens.add({ targets: menu, scale: 1, duration: 150, ease: 'Back.easeOut' });
-
-    this.pauseMenu = menu;
-  }
-
-  /** 메뉴 행 배경 그리기 (선택 강조) */
-  private paintPauseRow(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, selected: boolean): void {
-    g.clear();
-    if (selected) {
-      g.fillStyle(0xd9b779, 1);
-      g.fillRoundedRect(x, y, w, h, 5);
-      g.lineStyle(2, 0xffe9b0, 1);
-      g.strokeRoundedRect(x, y, w, h, 5);
-    } else {
-      g.fillStyle(0xb8945f, 1);
-      g.fillRoundedRect(x, y, w, h, 5);
-      g.lineStyle(2, 0x6b4a2e, 1);
-      g.strokeRoundedRect(x, y, w, h, 5);
-    }
-  }
-
-  private refreshPauseRows(): void {
-    const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT / 2;
-    const panelW = 300, rowH = 52, headH = 58;
-    const panelH = headH + this.pauseItems.length * (rowH + 10) + 22;
-    const px = cx - panelW / 2;
-    const py = cy - panelH / 2;
-    this.pauseRowBgs.forEach((g, i) => {
-      const ry = py + headH + i * (rowH + 10);
-      this.paintPauseRow(g, px + 22, ry, panelW - 44, rowH, i === this.pauseSelIndex);
-    });
+    // 277차 — 그림 · 선택은 `ui/PauseMenu`(집 안과 같은 메뉴)
+    this.pauseMenu = new PauseMenu(this, items);
   }
 
   private movePauseSel(dir: number): void {
-    const n = this.pauseItems.length;
-    this.pauseSelIndex = (this.pauseSelIndex + dir + n) % n;
-    this.refreshPauseRows();
+    this.pauseMenu?.move(dir);
   }
 
   private activatePauseSel(): void {
-    this.pauseItems[this.pauseSelIndex]?.action();
+    this.pauseMenu?.activate();
   }
 
   private closePauseMenu(): void {
@@ -8603,13 +8578,8 @@ export class RegionFieldScene extends Phaser.Scene {
     // ("채비가 불완전합니다 (U 채비하기)" 힌트)로 새지 않도록 유예를 준다
     // — 팝업 스택 close()와 동일한 관통 방지 패턴.
     this.suppressClickUntil = this.time.now + 250;
-    if (!this.pauseMenu) { this.isPaused = false; return; }
-    const menu = this.pauseMenu;
+    this.pauseMenu?.close();
     this.pauseMenu = undefined;
-    this.tweens.add({
-      targets: menu, scale: 0.92, alpha: 0, duration: 120,
-      onComplete: () => menu.destroy(),
-    });
     this.isPaused = false;
   }
 

@@ -11,8 +11,11 @@
  *  - **막다른 끝 = 페이드아웃 후 재등장**(U턴 보간은 "거꾸로 달리는 차"로 보였다).
  *  - **교통 규칙**: 앞차 정지(전방 원뿔 2.6타일) · 교차 정점 선진입 우선 · **회전교차로 링 위 차량이 우선**
  *    (진입 차량은 링 위 차가 노드 3타일 안이면 대기 — 규범도의 양보선) · 링 위 차량은 양보하지 않는다.
- *  - **플레이어**: 1.6타일 안 전방(또는 1타일 안 어디든)이면 정지해 지나갈 때까지 대기 · 캐릭터가 차에 부딪히면
- *    hit 반환(씬이 넉백·HP 처리) + 차량은 **180초 정지**.
+ *  - **플레이어**: 차가 지나갈 통로(앞 2타일 · 옆 0.95타일 — 277차) 안이거나 0.8타일 안이면 정지해 지나갈 때까지 대기 · 캐릭터가 차에 부딪히면
+ *    hit 반환(씬이 넉백·HP 처리) + 차량은 **잠시 정지**(`ACCIDENT_HALT_SEC` — 277차 180초 → 20초).
+ *  - **다른 도로의 차(277차)**: 앞 통로(차 길이 + 여유 · 차 폭 + 상대 반길이)에 다른 도로의 차가 있으면 기다린다 —
+ *    교차로 안에서 서로 다른 도로의 차가 겹쳐 지나가던 것(사용자 리포트 — 백운포 사거리에서 차 셋이 엉킴).
+ *    서로를 앞에 둔 두 차는 교차점에 더 가까운 쪽이 먼저 간다 · 10초 넘게 막히면 사라졌다 다른 곳에서 나온다(교착 풀기).
  * **난수 (145차)**: 시드를 받으면 초기 편성(차종·속도·배치 도로·분기 선택 순서)이 결정적이다 —
  * 같은 세션의 두 사람이 같은 차들로 시작한다. 다만 **시간이 지나면 위치는 갈린다**:
  * 차의 걸음은 프레임 dt가 밀어 올리는데 두 PC의 프레임 타이밍이 다르기 때문이다.
@@ -26,6 +29,10 @@ import { CAR_TOPDOWN_KEYS } from '../data/TilesetManifest.js';
 
 /** 주행 차량 배율 (150차) — 원본 22×29px */
 const CAR_SCALE = 1.82;
+/** 277차 — 캐릭터와 부딪힌 차의 정지 시간(초). 옛 180초는 사거리 한가운데 선 차가 3분 동안 길을 막았다 */
+const ACCIDENT_HALT_SEC = 20;
+/** 277차 — 다른 도로의 차를 앞에 두고 이만큼(초) 넘게 막히면 사라졌다 다시 나온다(교착 풀기) */
+const CROSS_JAM_SEC = 10;
 
 interface Car {
   road: number;
@@ -39,11 +46,13 @@ interface Car {
   px: number; py: number; ux: number; uy: number;
   fade: number;
   waiting: boolean;
-  /** 사고 정지 잔여 초 (캐릭터 충돌 — 180s) */
+  /** 사고 정지 잔여 초 (캐릭터 충돌 — `ACCIDENT_HALT_SEC`) */
   halt: number;
   /** 추월 횡 오프셋 (타일 — 0 = 차로 정위치, 음수 = 왼쪽 차로) · lat은 latTarget으로 스무딩 */
   lat: number;
   latTarget: number;
+  /** 277차 — 다른 도로의 차에 막혀 기다린 초(교착 풀기) */
+  jam?: number;
 }
 
 export interface TrafficHit {
@@ -104,16 +113,23 @@ export class TrafficSystem {
   }
 
   private respawn(car: Car): void {
-    const road = this.drivableList[Math.floor(this.rnd() * this.drivableList.length)];
-    const rd = this.roads[road];
-    car.road = road;
-    car.seg = Math.floor(this.rnd() * (rd.pts.length - 1));
-    car.dir = this.isOneway(road) ? 1 : (this.rnd() < 0.5 ? 1 : -1);
-    car.t = this.rnd() * this.segLen(road, car.seg);
+    // 277차 — 다른 차 위에 나타나지 않게 몇 번 다시 뽑는다(다 겹치면 마지막 자리)
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const road = this.drivableList[Math.floor(this.rnd() * this.drivableList.length)];
+      const rd = this.roads[road];
+      car.road = road;
+      car.seg = Math.floor(this.rnd() * (rd.pts.length - 1));
+      car.dir = this.isOneway(road) ? 1 : (this.rnd() < 0.5 ? 1 : -1);
+      car.t = this.rnd() * this.segLen(road, car.seg);
+      car.lat = 0;
+      this.place(car);
+      if (!this.cars.some((o) => o !== car && o.fade <= 0 && Math.hypot(o.px - car.px, o.py - car.py) < 2.0)) break;
+    }
     car.fade = 0;
     car.halt = 0;
     car.lat = 0;
     car.latTarget = 0;
+    car.jam = 0;
     car.sprite.setAlpha(1);
     this.place(car);
   }
@@ -235,13 +251,15 @@ export class TrafficSystem {
     const nodeList = this.nodes.get(this.nodeKey(vp)) ?? [];
     const junction = toVertex < 1.5 && nodeList.some((o) => o.road !== car.road);
     const enteringRoundabout = !rd.roundabout && toVertex < 2.0 && nodeList.some((o) => o.road !== car.road && !!this.roads[o.road].roundabout);
-    // 플레이어 — 전방 1.6타일 원뿔 안 또는 1타일 안 어디든 → 지나갈 때까지 대기
+    // 플레이어 — 지나갈 통로 안 또는 아주 가까우면 → 지나갈 때까지 대기
     //  184차 — 층이 다르면(상판 위 ↔ 밑) 서로 모른다
+    //  277차 — 원뿔(1.6타일 · 앞 78°) 대신 **차가 지나갈 통로**만 본다: 앞 2타일 안 · 옆 0.95타일(차 반폭 + 사람 반폭 + 여유).
+    //   길가에 바짝 붙은 가게 [F] 자리(연석)에 선 주인공 옆을 차가 멈추지 않고 지나간다(옛 원뿔은 옆 차로 차까지 세웠다).
     if (player && (car.deck ?? false) === this.playerOnDeck) {
       const dx = player.x - car.px, dy = player.y - car.py;
-      const d = Math.hypot(dx, dy);
-      if (d < 1.0) return true;
-      if (d < 1.6 && (dx * car.ux + dy * car.uy) / (d || 1) > 0.2) return true;
+      if (Math.hypot(dx, dy) < 0.8) return true;
+      const ahead = dx * car.ux + dy * car.uy;
+      if (ahead > 0 && ahead < 2.0 && Math.abs(dx * -car.uy + dy * car.ux) < 0.95) return true;
     }
     // 추월 판정은 횡 오프셋을 뺀 "차로 기준" 위치로 잰다 (이미 비켜난 뒤에도 사고 차를 인지)
     const nx = -car.uy, ny = car.ux;
@@ -280,6 +298,7 @@ export class TrafficSystem {
         if (carDist > otherDist + 0.15) return true;
       }
     }
+    if (this.crossBlocked(car)) return true;
     if (wantOvertake) {
       // 반대 차로로 나가기 전 대향차 틈 확인 (일방통행은 대향차가 없어 항상 통과)
       for (const q of this.cars) {
@@ -296,9 +315,41 @@ export class TrafficSystem {
     return false;
   }
 
+  /** 277차 — `o`가 `car`의 앞 통로 안인가. 통로 = 앞으로 0.2~2.1타일 · 옆으로 1.35타일(차 반폭 + 상대 반길이) */
+  private inCorridor(car: Car, o: Car): { ahead: number } | null {
+    const dx = o.px - car.px, dy = o.py - car.py;
+    const ahead = dx * car.ux + dy * car.uy;
+    if (ahead <= 0.2 || ahead >= 2.1) return null;
+    const side = Math.abs(dx * -car.uy + dy * car.ux);
+    return side < 1.35 ? { ahead } : null;
+  }
+
+  /**
+   * 277차 — 다른 도로의 차가 앞 통로를 막고 있는가. 같은 도로는 앞차 따라가기 · 추월 · 대향 차로 규칙이 맡는다.
+   * 사고로 선 차 · 나를 보지 않는 차(멈췄든 지나가든)는 그대로 장애물이다.
+   * 서로를 앞에 두면(동시에 모서리에 닿음) 교차점에 가까운 쪽(앞 거리가 짧은 쪽)이 간다 — 「상대가 기다리는 중」을
+   * 장애물로 치면 서로 상대 때문에 기다리는 교착이 생긴다.
+   * 마주 오는 차(진행 방향이 거의 반대 — 상 · 하행이 따로 그려진 도로)는 제 차로를 지나가므로 보지 않는다.
+   */
+  private crossBlocked(car: Car): boolean {
+    for (const o of this.cars) {
+      if (o === car || o.fade > 0 || o.road === car.road) continue;
+      if ((o.deck ?? false) !== (car.deck ?? false)) continue;   // 고가 위 ↔ 밑은 서로 모른다
+      if (o.ux * car.ux + o.uy * car.uy < -0.7) continue;
+      const mine = this.inCorridor(car, o);
+      if (!mine) continue;
+      if (o.halt > 0) return true;
+      const theirs = this.inCorridor(o, car);
+      if (!theirs) return true;
+      if (mine.ahead > theirs.ahead + 0.05) return true;
+      if (Math.abs(mine.ahead - theirs.ahead) <= 0.05 && this.cars.indexOf(car) > this.cars.indexOf(o)) return true;
+    }
+    return false;
+  }
+
   /**
    * 플레이어 상호작용 — 매 틱 호출. 차량 0.75타일 안에 들어오면(캐릭터가 차에 부딪힘) hit 반환 +
-   * 그 차량 180초 정지. 접근 대기는 mustWait가 처리.
+   * 그 차량 잠시 정지(`ACCIDENT_HALT_SEC`). 접근 대기는 mustWait가 처리.
    */
   /** 184차 — 타일 좌표가 고가 상판 위인가 (씬이 OverpassSystem으로 주입) */
   elevatedAt?: (x: number, y: number) => boolean;
@@ -315,7 +366,7 @@ export class TrafficSystem {
       const dx = px - car.px, dy = py - car.py;
       const d = Math.hypot(dx, dy);
       if (d < 0.75) {
-        car.halt = 180;
+        car.halt = ACCIDENT_HALT_SEC;
         // 정확히 겹치면(d ≈ 0) 차량 진행 반대 방향으로 밀어낸다
         if (!hit) hit = d > 0.05 ? { dx: dx / d, dy: dy / d } : { dx: -car.ux, dy: -car.uy };
       }
@@ -336,6 +387,9 @@ export class TrafficSystem {
         car.waiting = true;
       } else {
         car.waiting = this.mustWait(car, player);
+        // 277차 — 다른 도로의 차에 오래 막히면(교착) 사라졌다 다른 곳에서 나온다 — 막다른 끝과 같은 페이드
+        car.jam = car.waiting && this.crossBlocked(car) ? (car.jam ?? 0) + dt : 0;
+        if (car.jam > CROSS_JAM_SEC) { car.jam = 0; car.fade = 0.6; continue; }
         // 추월 횡 이동 스무딩 — 대기 중(대향차 틈 기다림)에도 차로 복귀는 진행한다
         const dLat = car.latTarget - car.lat;
         if (dLat !== 0) {

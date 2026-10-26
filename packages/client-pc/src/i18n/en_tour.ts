@@ -83,6 +83,8 @@ export const EN_TOUR: Record<string, string> = {
     'Swap & store applies your picks. Store what fits fills the free slots with the heaviest fish first and releases the rest.',
   '맨 아래는 가진 돈이다. 물건을 사고팔 때마다 여기서 늘고 준다.':
     'At the bottom is your money. It goes up and down every time you buy or sell.',
+  '「정리」를 누르면 지금 칸의 물건이 비슷한 것끼리 모이고, 같은 무리 안에서는 이름 순으로 놓인다. 한 번 눌러 보자.':
+    'Press Sort and the items in this tab gather with similar ones, ordered by name within each group. Give it a try.',
 };
 
 /** 수치가 끼는 문장 (188차) */
