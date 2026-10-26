@@ -10,6 +10,7 @@ import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
 import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
+import { LINE_MATERIAL_TRAITS, lineMaterialOf } from '@tra/core';   // 273차 — 줄 재질 성질(내구도)
 import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
   produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO, hasCarePlan, carePlanSummaryKo,
@@ -822,6 +823,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       rows.push(
         { label: '재질', value: item.lineMaterial ? LINE_MATERIAL_LABEL[item.lineMaterial] : 'PE 합사' },
         { label: '라인 형태', value: item.lineForm ? LINE_FORM_LABEL[item.lineForm] : 'Sinking (침강)' },
+        { label: '성질', value: LINE_MATERIAL_TRAITS[lineMaterialOf(item)].shortKo },   // 273차
         { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : '1호' },
         { label: '스풀 길이', value: item.lineLengthM !== undefined ? spoolLeftLabel(item.lineLengthM, item.lineUsedM) : '-' },
         { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
@@ -835,6 +837,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       rows.push(
         { label: '재질', value: item.lineMaterial ? LINE_MATERIAL_LABEL[item.lineMaterial] : item.id.includes('carbon') ? '카본 (내마모)' : '나일론 (신축)' },
         { label: '라인 형태', value: item.lineForm ? LINE_FORM_LABEL[item.lineForm] : 'Suspend (중층 유지)' },
+        { label: '성질', value: LINE_MATERIAL_TRAITS[lineMaterialOf(item)].shortKo },   // 273차
         { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : item.id.includes('carbon') ? '1.5호' : '2호' },
         { label: '스풀 길이', value: item.lineLengthM !== undefined ? spoolLeftLabel(item.lineLengthM, item.lineUsedM) : '-' },
         { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },

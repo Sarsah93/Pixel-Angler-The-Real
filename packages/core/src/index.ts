@@ -464,6 +464,13 @@ export type {
   ParkedRodEvent, ParkedRodStepEnv,
 } from './types/SnagDrag.js';
 export { snagReachM, snagProximity, snagHazardPerM, snagDragChance, sinkerHoldsBottom } from './simulation/SnagDrag.js';
+// 273차 — 원줄 · 목줄 내구도(마모) — 묶인 줄 한 가닥의 상태 · 재질별 성질 · 쌓이는 길 · 다시 매기
+export type { LineMaterialKey, LineRole, LineWearStage, LineMaterialTraits, LineWearSummary } from './types/LineWear.js';
+export {
+  LINE_MATERIAL_TRAITS, LINE_WEAR_STAGE_KO, LINE_ROLE_KO, LINE_WEAR_STAGE_ORDER, lineMaterialOf, clampLineWear, lineWearStage,
+  effectiveLineStrengthKg, fightFatigueWear, lineTensionRatioOf, landingShockWear, snagPullWear, castWear, bottomDragWear,
+  retieCutM, addLineWear,
+} from './simulation/LineWear.js';
 // 209차 — 낚싯대 · 릴 제원 + 판정 · 거치대 한 대 굴리기(탑다운 · 1인칭 공용)
 export { stepParkedRod } from './simulation/ParkedRodSim.js';
 export type {

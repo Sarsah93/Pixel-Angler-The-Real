@@ -73,8 +73,13 @@ import { setAmbience } from '../audio/Ambience.js';
 import { playMusic } from '../audio/Music.js';
 import { weatherSoundLevels } from '../audio/WeatherSound.js';
 import {
-  snagDragChance, snagHazardPerM, sinkerHoldsBottom,
+  snagDragChance, snagHazardPerM, sinkerHoldsBottom, snagProximity,
   type SnagRigKind, type SinkerHoldResult, type ParkedRigSnapshot, type ParkedRodPhase, type ParkedRodEvent,
+} from '@tra/core';
+// 273차 — 원줄 · 목줄 내구도: 던지기 · 바닥 끌림 · 파이팅 피로 · 랜딩 충격 · 밑걸림 당김이 묶인 줄에 쌓인다
+import {
+  castWear, fightFatigueWear, lineTensionRatioOf, landingShockWear, snagPullWear, bottomDragWear, lineWearStage, LINE_WEAR_STAGE_ORDER, LINE_ROLE_KO,
+  type LineRole, type LineWearStage,
 } from '@tra/core';
 import { drawRigIcon, RigIconKind } from '../ui/RigIconRenderer.js';
 import { GameState } from '../store/GameState.js';
@@ -459,6 +464,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private pointerDownAt = 0;
   /** 파이팅 과부하 릴링 (텐션 한계에서 무리한 입력) 누적 */
   private overstrain = 0;
+  /** 273차 — 이번 낚시에서 알린 줄 마모 단계(역할별 — 오르는 쪽만 한 번씩) */
+  private lineWearNoticed: Record<LineRole, LineWearStage> = { main: 'fresh', leader: 'fresh' };
 
   // ── 가이드/이펙트 (2026-07-23 — 통합 가이드 허브로 일원화) ──
   /** 통합 가이드 허브 (파이트·회수·밑밥·회뜨기 — GuidePanel, 구 텍스트 가이드 대체) */
@@ -564,6 +571,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.lastTapAt = 0;
     this.pointerDownAt = 0;
     this.overstrain = 0;
+    this.lineWearNoticed = { main: lineWearStage(InventoryStore.lineWearOf('main')), leader: lineWearStage(InventoryStore.lineWearOf('leader')) };
     this.guideHub = undefined;
     this.prevStage = null;
     this.prevZone = null;
@@ -581,6 +589,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.tideNowCache = null; this.tideClock = null; this.chumBank = 0;
     // 206차 — 처음 진행하는 퀘스트에 낚싯대 어획 목표가 열려 있으면 밑걸림을 덜 낸다(QA — 퀘스트 원활 진행)
     this.snagQuestMult = StoryStore.firstRunRodObjectiveOpen() ? TUNING.snag.questFirstMult : 1;
+    // 273차 — 던질 때마다 줄이 가이드를 지난다(합사가 가장 크게) · 이미 끊어지기 직전인 줄은 바로 일러 준다
+    this.applyCastWear();
     // 211차 — 착수 풍덩(채비가 무거울수록 낮고 크게) · 바닷가 배경음
     this.reelSoundAccM = 0; this.dragZingT = 0;
     playSplash(Math.min(1, InventoryStore.getRigTotalWeightG() / 120));
@@ -2502,6 +2512,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     };
     const dragM = holding || !this.dragPrev ? 0 : Math.hypot(this.rig.baitX - this.dragPrev.x, this.distM - this.dragPrev.d);
     this.snagHazardNow = snagHazardPerM(snagGeom);
+    // 273차 — 여 위를 끌린 만큼 줄이 긁힌다(걸리지 않아도 목줄은 상한다)
+    if (snagGeom.inReef && dragM > 0 && !this.snagStuck) this.applyBottomDragWear(dragM, snagProximity(snagKind, snagGeom.clearanceM, snagGeom.flow01));
     const snagNow = !this.biteSeq.active && !this.pendingFish
       && Math.random() < snagDragChance({ ...snagGeom, dragM, dtSec: dt });
 
@@ -3093,6 +3105,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       row = SNAG_BREAK_OFF.find((r) => r.outcome === 'below_swivel') ?? row;
     }
     const { lost, label } = this.applySnagLoss(row.outcome, row.labelKo);
+    // 273차 — 끌어낸 줄은 바위에 긁혔다(잘려 나간 줄은 applyRigLoss가 새로 묶은 줄로 되돌린다)
+    if (kind === 'pull' && (row.outcome === 'all_saved' || row.outcome === 'bait_lost' || row.outcome === 'hook_bait_lost')) this.applySnagPullWear();
 
     // 로드 과부하 — 라인이 로드 등급보다 **과하게** 강하면 줄이 아니라 대가 먼저 나간다.
     //   (적정 채비를 쓰면 줄이 끊어지며 대를 지킨다 — 채비 매칭을 가르치는 지점)
@@ -3210,6 +3224,61 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       }
     }
     return this.hudFaultLog;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // 273차 — 원줄 · 목줄 내구도(묶인 줄의 마모 — core `LineWear` · 값은 InventoryStore)
+  // ═══════════════════════════════════════════════════════════════
+
+  /** 캐스팅 한 번 — 가이드 쓸림. 이미 끊어지기 직전인 줄은 던지자마자 일러 준다 */
+  private applyCastWear(): void {
+    for (const v of InventoryStore.lineWearView()) {
+      this.bumpLineWear(v.role, castWear(v.material, v.role));
+      if (v.stage === 'critical') this.lineWearNotice(`${LINE_ROLE_KO[v.role]}이 끊어지기 직전이다 — 이대로는 큰 고기를 못 버틴다`, true);
+    }
+  }
+
+  /** 여 위를 끌린 거리 × 바닥 근접도 — 목줄이 긁히고 원줄은 1/5 */
+  private applyBottomDragWear(dragM: number, proximity01: number): void {
+    for (const v of InventoryStore.lineWearView()) this.bumpLineWear(v.role, bottomDragWear(dragM, proximity01, v.material, v.role));
+  }
+
+  /** 파이팅 피로 — 게이지(약한 쪽 기준)를 그 줄의 장력비로 옮겨 쌓는다(센 원줄은 덜 받는다) */
+  private applyFightWear(gauge01: number, dt: number): void {
+    const views = InventoryStore.lineWearView();
+    if (views.length === 0) return;
+    const weakest = Math.min(...views.map((v) => v.effectiveKg));
+    for (const v of views) this.bumpLineWear(v.role, fightFatigueWear(lineTensionRatioOf(gauge01, weakest, v.effectiveKg), dt, v.material));
+  }
+
+  /** 랜딩 충격 — 무게 ÷ 그 줄의 세기(목줄은 고기 몸에 쓸려 1.5배) */
+  private applyLandingWear(weightKg: number): void {
+    for (const v of InventoryStore.lineWearView()) this.bumpLineWear(v.role, landingShockWear(weightKg, v.effectiveKg, v.material, v.role));
+  }
+
+  /** 밑걸림을 끌어냈다 — 바위에 긁힌 몫 */
+  private applySnagPullWear(): void {
+    for (const v of InventoryStore.lineWearView()) this.bumpLineWear(v.role, snagPullWear(v.material, v.role));
+  }
+
+  /** 마모를 쌓고, 단계가 「쓸림 심함」 · 「끊어지기 직전」으로 오르면 한 번 일러 준다 */
+  private bumpLineWear(role: LineRole, delta: number): void {
+    if (!(delta > 0)) return;
+    const after = InventoryStore.addLineWear(role, delta);
+    if (after === null) return;
+    const stage = lineWearStage(after);
+    if (LINE_WEAR_STAGE_ORDER.indexOf(stage) <= LINE_WEAR_STAGE_ORDER.indexOf(this.lineWearNoticed[role])) return;
+    this.lineWearNoticed[role] = stage;
+    if (stage === 'heavy') this.lineWearNotice(`${LINE_ROLE_KO[role]}이 많이 쓸렸다 — 채비 창에서 줄 끝을 잘라 다시 매는 게 좋겠다`, false);
+    else if (stage === 'critical') this.lineWearNotice(`${LINE_ROLE_KO[role]}이 끊어지기 직전이다 — 이대로는 큰 고기를 못 버틴다`, true);
+  }
+
+  /** 떠오르는 안내(R14 — 바탕 상자 없이 흰 테 글자) + 장비 일지 한 줄 */
+  private lineWearNotice(msg: string, warn: boolean): void {
+    LedgerStore.gear(msg);
+    const t = this.add.text(GAME_WIDTH / 2, 176, msg, worldLabelStyle(13, { align: 'center', ink: warn ? WORLD_LABEL_WARN : undefined }))
+      .setOrigin(0.5).setDepth(120).setAlpha(0);
+    this.tweens.add({ targets: t, alpha: 1, duration: 150, hold: 2800, yoyo: true, onComplete: () => t.destroy() });
   }
 
   // ── 파이팅 상태 ──────────────────────────────────────
@@ -3365,6 +3434,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       spoolOpen,
     });
     this.fightSubdue = st.subdue;
+    this.applyFightWear(st.tension / 100, dt);   // 273차 — 한계 근처에서 버틴 시간만큼 줄이 지친다
 
     // ── 피로 페이즈 갱신 — 장력·릴링·견제가 피로를 누적, 슬랙이면 회복(긴장 유지) ──
     this.lastFatigue = this.fatigue?.update({
@@ -3541,6 +3611,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private onLanded(): void {
     GameState.applyVitalsAction('fightWin');   // 125차 — 성공 파이팅 행동 비용
     const f = this.hookedFish!;
+    this.applyLandingWear(f.weightG / 1000 * this.schoolMult);   // 273차 — 들어 올리는 충격(무리 걸림은 무게를 합쳐)
     // 211차 — 들어 올리는 첨벙 + 팡파르(1kg · 3kg을 넘으면 한 음씩 더)
     playCatchFanfare(f.weightG >= 3000 ? 2 : f.weightG >= 1000 ? 1 : 0);
     const protectedFish = f.isUndersized || f.isClosedSeason;

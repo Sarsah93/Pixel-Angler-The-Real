@@ -747,6 +747,41 @@ export interface TuningConfig {
     stuckBendDeg: number;
   };
   /**
+   * 273차 — 원줄 · 목줄 내구도(마모). 묶인 줄 한 가닥의 상태 0~1 — 스풀을 바꾸거나 잘리면 0.
+   * 모델 `simulation/LineWear.ts` · 보관 `InventoryStore` · 쌓는 자리 `FirstPersonFishingScene`.
+   */
+  lineWear: {
+    /** 마모 1에서 잃는 세기 비율(0.5 = 절반) */
+    strengthLossAtWorn: number;
+    /** 파이팅 피로 계수 — 초당 (장력비 − 문턱)² × 이 값 */
+    fatigueK: number;
+    /** 이 장력비(그 줄 세기 기준) 아래에서는 피로가 쌓이지 않는다 */
+    fatigueThreshold: number;
+    /** 랜딩 충격 계수 — 무게 ÷ 세기 × 이 값(상한 비 2) */
+    shockK: number;
+    /** 랜딩 때 목줄(고기 몸에 쓸린다) · 원줄 배율 */
+    landingLeaderMult: number;
+    landingMainMult: number;
+    /** 밑걸림을 끌어냈을 때 목줄 · 원줄에 쌓이는 마모(× 재질 쓸림) */
+    snagPullLeader: number;
+    snagPullMain: number;
+    /** 캐스팅 한 번의 가이드 쓸림(× 재질) · 목줄 몫 */
+    castK: number;
+    castLeaderFrac: number;
+    /** 여 위를 1m 끌릴 때 목줄 마모(× 근접도 × 재질 쓸림) · 원줄 몫 */
+    dragPerM: number;
+    dragMainFrac: number;
+    /** 나일론이 물을 먹어 잃는 세기 비율 */
+    nylonWetLoss: number;
+    /** 다시 맬 때 스풀에서 잘라 내는 길이(m) */
+    retieLeaderM: number;
+    retieMainM: number;
+    /** 단계 문턱 — 쓸림 조금 · 쓸림 심함 · 끊어지기 직전 */
+    stageLight: number;
+    stageHeavy: number;
+    stageCritical: number;
+  };
+  /**
    * 낚싯대 거치대(207차 — 원투를 던져 두고 기다리기).
    * 소비: `scenes/field/RodHolderSystem.ts` · `FirstPersonFishingScene` 「거치하기」.
    */
@@ -1527,6 +1562,26 @@ export const TUNING: TuningConfig = {
     stuckBobAmpM: 0.035,
     stuckBendDeg: 11,
   },
+  lineWear: {
+    strengthLossAtWorn: 0.5,
+    fatigueK: 0.01,
+    fatigueThreshold: 0.5,
+    shockK: 0.06,
+    landingLeaderMult: 1.5,
+    landingMainMult: 0.4,
+    snagPullLeader: 0.12,
+    snagPullMain: 0.04,
+    castK: 0.002,
+    castLeaderFrac: 1 / 3,
+    dragPerM: 0.008,
+    dragMainFrac: 0.2,
+    nylonWetLoss: 0.08,
+    retieLeaderM: 1.5,
+    retieMainM: 3,
+    stageLight: 0.2,
+    stageHeavy: 0.5,
+    stageCritical: 0.8,
+  },
   rodHolder: {
     biteWindowSec: 25,
     missBaitLossChance: 0.5,
@@ -1750,6 +1805,17 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'snag.sinkerReachM', min: 0.05, max: 1, step: 0.05, category: 'balance', label: '봉돌 걸림 높이(m)' },
   { path: 'snag.floatReachFlowM', min: 0, max: 2, step: 0.1, category: 'balance', label: '찌 목줄 날림 높이(m)' },
   { path: 'snag.waveSinkerGPerM', min: 20, max: 120, step: 5, category: 'balance', label: '파고 1m 버티는 봉돌(g)' },
+  // ── 원줄 · 목줄 내구도 (273차) ──
+  { path: 'lineWear.strengthLossAtWorn', min: 0.1, max: 0.9, step: 0.05, category: 'balance', label: '마모 1에서 잃는 줄 세기' },
+  { path: 'lineWear.fatigueK', min: 0, max: 0.05, step: 0.001, category: 'balance', label: '파이팅 피로 계수(초당)' },
+  { path: 'lineWear.fatigueThreshold', min: 0.2, max: 0.9, step: 0.05, category: 'balance', label: '피로가 쌓이는 장력비 문턱' },
+  { path: 'lineWear.shockK', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '랜딩 충격 계수' },
+  { path: 'lineWear.snagPullLeader', min: 0, max: 0.5, step: 0.01, category: 'balance', label: '밑걸림 끌어냄 목줄 마모' },
+  { path: 'lineWear.castK', min: 0, max: 0.02, step: 0.0005, category: 'balance', label: '캐스팅 한 번 가이드 쓸림' },
+  { path: 'lineWear.dragPerM', min: 0, max: 0.05, step: 0.001, category: 'balance', label: '여 바닥 끌림 1m당 목줄 마모' },
+  { path: 'lineWear.nylonWetLoss', min: 0, max: 0.2, step: 0.01, category: 'balance', label: '나일론 젖어서 잃는 세기' },
+  { path: 'lineWear.retieLeaderM', min: 0.5, max: 5, step: 0.5, category: 'balance', label: '다시 매기 목줄 소모(m)' },
+  { path: 'lineWear.retieMainM', min: 1, max: 10, step: 0.5, category: 'balance', label: '다시 매기 원줄 소모(m)' },
   { path: 'rodHolder.biteWindowSec', min: 5, max: 90, step: 5, category: 'balance', label: '거치대 입질 창(초)' },
   { path: 'rodHolder.parkedBiteMult', min: 0.2, max: 1.5, step: 0.05, category: 'balance', label: '거치 중 입질 배율' },
   { path: 'rodHolder.selfHookSurf', min: 0, max: 0.9, step: 0.05, category: 'balance', label: '거치 원투대 자동 걸림' },

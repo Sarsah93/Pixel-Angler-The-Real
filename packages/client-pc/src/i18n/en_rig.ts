@@ -134,12 +134,31 @@ export const EN_RIG: Record<string, string> = {
     'Build main line → knot → leader, then at the leader end choose "ready rig, tied direct" (or "snap · ready rig" with a snap swivel) and pick Hard bait or Soft bait. Soft bait opens a jig-head slot and a worm slot together; hard bait ends with a single lure slot. No bait slot opens.',
   '원줄 · 목줄 · 바늘 · 찌 · 봉돌 · 도래 · 미끼는 수산물 직판장에서 사서 활용(U) → 채비하기에서 원줄부터 차례로 엮습니다.':
     'buy main line · leader · hooks · floats · sinkers · swivels · bait at the fish market and build them up from the main line in Utilize (U) → Tackles.',
+
+  // ── 273차 — 원줄 · 목줄 내구도(묶인 줄의 마모 · 다시 매기) ──
+  '새 줄': 'New line', '쓸림 조금': 'Lightly worn', '쓸림 심함': 'Heavily worn', '끊어지기 직전': 'About to snap',
+  '쓸림': 'Worn', '심함': 'Heavy', '위험': 'Danger',
+  '묶인 줄이 없습니다': 'No line is tied', '스풀에 남은 줄이 모자랍니다': 'Not enough line left on the spool',
+  '성질': 'Traits', '늘어남 · 젖으면 약해짐': 'Stretches · weaker when wet', '쓸림에 강함 · 충격 그대로': 'Abrasion-resistant · passes shock straight through',
+  '셈 · 쓸림 · 가이드에 약함': 'Strong · weak to abrasion and guide wear',
+  '줄은 쓸수록 쓸린다. 원줄 · 목줄 칸에 「쓸림 · 심함 · 위험」 배지가 뜨면 그 칸을 눌러 「줄 끝을 잘라 다시 매기」로 새로 묶는다 — 스풀에서 조금 잘려 나간다.':
+    'Line wears as you use it. When a "Worn · Heavy · Danger" badge shows on the main line or leader slot, click that slot and pick "Cut the end and re-tie" to tie a fresh length — a little is cut off the spool.',
+  '줄이 쓸리기 시작했다. 배지가 「심함」이 되기 전에 이 칸을 눌러 「줄 끝을 잘라 다시 매기」로 새로 묶자 — 스풀에서 조금 잘려 나가고 세기는 새 줄로 돌아온다.':
+    'The line has started to wear. Before the badge reaches "Heavy", click this slot and pick "Cut the end and re-tie" — a little is cut off the spool and the strength is back to new.',
 };
 
 /** 수치·세트 이름이 끼는 문장 */
 export const EN_RIG_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
   [/^채비 물리 스펙 \(실시간 합산\) · (.+)$/, (m, tr) => `Rig physics (live) · ${tr(m[1])}`],
   [/^라인 인장: (.+) kg$/, (m) => `Line strength: ${m[1]} kg`],
+  // 273차 — 줄 내구도
+  [/^라인 인장: (.+) kg · (.+)$/, (m, tr) => `Line strength: ${m[1]} kg · ${tr(m[2])}`],
+  [/^(원줄|목줄) (새 줄|쓸림 조금|쓸림 심함|끊어지기 직전)$/, (m, tr) => `${tr(m[1])} ${tr(m[2]).toLowerCase()}`],
+  [/^줄 끝을 잘라 다시 매기 — ([\d.]+)m 소모 \((.+)\)$/, (m, tr) => `Cut the end and re-tie — uses ${m[1]}m (${tr(m[2]).toLowerCase()})`],
+  [/^(원줄|목줄) 끝을 잘라 다시 맸다 — (.+)$/, (m, tr) => `Re-tied the ${tr(m[1]).toLowerCase()} — ${tr(m[2])}`],
+  [/^다시 맬 수 없습니다 — (.+)$/, (m, tr) => `Can't re-tie — ${tr(m[1])}`],
+  [/^(원줄|목줄)이 많이 쓸렸다 — 채비 창에서 줄 끝을 잘라 다시 매는 게 좋겠다$/, (m, tr) => `The ${tr(m[1]).toLowerCase()} is badly worn — cut the end and re-tie it in the rig window`],
+  [/^(원줄|목줄)이 끊어지기 직전이다 — 이대로는 큰 고기를 못 버틴다$/, (m, tr) => `The ${tr(m[1]).toLowerCase()} is about to snap — it won't hold a big fish like this`],
   [/^(.+) 선택$/, (m, tr) => `Choose ${tr(m[1])}`],
   [/^(.+)  ·  (.+)$/, (m, tr) => `${tr(m[1])}  ·  ${tr(m[2])}`],
   // 193차

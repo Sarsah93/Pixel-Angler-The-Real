@@ -48,6 +48,7 @@
 
 | 과제 | 상태 | 차수 |
 |---|---|---|
+| **원줄 · 목줄 내구도**(묶인 줄의 마모 0~1 — 파이팅 피로 · 랜딩 충격 · 밑걸림 끌어냄 · 캐스팅 · 여 바닥 끌림 · 재질 3 · 세기 = 공칭 × (1 − 마모 × 0.5) · 단계 4 · 1인칭 흰 테 알림) | ✅ | **273** — core `LineWear` · `FirstPersonFishingScene.bumpLineWear` · [273](../03-WORKLOG/2026-10-26-273-line-wear-durability.md) |
 | 챔질 3단계 시퀀스 + 어종 패턴 | ✅ | 19차(1인칭 개편) |
 | 조류 5존 + 조경지대 Hit Zone | ✅ | 19 |
 | 채비 회수 → 필드 복귀 | ✅ | 9 |
@@ -139,6 +140,14 @@
   (현재는 기존 1인칭 뷰에 거리만 1.4m).
 
 ## 6. 함정·불변조건
+
+> **273차 신규 함정**
+> 1. **줄 세기는 `lineCapacityKg()` 하나다** — 마모 · 나일론 젖음이 반영된 값이다. 공칭(호수 환산)이 필요하면 `lineNominalCapacityKg()`.
+>    파이트 분모 · 드랙 · 대 과부하 판정이 이 값을 쓰므로 쓸린 줄은 같은 고기에 더 쉽게 터진다 — 설계다.
+> 2. **마모는 역할(원줄 · 목줄)에 붙고 스풀 id로 주인을 확인한다** — `projectTree()`마다 `syncLineWear()`가 칸의 스풀이 바뀌었으면 0으로 돌린다.
+>    손실로 잘린 줄(`applyRigLoss`) · 거치 목줄(`takeRigForParking`)도 0. 새 리셋 지점을 만들면 `_lineWear[role] = { itemId, wear: 0 }`.
+> 3. **쌓는 자리는 1인칭 다섯 곳뿐**(`applyCastWear` · `applyBottomDragWear` · `applyFightWear` · `applyLandingWear` · `applySnagPullWear`) — 전부 `bumpLineWear`를 지나야
+>    단계 알림이 한 번씩 나간다. 다른 데서 `InventoryStore.addLineWear`를 직접 부르면 알림이 빠진다.
 
 > **196차 신규 함정**
 > 1. **들어뽕은 `onLanded`에서 기록보다 먼저 굴린다** — 빠진 고기는 `addCaughtFish`·`sessionCatch`에 넣지 않는다.

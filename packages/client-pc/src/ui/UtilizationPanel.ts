@@ -41,6 +41,7 @@ import {
   sashimiStarsAt, sashimiStarPriceMult, sashimiPlateName, quadBalanceOf, type SashimiPlateMeta,
   evaluateFishSellPrice, FISH_DATABASE,
 } from '@tra/core';
+import { LINE_ROLE_KO, retieCutM, type LineRole, type LineWearSummary } from '@tra/core';   // 273차 — 원줄 · 목줄 내구도
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { CONDITION_MARK, cv, drawMark, shapeCuesOn } from './ColorAssist.js';
@@ -82,6 +83,17 @@ const NODE_W = 104;
 const NODE_H = 104;
 const NODE_GAP = 12;
 const CHAIN_PER_ROW = 9;
+
+/** 273차 — 줄 칸 → 마모 역할(원줄 · 목줄 칸만) */
+function lineRoleOfSlot(slot: RigNode['slot']): LineRole | null {
+  return slot === 'main_line' ? 'main' : slot === 'leader' ? 'leader' : null;
+}
+/** 273차 — 줄 칸 마모 배지(새 줄은 배지 없음 · 글자가 달라 색 없이도 읽힌다) */
+const WEAR_BADGE: Record<Exclude<LineWearSummary['stage'], 'fresh'>, { label: string; ink: string; bg: string }> = {
+  light: { label: '쓸림', ink: '#1a1206', bg: '#e8c86a' },
+  heavy: { label: '심함', ink: '#2a1206', bg: '#ffb36a' },
+  critical: { label: '위험', ink: '#ffffff', bg: '#c0392b' },
+};
 const CHAIN_ROW_H = NODE_H + 22;
 
 export class UtilizationPanel extends DraggablePanel {
@@ -114,6 +126,8 @@ export class UtilizationPanel extends DraggablePanel {
   /** 채비 탭 제원 상자 상단 y (패널 로컬 — 가이드 하이라이트용) */
   private tourSpecY = 0;
   private tourSpecH = 150;
+  /** 273차 — 처음 보이는 줄 마모 배지 칸(한 번만 짚어 준다) */
+  private wearBadgeFirst: Phaser.Geom.Rectangle | null = null;
   /** 192차 — 체인 영역 상단 y·행 수 (가이드 사각형 계산용) */
   private chainTop = 0;
   private chainRows = 1;
@@ -252,6 +266,12 @@ export class UtilizationPanel extends DraggablePanel {
           onEnter: () => this.closeChooser(),
         },
         {
+          text: '줄은 쓸수록 쓸린다. 원줄 · 목줄 칸에 「쓸림 · 심함 · 위험」 배지가 뜨면 그 칸을 눌러 「줄 끝을 잘라 다시 매기」로 새로 묶는다 — 스풀에서 조금 잘려 나간다.',
+          target: () => nodeRect(0),
+          skipIf: () => !tackles() || !InventoryStore.rig.mainLine,
+          onEnter: () => this.closeChooser(),
+        },
+        {
           text: '부품을 달 때마다 아래 상자에서 채비 무게와 가라앉는 속도, 닿는 수심이 다시 계산된다. 금색 「추천」은 지금 자리에 맞는 부품이 가방에 있다는 뜻이다.',
           target: () => this.localRect(24, this.tourSpecY, PANEL_W - 48, this.tourSpecH),
           skipIf: () => !tackles(),
@@ -357,6 +377,7 @@ export class UtilizationPanel extends DraggablePanel {
     const nodes = InventoryStore.rigTree.nodes;
     const summary = InventoryStore.rigSummary();
     this.doubleBtnFirst = null;
+    this.wearBadgeFirst = null;
     const chainY = top + 26;
     this.chainTop = chainY;
     this.chainRows = Math.max(1, Math.ceil(nodes.length / CHAIN_PER_ROW));
@@ -397,6 +418,22 @@ export class UtilizationPanel extends DraggablePanel {
         };
       });
     }
+    // 273차 — 줄 마모 배지가 처음 보이면 한 번만 짚어 준다(R11 — 배지 자체에는 설명을 박지 않는다)
+    if (this.wearBadgeFirst && !tourSeen('line_wear')) {
+      maybeStartTour(this.scene, () => {
+        const b = this.wearBadgeFirst;
+        if (!b || this.currentTab !== 'tackles') return null;
+        return {
+          id: 'line_wear',
+          anchor: () => this.panelBounds(),
+          alive: () => this.active && this.currentTab === 'tackles',
+          steps: [{
+            text: '줄이 쓸리기 시작했다. 배지가 「심함」이 되기 전에 이 칸을 눌러 「줄 끝을 잘라 다시 매기」로 새로 묶자 — 스풀에서 조금 잘려 나가고 세기는 새 줄로 돌아온다.',
+            target: () => (this.wearBadgeFirst ? this.localRect(this.wearBadgeFirst.x, this.wearBadgeFirst.y, this.wearBadgeFirst.width, this.wearBadgeFirst.height) : null),
+          }],
+        };
+      });
+    }
 
     const spec = this.computeRigSpec();
     // 193차 — 미끼 수·같은 미끼 시너지·두 미끼로 오른 입질을 제목 줄 끝에 붙인다(4번째 줄을 늘리면 안내문과 겹친다)
@@ -413,7 +450,7 @@ export class UtilizationPanel extends DraggablePanel {
       `침강 속도 (V_z): ${spec.sinkMps.toFixed(2)} m/s`,
       `공기 저항 계수 (C_d): ${spec.dragCd.toFixed(2)}`,
       `최대 공략 수심 (Z_limit): ${InventoryStore.hasFloatStop && summary.floatId ? `${InventoryStore.rigDepthLimitM} m` : '제한 없음 (바닥까지)'}`,
-      `라인 인장: ${InventoryStore.lineCapacityKg()?.toFixed(1) ?? '-'} kg`,
+      `라인 인장: ${InventoryStore.lineCapacityKg()?.toFixed(1) ?? '-'} kg${this.lineWearSuffix()}`,
     ];
     const colW = [330, 330];
     const colY = [sumY + 34, sumY + 34];
@@ -554,6 +591,19 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add(warn);
     }
 
+    // 273차 — 원줄 · 목줄 칸: 묶인 줄의 마모 배지(새 줄은 표시 없음)
+    const wearRole = lineRoleOfSlot(n.slot);
+    const wearView = wearRole && item ? InventoryStore.lineWearSummaryOf(wearRole) : null;
+    if (wearView && wearView.stage !== 'fresh') {
+      const look = WEAR_BADGE[wearView.stage];
+      const wb = this.scene.add.text(r.x + r.width - 5, r.y + 4, look.label, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: look.ink,
+        backgroundColor: look.bg, padding: { x: 3, y: 1 }, fontStyle: 'bold',
+      }).setOrigin(1, 0);
+      this.bodyContainer.add(wb);
+      this.wearBadgeFirst ??= new Phaser.Geom.Rectangle(r.x, r.y, r.width, r.height);
+    }
+
     // 연결선 — 같은 행이면 → · 행 끝이면 ↵
     const col = i % CHAIN_PER_ROW;
     const nodes = InventoryStore.rigTree.nodes;
@@ -602,6 +652,21 @@ export class UtilizationPanel extends DraggablePanel {
 
   /** 칸 클릭 — item: 가방 후보 목록 / choice: 갈래 목록 / toggle: 즉시 전환 */
   private onRigNodeClick(n: RigNode, i: number): void {
+    // 273차 — 원줄 · 목줄 칸: 묶인 줄이 있으면 「줄 끝을 잘라 다시 매기」 행이 맨 위에 선다(고정 중에도 이 행만은 된다 — 미끼 칸처럼)
+    const wearRole = lineRoleOfSlot(n.slot);
+    const wearView = wearRole && n.itemId ? InventoryStore.lineWearSummaryOf(wearRole) : null;
+    const retieRows = (): ChooserRow[] => (wearRole && wearView ? [{
+      text: `줄 끝을 잘라 다시 매기 — ${retieCutM(wearRole)}m 소모 (${wearView.stageKo})`,
+      onPick: () => this.retieLine(wearRole),
+      recommended: wearView.stage === 'heavy' || wearView.stage === 'critical',
+    }] : []);
+    if (wearRole && InventoryStore.rigLocked) {
+      if (!wearView) { this.rigLockedGuard(); return; }
+      this.closeChooser();
+      const r0 = this.rigNodeRect(i);
+      this.mountChooserList(this, [...retieRows(), { text: '닫기', onPick: () => { /* 선택 없음 */ } }], r0.x, r0.y + r0.height + 4, { listW: 300, title: `${nodeLabel(n)} 선택` });
+      return;
+    }
     // 193차 — 고정 중에도 미끼 칸은 연다(낚시 뒤 미끼만 다시 끼우면 되도록)
     if (n.slot !== 'bait' && this.rigLockedGuard()) return;
     const def = RIG_SLOTS[n.slot];
@@ -634,6 +699,7 @@ export class UtilizationPanel extends DraggablePanel {
         { text: '닫기', onPick: () => { /* 선택 없음 */ } },
       ]
       : [
+        ...retieRows(),
         ...candidates.map((it): ChooserRow => ({
           text: `${it.name} (x${left(it)})`,
           recommended: this.nodeRecommends(n, it),
@@ -648,7 +714,21 @@ export class UtilizationPanel extends DraggablePanel {
         })),
         ...(n.itemId ? [{ text: '비우기', onPick: () => { InventoryStore.setRigNode(i, { itemId: null }); } }] : []),
       ];
-    this.mountChooserList(this, rows, listX, listY, { listW: 260, title: `${nodeLabel(n)} 선택` });
+    this.mountChooserList(this, rows, listX, listY, { listW: wearRole && wearView ? 300 : 260, title: `${nodeLabel(n)} 선택` });
+  }
+
+  /** 273차 — 줄 끝을 잘라 다시 맨다(스풀에서 조금 잘려 나간다 · 마모 0) */
+  private retieLine(role: LineRole): void {
+    const r = InventoryStore.retieLine(role);
+    if (!r.ok) { this.flashBoardToast(`다시 맬 수 없습니다 — ${r.reason}`, true); return; }
+    playSfx('item_move');
+    this.flashBoardToast(`${LINE_ROLE_KO[role]} 끝을 잘라 다시 맸다 — ${r.label}`);
+  }
+
+  /** 273차 — 제원 줄 꼬리: 가장 많이 쓸린 줄의 상태(새 줄뿐이면 비움) */
+  private lineWearSuffix(): string {
+    const worst = InventoryStore.lineWearView().filter((v) => v.stage !== 'fresh').sort((a, b) => b.wear - a.wear)[0];
+    return worst ? ` · ${LINE_ROLE_KO[worst.role]} ${worst.stageKo}` : '';
   }
 
   /**
@@ -1297,11 +1377,15 @@ export class UtilizationPanel extends DraggablePanel {
   private flashBoardToast(msg: string, bad = false): void {
     if (bad) playSfx('deny');
     this.boardToast?.destroy();
-    const b = this.cookBoardRect;
+    // 273차 — 도마가 없는 탭(채비하기 · 밑밥 · 제작)은 체인 자리에 띄운다. 그전에는 (0,0) 상자(도마 사각형이 비어 있음)에 찍혔고,
+    //   바로 뒤의 renderBody()가 bodyContainer를 비우며 글자까지 지워 채비 고정 · 다시 매기 토스트가 보이지 않았다 → 패널 자신의 자식으로
+    const b = this.cookBoardRect.w > 0 ? this.cookBoardRect
+      : this.currentTab === 'tackles' ? { x: 24, y: this.chainTop, w: PANEL_W - 48, h: Math.max(1, this.chainRows) * CHAIN_ROW_H }
+      : { x: 24, y: this.contentTop + 44, w: PANEL_W - 48, h: 160 };
     // 257차 — 바탕 상자 없이 흰 테 글자 · 막힘은 짙은 빨강
     const t = this.scene.add.text(b.x + b.w / 2, b.y + b.h / 2, msg,
       worldLabelStyle(13, { align: 'center', wrap: b.w - 40, ink: bad ? WORLD_LABEL_WARN : undefined })).setOrigin(0.5).setScrollFactor(0).setDepth(60);
-    this.bodyContainer.add(t);
+    this.add(t);
     this.boardToast = t;
     this.scene.time.delayedCall(1800, () => {
       t.destroy();

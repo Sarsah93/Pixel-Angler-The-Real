@@ -633,6 +633,22 @@ const rules = [
     ],
   },
   {
+    id: 'line_wear', round: 273, hidden: false, title: '원줄 · 목줄 내구도',
+    lede: '줄은 터질 때만 잃는 것이 아니라 쓸수록 약해진다. 지금 묶여 있는 한 가닥의 마모가 0에서 1까지 쌓이고, 매듭 위 몇 미터를 잘라 내고 다시 묶으면 새 줄이 된다.',
+    rows: [
+      ['무엇이 닳나', '스풀이 아니라 지금 채비 칸에 묶인 원줄 · 목줄 한 가닥 — 스풀을 바꾸거나 터져서 잘리면 0(새로 묶은 줄)'],
+      ['세기', `호수 환산 세기 × (1 − 마모 × ${core.TUNING.lineWear.strengthLossAtWorn}) — 다 쓸린 줄은 절반 · 나일론은 물을 먹어 −${pct(core.TUNING.lineWear.nylonWetLoss)}`],
+      ['파이팅 피로', `그 줄의 장력비가 ${core.TUNING.lineWear.fatigueThreshold}를 넘는 동안 (초과분)² × ${core.TUNING.lineWear.fatigueK}/초 × 재질 — 한계 근처(0.9)에서 1분 버티면 나일론 목줄 약 ${(0.16 * core.TUNING.lineWear.fatigueK * 1.1 * 60).toFixed(2)}`],
+      ['랜딩 충격', `무게 ÷ 그 줄의 세기 × ${core.TUNING.lineWear.shockK} × 재질 — 목줄 ×${core.TUNING.lineWear.landingLeaderMult}(고기 몸에 쓸린다) · 원줄 ×${core.TUNING.lineWear.landingMainMult}`],
+      ['밑걸림 끌어냄', `채비를 건지면 목줄 ${core.TUNING.lineWear.snagPullLeader} · 원줄 ${core.TUNING.lineWear.snagPullMain} × 재질 쓸림 — 잘려 나간 줄은 새 줄`],
+      ['캐스팅', `던질 때마다 ${core.TUNING.lineWear.castK} × 재질(합사 ${core.LINE_MATERIAL_TRAITS.pe_braid.cast} · 나일론 · 카본 ${core.LINE_MATERIAL_TRAITS.nylon.cast}) · 목줄은 1/3 — 합사 원줄 100번 = ${(core.TUNING.lineWear.castK * core.LINE_MATERIAL_TRAITS.pe_braid.cast * 100).toFixed(2)}`],
+      ['바닥 끌림', `여 위를 1m 끌릴 때 ${core.TUNING.lineWear.dragPerM} × 바닥 근접도(밑걸림과 같은 값) × 재질 쓸림 — 목줄 · 원줄은 ${core.TUNING.lineWear.dragMainFrac}`],
+      ['재질', ['nylon', 'fluorocarbon', 'pe_braid'].map((k) => `${core.LINE_MATERIAL_TRAITS[k].labelKo} — ${core.LINE_MATERIAL_TRAITS[k].traitKo}`).join(' / ')],
+      ['단계', `새 줄(< ${core.TUNING.lineWear.stageLight}) · 쓸림 조금 · 쓸림 심함(≥ ${core.TUNING.lineWear.stageHeavy} — 채비 창 칸 배지 「심함」 · 1인칭 알림) · 끊어지기 직전(≥ ${core.TUNING.lineWear.stageCritical} — 배지 「위험」 · 던질 때마다 알림)`],
+      ['다시 매기', `채비 창에서 원줄 · 목줄 칸 → 「줄 끝을 잘라 다시 매기」 — 목줄 ${core.TUNING.lineWear.retieLeaderM}m · 원줄 ${core.TUNING.lineWear.retieMainM}m를 스풀에서 잘라 내고 마모 0 · 채비 고정 중에도 된다`],
+    ],
+  },
+  {
     id: 'rod_holder', round: 207, hidden: false, title: '원투 거치대',
     lede: '원투 봉돌이 바닥에 닿으면 낚싯대를 거치대에 걸어 두고 자리를 떠날 수 있다. 입질은 탑다운에서 초릿대 끝과 「!」로 본다.',
     rows: [

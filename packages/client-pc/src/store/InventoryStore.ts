@@ -31,6 +31,11 @@ import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
+// 273차 — 원줄 · 목줄 내구도(묶인 줄 한 가닥의 마모 — 스풀을 바꾸거나 잘리면 0)
+import {
+  lineMaterialOf, effectiveLineStrengthKg, lineWearStage, LINE_WEAR_STAGE_KO, addLineWear as addLineWearCore, retieCutM, clampLineWear,
+  type LineRole, type LineWearSummary,
+} from '@tra/core';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { isGod } from '../dev/DevMode.js';
@@ -657,8 +662,16 @@ export interface InventorySaveState {
   lureLeader?: string | null;
   lure: string | null;
   jigHead: string | null;
+  /** 273차 — 묶인 원줄 · 목줄의 마모(어느 스풀의 줄인지 + 0~1). 구세이브는 없음 → 새 줄(0) */
+  lineWear?: Partial<Record<LineRole, LineWearRef>>;
   /** 저장 시각 (ms) — 로드 시 오프라인 경과만큼 신선도 시각을 밀어 "정지"시킨다 */
   savedAtMs?: number;
+}
+
+/** 273차 — 묶인 줄 한 가닥의 마모. `itemId`가 지금 칸의 스풀과 다르면 새로 묶은 줄(0)로 본다 */
+export interface LineWearRef {
+  itemId: string | null;
+  wear: number;
 }
 
 /** 시작 시 지급되는 목업 아이템 세트 (slot은 카테고리별 순차 배정) */
@@ -1201,6 +1214,11 @@ class InventoryStoreManager {
   private _lureLeader: string | null = null;
   /** 지그헤드 소켓 — 소프트 베이트(requiresJigHead) 전용 */
   private _jigHead: string | null = null;
+  /**
+   * 273차 — 묶인 원줄 · 목줄의 마모(0~1). 스풀(아이템)이 아니라 **지금 칸에 묶여 있는 한 가닥**의 상태다.
+   * 칸의 스풀이 바뀌거나(새로 묶음) 손실로 잘리면 0 — `syncLineWear`가 투영 때마다 맞춘다.
+   */
+  private _lineWear: Record<LineRole, LineWearRef> = { main: { itemId: null, wear: 0 }, leader: { itemId: null, wear: 0 } };
 
   get lureId(): string | null { return this._lure; }
   get lureLineId(): string | null { return this._lureLine; }
@@ -1268,7 +1286,7 @@ class InventoryStoreManager {
       if (it.qty > qty) it.qty -= qty;
       else this.deleteInstance(id);
     }
-    if (leaderId) this.cutLine(leaderId, TUNING_RL.snag.leaderCutM);
+    if (leaderId) { this.cutLine(leaderId, TUNING_RL.snag.leaderCutM); this._lineWear.leader = { itemId: leaderId, wear: 0 }; }   // 273차 — 새로 묶는다
     this.syncTreeWithItems();
     return { tree, items };
   }
@@ -1403,6 +1421,7 @@ class InventoryStoreManager {
       jigHead: this._jigHead,
       lureLine: this._lureLine,
       lureLeader: this._lureLeader,
+      lineWear: { main: { ...this._lineWear.main }, leader: { ...this._lineWear.leader } },
       rigLocked: this.rigLocked,
       savedAtMs: Date.now(),
     };
@@ -1534,6 +1553,11 @@ class InventoryStoreManager {
     this._jigHead = ref(s.jigHead);
     this._lureLine = ref(s.lureLine);
     this._lureLeader = ref(s.lureLeader);
+    // 273차 — 묶인 줄의 마모. 구세이브(없음)는 새 줄. 스풀 id는 정본으로 옮겨 아래 투영의 칸 id와 맞춘다
+    for (const role of ['main', 'leader'] as LineRole[]) {
+      const w = s.lineWear?.[role];
+      this._lineWear[role] = w ? { itemId: ref(w.itemId), wear: clampLineWear(w.wear) } : { itemId: null, wear: 0 };
+    }
     // 192차 — 채비 트리. 없으면(구세이브) 평면 소켓·루어 소켓에서 옮긴다. 사라진 아이템을 가리키는 칸은 비운다.
     // 256차 — 채비 칸이 가리키는 옛 id도 정본으로(안 그러면 아래 sync가 「없는 아이템」으로 보고 칸을 비운다)
     if (s.rigTree?.nodes?.length) {
@@ -1618,6 +1642,7 @@ class InventoryStoreManager {
     this._jigHead = null;
     this._lureLine = null;
     this._lureLeader = null;
+    this._lineWear = { main: { itemId: null, wear: 0 }, leader: { itemId: null, wear: 0 } };
   }
 
   /**
@@ -2484,6 +2509,77 @@ class InventoryStoreManager {
       ? { kind: 'CARD_RIG', cardType: (s.cardType ?? 'jeongaengi') as CardRigType, hookBaits: [...s.baitIds] }
       : s.kit === 't_bar' ? { kind: 'T_BAR', hookBaits: [] }
       : { kind: 'NONE', hookBaits: s.kit === 'bundle_sinker' ? [...s.baitIds] : [] };
+    this.syncLineWear();
+  }
+
+  // ── 273차 — 원줄 · 목줄 내구도(묶인 줄 한 가닥의 마모) ──────────────────────────
+  /** 칸의 스풀이 바뀌었으면(새로 묶음 · 비움) 그 줄의 마모를 0으로 — 투영 때마다 */
+  private syncLineWear(): void {
+    for (const role of ['main', 'leader'] as LineRole[]) {
+      const id = this.lineItemIdOf(role);
+      if (this._lineWear[role].itemId !== id) this._lineWear[role] = { itemId: id, wear: 0 };
+    }
+  }
+
+  /** 지금 칸에 묶인 스풀 id(미끼 · 루어 모드 공통 — 트리 투영값) */
+  lineItemIdOf(role: LineRole): string | null {
+    return role === 'main' ? this._rig.mainLine : this._rig.leader;
+  }
+
+  /** 묶인 줄의 마모 0~1(줄이 없으면 0) */
+  lineWearOf(role: LineRole): number {
+    const id = this.lineItemIdOf(role);
+    if (!id || this._lineWear[role].itemId !== id) return 0;
+    return this._lineWear[role].wear;
+  }
+
+  /**
+   * 마모를 쌓는다(1인칭 — 파이팅 피로 · 랜딩 충격 · 밑걸림 당김 · 캐스팅 · 바닥 끌림).
+   * @returns 쌓인 뒤 마모(줄이 없으면 null). dev 무적은 쌓지 않는다
+   */
+  addLineWear(role: LineRole, delta: number): number | null {
+    const id = this.lineItemIdOf(role);
+    if (!id) return null;
+    if (this._lineWear[role].itemId !== id) this._lineWear[role] = { itemId: id, wear: 0 };
+    if (isGod() || !(delta > 0)) return this._lineWear[role].wear;
+    this._lineWear[role].wear = addLineWearCore(this._lineWear[role].wear, delta);
+    return this._lineWear[role].wear;
+  }
+
+  /** 묶인 줄 한 가닥의 요약(채비 창 · 알림) — 줄이 없으면 null */
+  lineWearSummaryOf(role: LineRole): LineWearSummary | null {
+    const id = this.lineItemIdOf(role);
+    const item = id ? this.find(id) : undefined;
+    if (!id || !item) return null;
+    const nominal = lineStrengthKg(item);
+    if (nominal === null || nominal <= 0) return null;
+    const material = lineMaterialOf(item);
+    const wear = this.lineWearOf(role);
+    const stage = lineWearStage(wear);
+    return { role, itemId: id, material, wear, stage, stageKo: LINE_WEAR_STAGE_KO[stage], nominalKg: nominal, effectiveKg: effectiveLineStrengthKg(nominal, wear, material) };
+  }
+
+  /** 묶인 줄 전부(원줄 · 목줄 순) */
+  lineWearView(): LineWearSummary[] {
+    return (['main', 'leader'] as LineRole[]).map((r) => this.lineWearSummaryOf(r)).filter((x): x is LineWearSummary => !!x);
+  }
+
+  /**
+   * 줄 끝을 잘라 다시 맨다 — 스풀에서 `retieCutM`만큼 잘려 나가고(206차 `cutLine`) 마모 0.
+   * 스풀에 그만큼 남아 있지 않으면 매지 못한다(다 쓴 스풀은 칸에서 빠진다 — 그러면 새 스풀을 달면 된다).
+   */
+  retieLine(role: LineRole): { ok: boolean; label?: string; reason?: string } {
+    const id = this.lineItemIdOf(role);
+    const item = id ? this.find(id) : undefined;
+    if (!id || !item) return { ok: false, reason: '묶인 줄이 없습니다' };
+    const meters = retieCutM(role);
+    const left = this.lineLeftM(item);
+    if (left !== null && left < meters) return { ok: false, reason: '스풀에 남은 줄이 모자랍니다' };
+    const label = this.cutLine(id, meters) ?? '';
+    // 다 써서 칸에서 빠졌으면 투영이 비운다(마모도 함께 0). 남았으면 같은 스풀에서 새로 묶은 줄이다
+    this.syncTreeWithItems();
+    if (this.lineItemIdOf(role) === id) this._lineWear[role] = { itemId: id, wear: 0 };
+    return { ok: true, label };
   }
 
   /**
@@ -2511,6 +2607,13 @@ class InventoryStoreManager {
    * 루어 모드는 루어 소켓, 미끼 모드는 채비 소켓 기준. 목줄이 없으면 원줄만, 둘 다 없으면 null.
    */
   lineCapacityKg(): number | null {
+    // 273차 — 마모 · 젖음을 반영한 **지금 세기**. 공칭값은 `lineNominalCapacityKg`
+    const vals = this.lineWearView().map((v) => v.effectiveKg).filter((v) => v > 0);
+    return vals.length ? Math.min(...vals) : null;
+  }
+
+  /** 호수 환산 공칭 세기(kg) — 원줄 · 목줄 중 약한 쪽(마모 전) */
+  lineNominalCapacityKg(): number | null {
     const lineId = this.rigMode === 'lure' ? this._lureLine : this._rig.mainLine;
     const leaderId = this.rigMode === 'lure' ? this._lureLeader : this._rig.leader;
     const a = lineStrengthKg(lineId ? this.find(lineId) : null);
@@ -2834,10 +2937,12 @@ class InventoryStoreManager {
       this.removeQty(id, n);
       lost.push(n > 1 ? `${name} x${n}` : name);
     }
-    // 3) 줄 — 스풀째가 아니라 잘린 길이만
+    // 3) 줄 — 스풀째가 아니라 잘린 길이만. 273차 — 잘린 줄은 새로 묶으므로 마모 0
     for (const ln of plan.lines) {
+      const role: LineRole = this._tree.nodes[ln.nodeIdx]?.slot === 'leader' ? 'leader' : 'main';
       const r = this.cutLine(ln.itemId, ln.meters);
       if (r) lost.push(r);
+      this._lineWear[role] = { itemId: ln.itemId, wear: 0 };
     }
     // 4) 재고가 바닥난 칸만 비운다(자손 포함) — 나머지는 그대로 다시 단다
     this.syncTreeWithItems();
