@@ -62,8 +62,11 @@ export interface TourStep {
   side?: 'left' | 'right' | 'auto';
   /** 191차 — 말풍선 세로 위치를 이 사각형 가운데에 맞춘다(짚는 대상과 다를 때 — 예: 우클릭 메뉴를 짚되 아이템 높이에) */
   alignTo?: () => TourRect | null | undefined;
-  /** 191차 — 짚는 대상이 없을 때 말풍선 위쪽 y (없으면 화면 세로 가운데) */
-  dockY?: number;
+  /**
+   * 191차 — 짚는 대상이 없을 때 말풍선 위쪽 y (없으면 화면 세로 가운데).
+   * 274차 — 함수면 매 프레임 다시 묻는다(인자 = 글을 다 찍었을 때의 말풍선 높이). 프롤로그 코치가 HUD 왼쪽 기둥 아래에 선다.
+   */
+  dockY?: number | ((finalH: number) => number);
   /**
    * 219차 — 이 단계에서 허용하는 세상 행동 id(씬이 정한다 — 예: 집 'sofa' · 'stand' · 'father_box').
    * 없으면 막지 않는다. 빈 배열이면 세상 행동을 전부 막는다(걷기는 행동이 아니다).
@@ -221,6 +224,8 @@ export class GuideTour {
   private nextLabel: Phaser.GameObjects.Text;
   private fullText = '';
   private typed = 0;
+  /** 274차 — 이 단계 글을 다 찍었을 때의 본문 높이. 자리는 이 높이로 잡는다 — 찍는 동안 위 끝이 움직이지 않고 아래로만 자란다 */
+  private fullTextH = 0;
   /** 211차 — 안내 말풍선 목소리(부드럽고 높낮이가 작다) */
   private readonly blips = new VoiceTyper(GUIDE_VOICE);
   private typeAcc = 0;
@@ -358,6 +363,9 @@ export class GuideTour {
     this.fullText = t(st.text);
     this.typed = 0;
     this.typeAcc = 0;
+    // 274차 — 다 찍었을 때의 높이를 먼저 잰다(같은 Text · 같은 줄바꿈 폭). 화면에는 그리지 않은 채 바로 비운다
+    this.bodyText.setText(this.fullText);
+    this.fullTextH = this.bodyText.height;
     this.bodyText.setText('');
     // 229차 — 단계 그림(있으면 글 위에)
     this.picture?.destroy();
@@ -504,7 +512,11 @@ export class GuideTour {
     const btnShown = !st?.wait && this.typed >= this.fullText.length;
     // 191차 — 단추도 쪽수도 없는 말풍선(체험 대기 · 한 단계짜리)은 아래 여백을 줄인다
     const footer = !st?.wait || this.countText.text !== '';
-    const h = footer ? PAD + textH + 12 + 28 + PAD : PAD + textH + PAD;
+    const boxH = (th: number): number => (footer ? PAD + th + 12 + 28 + PAD : PAD + th + PAD);
+    const h = boxH(textH);
+    // 274차 — 자리는 다 찍었을 때의 높이(hf)로 잡는다. 찍는 동안 가운데 맞춤 · 아래 끝 맞춤이 위 끝을 끌어올려
+    //   말풍선이 위아래로 함께 자랐다(사용자 「위 아래로 같이 커지니까 상태창과 … 물때 표시 알림 등이 방해받아」). 이제 아래로만 자란다
+    const hf = Math.max(h, boxH(Math.max(this.fullTextH, 20) + this.pictureH));
     this.countText.setPosition(PAD, h - PAD - 21);
     this.nextBtn.setPosition(BUBBLE_W - PAD - 76, h - PAD - 28).setVisible(btnShown);
     (this.bubble.getData('bodyHit') as Phaser.GameObjects.Rectangle).setSize(BUBBLE_W, h);
@@ -522,15 +534,16 @@ export class GuideTour {
     if (anchor && goLeft) { bx = anchor.x - 18 - BUBBLE_W; tail = 'right'; }
     else if (anchor && fitsRight) { bx = anchor.right + 18; tail = 'left'; }
     else { bx = (GAME_WIDTH - BUBBLE_W) / 2; }
-    by = Phaser.Math.Clamp(ty - h / 2, 8, GAME_HEIGHT - h - 8);
-    if (!align && st?.dockY !== undefined) by = Phaser.Math.Clamp(st.dockY, 8, GAME_HEIGHT - h - 8);
-    if (tail === 'none' && target) by = target.bottom + 16 + h <= GAME_HEIGHT ? target.bottom + 16 : Math.max(8, target.y - 16 - h);
+    by = Phaser.Math.Clamp(ty - hf / 2, 8, GAME_HEIGHT - hf - 8);
+    const dockY = typeof st?.dockY === 'function' ? st.dockY(hf) : st?.dockY;
+    if (!align && dockY !== undefined) by = Phaser.Math.Clamp(dockY, 8, GAME_HEIGHT - hf - 8);
+    if (tail === 'none' && target) by = target.bottom + 16 + hf <= GAME_HEIGHT ? target.bottom + 16 : Math.max(8, target.y - 16 - hf);
     // 191차 — 짚는 대상이 없는 말풍선(걷기·뛰기·단축키 안내)에는 꼬리를 달지 않는다 — 가리킬 것이 없다
     let pointAt = !!target || !!st?.alignTo;
     // 219차 — 열린 창에 걸리면 비킨다: 창들 옆 → 화면 네 귀퉁이 · 위아래 가운데. 자리가 없으면 숨는다.
     const occ = this.occluded;
     const hits = (x: number, y: number): boolean => {
-      const rr = new Phaser.Geom.Rectangle(x - 4, y - 4, BUBBLE_W + 8, h + 8);
+      const rr = new Phaser.Geom.Rectangle(x - 4, y - 4, BUBBLE_W + 8, hf + 8);
       return occ.some((o) => Phaser.Geom.Rectangle.Overlaps(o, rr));
     };
     let show = true;
@@ -539,17 +552,17 @@ export class GuideTour {
     const dlg = this.dialogOcc[this.dialogOcc.length - 1];
     let besideDialog = false;
     if (dlg) {
-      const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - h - 8);
-      const midY = clampY(dlg.centerY - h / 2);
+      const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - hf - 8);
+      const midY = clampY(dlg.centerY - hf / 2);
       const cands: [number, number, 'left' | 'right' | 'none'][] = [
         [dlg.right + 18, midY, 'left'], [dlg.x - 18 - BUBBLE_W, midY, 'right'],
-        [dlg.centerX - BUBBLE_W / 2, dlg.bottom + 16, 'none'], [dlg.centerX - BUBBLE_W / 2, dlg.y - 16 - h, 'none'],
+        [dlg.centerX - BUBBLE_W / 2, dlg.bottom + 16, 'none'], [dlg.centerX - BUBBLE_W / 2, dlg.y - 16 - hf, 'none'],
       ];
       const overDialog = (x: number, y: number): boolean => {
-        const rr = new Phaser.Geom.Rectangle(x - 4, y - 4, BUBBLE_W + 8, h + 8);
+        const rr = new Phaser.Geom.Rectangle(x - 4, y - 4, BUBBLE_W + 8, hf + 8);
         return this.dialogOcc.some((o) => Phaser.Geom.Rectangle.Overlaps(o, rr));
       };
-      const ok = cands.find(([x, y]) => x >= 6 && y >= 6 && x + BUBBLE_W <= GAME_WIDTH - 6 && y + h <= GAME_HEIGHT - 6 && !overDialog(x, y));
+      const ok = cands.find(([x, y]) => x >= 6 && y >= 6 && x + BUBBLE_W <= GAME_WIDTH - 6 && y + hf <= GAME_HEIGHT - 6 && !overDialog(x, y));
       if (ok) {
         [bx, by] = ok;
         const aimsDialog = !!target && dlg.contains(target.centerX, target.centerY);
@@ -560,14 +573,17 @@ export class GuideTour {
     }
     if (!besideDialog && occ.length && hits(bx, by)) {
       const U = occ.reduce((a, b) => Phaser.Geom.Rectangle.Union(a, b));
-      const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - h - 8);
+      const clampY = (y: number): number => Phaser.Math.Clamp(y, 8, GAME_HEIGHT - hf - 8);
+      // 274차 — 위 끝을 정해 둔 말풍선(코치 · dockY)은 비킬 때도 그 높이를 먼저 지킨다(옆으로만 비킨다)
+      const keepY = dockY !== undefined && !align ? [[U.x - 18 - BUBBLE_W, by], [U.right + 18, by]] as [number, number][] : [];
       const cands: [number, number][] = [
-        [U.x - 18 - BUBBLE_W, clampY(ty - h / 2)], [U.right + 18, clampY(ty - h / 2)],
+        ...keepY,
+        [U.x - 18 - BUBBLE_W, clampY(ty - hf / 2)], [U.right + 18, clampY(ty - hf / 2)],
         [U.x - 18 - BUBBLE_W, 8], [U.right + 18, 8],
-        [(GAME_WIDTH - BUBBLE_W) / 2, U.y - 16 - h], [(GAME_WIDTH - BUBBLE_W) / 2, U.bottom + 16],
-        [8, 8], [GAME_WIDTH - BUBBLE_W - 8, 8], [8, GAME_HEIGHT - h - 8], [GAME_WIDTH - BUBBLE_W - 8, GAME_HEIGHT - h - 8],
+        [(GAME_WIDTH - BUBBLE_W) / 2, U.y - 16 - hf], [(GAME_WIDTH - BUBBLE_W) / 2, U.bottom + 16],
+        [8, 8], [GAME_WIDTH - BUBBLE_W - 8, 8], [8, GAME_HEIGHT - hf - 8], [GAME_WIDTH - BUBBLE_W - 8, GAME_HEIGHT - hf - 8],
       ];
-      const ok = cands.find(([x, y]) => x >= 6 && y >= 6 && x + BUBBLE_W <= GAME_WIDTH - 6 && y + h <= GAME_HEIGHT - 6 && !hits(x, y));
+      const ok = cands.find(([x, y]) => x >= 6 && y >= 6 && x + BUBBLE_W <= GAME_WIDTH - 6 && y + hf <= GAME_HEIGHT - 6 && !hits(x, y));
       if (ok) { [bx, by] = ok; tail = 'none'; pointAt = false; } else show = false;
     }
     this.bubble.setVisible(show);

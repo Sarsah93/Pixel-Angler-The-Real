@@ -6,6 +6,9 @@
  *  - 가구를 **회수(넣어 두기)·재배치**할 수 있어야 한다 → 가구는 종류(`FurnKind`) + 인스턴스(`FurnInstance`)로 나눈다.
  *    배치 상태는 `HomeStore`가 세이브에 들고, 씬은 이 모듈의 그림 함수로 인스턴스마다 하나씩 그린다.
  *  - 소파는 **한쪽을 바라보는 2인용** 형태로(구 그림은 무엇인지 알아보기 어려웠다), 소파·의자는 방향을 돌릴 수 있다.
+ *  - 274차 — **모든 가구가 네 방위(아래 · 왼쪽 · 위 · 오른쪽)로 돈다**. 돌릴 때는 누른 칸이 축이다(`turnedAround`) —
+ *    사용자 「소파(2X1)를 한 블럭 기준으로 우클릭 시 … 위 · 아래 · 왼쪽 · 오른쪽을 바라보고 앉는 형태를 고려해야 해」.
+ *    키 큰 가구(냉장고 · 옷장 — `upright`)는 돌려도 칸 모양이 그대로고 그림만 앞 · 옆 · 뒤로 바뀐다.
  *  - 식탁 의자는 식탁 그림의 일부가 아니라 따로 앉을 수 있는 가구다.
  *  - 문은 「가로로 누운 문」처럼 보였다 → 문 대신 **현관 매트**(고정 — 가구가 아니다)를 방 아래쪽에 깐다.
  *
@@ -47,30 +50,34 @@ export type FurnKind =
 export interface FurnDef {
   /** 화면 이름 (한국어 원문 — i18n 키) */
   nameKo: string;
-  /** 기본 방향('down')일 때 칸 수. 돌릴 수 있는 가구는 좌·우를 보면 가로·세로가 바뀐다 */
+  /** 기본 방향('down')일 때 칸 수. 좌·우를 보면 가로·세로가 바뀐다(`upright`는 그대로) */
   w: number;
   h: number;
   /** 지나갈 수 없다 (러그만 false) */
   collides: boolean;
   /** 바닥 깔개 — 다른 가구 밑에 깔릴 수 있고, 늘 맨 아래에 그린다 */
   floor?: boolean;
-  rotatable?: boolean;
+  /**
+   * 274차 — 키가 커서 칸 두 줄 중 윗줄이 높이(앞에서 본 몸통)인 가구(냉장고 · 옷장). 돌려도 칸 모양이 그대로다.
+   * 나머지는 왼쪽 · 오른쪽을 보면 가로 · 세로가 바뀐다(소파 2×1 → 1×2 · 침대 2×3 → 3×2).
+   */
+  upright?: boolean;
   /** 넣어 둘 수 있다 (침대는 잠잘 곳이라 못 넣는다) */
   storable: boolean;
   action?: FurnAction;
 }
 
 export const FURN_DEFS: Record<FurnKind, FurnDef> = {
-  fridge:     { nameKo: '냉장고',     w: 1, h: 2, collides: true, storable: true, action: 'fridge' },
+  fridge:     { nameKo: '냉장고',     w: 1, h: 2, collides: true, storable: true, upright: true, action: 'fridge' },
   sink:       { nameKo: '개수대',     w: 1, h: 1, collides: true, storable: true, action: 'cook' },
   stove:      { nameKo: '가스레인지', w: 2, h: 1, collides: true, storable: true, action: 'cook' },
   bed:        { nameKo: '침대',       w: 2, h: 3, collides: true, storable: false, action: 'bed' },
   stand:      { nameKo: '협탁',       w: 1, h: 1, collides: true, storable: true, action: 'lamp' },
   island:     { nameKo: '식탁',       w: 3, h: 1, collides: true, storable: true },
-  chair:      { nameKo: '의자',       w: 1, h: 1, collides: true, storable: true, rotatable: true, action: 'chair' },
-  sofa:       { nameKo: '소파',       w: 2, h: 1, collides: true, storable: true, rotatable: true, action: 'sofa' },
+  chair:      { nameKo: '의자',       w: 1, h: 1, collides: true, storable: true, action: 'chair' },
+  sofa:       { nameKo: '소파',       w: 2, h: 1, collides: true, storable: true, action: 'sofa' },
   rug:        { nameKo: '러그',       w: 3, h: 2, collides: false, floor: true, storable: true },
-  wardrobe:   { nameKo: '옷장',       w: 1, h: 2, collides: true, storable: true, action: 'wardrobe' },
+  wardrobe:   { nameKo: '옷장',       w: 1, h: 2, collides: true, storable: true, upright: true, action: 'wardrobe' },
   shelf:      { nameKo: '수납 선반',  w: 2, h: 1, collides: true, storable: true, action: 'shelf' },
   plant:      { nameKo: '화분',       w: 1, h: 1, collides: true, storable: true, action: 'plant' },
   father_box: { nameKo: '낚시 상자',  w: 1, h: 1, collides: true, storable: true, action: 'father_box' },
@@ -135,8 +142,50 @@ export const DEFAULT_LAYOUT: FurnInstance[] = [
 /** 방향을 반영한 칸 수 */
 export function footprint(kind: FurnKind, dir: FurnDir): { w: number; h: number } {
   const d = FURN_DEFS[kind];
-  const side = d.rotatable && (dir === 'left' || dir === 'right');
+  const side = !d.upright && (dir === 'left' || dir === 'right');
   return side ? { w: d.h, h: d.w } : { w: d.w, h: d.h };
+}
+
+/** 다음 방향(시계 방향 한 단계 — 아래 → 왼쪽 → 위 → 오른쪽) */
+export function nextDir(dir: FurnDir): FurnDir {
+  return DIR_CYCLE[(DIR_CYCLE.indexOf(dir) + 1) % DIR_CYCLE.length];
+}
+
+/**
+ * 274차 — 가구 안의 한 칸(지역 좌표 `lx, ly`)이 시계 방향으로 한 단계 돈 뒤 놓이는 지역 좌표.
+ * 화면은 y가 아래로 자라므로 시계 방향 = (x, y) → (−y, x). 새 칸 수는 가로 · 세로가 바뀐 `h × w`다.
+ * 칸 모양이 그대로인 가구(`upright` · 1×1)는 제자리다.
+ */
+export function turnLocal(kind: FurnKind, dir: FurnDir, lx: number, ly: number): { x: number; y: number } {
+  const old = footprint(kind, dir);
+  if (FURN_DEFS[kind].upright || (old.w === 1 && old.h === 1)) return { x: lx, y: ly };
+  return { x: old.h - 1 - ly, y: lx };
+}
+
+/**
+ * 274차 — 한 칸(`pc, pr` — 방 칸 좌표)을 축으로 시계 방향 한 단계 돌린 자리. 축 칸은 돌린 뒤에도 가구 안에 남는다.
+ * 소파(2×1 · 아래를 본다)의 왼쪽 칸을 축으로 돌리면 아래로 · 위를 보면 왼쪽으로 · … 네 번이면 제자리다.
+ */
+export function turnedAround(f: FurnInstance, pc: number, pr: number): FurnInstance {
+  const { w, h } = footprint(f.kind, f.dir);
+  const lx = Math.max(0, Math.min(w - 1, pc - f.tx));
+  const ly = Math.max(0, Math.min(h - 1, pr - f.ty));
+  const n = turnLocal(f.kind, f.dir, lx, ly);
+  return { ...f, dir: nextDir(f.dir), tx: f.tx + lx - n.x, ty: f.ty + ly - n.y };
+}
+
+/**
+ * 274차 — 한 칸(`pc, pr`)을 품는 자리 전부(그 방향의 칸 모양으로). `prefer`(축 회전 자리)에 가까운 순 —
+ * 돌린 자리가 막히면 같은 방향으로 축 칸을 품은 채 한두 칸 비켜 본다.
+ */
+export function placementsHolding(
+  kind: FurnKind, dir: FurnDir, pc: number, pr: number, prefer: { tx: number; ty: number },
+): { tx: number; ty: number }[] {
+  const { w, h } = footprint(kind, dir);
+  const out: { tx: number; ty: number }[] = [];
+  for (let ty = pr - h + 1; ty <= pr; ty++) for (let tx = pc - w + 1; tx <= pc; tx++) out.push({ tx, ty });
+  const d = (p: { tx: number; ty: number }): number => Math.abs(p.tx - prefer.tx) + Math.abs(p.ty - prefer.ty);
+  return out.sort((a, b) => d(a) - d(b));
 }
 
 /**
@@ -182,7 +231,8 @@ const WOOD: Pal = [0x6a4a2c, 0x8a6440, 0x4a3420];
 const WOOD_LIGHT: Pal = [0x8a6a44, 0xa8835a, 0x66492b];
 
 /**
- * 가구 하나를 지역 좌표로 그린다. `mirror` = 좌우 반전(왼쪽을 보는 소파·의자).
+ * 가구 하나를 지역 좌표로 그린다. `mirror` = 좌우 반전(왼쪽을 보는 가구 — 오른쪽 그림을 뒤집는다).
+ * 274차 — 모든 가구가 네 방향 그림을 갖는다: 'down' = 앞 · 'up' = 뒤(또는 머리맡이 아래) · 'right' = 옆(바라보는 쪽이 오른쪽).
  */
 export function drawFurnitureArt(
   g: Phaser.GameObjects.Graphics, kind: FurnKind, dir: FurnDir, st: FurnArtState = {},
@@ -216,48 +266,108 @@ export function drawFurnitureArt(
 
   switch (kind) {
     case 'bed': {
+      const PILLOW: Pal = [0xf2e2c8, 0xfff6e2, 0xd8c4a4];
+      const FOOT: Pal = [0x3a6ea5, 0x4d86c0, 0x2a5280];
       shade(4, h - 4, w - 8);
       slab(4, 6, w - 8, h - 12, WOOD);                                            // 프레임
       slab(8, 10, w - 16, h - 22, [0x8a3a34, 0xa64a42, 0x6e2a26]);                // 매트리스·이불
-      for (let yy = 0; yy < h - 26; yy += 8) for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, 16 + yy, 0x9b4139, 0.7);
-      slab(12, 14, w - 24, 22, [0xf2e2c8, 0xfff6e2, 0xd8c4a4]);                  // 베개
-      slab(8, h - 24, w - 16, 12, [0x3a6ea5, 0x4d86c0, 0x2a5280]);               // 발치 이불단
+      if (dir === 'down' || dir === 'up') {
+        for (let yy = 0; yy < h - 26; yy += 8) for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, 16 + yy, 0x9b4139, 0.7);
+        if (dir === 'down') {
+          slab(12, 14, w - 24, 22, PILLOW);                                       // 베개(머리맡 = 위)
+          slab(8, h - 24, w - 16, 12, FOOT);                                      // 발치 이불단
+        } else {
+          // 274차 — 발이 위(베개가 아래)
+          slab(8, 10, w - 16, 12, FOOT);
+          slab(12, h - 38, w - 24, 22, PILLOW);
+        }
+      } else {
+        // 274차 — 가로 침대(3×2). 'right' = 발이 오른쪽(베개가 왼쪽) · 'left'는 반전
+        for (let xx = 0; xx < w - 26; xx += 8) for (let yy = 0; yy < h - 24; yy += 2) dot(16 + xx, 12 + yy, 0x9b4139, 0.7);
+        slab(12, 14, 26, h - 30, PILLOW);
+        slab(w - 22, 10, 12, h - 22, FOOT);
+      }
       break;
     }
     case 'fridge':
       shade(8, h - 6, w - 16);
-      slab(8, 6, w - 16, h - 12, [0xe4e6e2, 0xf5f7f3, 0xc2c6c0]);
-      for (let xx = 0; xx < w - 16; xx += 2) dot(8 + xx, Math.round(h * 0.42), 0xaeb2ac);
-      for (let yy = 0; yy < 14; yy += 2) dot(w - 18, 14 + yy, 0x8d979f);
-      for (let yy = 0; yy < 14; yy += 2) dot(w - 18, Math.round(h * 0.5) + yy, 0x8d979f);
+      if (dir === 'down') {
+        slab(8, 6, w - 16, h - 12, [0xe4e6e2, 0xf5f7f3, 0xc2c6c0]);
+        for (let xx = 0; xx < w - 16; xx += 2) dot(8 + xx, Math.round(h * 0.42), 0xaeb2ac);
+        for (let yy = 0; yy < 14; yy += 2) dot(w - 18, 14 + yy, 0x8d979f);
+        for (let yy = 0; yy < 14; yy += 2) dot(w - 18, Math.round(h * 0.5) + yy, 0x8d979f);
+      } else if (dir === 'up') {
+        // 274차 — 뒷면: 무늬 없는 판 · 아래쪽 방열 코일 · 위 통풍구
+        slab(8, 6, w - 16, h - 12, [0xcfd2cc, 0xe2e4de, 0xaeb2ac]);
+        for (let yy = Math.round(h * 0.5); yy < h - 12; yy += 6) for (let xx = 0; xx < w - 24; xx += 2) dot(12 + xx, yy, 0x7f8580);
+        for (let xx = 0; xx < w - 28; xx += 4) dot(14 + xx, 12, 0x8d939a);
+      } else {
+        // 274차 — 옆면. 문 앞면은 오른쪽 가장자리(밝은 띠) · 손잡이가 오른쪽으로 튀어나온다('left'는 반전)
+        slab(10, 6, w - 22, h - 12, [0xd2d5cf, 0xe6e8e4, 0xb0b4ae]);
+        for (let yy = 0; yy < h - 12; yy += 2) { dot(w - 14, 6 + yy, 0xc2c6c0); dot(w - 12, 6 + yy, 0xf5f7f3); }
+        dot(w - 12, Math.round(h * 0.42), 0x9aa09a);                                // 위 칸 · 아래 칸 문 틈
+        for (let yy = 0; yy < 14; yy += 2) { dot(w - 10, 14 + yy, 0x8d979f); dot(w - 10, Math.round(h * 0.5) + yy, 0x8d979f); }
+      }
       break;
-    case 'sink':
+    case 'sink': {
+      const BASIN: Pal = [0x5f6a74, 0x76828d, 0x454e57];
+      const TAP = 0x9aa6b0, KNOB = 0xb6c2cc;
       shade(6, h - 6, w - 12);
       slab(4, 8, w - 8, h - 14, [0xcfd4d8, 0xe6eaed, 0xa9aeb2]);
-      slab(12, 16, w - 24, h - 30, [0x5f6a74, 0x76828d, 0x454e57]);
-      for (let yy = 0; yy < 12; yy += 2) dot(w / 2, 6 + yy, 0x9aa6b0);
-      dot(w / 2 - 2, 6, 0xb6c2cc); dot(w / 2 + 2, 6, 0xb6c2cc);
+      if (dir === 'down') {
+        slab(12, 16, w - 24, h - 30, BASIN);
+        for (let yy = 0; yy < 12; yy += 2) dot(w / 2, 6 + yy, TAP);
+        dot(w / 2 - 2, 6, KNOB); dot(w / 2 + 2, 6, KNOB);
+      } else if (dir === 'up') {
+        // 274차 — 수도꼭지가 아래(이쪽을 등진다)
+        slab(12, 12, w - 24, h - 30, BASIN);
+        for (let yy = 0; yy < 10; yy += 2) dot(w / 2, h - 18 + yy, TAP);
+        dot(w / 2 - 2, h - 10, KNOB); dot(w / 2 + 2, h - 10, KNOB);
+      } else {
+        // 274차 — 옆을 본다: 수도꼭지가 왼쪽 벽 쪽('left'는 반전)
+        slab(16, 14, w - 26, h - 28, BASIN);
+        for (let xx = 0; xx < 10; xx += 2) dot(6 + xx, h / 2 - 2, TAP);
+        dot(6, h / 2 - 6, KNOB); dot(6, h / 2 + 2, KNOB);
+      }
       break;
+    }
     case 'stove': {
       shade(6, h - 6, w - 12);
       slab(4, 8, w - 8, h - 14, [0x3a3f45, 0x4e545b, 0x24282d]);
-      for (const bx of [w * 0.3, w * 0.7]) {
+      const burner = (bx: number, by: number): void => {
         for (let a = 0; a < 360; a += 20) {
           const rx = Math.round(Math.cos(a * Math.PI / 180) * 4) * 2, ry = Math.round(Math.sin(a * Math.PI / 180) * 4) * 2;
-          dot(bx + rx, h * 0.52 + ry, 0x22262a);
+          dot(bx + rx, by + ry, 0x22262a);
         }
-        dot(bx - 2, h * 0.52, 0xff7a3a); dot(bx, h * 0.52 - 2, 0xffa35a);
-        dot(bx, h * 0.52 + 2, 0xff7a3a); dot(bx + 2, h * 0.52, 0xffa35a);
+        dot(bx - 2, by, 0xff7a3a); dot(bx, by - 2, 0xffa35a);
+        dot(bx, by + 2, 0xff7a3a); dot(bx + 2, by, 0xffa35a);
+      };
+      if (dir === 'down' || dir === 'up') {
+        for (const bx of [w * 0.3, w * 0.7]) burner(bx, h * 0.52);
+        // 손잡이 열 = 앞(바라보는 쪽) — 274차 'up'은 위 가장자리
+        const ky = dir === 'down' ? h - 10 : 10;
+        for (let xx = 0; xx < w - 20; xx += 10) dot(10 + xx, ky, 0xb0b6bc);
+      } else {
+        // 274차 — 세로(1×2): 화구가 위아래 · 손잡이 열은 오른쪽('left'는 반전)
+        for (const by of [h * 0.3, h * 0.7]) burner(w * 0.45, by);
+        for (let yy = 0; yy < h - 20; yy += 10) dot(w - 10, 12 + yy, 0xb0b6bc);
       }
-      for (let xx = 0; xx < w - 20; xx += 10) dot(10 + xx, h - 10, 0xb0b6bc);   // 손잡이 열
       break;
     }
     case 'island':
       // 189차 — 의자는 따로 앉는 가구가 됐다. 식탁은 상판과 다리만
-      shade(6, h - 2, w - 12);
-      slab(4, 10, w - 8, h - 20, [0xd8b98a, 0xeed6ae, 0xb4966a]);
-      for (let xx = 0; xx < w - 8; xx += 2) dot(4 + xx, 10, 0xf4e4c4);
-      for (const lx of [8, w - 12]) for (let yy = 0; yy < 8; yy += 2) dot(lx, h - 10 + yy, 0x7a5734);
+      if (dir === 'down' || dir === 'up') {
+        shade(6, h - 2, w - 12);
+        slab(4, 10, w - 8, h - 20, [0xd8b98a, 0xeed6ae, 0xb4966a]);
+        for (let xx = 0; xx < w - 8; xx += 2) dot(4 + xx, 10, 0xf4e4c4);
+        for (const lx of [8, w - 12]) for (let yy = 0; yy < 8; yy += 2) dot(lx, h - 10 + yy, 0x7a5734);
+      } else {
+        // 274차 — 세로로 놓은 식탁(1×3)
+        shade(8, h - 2, w - 16);
+        slab(8, 6, w - 16, h - 16, [0xd8b98a, 0xeed6ae, 0xb4966a]);
+        for (let yy = 0; yy < h - 16; yy += 2) dot(8, 6 + yy, 0xf4e4c4);
+        for (const lx of [10, w - 12]) for (let yy = 0; yy < 8; yy += 2) dot(lx, h - 10 + yy, 0x7a5734);
+      }
       break;
     case 'chair':
       drawChair(dot, slab, slabV, shade, dir);
@@ -276,6 +386,23 @@ export function drawFurnitureArt(
     case 'wardrobe': {
       // 189차 — 옷장: 위 장식 몰딩 + 여닫이문 두 짝 + 놋쇠 손잡이 + 아래 걸레받이
       shade(6, h - 4, w - 12);
+      if (dir === 'up') {
+        // 274차 — 뒷판: 세로 널 이음 · 몰딩 · 걸레받이
+        slab(4, 4, w - 8, h - 10, [0x5a3c22, 0x6a4a2c, 0x3f2718]);
+        for (let xx = 0; xx < w - 4; xx += 2) { dot(2 + xx, 2, 0x7a5734); dot(2 + xx, 4, 0x4a3018); }
+        for (const px of [16, 30]) for (let yy = 8; yy < h - 12; yy += 2) dot(px, yy, 0x3f2718, 0.8);
+        slab(6, h - 18, w - 12, 10, [0x4a3018, 0x5a3c22, 0x33200f]);
+        break;
+      }
+      if (dir === 'left' || dir === 'right') {
+        // 274차 — 옆면. 문 앞면은 오른쪽 가장자리 · 놋쇠 손잡이가 오른쪽으로 보인다('left'는 반전)
+        slab(4, 4, w - 12, h - 10, [0x5c4022, 0x7d5934, 0x45301a]);
+        for (let xx = 0; xx < w - 4; xx += 2) { dot(2 + xx, 2, 0x9a7046); dot(2 + xx, 4, 0x5a3c22); }
+        for (let yy = 6; yy < h - 8; yy += 2) { dot(w - 10, yy, 0x9a7046); dot(w - 8, yy, 0x7d5934); }
+        for (let yy = 0; yy < 8; yy += 2) dot(w - 6, h * 0.42 + yy, 0xd8b45a);
+        slab(6, h - 18, w - 14, 10, [0x5a3c22, 0x6a4a2c, 0x3f2718]);
+        break;
+      }
       slab(4, 4, w - 8, h - 10, WOOD);
       for (let xx = 0; xx < w - 4; xx += 2) { dot(2 + xx, 2, 0x9a7046); dot(2 + xx, 4, 0x5a3c22); }
       for (const [dx, dw] of [[8, (w - 18) / 2], [w / 2 + 1, (w - 18) / 2]] as const) {
@@ -289,6 +416,24 @@ export function drawFurnitureArt(
     }
     case 'shelf':
       shade(6, h - 4, w - 12);
+      if (dir === 'up') {
+        // 274차 — 뒷판(물건은 앞쪽이라 안 보인다)
+        slab(4, 6, w - 8, h - 12, [0x4a3018, 0x6a4628, 0x33200f]);
+        for (let xx = 20; xx < w - 8; xx += 20) for (let yy = 8; yy < h - 8; yy += 2) dot(xx, yy, 0x33200f, 0.8);
+        break;
+      }
+      if (dir === 'left' || dir === 'right') {
+        // 274차 — 옆을 본다(1×2): 왼쪽 뒤판 · 칸막이 둘 · 칸마다 물건이 오른쪽(열린 쪽)으로 보인다('left'는 반전)
+        slab(4, 6, w - 8, h - 12, [0x5a3a22, 0x7a5232, 0x3f2718]);
+        slabV(4, 6, 8, h - 12, [0x4a3018, 0x6a4628, 0x33200f]);
+        for (const fy of [0.34, 0.66]) for (let xx = 0; xx < w - 16; xx += 2) dot(12 + xx, Math.round(h * fy), 0x8a6138);
+        [0x3a6ea5, 0xb04a3a, 0x3f9e63].forEach((col, i) => {
+          const y0 = Math.round(h * (0.1 + i * 0.32));
+          for (let yy = 0; yy < 14; yy += 2) for (let xx = 0; xx < 12; xx += 2) dot(16 + xx, y0 + yy, col);
+        });
+        for (let yy = 0; yy < 10; yy += 2) for (let xx = 0; xx < 12; xx += 2) dot(w - 22 + xx, Math.round(h * 0.74) + yy, yy < 3 ? 0x8a9aa8 : 0x5f6f7c);   // 채비 상자
+        break;
+      }
       slab(4, 6, w - 8, h - 12, [0x5a3a22, 0x7a5232, 0x3f2718]);
       for (const fy of [0.32, 0.64]) for (let xx = 0; xx < w - 16; xx += 2) dot(8 + xx, h * fy, 0x8a6138);
       [0x3a6ea5, 0xb04a3a, 0x3f9e63].forEach((col, i) => {
@@ -301,9 +446,12 @@ export function drawFurnitureArt(
       shade(IT * 0.28, IT * 0.86, IT * 0.44);
       slab(IT * 0.3, IT * 0.56, IT * 0.4, IT * 0.3, [0xb06a3b, 0xcb8450, 0x8d5029]);
       const dry = !!st.plantDry;
+      // 274차 — 돌리면 잎 모양이 바뀐다(옆 = 한쪽으로 기운다 · 'left'는 반전 · 위 = 더 벌어진다)
+      const lean = dir === 'left' || dir === 'right' ? 14 : 0;
+      const spread = dir === 'up' ? 32 : 26;
       for (let a = 0; a < 5; a++) {
         // 목마른 화분은 잎이 처지고 누렇다
-        const ang = dry ? -90 + (a - 2) * 34 : -90 + (a - 2) * 26;
+        const ang = (dry ? -90 + (a - 2) * 34 : -90 + (a - 2) * spread) + lean;
         const len = (dry ? 15 : 16) + (a % 2) * 5;
         for (let tt = 0; tt < len; tt += 2) {
           const droop = dry ? Math.round((tt * tt) / 110) * 2 : 0;
@@ -319,7 +467,10 @@ export function drawFurnitureArt(
       shade(10, h - 6, w - 20);
       slab(8, 16, w - 16, h - 24, WOOD);
       for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, 16, 0x9a7046);
-      for (let xx = 0; xx < 8; xx += 2) dot(w / 2 - 4 + xx, h - 18, 0xc9a66a);
+      // 서랍 손잡이 = 앞(바라보는 쪽) — 274차 옆은 오른쪽 끝('left'는 반전) · 뒤는 이음선만
+      if (dir === 'down') for (let xx = 0; xx < 8; xx += 2) dot(w / 2 - 4 + xx, h - 18, 0xc9a66a);
+      else if (dir === 'up') for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, h - 18, 0x4a3420, 0.6);
+      else for (let yy = 0; yy < 6; yy += 2) dot(w - 12, h - 22 + yy, 0xc9a66a);
       for (let yy = 0; yy < 8; yy += 2) dot(w / 2, 6 + yy, 0x5a4a3a);                                       // 램프 대
       const on = !!st.lampOn;
       for (let yy = 0; yy < 10; yy += 2) for (let xx = 0; xx < 14 - yy; xx += 2) {
@@ -333,7 +484,14 @@ export function drawFurnitureArt(
       shade(6, h - 6, w - 12);
       slab(6, 16, w - 12, h - 24, [0x7a5232, 0x9a7046, 0x5a3c22]);
       for (let xx = 0; xx < w - 12; xx += 2) { dot(6 + xx, 16, 0xb88a52); dot(6 + xx, 26, 0x4a3018); }
-      for (const lx of [12, w - 16]) for (let yy = 0; yy < 6; yy += 2) { dot(lx, 24 + yy, 0xc9ccd0); dot(lx + 2, 24 + yy, 0x8d979f); }
+      // 걸쇠 = 앞(바라보는 쪽) — 274차 옆은 오른쪽 끝 하나('left'는 반전) · 뒤는 경첩 둘
+      if (dir === 'down') {
+        for (const lx of [12, w - 16]) for (let yy = 0; yy < 6; yy += 2) { dot(lx, 24 + yy, 0xc9ccd0); dot(lx + 2, 24 + yy, 0x8d979f); }
+      } else if (dir === 'up') {
+        for (const lx of [14, w - 18]) { dot(lx, 26, 0x2e2e34); dot(lx + 2, 26, 0x5a5a62); }
+      } else {
+        for (let yy = 0; yy < 6; yy += 2) { dot(w - 10, 24 + yy, 0xc9ccd0); dot(w - 8, 24 + yy, 0x8d979f); }
+      }
       for (let xx = 0; xx < 16; xx += 2) dot(w / 2 - 8 + xx, 8, 0x2e2e34);
       for (let yy = 0; yy < 8; yy += 2) { dot(w / 2 - 10, 8 + yy, 0x2e2e34); dot(w / 2 + 8, 8 + yy, 0x2e2e34); }
       for (let xx = 0; xx < 8; xx += 2) dot(w / 2 - 4 + xx, 8, 0x3a6ea5);
@@ -344,13 +502,25 @@ export function drawFurnitureArt(
       shade(10, h - 4, w - 20);
       slab(10, 26, w - 20, h - 30, WOOD);                                        // 받침대 상판·몸통
       for (const lx of [12, w - 14]) for (let yy = h - 8; yy < h - 2; yy += 2) dot(lx, yy, 0x3f2718);
-      slab(8, 8, w - 16, 20, [0x7a2e26, 0x9a4034, 0x5a2018]);                    // 라디오 몸통(붉은 칠)
-      for (let yy = 12; yy < 24; yy += 2) for (let xx = 12; xx < 24; xx += 2) {  // 스피커 망
-        if ((xx + yy) % 4 === 0) dot(xx, yy, 0x3a1410); else dot(xx, yy, 0x6a2820);
+      if (dir === 'down') {
+        slab(8, 8, w - 16, 20, [0x7a2e26, 0x9a4034, 0x5a2018]);                  // 라디오 몸통(붉은 칠)
+        for (let yy = 12; yy < 24; yy += 2) for (let xx = 12; xx < 24; xx += 2) {  // 스피커 망
+          if ((xx + yy) % 4 === 0) dot(xx, yy, 0x3a1410); else dot(xx, yy, 0x6a2820);
+        }
+        slab(26, 12, 12, 6, [0xe8d6a0, 0xfff0c0, 0xc8b480]);                      // 주파수 창
+        dot(30, 14, 0xb03a2a);
+        dot(28, 20, 0xd8c8a0); dot(34, 20, 0xd8c8a0);                             // 다이얼 손잡이
+      } else if (dir === 'up') {
+        // 274차 — 뒷판 · 건전지 뚜껑
+        slab(8, 8, w - 16, 20, [0x6a2620, 0x8a3a30, 0x4a1a14]);
+        slab(14, 12, w - 28, 12, [0x4a1a14, 0x5a2018, 0x3a1410]);
+        for (let xx = 0; xx < w - 32; xx += 2) dot(16 + xx, 18, 0x2a0e0a);
+      } else {
+        // 274차 — 옆면(좁다) · 다이얼 손잡이가 오른쪽으로('left'는 반전)
+        slab(14, 8, w - 26, 20, [0x7a2e26, 0x9a4034, 0x5a2018]);
+        for (let yy = 12; yy < 24; yy += 4) dot(18, yy, 0x5a2018);
+        dot(w - 12, 14, 0xd8c8a0); dot(w - 12, 20, 0xd8c8a0);
       }
-      slab(26, 12, 12, 6, [0xe8d6a0, 0xfff0c0, 0xc8b480]);                        // 주파수 창
-      dot(30, 14, 0xb03a2a);
-      dot(28, 20, 0xd8c8a0); dot(34, 20, 0xd8c8a0);                               // 다이얼 손잡이
       for (let xx = 14; xx < w - 14; xx += 2) dot(xx, 4, 0x2a1a0e);               // 손잡이
       dot(14, 6, 0x2a1a0e); dot(w - 16, 6, 0x2a1a0e);
       for (let t = 0; t < 14; t += 2) dot(w - 12 + Math.round(t / 4) * 2, 6 - t, 0xa8b0b8);   // 안테나
@@ -365,6 +535,10 @@ export function drawFurnitureArt(
       }
       for (let xx = 0; xx < w - 20; xx += 2) dot(10 + xx, h - 38, 0xf4f4ee);            // 보자기
       for (let xx = 0; xx < w - 24; xx += 2) dot(12 + xx, h - 36, 0xd8d8d0);
+      // 274차 — 보자기 매듭이 바라보는 쪽에 선다(옆은 오른쪽 — 'left'는 반전 · 위는 가운데)
+      if (dir === 'down') { dot(w / 2 - 2, h - 34, 0xf4f4ee); dot(w / 2, h - 32, 0xd8d8d0); }
+      else if (dir === 'up') dot(w / 2 - 2, h - 40, 0xd8d8d0);
+      else { dot(w - 14, h - 38, 0xf4f4ee); dot(w - 12, h - 36, 0xd8d8d0); }
       for (const dx of [14, 22, 30]) dot(dx, h - 12, 0x7ab4e0);                         // 물방울
       break;
     }
@@ -373,14 +547,40 @@ export function drawFurnitureArt(
       shade(4, h - 3, w - 8);
       for (let yy = 0; yy < h - 6; yy += 2) { dot(6, 2 + yy, 0x6a7078); dot(w - 8, 2 + yy, 0x6a7078); }   // 기둥
       for (let xx = 6; xx < w - 6; xx += 2) dot(xx, 2, 0xe8e0a8);                       // 생장등
+      // 274차 — 옆을 보면 물받이가 짧고(옆판 쪽) 잎이 열린 쪽으로 기운다('left'는 반전)
+      const side = dir === 'left' || dir === 'right';
       for (const sy of [14, 30]) {
-        for (let xx = 8; xx < w - 8; xx += 2) { dot(xx, sy, 0x3a8ac8); dot(xx, sy + 2, 0x2a6aa0); }   // 물받이
-        for (let xx = 10; xx < w - 10; xx += 6) { dot(xx, sy - 2, 0x5cb84a); dot(xx + 2, sy - 4, 0x8fd16a); dot(xx - 2, sy - 4, 0x3f8a34); }
+        for (let xx = side ? 14 : 8; xx < w - 8; xx += 2) { dot(xx, sy, 0x3a8ac8); dot(xx, sy + 2, 0x2a6aa0); }   // 물받이
+        for (let xx = side ? 16 : 10; xx < w - 10; xx += 6) {
+          dot(xx, sy - 2, 0x5cb84a); dot(xx + 2, sy - 4, 0x8fd16a); dot(xx + (side ? 4 : -2), sy - (side ? 2 : 4), 0x3f8a34);
+        }
       }
+      if (side) for (let yy = 0; yy < h - 8; yy += 2) dot(10, 4 + yy, 0x4a5058);           // 옆판(뒤쪽 기둥)
       break;
     }
     case 'aquarium': {
       // 190차 — 관상 수조: 나무 받침장 위 유리 수조 + 물 · 자갈 · 수초 · 조명 덮개 (물고기는 씬이 따로 띄운다)
+      if (dir === 'left' || dir === 'right') {
+        // 274차 — 세로로 놓은 수조(1×2): 위에서 보는 긴 물낯 · 이쪽을 보는 짧은 유리면 · 받침장 (`tankFaceTop`)
+        const faceTop = tankFaceTop(h);
+        shade(4, h - 3, w - 8);
+        slab(4, h - 16, w - 8, 14, WOOD);
+        for (let xx = 8; xx < w - 8; xx += 2) dot(xx, h - 10, 0x4a3420, 0.6);
+        for (let yy = 0; yy < faceTop - 6; yy += 2) for (let xx = 0; xx < w - 12; xx += 2) {        // 물낯(위)
+          dot(6 + xx, 4 + yy, (xx + yy * 3) % 34 === 0 ? 0xbfe6f2 : (yy % 6 === 0 ? 0x6ab8dc : 0x4a9ec4), 0.95);
+        }
+        for (let xx = 4; xx < w - 4; xx += 2) dot(xx, faceTop - 2, 0xcfe8f0, 0.8);                  // 물낯과 앞면 사이 유리 모서리
+        for (let yy = 0; yy < h - 18 - faceTop; yy += 2) for (let xx = 0; xx < w - 12; xx += 2) {   // 앞 유리면
+          dot(6 + xx, faceTop + yy, yy > 12 ? 0x2f7aa0 : (yy % 6 === 0 ? 0x4a9ec4 : 0x3f92ba), 0.95);
+        }
+        for (let xx = 0; xx < w - 12; xx += 2) dot(6 + xx, h - 20, (xx % 6 === 0) ? 0xd8c8a0 : 0xb8a888);   // 자갈
+        for (const [px, py, len] of [[10, 22, 10], [w - 14, 44, 12], [12, h - 22, 8]] as const) {            // 수초
+          for (let t = 0; t < len; t += 2) dot(px + ((t >> 2) % 2) * 2, py - t, t > len - 5 ? 0x6ac46a : 0x3f9e4f);
+        }
+        for (let yy = 2; yy < h - 18; yy += 2) { dot(4, yy, 0xcfe8f0, 0.8); dot(w - 6, yy, 0x8ab8c8, 0.8); }   // 유리 테
+        for (let xx = 4; xx < w - 4; xx += 2) { dot(xx, 0, 0x3a3f45); dot(xx, 2, 0x4e545b); }                  // 조명 덮개(뒤 끝)
+        break;
+      }
       shade(4, h - 3, w - 8);
       slab(4, h - 16, w - 8, 14, WOOD);                                          // 받침장
       for (let xx = 8; xx < w - 8; xx += 2) dot(xx, h - 10, 0x4a3420, 0.6);
@@ -399,6 +599,14 @@ export function drawFurnitureArt(
       break;
     }
   }
+}
+
+/**
+ * 274차 — 세로로 놓은 수조(1×2)의 앞 유리면이 시작하는 높이(지역 px). 위쪽은 위에서 본 물낯이다.
+ * 그림과 씬의 물고기 · 공기 방울이 같은 값을 쓴다.
+ */
+export function tankFaceTop(h: number): number {
+  return h - 42;
 }
 
 type DotFn = (x: number, y: number, col: number, a?: number) => void;

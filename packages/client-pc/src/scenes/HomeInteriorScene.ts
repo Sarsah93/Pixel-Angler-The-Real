@@ -66,7 +66,7 @@ import { getLocale } from '../i18n/I18n.js';
 import { HomeStore, type HomeStorageKind } from '../store/HomeStore.js';
 import {
   IT, ROOM_W, ROOM_H, DOOR_MAT, FLOOR_TOP, FURN_DEFS, WALL_DECOR, footprint, seatsOf, drawFurnitureArt, frontCell, ensureFurnitureIcon,
-  type FurnInstance, type FurnAction, type WallDecorId,
+  tankFaceTop, type FurnInstance, type FurnAction, type WallDecorId,
 } from '../data/HomeFurniture.js';
 import { HomeAmbience, type AmbienceLight } from '../ui/HomeAmbience.js';
 import { HomeCat, CAT_FULL_MS } from '../ui/HomeCat.js';
@@ -241,7 +241,11 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 190차 — 창·조명 · 고양이 · 수조 속 고기(방 안 그림) · 라디오 소리 물결 */
   private ambience?: HomeAmbience;
   private cat?: HomeCat;
-  private tankSwim: { img: Phaser.GameObjects.Image; x0: number; x1: number; vx: number; y0: number; ph: number }[] = [];
+  /**
+   * 수조 속 고기. 가로 수조는 x(`a0`~`a1`)로 헤엄치고 y가 일렁인다. 274차 — 세로로 놓은 수조(`vertical`)는
+   * 위에서 보는 물낯을 따라 y로 헤엄치고(그림을 90° 돌린다) x가 일렁인다. `base` = 일렁임 기준.
+   */
+  private tankSwim: { img: Phaser.GameObjects.Image; a0: number; a1: number; v: number; base: number; ph: number; vertical: boolean }[] = [];
   private bubbleAcc = 0;
   private radioWaves?: Phaser.Time.TimerEvent;
   /** 189차 — 가구 그림(인스턴스마다 하나) */
@@ -969,29 +973,47 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.ambience?.refreshLights();
   }
 
-  /** 수조 속 고기 — 유리 안에서 좌우로 헤엄친다 (190차) */
+  /** 수조 속 고기 — 유리 안에서 좌우로 헤엄친다 (190차 · 274차 세로 수조는 위아래로) */
   private buildTankFish(f: FurnInstance): void {
-    const { w } = footprint(f.kind, f.dir);
-    const gx0 = OX + f.tx * IT + 10, gx1 = OX + (f.tx + w) * IT - 10;
-    const top = OY + f.ty * IT + 10, bottom = OY + (f.ty + 1) * IT - 28;
+    const { w, h } = footprint(f.kind, f.dir);
+    const vertical = f.dir === 'left' || f.dir === 'right';
+    const x0 = OX + f.tx * IT, y0 = OY + f.ty * IT;
     HomeStore.tank(f.id).forEach((fish, i) => {
       const key = tankFishTexture(fish, this);
       if (!key || !this.textures.exists(key)) return;
       const len = Phaser.Math.Clamp(8 + fish.lengthCm * 0.4, 10, 22);
       const fit = fitFishTexture(this.textures, key, len, 999);
-      const img = this.add.image(gx0 + 12 + ((i * 23) % (gx1 - gx0 - 24)), top + ((i * 7) % Math.max(1, bottom - top)), fit.key);
+      const v = (i % 2 ? -1 : 1) * (0.01 + (i % 3) * 0.004);
+      let img: Phaser.GameObjects.Image;
+      let a0: number, a1: number;
+      if (vertical) {
+        // 위에서 보는 물낯(위 끝 ~ 앞 유리면) 안 — 가운데 줄 근처에서 위아래로
+        a0 = y0 + 10; a1 = y0 + tankFaceTop(h * IT) - 6;
+        const cx = x0 + (w * IT) / 2 + (((i * 7) % 13) - 6);
+        img = this.add.image(cx, a0 + 12 + ((i * 23) % Math.max(1, a1 - a0 - 24)), fit.key).setAngle(v > 0 ? 90 : -90);
+      } else {
+        a0 = x0 + 10; a1 = x0 + w * IT - 10;
+        const top = y0 + 10, bottom = y0 + IT - 28;
+        img = this.add.image(a0 + 12 + ((i * 23) % (a1 - a0 - 24)), top + ((i * 7) % Math.max(1, bottom - top)), fit.key);
+      }
       img.setDisplaySize(len, Math.max(4, fit.h)).setDepth(this.furnDepth(f) + 0.0001);
-      this.tankSwim.push({ img, x0: gx0, x1: gx1, vx: (i % 2 ? -1 : 1) * (0.01 + (i % 3) * 0.004), y0: img.y, ph: i * 1.3 });
+      this.tankSwim.push({ img, a0, a1, v, base: vertical ? img.x : img.y, ph: i * 1.3, vertical });
     });
   }
 
   private animateTanks(delta: number): void {
     for (const s of this.tankSwim) {
       const half = s.img.displayWidth / 2;
-      let nx = s.img.x + s.vx * delta;
-      if (nx - half < s.x0 || nx + half > s.x1) { s.vx = -s.vx; nx = s.img.x + s.vx * delta; }
       s.ph += delta / 700;
-      s.img.setPosition(nx, s.y0 + Math.sin(s.ph) * 2).setFlipX(s.vx < 0);
+      if (s.vertical) {
+        let ny = s.img.y + s.v * delta;
+        if (ny - half < s.a0 || ny + half > s.a1) { s.v = -s.v; ny = s.img.y + s.v * delta; }
+        s.img.setPosition(s.base + Math.sin(s.ph) * 2, ny).setAngle(s.v > 0 ? 90 : -90);
+      } else {
+        let nx = s.img.x + s.v * delta;
+        if (nx - half < s.a0 || nx + half > s.a1) { s.v = -s.v; nx = s.img.x + s.v * delta; }
+        s.img.setPosition(nx, s.base + Math.sin(s.ph) * 2).setFlipX(s.v < 0);
+      }
     }
     // 이따금 공기 방울
     this.bubbleAcc += delta;
@@ -999,8 +1021,17 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.bubbleAcc = 0;
     for (const f of HomeStore.placed) {
       if (f.kind !== 'aquarium') continue;
-      const bx = OX + f.tx * IT + 14 + Math.random() * (footprint(f.kind, f.dir).w * IT - 28);
-      const b = this.add.rectangle(bx, OY + f.ty * IT + IT - 28, 2, 2, 0xe8f6ff, 0.9).setDepth(this.furnDepth(f) + 0.0002);
+      const { w, h } = footprint(f.kind, f.dir);
+      const depth = this.furnDepth(f) + 0.0002;
+      if (f.dir === 'left' || f.dir === 'right') {
+        // 274차 — 세로 수조: 앞 유리면 안에서 짧게 오른다
+        const by0 = OY + f.ty * IT + h * IT - 22;
+        const b = this.add.rectangle(OX + f.tx * IT + 12 + Math.random() * (w * IT - 24), by0, 2, 2, 0xe8f6ff, 0.9).setDepth(depth);
+        this.tweens.add({ targets: b, y: OY + f.ty * IT + tankFaceTop(h * IT) + 2, alpha: 0.2, duration: 900, onComplete: () => b.destroy() });
+        continue;
+      }
+      const bx = OX + f.tx * IT + 14 + Math.random() * (w * IT - 28);
+      const b = this.add.rectangle(bx, OY + f.ty * IT + IT - 28, 2, 2, 0xe8f6ff, 0.9).setDepth(depth);
       this.tweens.add({ targets: b, y: OY + f.ty * IT + 8, alpha: 0.2, duration: 1400, onComplete: () => b.destroy() });
     }
   }
@@ -1021,8 +1052,10 @@ export class HomeInteriorScene extends Phaser.Scene {
       if (f.kind === 'stand' && HomeStore.isLampOn(f.id)) {
         out.push({ x: OX + f.tx * IT + IT / 2, y: OY + f.ty * IT + 6, r: 190, color: 0xffd98a });
       } else if (f.kind === 'aquarium') {
-        const { w } = footprint(f.kind, f.dir);
-        out.push({ x: OX + (f.tx + w / 2) * IT, y: OY + f.ty * IT + 16, r: 80, color: 0x5ab8ff });
+        const { w, h } = footprint(f.kind, f.dir);
+        // 274차 — 세로 수조는 물낯 한가운데에서 빛난다
+        const vertical = f.dir === 'left' || f.dir === 'right';
+        out.push({ x: OX + (f.tx + w / 2) * IT, y: OY + f.ty * IT + (vertical ? Math.round(tankFaceTop(h * IT) / 2) : 16), r: 80, color: 0x5ab8ff });
       }
     }
     return out;

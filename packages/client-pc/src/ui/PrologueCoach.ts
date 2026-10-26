@@ -23,7 +23,8 @@ export interface CoachStage {
   target?: () => TourRect | null | undefined;
   anchor?: () => TourRect | null | undefined;
   side?: 'left' | 'right' | 'auto';
-  dockY?: number;
+  /** 274차 — 함수면 매 프레임 다시 묻는다(인자 = 다 찍었을 때의 말풍선 높이) */
+  dockY?: number | ((finalH: number) => number);
   /** 219차 — 이 단계에서 허용하는 세상 행동 id(`TourStep.focus`) — 없으면 막지 않는다 */
   focus?: string[];
 }

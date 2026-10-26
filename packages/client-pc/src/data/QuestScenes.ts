@@ -313,6 +313,7 @@ const bubbleOf = (text: string): string | undefined => (text.length > 18 ? '...'
  *
  * 규칙
  *  1 **혼잣말**은 나레이션 문장이 맡는다(3인칭 서술이 자연스러운 자리).
+ *    274차 — **그 사람이 할 말이 있는 장면에서는 깔지 않는다**(서두 = 지난 줄거리 — 일지(J)가 맡는다).
  *  2 **NPC는 자기 대사가 있을 때만 말한다** — 발주자의 `offer`(첫 장면) / `done`(마지막 장면).
  *    발주자가 아니거나 쓸 대사가 없으면 **침묵**하고 `...` 말풍선과 몸짓만 남긴다.
  *    ⚠ 진행 중 재촉문(`progress`)을 장면에 쓰지 않는다 — 눈앞에 서 있는데 "아직 안 왔나"가 된다.
@@ -337,13 +338,6 @@ export function generatedScene(q: StoryQuestDef, idx: number, ctx: QuestSceneCtx
   const firstScene = sceneIdx[0] === idx;
   const lastObjective = idx === q.objectives.length - 1;
 
-  // ── 혼잣말 — 나레이션 문장을 장면 순서대로 나눠 쓴다 (직접화법은 건너뛴다) ──
-  const lines = sentences(nar?.intro).filter((t) => !speechLike(t));
-  const opening = lines[Math.min(nth, Math.max(0, lines.length - 1))] ?? `${label}.`;
-  const closing = o.afterKo
-    ?? lines.find((t) => t !== opening && lines.indexOf(t) > lines.indexOf(opening))
-    ?? '';
-
   // ── NPC 대사 — 실재하는 말만. 없으면 침묵 ──
   let npcLine = '';
   if (isGiver) {
@@ -354,10 +348,19 @@ export function generatedScene(q: StoryQuestDef, idx: number, ctx: QuestSceneCtx
   }
   // 상대가 발주자가 아니면(심부름·목격) 그 인물의 대사는 데이터에 없다 — 말풍선만 띄운다.
 
-  const steps: CineStep[] = [
-    { kind: 'focus', who: 'player', ms: 440 },
-    { kind: 'say', who: 'player', thought: true, text: opening },
-  ];
+  // ── 혼잣말 — 나레이션 문장을 장면 순서대로 나눠 쓴다 (직접화법은 건너뛴다) ──
+  // 274차 — 그 사람이 할 말이 있는 장면이면 서두 나레이션(지난 줄거리)을 혼잣말로 깔지 않는다 — 곧바로 그 사람의 말.
+  //  사용자 「그 부분은 단축키 J에서 … 배경 나레이션 정도로 확인할 수 있어야 하지 … 곧바로 대화가 이어지도록」
+  //  (보고 장면 74곳이 「영금정에서 보이는 방파제를 따라 …」 같은 받는 자리 서두로 시작했다). 서두는 일지(J)가 맡는다.
+  //  말 없는 장면(심부름 · 목격)만 나레이션이 내용을 맡는다. 장면만의 맺음 글(`afterKo`)은 그대로 쓴다.
+  const lines = npcLine ? [] : sentences(nar?.intro).filter((t) => !speechLike(t));
+  const opening = npcLine ? '' : lines[Math.min(nth, Math.max(0, lines.length - 1))] ?? `${label}.`;
+  const closing = o.afterKo
+    ?? lines.find((t) => t !== opening && lines.indexOf(t) > lines.indexOf(opening))
+    ?? '';
+
+  const steps: CineStep[] = [{ kind: 'focus', who: 'player', ms: 440 }];
+  if (opening) steps.push({ kind: 'say', who: 'player', thought: true, text: opening });
   const extras: SceneExtra[] = [];
   const roles: Record<string, string> = { player: 'player' };
   if (npcId) {

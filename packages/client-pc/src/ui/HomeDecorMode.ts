@@ -7,7 +7,9 @@
  *    모든 가구 앞에 [F]가 떠서 판정이 다시 복잡해진다 → 배치는 **따로 들어가는 모드**로 뺐다.
  *  - 들어가는 곳: 방 오른쪽 위 [가구 배치] 버튼. 바닥에 칸이 보이고, 오른쪽에 「넣어 둔 가구」 칸이 열린다.
  *  - 가구를 누르면 들어 올린다 → 손(커서)을 따라온다 → 초록 칸이면 눌러서 놓는다. 빨간 칸이면 까닭이 아래에 뜬다.
- *    우클릭(또는 R) = 돌리기(소파·의자). 들고 있는 가구를 오른쪽 칸에 놓으면 넣어 둔다. 넣어 둔 가구를 누르면 다시 든다.
+ *    우클릭(또는 R) = 돌리기 — 274차부터 모든 가구가 네 방위로 돈다. **누른 칸이 축**이라 소파 2×1을 한 칸에서 돌리면
+ *    오른쪽 · 아래 · 왼쪽 · 위로 차례로 펼쳐진다(사용자 「좌측/하단측으로만 변형 위치를 보여주게 … 총 4개의 방위를 고려해야 해」).
+ *    든 채로 돌리면 집어 든 칸이 축이다. 들고 있는 가구를 오른쪽 칸에 놓으면 넣어 둔다. 넣어 둔 가구를 누르면 다시 든다.
  *    ESC = 들고 있던 것 내려놓기 취소 → 한 번 더 누르면 배치를 마친다.
  *  - 판정은 `HomeStore.checkPlace` — 문까지 가는 길과 쓸 수 있는 가구 앞자리를 막는 배치는 놓이지 않는다.
  *  - 조작 안내 문구는 화면에 쓰지 않는다(규칙 R11) — 처음 들어올 때 체험 가이드(`home_decorate`)가 하나씩 해 보게 한다.
@@ -19,7 +21,7 @@ import { cv, cvText, drawBlockedX } from './ColorAssist.js';
 import { HomeStore } from '../store/HomeStore.js';
 import { GameState } from '../store/GameState.js';
 import {
-  IT, ROOM_W, ROOM_H, FLOOR_TOP, DOOR_MAT, FURN_DEFS, DIR_CYCLE, footprint, drawFurnitureArt,
+  IT, ROOM_W, ROOM_H, FLOOR_TOP, DOOR_MAT, FURN_DEFS, footprint, drawFurnitureArt, nextDir, turnLocal, turnedAround, placementsHolding,
   type FurnInstance, type FurnArtState,
 } from '../data/HomeFurniture.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -53,6 +55,8 @@ export interface DecorHost {
 interface Holding {
   f: FurnInstance;
   from: 'room' | 'tray';
+  /** 274차 — 집어 든 칸(가구 안 지역 칸). 손(커서)이 늘 이 칸 위에 있고, 돌리면 이 칸이 축이다 */
+  grab: { x: number; y: number };
 }
 
 export class HomeDecorMode {
@@ -193,11 +197,22 @@ export class HomeDecorMode {
     this.refreshPreview();
   }
 
+  /** 손(커서) 아래 방 칸 */
+  private pointerCell(): { c: number; r: number } {
+    return {
+      c: Math.floor((this.lastPointer.x - this.host.ox) / IT),
+      r: Math.floor((this.lastPointer.y - this.host.oy) / IT),
+    };
+  }
+
   private onLeft(): void {
     if (!this.holding) {
       const f = this.furnAt(this.lastPointer.x, this.lastPointer.y);
       if (!f) return;
-      this.holding = { f: { ...f }, from: 'room' };
+      const { w, h } = footprint(f.kind, f.dir);
+      const { c, r } = this.pointerCell();
+      const grab = { x: Phaser.Math.Clamp(c - f.tx, 0, w - 1), y: Phaser.Math.Clamp(r - f.ty, 0, h - 1) };
+      this.holding = { f: { ...f }, from: 'room', grab };
       this.takenFromTray = false;
       this.picks++;
       this.host.redraw(f.id);
@@ -219,27 +234,53 @@ export class HomeDecorMode {
   }
 
   private onRight(): void {
-    if (this.holding) { this.rotate(); return; }
-    // 들지 않고 가구 위에서 우클릭 = 그 자리에서 돌리기
-    const f = this.furnAt(this.lastPointer.x, this.lastPointer.y);
-    if (!f || !FURN_DEFS[f.kind].rotatable) return;
-    const next: FurnInstance = { ...f, dir: DIR_CYCLE[(DIR_CYCLE.indexOf(f.dir) + 1) % 4] };
-    const chk = HomeStore.checkPlace(next, this.othersOf(f.id), this.host.playerTile());
-    if (!chk.ok) { this.showReason(chk.reason ?? '', f); return; }
-    HomeStore.place(next);
-    GameState.markDirty();
+    this.rotate();
+  }
+
+  /**
+   * 돌리기 (R · 우클릭). 들고 있으면 집어 든 칸을 축으로, 아니면 손 아래 가구를 **누른 칸을 축으로** 그 자리에서 돌린다.
+   * 274차 — 모든 가구 · 네 방위(아래 → 왼쪽 → 위 → 오른쪽).
+   */
+  rotate(): void {
+    const h = this.holding;
+    if (!h) { this.turnInPlace(); return; }
+    const g = turnLocal(h.f.kind, h.f.dir, h.grab.x, h.grab.y);
+    h.f = { ...h.f, dir: nextDir(h.f.dir) };
+    h.grab = g;
     this.rotates++;
-    this.host.redraw(null);
     this.refreshPreview();
   }
 
-  /** 들고 있는 가구 돌리기 (R · 우클릭) */
-  rotate(): void {
-    const h = this.holding;
-    if (!h || !FURN_DEFS[h.f.kind].rotatable) return;
-    h.f = { ...h.f, dir: DIR_CYCLE[(DIR_CYCLE.indexOf(h.f.dir) + 1) % 4] };
-    this.rotates++;
-    this.refreshPreview();
+  /**
+   * 274차 — 놓인 가구를 그 자리에서 돌린다. 누른 칸이 축이고, 돌린 자리가 막히면 ① 같은 방향으로 축 칸을 품은 채 비켜 보고
+   * ② 그래도 안 되면 다음 방향으로 넘어간다(막힌 방향은 건너뛴다). 네 방향이 다 막히면 첫 까닭을 띄운다.
+   */
+  private turnInPlace(): void {
+    const f = this.furnAt(this.lastPointer.x, this.lastPointer.y);
+    if (!f) return;
+    const { c, r } = this.pointerCell();
+    const others = this.othersOf(f.id);
+    const me = this.host.playerTile();
+    let cur = f;
+    let firstReason: string | undefined;
+    for (let step = 1; step <= 3; step++) {
+      const nat = turnedAround(cur, c, r);
+      for (const pos of placementsHolding(f.kind, nat.dir, c, r, nat)) {
+        const cand: FurnInstance = { ...nat, tx: pos.tx, ty: pos.ty };
+        const chk = HomeStore.checkPlace(cand, others, me);
+        if (chk.ok) {
+          HomeStore.place(cand);
+          GameState.markDirty();
+          this.rotates++;
+          this.host.redraw(null);
+          this.refreshPreview();
+          return;
+        }
+        firstReason ??= chk.reason;
+      }
+      cur = nat;
+    }
+    if (firstReason) this.showReason(firstReason, f);
   }
 
   /** ESC — 들고 있으면 내려놓기 취소, 아니면 배치를 마친다 */
@@ -265,13 +306,15 @@ export class HomeDecorMode {
 
   // ── 미리보기 ──────────────────────────────────────────
 
-  /** 커서 자리에 놓일 후보 (커서가 가구 한가운데에 오게) */
+  /**
+   * 커서 자리에 놓일 후보 — 274차: 집어 든 칸이 커서 아래 칸에 온다(전에는 가구 한가운데를 반올림해
+   * 커서가 칸의 어느 쪽에 있느냐에 따라 왼쪽 · 오른쪽으로 튀었다).
+   */
   private candidate(): FurnInstance | null {
     const h = this.holding;
     if (!h) return null;
-    const { w, h: hh } = footprint(h.f.kind, h.f.dir);
-    const cx = (this.lastPointer.x - this.host.ox) / IT, cy = (this.lastPointer.y - this.host.oy) / IT;
-    return { ...h.f, tx: Math.round(cx - w / 2), ty: Math.round(cy - hh / 2) };
+    const { c, r } = this.pointerCell();
+    return { ...h.f, tx: c - h.grab.x, ty: r - h.grab.y };
   }
 
   private refreshPreview(): void {
@@ -420,7 +463,8 @@ export class HomeDecorMode {
   /** 넣어 둔 칸의 가구를 든다 (들고 있던 것은 그 자리에 돌려놓지 않고 넣어 둔다) */
   private takeFromTray(f: FurnInstance): void {
     if (this.holding) { this.dropToTray(); if (this.holding) return; }
-    this.holding = { f: { ...f }, from: 'tray' };
+    const { w, h } = footprint(f.kind, f.dir);
+    this.holding = { f: { ...f }, from: 'tray', grab: { x: Math.floor((w - 1) / 2), y: Math.floor((h - 1) / 2) } };
     this.takenFromTray = true;
     this.picks++;
     this.refreshPreview();
@@ -468,9 +512,10 @@ export class HomeDecorMode {
           wait: () => this.places > placesAt,
         },
         {
-          text: '소파와 의자는 방향을 바꿀 수 있다. 들고 있을 때나 그 가구 위에서 우클릭하면 돈다. 한 번 돌려 보자.',
+          // 274차 — 모든 가구 · 네 방위 · 누른 칸이 축
+          text: '가구는 네 방향으로 돌릴 수 있다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 막힌 방향은 건너뛴다. 한 번 돌려 보자.',
           target: room,
-          skipIf: () => !HomeStore.placed.concat(HomeStore.stored).some((f) => FURN_DEFS[f.kind].rotatable),
+          skipIf: () => HomeStore.placed.length === 0,
           wait: () => this.rotates > 0 && !this.holding,
         },
         {

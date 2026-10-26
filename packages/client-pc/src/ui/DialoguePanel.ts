@@ -49,7 +49,7 @@ import { applyScreenFixed } from './DraggablePanel.js';
 import { t, getLocale } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, spokenProgressKo, spokenDoneKo, particle, type SpokenObjective } from '@tra/core';
+import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, spokenProgressKo, particle, type SpokenObjective } from '@tra/core';
 import { SHOP_CATALOG, BUILDING_HOURS, BUILDING_LABEL, type BuildingKind } from '../data/ShopCatalog.js';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
@@ -132,7 +132,7 @@ export class DialoguePanel extends DraggablePanel {
   get currentView(): View { return this.view; }
 
   /** 응답 화면 (141차) — 보상은 고른 뒤에만 드러난다 */
-  private reply: { line: string; rewards: string[]; epilogue?: string; declined?: boolean; said?: string } | null = null;
+  private reply: { line: string; rewards: string[]; declined?: boolean; said?: string } | null = null;
   /** 267차 — 지금 쪽이 주의 단락(빨간 글) 쪽인가 — 다음 단락은 새 쪽에서 평소 색으로 */
   private hintPage = false;
 
@@ -656,16 +656,20 @@ export class DialoguePanel extends DraggablePanel {
     return `[${q.titleKo}]`;
   }
 
+  /**
+   * 받는 자리. 274차 — 서두 나레이션(`intro` — 「영금정에서 보이는 방파제를 따라 … 걸었다.」)은 찍지 않는다.
+   * 사용자 「그 부분은 단축키 J에서 … 배경 나레이션 정도로 확인할 수 있어야 하지 … 곧바로 대화가 이어지도록」.
+   * 서두는 일지(J) 장 머리 · 편 상세가 맡는다. 대화창은 편 제목 다음 곧바로 의뢰인의 말이다.
+   */
   private playOffer(q: StoryQuestDef): void {
     const n = narrativeOf(q.id);
     const paras = [this.questHead(q)];
-    if (n?.intro) paras.push(n.intro);
-    // 254차 — 받는 자리 대화가 있으면 표준 답 대신(서두는 그대로 — 하다 만 대화면 서두 없이 그 단계부터)
+    // 254차 — 받는 자리 대화가 있으면 표준 답 대신(하다 만 대화면 그 단계부터 — 시기 · 한 번뿐 알림은 처음일 때만)
     const offerTalk = StoryStore.offerTalk(q);
     if (offerTalk) {
       const fresh = StoryStore.talkResume(offerTalk) === offerTalk.start;
       const note = StoryStore.offerNoteKo(q);
-      this.enterTalk(offerTalk, fresh ? [...paras, ...(note ? [note] : [])] : [this.questHead(q)]);
+      this.enterTalk(offerTalk, fresh && note ? [...paras, note] : paras);
       return;
     }
     if (n?.offer) paras.push(`"${n.offer}"`);
@@ -684,7 +688,7 @@ export class DialoguePanel extends DraggablePanel {
     paras.push(`"${np ?? dialogueOf(q.id).progress[0]}"`);
     if (this.actionReply) { paras.push(`"${this.actionReply}"`); this.actionReply = ''; }
     // 267차 — 「[완료] … / - …」 나열 대신 말하듯(1인칭 산문). 다 했으면 그 문장이 「다시 말을 걸면 보고할 수 있다」까지 말한다
-    paras.push(this.progressNarration(q, 'active'));
+    paras.push(this.progressNarration(q));
     paras.push(...this.hoursHintParas(q, true));   // 267차 — 아직 안 산 가게 목표가 있으면 영업시간 주의
     const rows: ChoiceRow[] = [];
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
@@ -747,10 +751,13 @@ export class DialoguePanel extends DraggablePanel {
     this.play(paras, rows, true);
   }
 
+  /**
+   * 보고하는 자리. 274차 — 한 일을 되짚는 나레이션(「…도, …도 끝냈다.」)을 앞에 찍지 않는다 — 곧바로 의뢰인의 말.
+   * 무엇을 했는지는 일지(J) 목표 줄이 맡는다.
+   */
   private playComplete(q: StoryQuestDef): void {
     const nd = narrativeOf(q.id)?.done;
     const paras = [this.questHead(q)];
-    paras.push(this.progressNarration(q, 'complete'));
     // 254차 — 끝내는 자리 대화(보상 답 · 결말을 대화가 고른다)
     const doneTalk = StoryStore.completeTalk(q);
     if (doneTalk) { this.enterTalk(doneTalk, paras); return; }
@@ -786,18 +793,19 @@ export class DialoguePanel extends DraggablePanel {
    * 267차 — 진행 상황을 **말하듯**(1인칭 산문 — R4). 「사이소에서 저가 릴대를 사는 것은 끝냈다. 이제 테트라포드 틈에서 한 마리를 올리는 것이 남았다.」
    * 사용자 「대화하듯 진행 상황을 전개 · 설명하듯 notice 해야 하는데 … 텍스트로만 나열하듯 적혀지고 있는게 이질감」.
    * 영어는 문장 규칙이 한국어용이라 옛 목록을 그대로 쓴다.
+   * 274차 — 진행 중 화면에서만 쓴다(보고하는 자리의 「…도 끝냈다」 되짚기는 뺐다 — 곧바로 의뢰인의 말).
    */
-  private progressNarration(q: StoryQuestDef, mode: 'active' | 'complete'): string {
+  private progressNarration(q: StoryQuestDef): string {
     if (getLocale() !== 'ko') {
       const list = this.objectiveLines(q);
-      return mode === 'active' && StoryStore.allObjectivesDone(q) ? `${list}\n준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.` : list;
+      return StoryStore.allObjectivesDone(q) ? `${list}\n준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.` : list;
     }
     const items: SpokenObjective[] = q.objectives.map((o, i) => {
       const tgt = StoryStore.objectiveTarget(o);
       const cur = o.actionKey ? StoryStore.actionStep(q.id, i) : (StoryStore.progress(q.id)?.obj[i] ?? 0);
       return { label: narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo, done: StoryStore.objectiveDone(q, i), cur, target: tgt };
     });
-    return mode === 'complete' ? spokenDoneKo(items) : spokenProgressKo(items);
+    return spokenProgressKo(items);
   }
 
   /**
@@ -842,7 +850,6 @@ export class DialoguePanel extends DraggablePanel {
         this.reply = {
           line: ch.replyKo,
           rewards: done ? StoryStore.lastRewardLines : [],
-          epilogue: done ? narrativeOf(q.id)?.epilogue : undefined,
           declined: StoryStore.lastAction === 'declined',
           said: ch.labelKo,   // 267차 — 새 쪽 첫 줄에 내가 한 말을 되짚는다(앞 쪽이 사라지므로)
         };
@@ -860,7 +867,7 @@ export class DialoguePanel extends DraggablePanel {
     if (r.declined) paras.push('의뢰를 받지 않았습니다.');
     // 258차 — 답의 효과(「이 답으로」) · 고르지 않은 답(「→ ???」)은 찍지 않는다 — 위키에서만 본다
     if (r.rewards.length) paras.push(`받은 것 — ${r.rewards.join(' · ')}`);
-    if (r.epilogue) paras.push(r.epilogue);
+    // 274차 — 맺음 나레이션(`epilogue`)은 찍지 않는다 — 일지(J) 편 상세가 맡는다
     this.play(paras, [
       { label: '계속 이야기하기', action: () => { this.reply = null; this.enterMenu(false); } },
       this.exitRow(),
@@ -945,8 +952,7 @@ export class DialoguePanel extends DraggablePanel {
     } else if (talk.at === 'complete' && q) {
       if (StoryStore.lastRewardLines.length) paras.push(`받은 것 — ${StoryStore.lastRewardLines.join(' · ')}`);
       if (res.ending) paras.push(`결말 — 「${res.ending.titleKo}」`, res.ending.summaryKo);
-      const epi = narrativeOf(q.id)?.epilogue;
-      if (epi) paras.push(epi);
+      // 274차 — 맺음 나레이션은 일지(J)로(받는 자리 서두와 같은 까닭)
       this.refreshPortrait();
     }
     this.play(paras, rows, true);

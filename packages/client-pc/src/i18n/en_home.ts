@@ -56,8 +56,8 @@ export const EN_HOME: Record<string, string> = {
     "The furniture follows your cursor. Green squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
   '들어 올린 가구는 손을 따라온다. 파란 칸이면 놓을 수 있고, 빨간 칸이면 그 까닭이 아래에 뜬다. 빈자리를 눌러 내려놓자.':
     "The furniture follows your cursor. Blue squares mean it fits; red squares show the reason below. Click an empty spot to put it down.",
-  '소파와 의자는 방향을 바꿀 수 있다. 들고 있을 때나 그 가구 위에서 우클릭하면 돈다. 한 번 돌려 보자.':
-    'Sofas and chairs can face other ways. Right-click while holding one, or on one, to turn it. Try turning one.',
+  '가구는 네 방향으로 돌릴 수 있다. 가구 위에서 우클릭하면 누른 칸을 축으로 한 방향씩 돈다. 막힌 방향은 건너뛴다. 한 번 돌려 보자.':
+    'Furniture turns four ways. Right-click a piece and it turns one step around the square you clicked. Directions that cannot fit are skipped. Try turning one.',
   '오른쪽은 넣어 둔 가구 자리다. 가구를 들어 이 칸에 내려놓으면 방에서 치워 둔다. 하나 넣어 보자.':
     'The panel on the right holds stored furniture. Pick something up and drop it here to clear it from the room. Store one.',
   '넣어 둔 가구를 누르면 다시 든다. 방에 다시 놓아 보자.':

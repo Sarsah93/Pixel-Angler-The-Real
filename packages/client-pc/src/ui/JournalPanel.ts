@@ -1378,9 +1378,16 @@ export class JournalPanel extends DraggablePanel {
     const n = narrativeOf(q.id);
     const st = StoryStore.status(q);
     const parts: string[] = [];
+    // 274차 — 대화창에서 뺀 배경 나레이션(받는 자리 서두 · 맺음)은 여기서 읽는다.
+    //  말(따옴표)과 나레이션(따옴표 없음)을 가른다 — 맺음은 나레이션이라 따옴표를 씌우지 않는다.
     if (n?.intro) parts.push(n.intro);
-    const line = st === 'done' ? n?.epilogue ?? n?.done : st === 'active' ? n?.progress ?? n?.offer : n?.offer;
-    if (line) parts.push(`"${line}"`);
+    if (st === 'done') {
+      if (n?.done) parts.push(`"${n.done}"`);
+      if (n?.epilogue) parts.push(n.epilogue);
+    } else {
+      const line = st === 'active' ? n?.progress ?? n?.offer : n?.offer;
+      if (line) parts.push(`"${line}"`);
+    }
     // 254차 — 이 편이 이야기의 결말을 정한 편이면 다다른 결말(제목 · 한두 문장)
     if (st === 'done') {
       const arcId = endingArcOfQuest(q.id);

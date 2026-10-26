@@ -2037,6 +2037,25 @@ export class RegionHud extends Phaser.GameObjects.Container {
     return out;
   }
 
+  /**
+   * 274차 — 상태 창 기둥(상태 창 · 물때 칩 · 제작 칩 · 상태이상 띠)의 화면 사각형.
+   * 프롤로그 안내 말풍선이 이 기둥 바로 아래에 선다(사용자 「안내 가이드 메시지 창이 위의 '만조' 알림 표시와 겹치고 있어」).
+   * 상태이상 띠는 늘 떠 있지 않아 `occupiedRects`에는 넣지 않았다 — 여기서만 함께 센다.
+   */
+  statusColumnRects(): Phaser.Geom.Rectangle[] {
+    const out = this.occupiedRects()
+      .filter((o) => o.name === 'hud.status' || o.name === 'hud.tide' || o.name === 'hud.craft')
+      .map((o) => o.rect);
+    if (this.stripC?.visible) out.push(this.stripC.getBounds());
+    return out;
+  }
+
+  /** 274차 — 지역 채널 사각형(화면 좌표) — 안내 말풍선이 그 위에서 멈춘다 */
+  chatRect(): Phaser.Geom.Rectangle {
+    const r = this.hudRect('chat');
+    return new Phaser.Geom.Rectangle(r.x, r.y, r.w, r.h);
+  }
+
   private hudRect(key: HudWindow): HudRect {
     if (key === 'status') return { x: SP.x + this.statusOffset.x, y: SP.y + this.statusOffset.y, w: this.statusLayout.w, h: this.statusLayout.h };
     if (key === 'chat') return { ...this.logAreaRect };

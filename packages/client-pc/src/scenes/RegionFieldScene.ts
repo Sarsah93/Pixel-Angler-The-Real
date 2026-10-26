@@ -4991,7 +4991,28 @@ export class RegionFieldScene extends Phaser.Scene {
    */
   /** 219차 — `focus` = 이 단계에서 허용하는 세상 행동(없으면 [] — 가이드 밖 행동은 말풍선이 흔들리며 막힌다) */
   private coachDock(key: string, text: string, focus: string[] = []): CoachStage {
-    return { key, text, anchor: () => new Phaser.Geom.Rectangle(-2, 236, 0, 0), side: 'right', dockY: 236, focus };
+    return { key, text, anchor: () => new Phaser.Geom.Rectangle(-2, this.coachDockTop(0), 0, 0), side: 'right', dockY: (h) => this.coachDockTop(h), focus };
+  }
+
+  /**
+   * 274차 — 안내 말풍선(왼쪽 · x 16~316) 위 끝 = HUD 왼쪽 기둥(상태 창 · 물때 칩 · 제작 칩 · 상태이상 띠) 아래 + 18px.
+   * 구: 위 끝 236 고정 — 상태 창 크기 · 위치와 상관없이 그 자리라 물때 칩(아래 끝 232)에 붙거나 겹쳤다(사용자 캡처).
+   * 지역 채널 위에서 멈추되(아래 8px), 자리가 모자라면 기둥과의 틈을 4px까지 줄인다. `h` = 글을 다 찍었을 때의 말풍선 높이.
+   */
+  private coachDockTop(h: number): number {
+    const COL_X0 = 16, COL_X1 = 16 + 300, GAP = 18;
+    let bottom = 0;
+    for (const r of this.hud?.statusColumnRects() ?? []) {
+      if (r.right < COL_X0 || r.x > COL_X1 || r.y > GAME_HEIGHT / 2) continue;   // 말풍선 열과 안 겹치거나 화면 아래쪽에 옮겨 둔 것
+      bottom = Math.max(bottom, r.bottom);
+    }
+    if (bottom <= 0) return 236;
+    let top = bottom + GAP;
+    const chat = this.hud?.chatRect();
+    if (chat && h > 0 && chat.right > COL_X0 && chat.x < COL_X1 && chat.y > bottom && top + h > chat.y - 8) {
+      top = Math.max(bottom + 4, chat.y - 8 - h);
+    }
+    return Math.round(top);
   }
 
   /** 직판장이 열려 있을 때의 자리 — 왼쪽 상점 창과 오른쪽 가방 사이 (191차 실측 500~812px) */
