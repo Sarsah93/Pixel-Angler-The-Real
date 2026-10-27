@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "next_id": 100,
  "findings": [
   {
@@ -18,7 +18,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-12",
    "resolved_at": "2026-10-12",
-   "rule": "AGENTS §8-6 (씬 키 = 파일명)"
+   "rule": "AGENTS §8-6 (씬 키 = 파일명)",
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0002",
@@ -36,7 +37,8 @@
    "status": "해소",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-12",
-   "resolved_at": "2026-10-12"
+   "resolved_at": "2026-10-12",
+   "lane": "q5-security"
   },
   {
    "id": "F-0003",
@@ -55,7 +57,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0004",
@@ -73,7 +76,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0005",
@@ -88,7 +92,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0006",
@@ -104,7 +109,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0007",
@@ -123,7 +129,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §10 (모든 날짜는 KST)"
+   "rule": "AGENTS §10 (모든 날짜는 KST)",
+   "lane": "q3-flow"
   },
   {
    "id": "F-0008",
@@ -142,7 +149,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0009",
@@ -162,7 +170,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」"
+   "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」",
+   "lane": "q1-items"
   },
   {
    "id": "F-0010",
@@ -181,7 +190,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "스킬 save-migration"
+   "rule": "스킬 save-migration",
+   "lane": "q1-items"
   },
   {
    "id": "F-0011",
@@ -198,7 +208,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q1-items"
   },
   {
    "id": "F-0012",
@@ -218,7 +229,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §4 (any 금지 · 불가피하면 주석 필수)"
+   "rule": "AGENTS §4 (any 금지 · 불가피하면 주석 필수)",
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0013",
@@ -241,7 +253,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0014",
@@ -262,7 +275,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0015",
@@ -279,7 +293,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0016",
@@ -294,7 +309,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q3-flow"
   },
   {
    "id": "F-0017",
@@ -312,7 +328,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0018",
@@ -328,7 +345,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0019",
@@ -344,7 +362,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0020",
@@ -359,7 +378,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0021",
@@ -375,7 +395,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0022",
@@ -391,7 +412,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0023",
@@ -405,7 +427,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0024",
@@ -420,7 +443,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0025",
@@ -439,7 +463,8 @@
    "last_seen": "2026-10-08",
    "resolved_at": null,
    "rule": "AGENTS §8-8",
-   "note": "PR #9에서 아이콘 10종으로 교체 — 병합 뒤 다시 확인해 닫는다."
+   "note": "PR #9에서 아이콘 10종으로 교체 — 병합 뒤 다시 확인해 닫는다.",
+   "lane": "q6-access"
   },
   {
    "id": "F-0026",
@@ -460,7 +485,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "note": "PR #9에서 그림 배정 — 병합 뒤 다시 확인해 닫는다."
+   "note": "PR #9에서 그림 배정 — 병합 뒤 다시 확인해 닫는다.",
+   "lane": "q2-art-data"
   },
   {
    "id": "F-0027",
@@ -477,7 +503,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q6-access"
   },
   {
    "id": "F-0028",
@@ -497,7 +524,8 @@
    "last_seen": "2026-10-08",
    "resolved_at": null,
    "rule": "AGENTS §8-8",
-   "note": "PR #9에서 비어획 아이템 그림 + 활성 화면 폴백 이모지 비움. 레거시 FieldScene · HUD 몫은 PR #4가 삭제."
+   "note": "PR #9에서 비어획 아이템 그림 + 활성 화면 폴백 이모지 비움. 레거시 FieldScene · HUD 몫은 PR #4가 삭제.",
+   "lane": "q2-art-data"
   },
   {
    "id": "F-0029",
@@ -516,7 +544,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §8-8"
+   "rule": "AGENTS §8-8",
+   "lane": "q6-access"
   },
   {
    "id": "F-0030",
@@ -532,7 +561,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0031",
@@ -548,7 +578,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q2-art-data"
   },
   {
    "id": "F-0032",
@@ -567,7 +598,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §8-13 (R11)"
+   "rule": "AGENTS §8-13 (R11)",
+   "lane": "q6-access"
   },
   {
    "id": "F-0033",
@@ -583,7 +615,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0034",
@@ -603,7 +636,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "스킬 asset-pipeline (자동 탐색 · 하드코딩 금지)"
+   "rule": "스킬 asset-pipeline (자동 탐색 · 하드코딩 금지)",
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0035",
@@ -620,7 +654,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0036",
@@ -637,7 +672,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0037",
@@ -652,7 +688,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0038",
@@ -669,7 +706,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0039",
@@ -684,7 +722,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-19",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0040",
@@ -701,7 +740,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0041",
@@ -717,7 +757,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q2-art-data"
   },
   {
    "id": "F-0042",
@@ -732,7 +773,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0043",
@@ -749,7 +791,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0044",
@@ -766,7 +809,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0045",
@@ -782,7 +826,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0046",
@@ -798,7 +843,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0047",
@@ -814,7 +860,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "note": "PR #6에서 통발도 못 내면 파산(사용자 확정)."
+   "note": "PR #6에서 통발도 못 내면 파산(사용자 확정).",
+   "lane": "q4-balance"
   },
   {
    "id": "F-0048",
@@ -831,7 +878,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」"
+   "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」",
+   "lane": "q1-items"
   },
   {
    "id": "F-0049",
@@ -848,7 +896,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q1-items"
   },
   {
    "id": "F-0050",
@@ -863,7 +912,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0051",
@@ -879,7 +929,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q4-balance"
   },
   {
    "id": "F-0052",
@@ -899,7 +950,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0053",
@@ -916,7 +968,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0054",
@@ -935,7 +988,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q3-flow"
   },
   {
    "id": "F-0055",
@@ -953,7 +1007,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "234차 함정 「날씨 카드는 신선한 실황만」"
+   "rule": "234차 함정 「날씨 카드는 신선한 실황만」",
+   "lane": "q3-flow"
   },
   {
    "id": "F-0056",
@@ -969,7 +1024,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q2-art-data"
   },
   {
    "id": "F-0057",
@@ -989,7 +1045,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0058",
@@ -1007,7 +1064,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "DataAttributions.ts 머리말 (출처 미표기는 약관 위반)"
+   "rule": "DataAttributions.ts 머리말 (출처 미표기는 약관 위반)",
+   "lane": "q5-security"
   },
   {
    "id": "F-0059",
@@ -1024,7 +1082,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "AGENTS §10 (모든 날짜는 KST)"
+   "rule": "AGENTS §10 (모든 날짜는 KST)",
+   "lane": "q3-flow"
   },
   {
    "id": "F-0060",
@@ -1042,7 +1101,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0061",
@@ -1056,7 +1116,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0062",
@@ -1071,7 +1132,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q2-art-data"
   },
   {
    "id": "F-0063",
@@ -1087,7 +1149,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "q5-security"
   },
   {
    "id": "F-0064",
@@ -1105,7 +1168,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "rule": "스킬 work-log · doc-readability"
+   "rule": "스킬 work-log · doc-readability",
+   "lane": "d0-docs"
   },
   {
    "id": "F-0065",
@@ -1123,7 +1187,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0066",
@@ -1142,7 +1207,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0067",
@@ -1158,7 +1224,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0068",
@@ -1175,7 +1242,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0069",
@@ -1190,7 +1258,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0070",
@@ -1209,7 +1278,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0071",
@@ -1230,7 +1300,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0072",
@@ -1258,7 +1329,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0073",
@@ -1284,7 +1356,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
    "resolved_at": null,
-   "rule": "스킬 doc-readability"
+   "rule": "스킬 doc-readability",
+   "lane": "d0-docs"
   },
   {
    "id": "F-0074",
@@ -1305,7 +1378,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0075",
@@ -1322,7 +1396,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0076",
@@ -1338,7 +1413,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0077",
@@ -1354,7 +1430,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0078",
@@ -1376,7 +1453,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0079",
@@ -1392,7 +1470,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0080",
@@ -1407,7 +1486,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0081",
@@ -1426,7 +1506,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0082",
@@ -1444,7 +1525,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0083",
@@ -1462,7 +1544,8 @@
    "status": "해소",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-12",
-   "resolved_at": "2026-10-12"
+   "resolved_at": "2026-10-12",
+   "lane": "d0-docs"
   },
   {
    "id": "F-0084",
@@ -1477,7 +1560,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": "2026-10-11",
-   "note": "PR #5 병합(2026-10-11). 병합 뒤 브랜치 5개에서 core 테스트를 다시 돌려 모두 통과."
+   "note": "PR #5 병합(2026-10-11). 병합 뒤 브랜치 5개에서 core 테스트를 다시 돌려 모두 통과.",
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0085",
@@ -1491,7 +1575,8 @@
    "status": "열림",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "b0-baseline"
   },
   {
    "id": "F-0086",
@@ -1507,7 +1592,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "note": "PR #6: 통발에는 상습 배수만 적용, 연체 배수는 채집 전용으로 둠(정기 지출은 채집 장비 기준) — 사용자 확인 전."
+   "note": "PR #6: 통발에는 상습 배수만 적용, 연체 배수는 채집 전용으로 둠(정기 지출은 채집 장비 기준) — 사용자 확인 전.",
+   "lane": "q4-balance"
   },
   {
    "id": "F-0087",
@@ -1523,7 +1609,8 @@
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
    "resolved_at": null,
-   "note": "PR #6에서 단속 때 바다 평판 · 항구 신뢰 감소를 연결(사용자 확정). 나머지 튜닝 6종은 여전히 미연결."
+   "note": "PR #6에서 단속 때 바다 평판 · 항구 신뢰 감소를 연결(사용자 확정). 나머지 튜닝 6종은 여전히 미연결.",
+   "lane": "q4-balance"
   },
   {
    "id": "F-0088",
@@ -1543,7 +1630,8 @@
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-16",
    "resolved_at": "2026-10-23",
-   "decision": "2026-10-15 사용자 결정: 정본 = 코드 216(노드 95 = 유료 90 + 히든 5 · 200 + 면허 15 + 시작 1). 문서 쪽 옛 값 정정은 사용자 세션에서 진행 중 — main 반영 뒤 재확인해 해소."
+   "decision": "2026-10-15 사용자 결정: 정본 = 코드 216(노드 95 = 유료 90 + 히든 5 · 200 + 면허 15 + 시작 1). 문서 쪽 옛 값 정정은 사용자 세션에서 진행 중 — main 반영 뒤 재확인해 해소.",
+   "lane": "d0-docs"
   },
   {
    "id": "F-0089",
@@ -1563,7 +1651,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0090",
@@ -1580,7 +1669,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0091",
@@ -1598,7 +1688,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0092",
@@ -1615,7 +1706,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0093",
@@ -1631,7 +1723,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0094",
@@ -1648,7 +1741,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0095",
@@ -1664,7 +1758,8 @@
    "status": "해소",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-24",
-   "resolved_at": "2026-10-24"
+   "resolved_at": "2026-10-24",
+   "lane": "d0-docs"
   },
   {
    "id": "F-0096",
@@ -1682,7 +1777,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0097",
@@ -1697,7 +1793,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0098",
@@ -1711,7 +1808,8 @@
    "status": "열림",
    "first_seen": "2026-10-11",
    "last_seen": "2026-10-11",
-   "resolved_at": null
+   "resolved_at": null,
+   "lane": "d0-docs"
   },
   {
    "id": "F-0099",
@@ -1725,7 +1823,9 @@
    "status": "해소",
    "first_seen": "2026-10-19",
    "last_seen": "2026-10-24",
-   "resolved_at": "2026-10-24"
+   "resolved_at": "2026-10-24",
+   "lane": "b0-baseline"
   }
- ]
+ ],
+ "lane_note": "2026-10-28 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."
 }

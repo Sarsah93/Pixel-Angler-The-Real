@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": {
     "name": "Pixel Angler The Real",
     "repo": "Sarsah93/Pixel-Angler-The-Real",
@@ -7,7 +7,10 @@
     "kind": "게임",
     "state_branch": "harmony-state",
     "work_branch_prefix": "harmony/",
-    "rule_docs": ["CLAUDE.md", ".agents/AGENTS.md"],
+    "rule_docs": [
+      "CLAUDE.md",
+      ".agents/AGENTS.md"
+    ],
     "report_language": "한국어"
   },
   "verify": {
@@ -25,19 +28,252 @@
     "deep_dive_max_files": 40,
     "deep_dive_max_lines": 15000,
     "long_file_lines": 1500,
-    "md_line_chars": 200
+    "md_line_chars": 200,
+    "run_budget_pct": 4,
+    "max_scenarios_per_run": 4,
+    "harness_minutes_max": 40
   },
   "scoring": {
-    "penalties": { "심각": 15, "보통": 6, "경미": 2 },
-    "weights": { "health": 0.5, "mastery": 0.3, "agency": 0.2 },
+    "penalties": {
+      "심각": 15,
+      "보통": 6,
+      "경미": 2
+    },
+    "weights": {
+      "health": 0.5,
+      "scenarios": 0.3,
+      "agency": 0.2
+    },
+    "scenario_window_days": 14,
     "agency_window_days": 30,
-    "agency_min_decisions": 3
+    "agency_min_decisions": 3,
+    "index_lanes": "product"
   },
-  "asset_consumed_globs": ["packages/client-pc/public/**"],
-  "domains": [
+  "asset_consumed_globs": [
+    "packages/client-pc/public/**"
+  ],
+  "rules": [
     {
-      "id": "01-engineering",
-      "name": "1 엔지니어링",
+      "id": "core-no-render",
+      "domain": "b0-baseline",
+      "desc": "@tra/core 에 Phaser·DOM·브라우저 코드 금지 (AGENTS §8-1)",
+      "severity": "심각",
+      "globs": [
+        "packages/core/src/**/*.ts"
+      ],
+      "exclude": [
+        "packages/core/src/**/*.test.ts"
+      ],
+      "pattern": "from ['\"]phaser['\"]|\\bdocument\\.(?:getElementById|querySelector|createElement|body)|\\bwindow\\.(?:innerWidth|innerHeight|addEventListener|localStorage)",
+      "skip_comment_lines": true,
+      "lane": "b0-baseline"
+    },
+    {
+      "id": "no-lowercase-gamestate",
+      "domain": "b0-baseline",
+      "desc": "gameState(소문자) 인스턴스 사용 금지 (AGENTS §8-2) — get/set 접근자 선언 이름은 제외(2026-10-15 사용자 승인)",
+      "severity": "보통",
+      "globs": [
+        "packages/client-pc/src/**/*.ts"
+      ],
+      "pattern": "(?<!get )(?<!set )\\bgameState\\b",
+      "skip_comment_lines": true,
+      "lane": "b0-baseline"
+    },
+    {
+      "id": "no-scene-start-field",
+      "domain": "q3-flow",
+      "desc": "하위 씬에서 scene.start('FieldScene') 금지 (AGENTS §8-7)",
+      "severity": "심각",
+      "globs": [
+        "packages/client-pc/src/**/*.ts"
+      ],
+      "pattern": "scene\\.start\\(\\s*['\"]FieldScene['\"]",
+      "skip_comment_lines": true,
+      "lane": "q3-flow"
+    },
+    {
+      "id": "no-bare-fadeout-wait",
+      "domain": "q3-flow",
+      "desc": "bare camerafadeoutcomplete 대기 금지 — SceneFade.fadeOutThen 경유 (AGENTS §4)",
+      "severity": "보통",
+      "globs": [
+        "packages/client-pc/src/**/*.ts"
+      ],
+      "exclude": [
+        "packages/client-pc/src/scenes/SceneFade.ts"
+      ],
+      "pattern": "camerafadeoutcomplete",
+      "skip_comment_lines": true,
+      "lane": "q3-flow"
+    },
+    {
+      "id": "no-any",
+      "domain": "b0-baseline",
+      "desc": "any 타입 금지 (AGENTS §4 TypeScript)",
+      "severity": "경미",
+      "globs": [
+        "packages/*/src/**/*.ts"
+      ],
+      "exclude": [
+        "packages/map-builder/**"
+      ],
+      "pattern": ":\\s*any\\b|\\bas\\s+any\\b|<any>",
+      "skip_comment_lines": true,
+      "lane": "b0-baseline"
+    },
+    {
+      "id": "no-ui-emoji",
+      "domain": "q6-access",
+      "desc": "UI 이모지 금지 (AGENTS §8-8) — 주석은 제외, 레거시 icon 폴백은 백로그 대상",
+      "severity": "경미",
+      "globs": [
+        "packages/client-pc/src/**/*.ts",
+        "packages/core/src/**/*.ts"
+      ],
+      "exclude": [
+        "packages/client-pc/src/dev/**",
+        "packages/*/src/**/*.test.ts"
+      ],
+      "pattern": "[\\U0001F300-\\U0001FAFF\\u2705\\u274C\\u26A0]",
+      "skip_comment_lines": true,
+      "lane": "q6-access"
+    },
+    {
+      "id": "no-keydown-text-input",
+      "domain": "q6-access",
+      "desc": "ev.key.length === 1 로 글자를 모으는 텍스트 입력 금지 — ui/TextInput.ts 사용 (AGENTS §8-11)",
+      "severity": "보통",
+      "globs": [
+        "packages/client-pc/src/**/*.ts"
+      ],
+      "exclude": [
+        "packages/client-pc/src/ui/TextInput.ts"
+      ],
+      "pattern": "\\.key\\.length\\s*===?\\s*1",
+      "skip_comment_lines": true,
+      "lane": "q6-access"
+    },
+    {
+      "id": "no-screen-edge-anchor",
+      "domain": "q6-access",
+      "desc": "화면 끝 상수(GAME_WIDTH - 16 - w)로 상시 UI 를 놓지 않기 (AGENTS §8-14)",
+      "severity": "경미",
+      "globs": [
+        "packages/client-pc/src/**/*.ts"
+      ],
+      "pattern": "GAME_WIDTH\\s*-\\s*16\\s*-",
+      "skip_comment_lines": true,
+      "lane": "q6-access"
+    }
+  ],
+  "version_note": "2026-10-28 v2 — 사용자 지시로 저장소 정리 점검에서 제품 점검(플레이어가 겪을 문제)으로 개편",
+  "lanes": [
+    {
+      "id": "q1-items",
+      "name": "① 아이템·재화 배선",
+      "kind": "product",
+      "question": "물건과 돈이 의도한 칸 · 의도한 수량 · 의도한 상태로만 들어가고 나오는가",
+      "scope": [
+        "packages/client-pc/src/store/**/*.ts",
+        "packages/client-pc/src/data/ShopCatalog.ts",
+        "packages/client-pc/src/data/CraftOutputs.ts",
+        "packages/client-pc/src/data/CropItems.ts",
+        "packages/client-pc/src/data/QuestRewardItems.ts",
+        "packages/client-pc/src/ui/InventoryPanel.ts",
+        "packages/client-pc/src/ui/UtilizationPanel.ts",
+        "packages/client-pc/src/ui/ShopPanel.ts",
+        "packages/client-pc/src/ui/TradePanel.ts",
+        "packages/core/src/db-schema/**/*.ts",
+        "packages/core/src/rules/**/*.ts"
+      ],
+      "exclude": []
+    },
+    {
+      "id": "q2-art-data",
+      "name": "② 그림·데이터·문구 정합",
+      "kind": "product",
+      "question": "보이는 그림 · 이름 · 설명 · 수치가 실제 물건 · 실제 규칙과 같은가",
+      "scope": [
+        "packages/client-pc/public/**/*.png",
+        "packages/client-pc/src/data/**/*.ts",
+        "packages/client-pc/src/i18n/**/*.ts",
+        "packages/client-pc/src/ui/ItemIcon.ts",
+        "packages/client-pc/src/ui/ItemDetailPanel.ts",
+        "packages/client-pc/src/scenes/BootScene.ts",
+        "tools/item_art/**",
+        "tools/*_cards.cjs"
+      ],
+      "exclude": []
+    },
+    {
+      "id": "q3-flow",
+      "name": "③ 플레이 흐름·예외 처리",
+      "kind": "product",
+      "question": "창 · 씬 · 놀이를 어떤 순서로 열고 닫고 끊어도 멈추거나 상태가 꼬이지 않는가",
+      "scope": [
+        "packages/client-pc/src/scenes/**/*.ts",
+        "packages/client-pc/src/ui/**/*.ts",
+        "packages/client-pc/src/game.ts",
+        "packages/client-pc/src/main.ts",
+        "packages/core/src/api-client/**/*.ts",
+        "packages/client-pc/src/store/ExternalDataStore.ts",
+        "packages/client-pc/src/store/EnvironmentStore.ts"
+      ],
+      "exclude": [
+        "packages/client-pc/src/dev/**"
+      ]
+    },
+    {
+      "id": "q4-balance",
+      "name": "④ 기획 현실성·밸런스",
+      "kind": "product",
+      "question": "가격 · 수율 · 시간 · 확률이 현실과 맞고, 공짜로 되풀이되는 이득이나 막다른 길이 없는가",
+      "scope": [
+        "packages/core/src/simulation/**/*.ts",
+        "packages/core/src/config/**/*.ts",
+        "packages/core/src/types/Economy.ts",
+        "packages/client-pc/src/data/ShopCatalog.ts",
+        "packages/core/src/db-schema/**/*.ts"
+      ],
+      "exclude": []
+    },
+    {
+      "id": "q5-security",
+      "name": "⑤ 보안·계정·서비스",
+      "kind": "product",
+      "question": "서버가 믿지 말아야 할 값을 믿지 않고, 키 · 개인 정보가 새지 않으며, 접속이 끊겨도 서비스가 버티는가",
+      "scope": [
+        "packages/server/src/**/*.ts",
+        "packages/client-pc/src/net/**/*.ts",
+        "packages/client-pc/src/store/Multiplayer*.ts",
+        "packages/client-pc/src/store/SaveStore.ts",
+        "packages/client-pc/vite.config.ts",
+        ".env.example",
+        ".gitignore",
+        ".github/workflows/**",
+        "packages/core/src/db-schema/DataAttributions.ts"
+      ],
+      "exclude": []
+    },
+    {
+      "id": "q6-access",
+      "name": "⑥ 접근성·사용성",
+      "kind": "product",
+      "question": "색 · 글자 · 조작 · 안내가 처음 하는 사람과 색약 · 키보드 사용자에게도 통하는가",
+      "scope": [
+        "packages/client-pc/src/ui/**/*.ts",
+        "packages/client-pc/src/i18n/**/*.ts",
+        "packages/client-pc/src/data/HelpContent.ts",
+        "packages/client-pc/src/ui/GuideTour.ts"
+      ],
+      "exclude": []
+    },
+    {
+      "id": "b0-baseline",
+      "name": "기본 점검(빌드·규칙)",
+      "kind": "support",
+      "question": "빌드 · 타입 · 시험 · 규칙 정규식 · 도구 재현성이 깨지지 않았는가",
       "scope": [
         "package.json",
         "pnpm-workspace.yaml",
@@ -59,19 +295,25 @@
         "apps/**/*.toml",
         "apps/**/*.rs",
         "apps/**/*.json",
-        "docs/wiki/01-ARCHITECTURE.md"
+        "docs/wiki/01-ARCHITECTURE.md",
+        "tools/**",
+        ".github/**",
+        "packages/client-pc/public/data/**",
+        "packages/core/src/scripts/**",
+        ".claude/skills/deploy-ghpages/**",
+        ".claude/skills/asset-pipeline/**",
+        ".claude/skills/add-region/**",
+        "packages/core/src/**/*.test.ts"
       ],
-      "exclude": []
+      "exclude": [
+        "tools/__pycache__/**"
+      ]
     },
     {
-      "id": "02-code",
-      "name": "2 코드",
-      "scope": ["packages/core/src/**/*.ts", "packages/client-pc/src/**/*.ts"],
-      "exclude": ["packages/core/src/index.ts", "packages/core/src/types/**", "packages/core/src/api-client/**"]
-    },
-    {
-      "id": "03-files-docs",
-      "name": "3 파일·문서",
+      "id": "d0-docs",
+      "name": "문서·지침 정합",
+      "kind": "support",
+      "question": "문서 · 스킬 · 백로그가 지금 코드와 맞는가(일요일만)",
       "scope": [
         "assets/**",
         "food assets/**",
@@ -80,183 +322,35 @@
         "docs/reference/**",
         "docs/mockups/**",
         "docs/archive/**",
-        "packages/map-builder/**"
+        "packages/map-builder/**",
+        "CLAUDE.md",
+        "README.md",
+        ".agents/**",
+        "docs/wiki/**",
+        ".claude/**"
       ],
-      "exclude": []
-    },
-    {
-      "id": "04-design-media",
-      "name": "4 디자인·미디어",
-      "scope": [
-        "packages/client-pc/public/**/*.png",
-        "packages/client-pc/public/**/*.jpg",
-        "packages/client-pc/public/**/*.svg",
-        "packages/client-pc/src/data/PixelIconArt.ts",
-        "packages/client-pc/src/ui/PixelIcon.ts",
-        "packages/client-pc/src/ui/ItemIcon.ts",
-        "packages/client-pc/src/scenes/BootScene.ts",
-        "packages/client-pc/src/data/TilesetManifest.ts",
-        "packages/client-pc/src/data/FishTextures.ts",
-        "packages/core/src/art/**/*.ts",
-        "apps/**/icons/**"
-      ],
-      "exclude": []
-    },
-    {
-      "id": "05-pipeline",
-      "name": "5 파이프라인",
-      "scope": [
-        "tools/**",
-        "turbo.json",
-        ".github/**",
-        "packages/client-pc/public/data/**",
-        "packages/core/src/scripts/**",
-        ".claude/skills/deploy-ghpages/**",
-        ".claude/skills/asset-pipeline/**",
-        ".claude/skills/add-region/**"
-      ],
-      "exclude": ["tools/__pycache__/**"]
-    },
-    {
-      "id": "06-tickets-economy",
-      "name": "6 티켓·경제",
-      "scope": [
-        "docs/wiki/04-BACKLOG.md",
-        ".agents/IMPLEMENTATION_PLAN.md",
-        "docs/wiki/02-SYSTEMS/economy-data.md",
-        "docs/wiki/02-SYSTEMS/multiplayer.md",
-        "docs/wiki/02-SYSTEMS/progression.md",
-        "packages/core/src/simulation/*Market*.ts",
-        "packages/core/src/simulation/*Auction*.ts",
-        "packages/core/src/simulation/DayLedger.ts",
-        "packages/core/src/simulation/Craft*.ts",
-        "packages/core/src/types/Economy.ts",
-        "packages/core/src/types/DayLedger.ts",
-        "packages/core/src/types/Quest.ts",
-        "packages/core/src/rules/ShopStock.ts",
-        "packages/core/src/db-schema/Quest*.ts",
-        "packages/client-pc/src/store/*Store.ts",
-        "packages/client-pc/src/store/Consign*.ts",
-        "packages/client-pc/src/store/GameState.ts",
-        "packages/client-pc/src/data/ShopCatalog.ts",
-        "packages/client-pc/src/data/Consignment.ts",
-        "packages/client-pc/src/data/QuestRewardItems.ts",
-        "packages/client-pc/src/ui/ShopPanel.ts",
-        "packages/client-pc/src/ui/ShopCartDialog.ts",
-        "packages/client-pc/src/ui/TradePanel.ts",
-        "packages/client-pc/src/ui/AuctionHousePanel.ts",
-        "packages/server/src/multiplayer/**/*.ts"
-      ],
-      "exclude": []
-    },
-    {
-      "id": "07-api-env",
-      "name": "7 API·환경 설정",
-      "scope": [
-        ".env.example",
-        ".gitignore",
-        "packages/core/src/api-client/**",
-        "packages/core/src/db-schema/DataAttributions.ts",
-        "packages/core/src/db-schema/MarineStations.ts",
-        "packages/core/src/db-schema/KmaGridPoints.ts",
-        "packages/client-pc/src/store/ExternalDataStore.ts",
-        "packages/client-pc/src/store/EnvironmentStore.ts",
-        "packages/client-pc/vite.config.ts",
-        "packages/server/src/api/**",
-        "tools/fetch_*.py"
-      ],
-      "exclude": []
-    },
-    {
-      "id": "08-notes-memory",
-      "name": "8 노트·메모리",
-      "scope": ["CLAUDE.md", "README.md", ".agents/**", "docs/wiki/**"],
-      "exclude": []
-    },
-    {
-      "id": "09-skills",
-      "name": "9 스킬",
-      "scope": [".claude/**"],
       "exclude": []
     }
   ],
-  "rules": [
-    {
-      "id": "core-no-render",
-      "domain": "01-engineering",
-      "desc": "@tra/core 에 Phaser·DOM·브라우저 코드 금지 (AGENTS §8-1)",
-      "severity": "심각",
-      "globs": ["packages/core/src/**/*.ts"],
-      "exclude": ["packages/core/src/**/*.test.ts"],
-      "pattern": "from ['\"]phaser['\"]|\\bdocument\\.(?:getElementById|querySelector|createElement|body)|\\bwindow\\.(?:innerWidth|innerHeight|addEventListener|localStorage)",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-lowercase-gamestate",
-      "domain": "02-code",
-      "desc": "gameState(소문자) 인스턴스 사용 금지 (AGENTS §8-2) — get/set 접근자 선언 이름은 제외(2026-10-15 사용자 승인)",
-      "severity": "보통",
-      "globs": ["packages/client-pc/src/**/*.ts"],
-      "pattern": "(?<!get )(?<!set )\\bgameState\\b",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-scene-start-field",
-      "domain": "02-code",
-      "desc": "하위 씬에서 scene.start('FieldScene') 금지 (AGENTS §8-7)",
-      "severity": "심각",
-      "globs": ["packages/client-pc/src/**/*.ts"],
-      "pattern": "scene\\.start\\(\\s*['\"]FieldScene['\"]",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-bare-fadeout-wait",
-      "domain": "02-code",
-      "desc": "bare camerafadeoutcomplete 대기 금지 — SceneFade.fadeOutThen 경유 (AGENTS §4)",
-      "severity": "보통",
-      "globs": ["packages/client-pc/src/**/*.ts"],
-      "exclude": ["packages/client-pc/src/scenes/SceneFade.ts"],
-      "pattern": "camerafadeoutcomplete",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-any",
-      "domain": "02-code",
-      "desc": "any 타입 금지 (AGENTS §4 TypeScript)",
-      "severity": "경미",
-      "globs": ["packages/*/src/**/*.ts"],
-      "exclude": ["packages/map-builder/**"],
-      "pattern": ":\\s*any\\b|\\bas\\s+any\\b|<any>",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-ui-emoji",
-      "domain": "04-design-media",
-      "desc": "UI 이모지 금지 (AGENTS §8-8) — 주석은 제외, 레거시 icon 폴백은 백로그 대상",
-      "severity": "경미",
-      "globs": ["packages/client-pc/src/**/*.ts", "packages/core/src/**/*.ts"],
-      "exclude": ["packages/client-pc/src/dev/**", "packages/*/src/**/*.test.ts"],
-      "pattern": "[\\U0001F300-\\U0001FAFF\\u2705\\u274C\\u26A0]",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-keydown-text-input",
-      "domain": "02-code",
-      "desc": "ev.key.length === 1 로 글자를 모으는 텍스트 입력 금지 — ui/TextInput.ts 사용 (AGENTS §8-11)",
-      "severity": "보통",
-      "globs": ["packages/client-pc/src/**/*.ts"],
-      "exclude": ["packages/client-pc/src/ui/TextInput.ts"],
-      "pattern": "\\.key\\.length\\s*===?\\s*1",
-      "skip_comment_lines": true
-    },
-    {
-      "id": "no-screen-edge-anchor",
-      "domain": "04-design-media",
-      "desc": "화면 끝 상수(GAME_WIDTH - 16 - w)로 상시 UI 를 놓지 않기 (AGENTS §8-14)",
-      "severity": "경미",
-      "globs": ["packages/client-pc/src/**/*.ts"],
-      "pattern": "GAME_WIDTH\\s*-\\s*16\\s*-",
-      "skip_comment_lines": true
-    }
-  ]
+  "schedule": {
+    "note": "한국 시각 요일(월=1 … 일=7)로 그날 깊게 볼 갈래를 정한다. 새 커밋이 있으면 그 전에 변경분 영향 점검을 먼저 한다.",
+    "1": "q1-items",
+    "2": "q2-art-data",
+    "3": "q3-flow",
+    "4": "q4-balance",
+    "5": "q5-security",
+    "6": "q6-access",
+    "7": "d0-docs"
+  },
+  "legacy_domain_to_lane": {
+    "01-engineering": "b0-baseline",
+    "02-code": "b0-baseline",
+    "03-files-docs": "d0-docs",
+    "04-design-media": "q2-art-data",
+    "05-pipeline": "b0-baseline",
+    "06-tickets-economy": "q4-balance",
+    "07-api-env": "b0-baseline",
+    "08-notes-memory": "d0-docs",
+    "09-skills": "d0-docs"
+  }
 }

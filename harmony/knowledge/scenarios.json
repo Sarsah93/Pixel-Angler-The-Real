@@ -1,0 +1,427 @@
+{
+ "schema": 1,
+ "note": "갈래별 시나리오 — last_run(YYYY-MM-DD) · result(통과 · 발견 n · 못 돌림: 이유) · findings(F-번호). 새 시나리오는 같은 갈래 끝에 이어 붙인다(번호 재사용 금지).",
+ "lanes": {
+  "q1-items": [
+   {
+    "id": "S1-01",
+    "title": "상점 묶음 · 갑 · 곽을 사서 채비 창 모든 칸에 넣어 본다",
+    "how": "상점 표(SHOP_CATALOG) 중 bundle · unpack · pack_* 전부를 `RegionFieldScene.handleBuy`로 산 뒤 `UtilizationPanel` 칸마다 후보 목록 · `setRigNode` 결과를 본다. 갑째 거부 · 「열어서 꿰기」 · 칸 몫(partStockLeft)",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-02",
+    "title": "가방이 가득 찬 상태에서 넣기 경로를 전부 두드린다(사라지는 물건 0)",
+    "how": "`__INV`로 칸을 꽉 채운 뒤 구매 · 퀘스트 보상 · 회수(화구 · 통발 · 거치대) · 거래 · 위판 반환 · 바닥 줍기 · 제작 산출 · 열기(openBundle) · 고장(setFault)을 한 번씩. 앞뒤 물건 총수 비교",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-03",
+    "title": "같은 id 쌓기 — 신선도 · 고장 · 쓴 횟수 · 줄 쓴 길이가 섞일 때",
+    "how": "새 것 + 헌 것(상함 · 고장 · 줄 쓴 길이)을 `addItem`으로 합친 뒤 상태 비교. `blendCondition` · `lineUsedM` · `fault` · `useCount` 필드. 장비 개체 분리는 백로그 CX(사용자 판단) — 재확인만",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-04",
+    "title": "저장 → 불러오기 왕복에서 바뀌는 것이 없는가",
+    "how": "`__INV.serialize` → `deserialize`, `__GS` 저장 → 불러오기 두 번. 칸 · 장착 · 퀵슬롯 · 채비 트리 · 쿨러 · 집 보관 · 냉장고 · 거치대 · 요리 시계가 같아야 한다. 두 번째 불러오기도 같은지",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-05",
+    "title": "옛 세이브(필드 뺀 JSON) 불러오기 — 백필 · 폴백",
+    "how": "최근 30일 안에 InvItem · 세이브 상태에 새로 생긴 필드를 git log로 찾고, 그 필드를 지운 세이브를 `deserialize`. 스킬 save-migration 규칙(`??`만 · 유저 상태 보존)",
+    "mode": "하네스 + 정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-06",
+    "title": "분류 함수 대조표 — 같은 물건을 모든 판정이 같은 갈래로 보는가",
+    "how": "카탈로그 전 아이템 × (subCategory · rigPart · tool · `isBaitItem` · `isPackItem` · `partKindOf` · `RecommendationStore` 판정 · 정리 무리 · 위키 분류) 표를 만들어 서로 어긋나는 행을 찾는다. 미끼 갑 버그(279 · 280)가 이 모양이다",
+    "mode": "정적(스크립트)",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-07",
+    "title": "재화 증감 경로의 음수 · NaN · 소수 · 반환값 무시",
+    "how": "`addCoins` · `spendCoins` · 판매가 · 벌금 · 사용료 호출부 전수. 음수 · 0 · NaN 입력을 하네스로 넣어 잔액이 깨지는지",
+    "mode": "정적 + 하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S1-08",
+    "title": "먹기 · 쓰기 · 버리기 · 놓아주기 메뉴가 물건 종류마다 맞게 뜨는가",
+    "how": "가방 우클릭 메뉴를 분류별 대표 아이템 30종으로 열어 메뉴 항목 표를 만든다. 효과 없는 「사용하기」 · 버리면 안 되는 퀘스트 물건 · 쿨러 담긴 채 버리기",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "q2-art-data": [
+   {
+    "id": "S2-01",
+    "title": "아이템 그림이 이름 · 수량 단위와 맞는가(한 켤레 · 한 갑 · 10개입)",
+    "how": "`food assets/items` · `public/items` · `public/tackle` 카드를 이름표와 함께 모아 보기(montage 또는 Pillow)로 만들어 직접 본다. 수량 단위(켤레 · 갑 · 곽 · 묶음 · 팩)와 그림 속 개수 대조. 255차 장갑 · 단화 세 켤레가 이 모양",
+    "mode": "그림 보기",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S2-02",
+    "title": "같은 물건 두 id · 같은 그림 다른 물건 · 그림 없는 물건",
+    "how": "카탈로그 이름 정규화 중복 · `ITEM_ID_ALIAS` 밖 중복 · iconTexture 공유 목록 · 빈 icon(F-0026) · 이모지 폴백(F-0028) 수를 다시 센다",
+    "mode": "정적(스크립트)",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S2-03",
+    "title": "설명문 · 상세 창 수치가 데이터와 같은가",
+    "how": "`ItemDetailPanel.buildItemDetail`을 전 아이템에 돌려 행 값과 데이터 필드(무게 · 호수 · 세기 · 가격 · 신선도 시간 · 수량)를 대조. 설명문(desc) 안 숫자도 뽑아 비교. 줄 세기 두 값(CY · 281)이 이 모양",
+    "mode": "하네스(순수 함수)",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S2-04",
+    "title": "영어 번역 누락 · 원문이 바뀌어 끊긴 번역 키",
+    "how": "`setLocale('en', game)` 뒤 주요 창(가방 · 상점 · 채비 · 상세 · 도감 · 일지)을 열어 화면 Text의 한글 잔존을 센다(`__i18nSrc` vs text). i18n 키 중 원문이 코드에 없는 것",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S2-05",
+    "title": "게임 · 도감 · 위키 · 도움말의 이름과 규칙 서술이 같은가",
+    "how": "`tools/wiki_items.json` 이름 vs 게임 이름, `HelpContent` 문장 속 수치 vs core 표. 최근 워크로그가 바꾼 규칙이 도움말에 반영됐는지",
+    "mode": "정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S2-06",
+    "title": "아이템 그림 품질(표시 크기에서 읽히는가) — v1 상시 과제 B",
+    "how": "`knowledge/v1/04-design-media.md` 「아이템 그림 품질 기준」 표로 묶음 하나를 본다. 코드로 그린 그림 개선은 PR 가능(그 노트의 조건)",
+    "mode": "그림 보기",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S2-07",
+    "title": "맵 시각 품질(이음매 · 끊긴 선 · 도로 위 건물) — v1 상시 과제 A",
+    "how": "`knowledge/v1/04-design-media.md` 「맵 품질 기준」 대장에서 가장 오래 안 본 구역. 생성 규칙 변경은 제안만",
+    "mode": "그림 보기",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "q3-flow": [
+   {
+    "id": "S3-01",
+    "title": "모든 창을 열고 · ESC · 닫기 · 다시 열기를 되풀이해도 오류 0",
+    "how": "필드에서 단축키로 여는 창 전부(REFERENCE.md §2)를 차례로 열고 ESC · ✕ · 다시 열기 3회. pageerror · 남은 popupStack · 입력 잠김(`uiBlocked`) 확인",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S3-02",
+    "title": "씬 전환을 연타하거나 중간에 끊어도 멈추지 않는가",
+    "how": "집 ↔ 필드 · 가게 들어가기/나가기 · 출조(세계 지도) · 1인칭 낚시 진입/복귀를 페이드 중에 다시 누르기. 검은 화면 · 이중 차감 · 이동 잠김(스킬 scene-transition)",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S3-03",
+    "title": "놀이 · 작업 장면 도중 창을 닫거나 가이드가 겹칠 때",
+    "how": "채집 놀이 · 손질 · 요리 · 텃밭 작업 중 ESC · 다른 창 열기 · 가이드 말풍선 겹침. 278차 「닫은 창의 가이드」 모양",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S3-04",
+    "title": "탭 숨김 · WebGL 컨텍스트 유실 뒤 복귀",
+    "how": "`document.hidden` 흉내 · `WEBGL_lose_context`로 강제 유실 → 복구 후 필드 · 집 · 1인칭 화면이 다시 그려지는가(266차)",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S3-05",
+    "title": "시간 경계 — 자정 · 월말 · 계절 · 오프라인 갭 · 기기 시간대",
+    "how": "게임 시계를 23:59 · 말일 · 금어기 경계로 옮기고(dev 시계 조작 또는 Date 흉내) 신선도 · 물때 · 퀘스트 기한 · 정기 지출을 본다. 시간대 의존(F-0007 · F-0059)",
+    "mode": "하네스 + 정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S3-06",
+    "title": "외부 데이터 실패(네트워크 끊김 · 시간 초과 · 이상한 응답)",
+    "how": "Playwright `page.route`로 기상 · 시세 요청을 실패 · 지연 · 빈 응답으로 바꿔 게임이 Mock으로 버티는지 · 지난 실데이터를 덮지 않는지(F-0054 · F-0055)",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S3-07",
+    "title": "세이브가 깨졌거나 비었을 때",
+    "how": "localStorage 슬롯에 잘린 JSON · 다른 버전 · 빈 객체를 넣고 불러오기. 빈 슬롯처럼 조용히 넘어가는지(F-0016) · 게임이 멈추는지",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "q4-balance": [
+   {
+    "id": "S4-01",
+    "title": "사서 되팔기 · 만들어 팔기 차익표(전 품목)",
+    "how": "상점 매입가 vs 판매가(위판 · 직판 · 상점 되팔기) · 제작 재료비 vs 산출 판매가를 표로. 차익 > 0이면 무한 수급 후보",
+    "mode": "정적(스크립트)",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S4-02",
+    "title": "어종 판매가 · 크기 · 무게가 실제와 맞는가",
+    "how": "`evaluateFishSellPrice` 소 · 중 · 대 3점 vs 실제 위판 · 산지 시세(웹 검색 — 수협 · 농정원 경락 · 기사). 길이-무게 관계 vs 실측 자료",
+    "mode": "정적 + 웹",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S4-03",
+    "title": "미끼 · 식재료 신선도 · 조리 · 손질 수율이 현실적인가",
+    "how": "CONDITION 시간표 · 수율(KnifeDatabase · 손질 프로필) · 조리 시간을 실제 자료(웹)와 비교. 지렁이 상온 보관 · 크릴 해동 등",
+    "mode": "정적 + 웹",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S4-04",
+    "title": "비용 없이 되풀이되는 이득 · 되돌리기 이득",
+    "how": "퀘스트 보상 반복 · 대화 선택지 반복 · 저장/불러오기로 확률 다시 굴리기 · 프롤로그 비상금(F-0051) · 채집 고갈 키",
+    "mode": "정적 + 하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S4-05",
+    "title": "줄 세기 · 낚싯대 하중 · 물고기 힘의 짝이 말이 되는가",
+    "how": "`rules/LineStrength` · `RodCatalog` 하중 · 어종 fight.basePower로 「이 채비로 이 고기가 끌려 나오나」 표. 3호 목줄로 대물 · 합사 0.8호로 방어 등",
+    "mode": "정적(스크립트)",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S4-06",
+    "title": "초반 경제 곡선 — 첫 1시간의 수입 · 지출 · 막히는 곳",
+    "how": "새 게임 시작 자금 · 첫 퀘스트 보상 · 필수 구매 · 하루 정기 지출을 따라가며 돈이 0이 되는 지점 · 아무것도 못 하는 구간을 찾는다",
+    "mode": "하네스 + 정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S4-07",
+    "title": "작물 · 농사 수익과 시간이 현실 · 다른 활동과 균형인가",
+    "how": "작물별 종자값 · 생육 일수 · 수확량 · 시세(KAMIS 스냅샷) vs 실제 농업 자료. 낚시 하루 수입과 비교",
+    "mode": "정적 + 웹",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "q5-security": [
+   {
+    "id": "S5-01",
+    "title": "서버가 클라이언트 값을 그대로 믿는 곳(거래 · 위치 · 설치물 · 채팅)",
+    "how": "`packages/server/src` 라우트마다 입력 검증 · 세션 소유 확인 · 수량/재화 범위를 표로. 공격 재현 절차는 공개 기록에 쓰지 않는다(4.3)",
+    "mode": "정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S5-02",
+    "title": "요청 상한 · 세션 수 · CORS · 오류 응답에 새는 내부 정보",
+    "how": "서버 미들웨어 · 오류 처리기. 큰 본문 · 잦은 요청에 버티는지(로컬에서만 띄워 시험 — 외부 호스트 금지)",
+    "mode": "정적 + 로컬 서버",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S5-03",
+    "title": "번들 · 저장소에 들어가는 키 · 환경 변수 · 개인 정보",
+    "how": "`VITE_` 접두 변수 목록 · 빌드 산출물 grep(값은 쓰지 않는다) · .gitignore · 워크플로 시크릿 이름. 값을 찾으면 위치는 마지막 메시지에서만",
+    "mode": "정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S5-04",
+    "title": "세이브 변조로 얻는 이득이 멀티(거래 · 공유)로 번지는가",
+    "how": "localStorage 세이브를 고쳐 만든 물건 · 돈이 거래 · 공유 채널로 남에게 갈 수 있는지(F-0043). 단독 플레이 변조는 문제로 보지 않는다",
+    "mode": "정적 + 하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S5-05",
+    "title": "이름 · 채팅 · 입력 칸 — 길이 · 금칙 · 깨진 글자 · 주입",
+    "how": "`ui/TextInput` 쓰는 칸 전부에 아주 긴 글 · 제어 문자 · HTML · 이모지를 넣어 화면 · 서버 · 세이브가 버티는지",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S5-06",
+    "title": "외부 데이터 출처 · 라이선스 표기 · 이용 조건",
+    "how": "`DataAttributions.ts` vs 실제 연동 목록 · 공공데이터 이용 조건 · 지도 · 글꼴 · 음악 라이선스 고지(F-0058 · F-0062)",
+    "mode": "정적 + 웹",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "q6-access": [
+   {
+    "id": "S6-01",
+    "title": "색약 모드 3종에서 HUD · 상태 색 · 지도 표시가 구별되는가",
+    "how": "설정 「접근성」 색 구분 보정을 켜고 필드 HUD · 1인칭 · 텃밭 · 가방 신선도 칩을 스크린샷. 색만으로 구별하는 곳(251차)",
+    "mode": "하네스 + 그림 보기",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S6-02",
+    "title": "글자 넘침 · 겹침 — 한국어 · 영어 · 가장 긴 내용",
+    "how": "`tools/ui_overlap_audit.js` + 창마다 가장 긴 이름(어종 · 아이템)으로 렌더. `[TextOverflow]` 경고 수(스킬 ui-panel)",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S6-03",
+    "title": "키보드만으로 주요 흐름을 할 수 있는가",
+    "how": "마우스 없이 새 게임 → 이동 → 상점 → 구매 → 채비 → 캐스팅. 막히는 곳 목록. ⚠ `page.keyboard`는 아래 씬까지 구동한다(스킬 verify-render)",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S6-04",
+    "title": "한글 입력(IME)이 모든 입력 칸에서 되는가",
+    "how": "`ui/TextInput` 밖에서 글자를 모으는 칸(규칙 no-keydown-text-input) · 조합 중 Enter · 붙여넣기",
+    "mode": "정적 + 하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S6-05",
+    "title": "인게임 표현 규칙 R1~R14 위반",
+    "how": "내부 id · 개발 용어 노출 · 스포일러 · 조작 안내 문구 · 바탕 상자 글자 · 이모지(AGENTS §4). 화면 Text 전수 스캔 + 규칙 정규식",
+    "mode": "하네스 + 정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S6-06",
+    "title": "처음 하는 사람의 동선 — 가이드 · 코치가 막거나 놓치는 곳",
+    "how": "새 게임 프롤로그를 하네스로 따라가며 가이드 말풍선이 다른 창을 가리는 곳 · 안내 없이 멈추는 곳 · 같은 안내 반복",
+    "mode": "하네스",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "b0-baseline": [
+   {
+    "id": "S0-01",
+    "title": "빌드 · 타입 · 시험 · 규칙 정규식",
+    "how": "config verify 명령 + collect_metrics 규칙 수 비교",
+    "mode": "명령",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "S0-02",
+    "title": "검증 하네스 · 생성기가 지금 코드에서 도는가",
+    "how": "워크로그가 남긴 하네스 · tools 생성기 중 하나를 골라 돌려 본다(F-0034 · F-0085)",
+    "mode": "명령",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ],
+  "d0-docs": [
+   {
+    "id": "SD-01",
+    "title": "시스템 페이지 · 백로그 상태가 코드와 같은가",
+    "how": "최근 7일 워크로그가 바꾼 시스템의 페이지 §4 · §5 · 백로그 행 대조",
+    "mode": "정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   },
+   {
+    "id": "SD-02",
+    "title": "스킬 · 지침이 지금 절차와 같은가",
+    "how": "스킬이 가리키는 경로 · 심볼 실재 확인(grep)",
+    "mode": "정적",
+    "last_run": null,
+    "result": null,
+    "findings": []
+   }
+  ]
+ }
+}

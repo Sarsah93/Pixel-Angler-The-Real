@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""하모니 점수 계산기 — 원장과 검토 기록에서 도메인별 점수를 계산한다.
+"""하모니 점수 계산기 v2 — 원장과 시나리오 기록에서 갈래별 점수를 계산한다.
 
-점수는 모델의 "느낌"이 아니라 아래 공식으로만 나온다(같은 입력이면 같은 점수).
+2026-10-28 사용자 지시로 개편했다. v1은 「범위 안 파일을 몇 개 읽었나(숙련)」로 점수를 매겨
+점검이 문서 정리로 쏠렸다. v2는 **플레이어가 겪을 문제를 얼마나 찾아 고쳤나**를 센다.
 
-- 상태(health)   = 100 − Σ(열린 발견 사항의 감점). 그 도메인을 한 번도 점검하지 않았으면 "미측정".
-- 숙련(mastery)  = 범위 안 파일 중 "지금 내용 그대로 검토·기록된" 파일의 비율 × 100.
-                   검토한 뒤 파일이 바뀌면 다시 미검토로 돌아간다(블롭 해시 비교).
-- 실행(agency)   = 최근 N일 동안 결정된 수정안 중 병합된 비율 × 100. 결정이 3건 미만이면 "표본 부족".
-- 종합(overall)  = 가중 평균(없는 항목은 빼고 다시 정규화).
-- 하모니 지수    = 도메인 종합의 평균.  조화도 = 100 − (최고 − 최저).
+점수는 아래 공식으로만 나온다(같은 입력이면 같은 점수).
+
+- 상태(health)      = 100 − Σ(그 갈래의 열린 발견 감점). 심각 15 · 보통 6 · 경미 2.
+- 시나리오(scenarios) = 그 갈래 시나리오 중 최근 N일(기본 14일) 안에 돌린 비율 × 100.
+                      시나리오가 하나도 없으면 「—」.
+- 실행(agency)      = 최근 30일 동안 결정된 수정 PR 중 병합된 비율 × 100. 결정 3건 미만이면 「—」.
+- 종합(overall)     = 가중 평균(없는 항목은 빼고 다시 정규화). 기본 가중 0.5 · 0.3 · 0.2.
+- 하모니 지수       = **제품 갈래(①~⑥) 종합의 평균**. 기본 점검 · 문서 갈래는 표에만 나오고 지수에는 넣지 않는다.
+- 오늘 찾음 / 고침  = first_seen · resolved_at이 오늘인 발견 수.
 
 사용:
   python3 score.py --repo <점검한 체크아웃> --state <harmony 폴더> --date YYYY-MM-DD
@@ -19,30 +23,8 @@ import argparse
 import datetime as dt
 import json
 import os
-import re
 import subprocess
 import sys
-
-
-def glob_to_re(glob: str) -> re.Pattern[str]:
-    out, i = [], 0
-    while i < len(glob):
-        if glob.startswith("**/", i):
-            out.append("(?:.*/)?")
-            i += 3
-        elif glob.startswith("**", i):
-            out.append(".*")
-            i += 2
-        elif glob[i] == "*":
-            out.append("[^/]*")
-            i += 1
-        elif glob[i] == "?":
-            out.append("[^/]")
-            i += 1
-        else:
-            out.append(re.escape(glob[i]))
-            i += 1
-    return re.compile("^" + "".join(out) + "$")
 
 
 def load(path: str, default):
@@ -63,6 +45,20 @@ def delta(now, before) -> str:
     return "0" if abs(d) < 0.5 else f"{d:+.0f}"
 
 
+def parse_date(s):
+    try:
+        return dt.date.fromisoformat((s or "")[:10])
+    except ValueError:
+        return None
+
+
+def lane_of(rec: dict, legacy: dict) -> str:
+    """발견 · 수정안의 갈래 — v2 기록은 `lane`, v1 기록은 옛 `domain`을 옮김표로 바꾼다."""
+    if rec.get("lane"):
+        return rec["lane"]
+    return legacy.get(rec.get("domain", ""), rec.get("domain", ""))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", required=True)
@@ -73,79 +69,70 @@ def main() -> int:
     cfg = load(os.path.join(args.state, "config.json"), {})
     sc = cfg.get("scoring", {})
     penalties = sc.get("penalties", {"심각": 15, "보통": 6, "경미": 2})
-    weights = sc.get("weights", {"health": 0.5, "mastery": 0.3, "agency": 0.2})
+    weights = sc.get("weights", {"health": 0.5, "scenarios": 0.3, "agency": 0.2})
+    scen_window = int(sc.get("scenario_window_days", 14))
     window_days = int(sc.get("agency_window_days", 30))
     min_decisions = int(sc.get("agency_min_decisions", 3))
+    legacy = cfg.get("legacy_domain_to_lane", {})
 
     findings = load(os.path.join(args.state, "ledger", "findings.json"), {"findings": []})["findings"]
     proposals = load(os.path.join(args.state, "ledger", "proposals.json"), {"proposals": []})["proposals"]
-    coverage = load(os.path.join(args.state, "knowledge", "coverage.json"), {"domains": {}})["domains"]
+    scenarios = load(os.path.join(args.state, "knowledge", "scenarios.json"), {"lanes": {}}).get("lanes", {})
 
-    tracked = {}
-    out = subprocess.run(["git", "-C", args.repo, "ls-files", "-s", "-z"], check=True, capture_output=True, text=True).stdout
-    for rec in out.split("\0"):
-        if rec:
-            meta, path = rec.split("\t", 1)
-            tracked[path] = meta.split()[1][:12]
     head = subprocess.run(["git", "-C", args.repo, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-
     today = dt.date.fromisoformat(args.date)
-    domains_out = {}
-    for dom in cfg.get("domains", []):
-        did = dom["id"]
-        inc = [glob_to_re(g) for g in dom.get("scope", [])]
-        exc = [glob_to_re(g) for g in dom.get("exclude", [])]
-        scope = [p for p in tracked if any(r.match(p) for r in inc) and not any(r.match(p) for r in exc)]
-        cov = coverage.get(did, {})
-        reviewed = cov.get("files", {})
-        current = sum(1 for p in scope if reviewed.get(p) == tracked[p])
-        stale = sum(1 for p in scope if p in reviewed and reviewed[p] != tracked[p])
-        mastery = round(100.0 * current / len(scope), 1) if scope else None
 
-        open_f = [f for f in findings if f.get("domain") == did and f.get("status") == "열림"]
-        health = None
-        if cov.get("passes"):
-            health = max(0.0, 100.0 - sum(penalties.get(f.get("severity", "보통"), 6) for f in open_f))
+    lanes_out = {}
+    for lane in cfg.get("lanes", []):
+        lid = lane["id"]
+        mine = [f for f in findings if lane_of(f, legacy) == lid]
+        open_f = [f for f in mine if f.get("status") == "열림"]
+        health = max(0.0, 100.0 - sum(penalties.get(f.get("severity", "보통"), 6) for f in open_f))
+
+        scen = scenarios.get(lid, [])
+        recent = [s for s in scen if (d := parse_date(s.get("last_run"))) and (today - d).days <= scen_window]
+        scen_pct = round(100.0 * len(recent) / len(scen), 1) if scen else None
 
         decided = []
         for p in proposals:
-            if p.get("domain") != did or p.get("kind") != "적용" or p.get("status") not in ("병합", "닫힘"):
+            if lane_of(p, legacy) != lid or p.get("kind") != "적용" or p.get("status") not in ("병합", "닫힘"):
                 continue
-            try:
-                when = dt.date.fromisoformat(p.get("decided_at") or "")
-            except ValueError:
-                continue
-            if (today - when).days <= window_days:
+            when = parse_date(p.get("decided_at"))
+            if when and (today - when).days <= window_days:
                 decided.append(p)
         merged = sum(1 for p in decided if p["status"] == "병합")
         agency = round(100.0 * merged / len(decided), 1) if len(decided) >= min_decisions else None
 
-        overall = None
-        if health is not None:
-            parts = {"health": health, "mastery": mastery, "agency": agency}
-            wsum = sum(weights[k] for k, v in parts.items() if v is not None)
-            overall = round(sum(weights[k] * v for k, v in parts.items() if v is not None) / wsum, 1)
+        parts = {"health": health, "scenarios": scen_pct, "agency": agency}
+        wsum = sum(weights[k] for k, v in parts.items() if v is not None)
+        overall = round(sum(weights[k] * v for k, v in parts.items() if v is not None) / wsum, 1) if wsum else None
 
-        domains_out[did] = {
-            "name": dom.get("name", did),
+        lanes_out[lid] = {
+            "name": lane.get("name", lid),
+            "kind": lane.get("kind", "product"),
             "health": health,
-            "mastery": mastery,
+            "scenarios": scen_pct,
             "agency": agency,
             "overall": overall,
-            "scope_files": len(scope),
-            "reviewed_current": current,
-            "reviewed_stale": stale,
+            "scenario_total": len(scen),
+            "scenario_recent": len(recent),
             "open_findings": {s: sum(1 for f in open_f if f.get("severity") == s) for s in penalties},
+            "found_today": sum(1 for f in mine if (f.get("first_seen") or "")[:10] == args.date),
+            "fixed_today": sum(1 for f in mine if (f.get("resolved_at") or "")[:10] == args.date),
             "decisions": {"merged": merged, "closed": len(decided) - merged},
-            "open_proposals": sum(1 for p in proposals if p.get("domain") == did and p.get("status") == "열림"),
+            "open_proposals": sum(1 for p in proposals if lane_of(p, legacy) == lid and p.get("status") == "열림"),
         }
 
-    overalls = [d["overall"] for d in domains_out.values() if d["overall"] is not None]
+    product = [d["overall"] for d in lanes_out.values() if d["kind"] == "product" and d["overall"] is not None]
+    weakest = min(((k, d) for k, d in lanes_out.items() if d["kind"] == "product" and d["overall"] is not None),
+                  key=lambda kv: kv[1]["overall"], default=(None, None))[0]
     summary = {
-        "harmony_index": round(sum(overalls) / len(overalls), 1) if overalls else None,
-        "balance": round(100.0 - (max(overalls) - min(overalls)), 1) if len(overalls) >= 2 else None,
-        "weakest": min((d for d in domains_out.items() if d[1]["overall"] is not None), key=lambda kv: kv[1]["overall"], default=(None,))[0],
-        "measured_domains": len(overalls),
+        "harmony_index": round(sum(product) / len(product), 1) if product else None,
+        "balance": round(100.0 - (max(product) - min(product)), 1) if len(product) >= 2 else None,
+        "weakest": weakest,
+        "found_today": sum(d["found_today"] for d in lanes_out.values()),
+        "fixed_today": sum(d["fixed_today"] for d in lanes_out.values()),
+        "scoring_version": 2,
     }
 
     scores_dir = os.path.join(args.state, "scores")
@@ -158,7 +145,7 @@ def main() -> int:
     history = [h for h in history if h.get("date") != args.date]  # 같은 날 다시 돌리면 덮어쓴다
     prev = max((h for h in history if h.get("date", "") < args.date), key=lambda h: h["date"], default=None)
 
-    snapshot = {"date": args.date, "audited_commit": head, "summary": summary, "domains": domains_out}
+    snapshot = {"date": args.date, "audited_commit": head, "summary": summary, "lanes": lanes_out}
     history.append(snapshot)
     history.sort(key=lambda h: h["date"])
     with open(hist_path, "w", encoding="utf-8") as fh:
@@ -168,27 +155,31 @@ def main() -> int:
         json.dump({**snapshot, "previous_date": prev["date"] if prev else None}, fh, ensure_ascii=False, indent=1)
         fh.write("\n")
 
-    # 보고서에 그대로 붙일 표 (전일 대비)
-    pd = prev["domains"] if prev else {}
-    ps = prev["summary"] if prev else {}
+    # 보고서에 그대로 붙일 표 — v1 기록(도메인)과는 갈래가 달라 첫 v2 실행의 「전일 대비」는 — 로 나온다
+    pl = (prev or {}).get("lanes", {})
+    psum = (prev or {}).get("summary", {})
+    ps = psum if psum.get("scoring_version") == 2 else {}
     print(f"기준 커밋 {head[:7]} · 비교 대상 {prev['date'] if prev else '없음(첫 측정)'}")
     print()
-    print("| 도메인 | 상태 | 숙련 | 실행 | 종합 | 전일 대비(종합) | 열린 발견(심각/보통/경미) |")
-    print("|---|---|---|---|---|---|---|")
-    for did, d in domains_out.items():
-        b = pd.get(did, {})
+    print("| 갈래 | 상태 | 시나리오(14일) | 실행 | 종합 | 전일 대비 | 열린 발견(심각/보통/경미) | 오늘 찾음 · 고침 |")
+    print("|---|---|---|---|---|---|---|---|")
+    for lid, d in lanes_out.items():
+        b = pl.get(lid, {})
         of = d["open_findings"]
         counts = "/".join(str(of.get(s, 0)) for s in ("심각", "보통", "경미"))
+        scen = f"{fmt(d['scenarios'])} ({d['scenario_recent']}/{d['scenario_total']})" if d["scenario_total"] else "—"
         print(
-            f"| {d['name']} | {fmt(d['health'])} | {fmt(d['mastery'])} | {fmt(d['agency'])} | {fmt(d['overall'])} "
-            f"| {delta(d['overall'], b.get('overall'))} | {counts} |"
+            f"| {d['name']} | {fmt(d['health'])} | {scen} | {fmt(d['agency'])} | {fmt(d['overall'])} "
+            f"| {delta(d['overall'], b.get('overall'))} | {counts} | {d['found_today']} · {d['fixed_today']} |"
         )
     print()
+    wname = lanes_out[summary["weakest"]]["name"] if summary["weakest"] else "—"
     print(
-        f"하모니 지수 {fmt(summary['harmony_index'])} (전일 대비 {delta(summary['harmony_index'], ps.get('harmony_index'))})"
-        f" · 조화도 {fmt(summary['balance'])} · 가장 약한 도메인 {domains_out[summary['weakest']]['name'] if summary['weakest'] else '—'}"
+        f"하모니 지수(제품 갈래 ①~⑥) {fmt(summary['harmony_index'])} (전일 대비 {delta(summary['harmony_index'], ps.get('harmony_index'))})"
+        f" · 조화도 {fmt(summary['balance'])} · 가장 약한 갈래 {wname}"
+        f" · 오늘 찾음 {summary['found_today']} · 고침 {summary['fixed_today']}"
     )
-    print("— = 미측정 또는 표본 부족")
+    print("— = 시나리오 없음 또는 결정 표본 부족")
     return 0
 
 
