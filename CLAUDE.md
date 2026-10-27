@@ -93,7 +93,8 @@
   장비(착용 · 손 도구) + 단단한 루어(소프트 아닌 것)는 id `<카탈로그 id>#<번호>`(core `rules/ItemInstance.ts` `itemBaseId` · 순번 `instSeq`) · 웜 · 미끼 · 봉돌 · 바늘 · 찌 · 줄은 묶음 그대로 ·
   `find` 폴백(착용 → 첫 개체) · `countOf` · 넣기 = 칸 n개 통째로 · 옛 세이브 나누기(첫 개체가 착용 · 고장 · 쓴 횟수 · 퀵슬롯 · 채비 참조) · 거래 새 번호 · 거치대 ·
   채비 창 「같은 물건 · 같은 고장」 묶음 줄 · core 조회 9곳 정규화 · 감사 11곳(프롤로그 보호 · 착용 모습 · 제작 재료 · 물뿌리개 · 집 보관함 · 도감) ·
-  검증 = 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0.
+  검증 = 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0 ·
+  main 빨리 감기 `b5e6086` · 91차 배포(실행 20 · gh-pages `eadbeaf` · 기동 9.4초 · pageerror 0).
   **다음 = 사용자 실검증 · 찌도 개체로 할지(백로그 DA)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-282-gear-lure-instances.md`.
 - **281차**: **줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)** —
   사용자 「n호수로 하고, lb까지 표시할 수 있으면 … 너가 결정해줘」 · 하모니 「기획&개발 관련 develop은 하나도 없는 것 같고 … git 히스토리 관리 정도」 →
@@ -209,8 +210,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `c31bc79` — **최근 90차 배포 2026-10-27 = 281차 코드까지 포함**(281 줄 세기 호수 기준 · 280 미끼 갑 갑째 · 「열어서 꿰기」 · 아이템 점검 26건) —
-  main `f400f33` · 실행 19 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 10.3초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280 · 281차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eadbeaf` — **최근 91차 배포 2026-10-27 = 282차 코드까지 포함**(282 장비 · 단단한 루어 개체 분리 · 281 줄 세기 호수 기준 · 280 미끼 갑 갑째) —
+  main `b5e6086` · 실행 20 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 9.4초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280~282차).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 77 = 282차**(시스템 「장비 · 루어는 한 개씩」 — 76 = 281 줄 세기)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).

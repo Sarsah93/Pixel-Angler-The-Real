@@ -5,7 +5,7 @@
 | **날짜** | 2026-10-27 |
 | **시스템** | `인벤`(가방 · 장비 · 세이브) · `낚시`(채비 창 루어 칸) · 상점 · 거래 · 제작 · 집 보관 · 텃밭(물뿌리개) · 도감 |
 | **트리거** | 사용자 — 백로그 CX 「장비(낚싯대 · 릴 · 옷 · 칼)와 루어만 따로 다루고 … -> OK 장비랑 루어만 개체로 나누는 걸로 진행해줘. (커밋 재배포까지 다 해줘)」 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` → main 빨리 감기 → Actions 「테스트 배포」(91차) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck`(`0a57ff2` 코드 · `b5e6086` 기록) → main 빨리 감기 `b5e6086` → Actions 「테스트 배포」 실행 20(91차 · gh-pages `eadbeaf`) |
 | **빌드·타입체크** | 3/3 · 0 오류 · core 시험 34파일 350 통과(새 5) |
 
 ---
@@ -69,6 +69,7 @@
 | core | `vitest` | 34파일 350 통과(`ItemInstance.test.ts` 5 신설) |
 | 빌드 | `npx pnpm run build` · client `typecheck` | 3/3 · 0 오류 |
 | 화면 감사 | 보조 에이전트 2개(화면 · 데이터 / 스토어 · 씬 · core) | 꼭 고칠 곳 11곳 → 전부 반영 |
+| 91차 배포본 | gh-pages `eadbeaf`를 하위 경로(`/Pixel-Angler-The-Real/`)로 띄워 Playwright 기동 · 로컬 dist와 파일 대조 | 기동 9.4초 · 4xx 0 · pageerror 0 · 정적 2,003 중 같음 2,001(번들 · index는 CI 빌드 해시) · 번들에 `instSeq` 있음 |
 
 재현 절차(다음 회귀 시험):
 
@@ -105,4 +106,4 @@
 - [x] 아티팩트 4개 — 같은 주소:
   남은 과업 설계 [Version 24](https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4) · 구현 라이브러리 [Version 26](https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5) ·
   채비 모딩 순서도 [Version 24](https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1)(「282차 기준」 줄 · 문법 그대로) · 위키 [Version 77](https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c)(시스템 「장비 · 루어는 한 개씩」)
-- [x] main 빨리 감기 · 「테스트 배포」 91차 · 배포본 점검
+- [x] main 빨리 감기(`000fe27` → `b5e6086`) · 「테스트 배포」 91차(실행 20 · gh-pages `eadbeaf`) · 배포본 점검(위 §5) · CLAUDE 배포 줄

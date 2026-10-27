@@ -324,6 +324,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 사용자 「장비랑 루어만 개체로 나누는 걸로 진행해줘」(백로그 CX) → 장비(착용 · 손 도구) + 단단한 루어는 id `<카탈로그 id>#<번호>`(core `itemBaseId`).
   웜 · 미끼 · 봉돌 · 바늘 · 찌 · 줄은 묶음 그대로.
 - 가방: `find` 폴백 · `countOf` · 넣기 = 칸 n개 통째로 · 옛 세이브 나누기(첫 개체가 착용 · 고장 · 쓴 횟수) · 거래 새 번호 · 채비 창 묶음 줄 · 감사 11곳.
+- main 빨리 감기(`b5e6086`) · **91차 배포**(실행 20 · gh-pages `eadbeaf` · 기동 9.4초 · pageerror 0).
 - 검증: 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0. 상세: [282차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-282-gear-lure-instances.md).
 
 **이전 변경 (2026-10-27 281차) — 줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)**
