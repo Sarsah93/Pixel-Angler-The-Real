@@ -7,6 +7,7 @@
  */
 
 import type { RodSpec, ReelSpec, LineSpec, FloatSpec, HookSpec, LineForm } from '../types/Gear.js';
+import { lineLbFromHo } from '../rules/LineStrength.js';
 
 // ─────────────────────────────────────────────
 // 낚싯대 데이터베이스
@@ -132,20 +133,19 @@ const SAISO_LINE_FORMS: Array<{
   lineNos: number[];
   forms: LineForm[];
   diameters: Record<string, number>;
-  strengthFactor: number;
   color: string;
 }> = [
   {
     material: 'nylon', label: '나일론 모노라인', lineNos: [2, 2.5, 3, 5], forms: ['float', 'semi-float'],
-    diameters: { '2': 0.235, '2.5': 0.26, '3': 0.285, '5': 0.37 }, strengthFactor: 4, color: '투명',
+    diameters: { '2': 0.235, '2.5': 0.26, '3': 0.285, '5': 0.37 }, color: '투명',
   },
   {
     material: 'fluorocarbon', label: '카본라인', lineNos: [3, 4, 5], forms: ['suspend', 'sinking'],
-    diameters: { '3': 0.285, '4': 0.325, '5': 0.37 }, strengthFactor: 3.5, color: '투명',
+    diameters: { '3': 0.285, '4': 0.325, '5': 0.37 }, color: '투명',
   },
   {
     material: 'pe_braid', label: '합사 PE', lineNos: [0.8, 1, 1.5, 2], forms: ['sinking'],
-    diameters: { '0.8': 0.148, '1': 0.165, '1.5': 0.205, '2': 0.24 }, strengthFactor: 17.5, color: '그린 멀티',
+    diameters: { '0.8': 0.148, '1': 0.165, '1.5': 0.205, '2': 0.24 }, color: '그린 멀티',
   },
 ];
 
@@ -165,7 +165,8 @@ function buildSaisoLineDatabase(): LineSpec[] {
       for (const form of family.forms) {
         for (const spoolLengthM of SAISO_LINE_LENGTHS_M) {
           const diameterMm = family.diameters[String(lineNo)]!;
-          const strengthLb = Math.round(lineNo * family.strengthFactor * 10) / 10;
+          // 281차 — 세기는 호수 표 하나(`rules/LineStrength.ts` — 낚시 물리와 같은 값)
+          const strengthLb = lineLbFromHo(lineNo, family.material === 'pe_braid');
           out.push({
             id: `line_saiso_${family.material}_${String(lineNo).replace('.', 'p')}_${form}_${spoolLengthM}`,
             brand: 'SAISO',

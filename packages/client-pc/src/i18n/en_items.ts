@@ -72,6 +72,8 @@ export const EN_ITEMS: Record<string, string> = {
   '묶음추봉돌 25호': 'Bundle Sinker #25', '묶음추봉돌 30호': 'Bundle Sinker #30',
   'HaeDong 3호 가벼운 원투 봉돌. 찌낚시대 · 민물대로도 던질 수 있는 무게.': 'HaeDong #3 light bottom-rig sinker. Light enough to cast on a float rod or a budget rod.',
   'BaekKyung 3호 가벼운 원투 봉돌. 찌낚시대 · 민물대로도 던질 수 있는 무게. 이물감↓(예신 피드백 +15%).': 'BaekKyung #3 light bottom-rig sinker. Light enough to cast on a float rod or a budget rod. Less felt resistance (+15% pre-bite feedback).',
+  'SAISO AMSTRONG 합사 원줄. 직경 0.165mm · 인장 20lb.': 'SAISO AMSTRONG braided main line. 0.165mm diameter · 20lb tensile.',
+  '카본 쇼크리더. 직경 0.285mm · 인장 12lb · 나일론보다 강하고 합사보다 쓸림에 유리한 목줄.': 'Fluorocarbon shock leader. 0.285mm diameter · 12lb tensile · tougher than nylon and better against abrasion than braid.',
   '값싼 나일론 원줄. 늘어나는 성질이 충격을 받아 줘 가벼운 원투 · 찌낚시 원줄로 무난하다. 직경 0.285mm · 인장 12lb.': 'Cheap nylon main line. Its stretch soaks up shocks, so it serves well on light bottom rigs and float rigs. 0.285mm · 12lb.',
   'HaeDong 20호 원투 메인 싱커.': 'HaeDong #20 surf main sinker.',
   'HaeDong 25호 원투 메인 싱커.': 'HaeDong #25 surf main sinker.',

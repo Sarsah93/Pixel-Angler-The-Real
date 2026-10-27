@@ -10,7 +10,7 @@ import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
 import { getCreatureById, isCrabCreature } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
-import { LINE_MATERIAL_TRAITS, lineMaterialOf } from '@tra/core';   // 273차 — 줄 재질 성질(내구도)
+import { LINE_MATERIAL_TRAITS, lineMaterialOf, lineStrengthView } from '@tra/core';   // 273차 — 줄 재질 성질(내구도) · 281 세기 = 호수 표
 import {
   cropStartOfItem, cropOfProduce, parseProduceId, monthRangeKo, kstMonthOf, GRADE_KO, supplyOfFacility, getSkillById,
   produceMarketRatio, produceMarketInfo, cropGate, CROP_TIER_KO, CROP_CARE_KO, hasCarePlan, carePlanSummaryKo,
@@ -310,6 +310,15 @@ function packRows(itemId: string): { rows: ItemDetailRow[]; desc: string } {
     };
   }
   return { rows: [], desc: '' };
+}
+
+/**
+ * 281차 — 줄 세기 표시. **호수가 기준**이고 lb · kg는 같은 표(core `rules/LineStrength.ts`)에서 나온다 —
+ * 낚시 물리가 쓰는 값 그대로다. 옛 세이브에 남은 제원 lb(`lineStrengthLb`)는 읽지 않는다.
+ */
+function lineStrengthLabel(item: Pick<InvItem, 'name' | 'lineNo' | 'lineMaterial'>): string {
+  const v = lineStrengthView(item);
+  return v ? `${v.lb}lb (${v.kg}kg)` : '-';
 }
 
 export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack'>): ItemDetailData {
@@ -827,7 +836,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : '1호' },
         { label: '스풀 길이', value: item.lineLengthM !== undefined ? spoolLeftLabel(item.lineLengthM, item.lineUsedM) : '-' },
         { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
-        { label: '인장 강도', value: item.lineStrengthLb !== undefined ? `${item.lineStrengthLb}lb` : '-' },
+        { label: '인장 강도', value: lineStrengthLabel(item) },
       );
       desc = item.lineMaterial === 'pe_braid'
         ? '늘어남이 적어 입질 전달과 바닥 감도가 좋지만, 쓸림과 매듭에 약하므로 카본 또는 나일론 쇼크리더와 함께 사용하세요.'
@@ -841,7 +850,7 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         { label: '호수', value: item.lineNo !== undefined ? `${item.lineNo}호` : item.id.includes('carbon') ? '1.5호' : '2호' },
         { label: '스풀 길이', value: item.lineLengthM !== undefined ? spoolLeftLabel(item.lineLengthM, item.lineUsedM) : '-' },
         { label: '직경', value: item.lineDiameterMm !== undefined ? `${item.lineDiameterMm.toFixed(3)}mm` : '-' },
-        { label: '인장 강도', value: item.lineStrengthLb !== undefined ? `${item.lineStrengthLb}lb` : '-' },
+        { label: '인장 강도', value: lineStrengthLabel(item) },
       );
       desc = '원줄의 감도와 대상어의 이빨·여밭 쓸림 사이를 조정하는 쇼크리더입니다.';
       break;

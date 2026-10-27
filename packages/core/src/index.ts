@@ -701,6 +701,13 @@ export {
   SHOP_STOCK_BASE, SHOP_STOCK_PLENTY, SHOP_STOCK_BIG_PRICE, shopScaleOf, stockBucketOf, stockUnlimited, shopStockCap,
 } from './rules/ShopStock.js';
 
+// ── 낚싯줄 세기 — 281차(호수가 기준 · lb는 표시값) ──
+export type { LineStrengthSource } from './rules/LineStrength.js';
+export {
+  MONO_LINE_KG_PER_HO, PE_LINE_KG_PER_HO, KG_TO_LB, lineHoOf, isPeLine, lineKgFromHo, lineLbFromKg, lineLbFromHo,
+  lineStrengthKgOf, lineStrengthView,
+} from './rules/LineStrength.js';
+
 // 227차 — 금어기 날짜 단위 · 지역 규정(제주)
 export type { MonthDay, ClosedSeason, LegalRegionKey, RegionalLegalRule, ResolvedLegalRule } from './types/LegalSeason.js';
 export { inSeason, seasonTouchesMonth, isClosedOn, monthsOfSeasons, formatSeasons, legalRegionOf, resolveLegal, closedFor }

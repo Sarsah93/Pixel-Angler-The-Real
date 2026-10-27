@@ -14,6 +14,7 @@
 
 import { ORACLE_FISH_DB, type FishBodyForm } from './FishSpawningOracle.js';
 import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
+import { lineStrengthKgOf, type LineStrengthSource } from '../rules/LineStrength.js';
 
 /** 어종군 — 파이팅 가속 배수·희귀도 하한·가이드 문구가 공유하는 분류 */
 export type FightGroup =
@@ -104,16 +105,11 @@ export function fishRarity(speciesId: string, lengthCm: number): FishRarityInfo 
 // ── 낚싯줄 인장강도 (116차 — 피드백 4.1 "라이트 채비로 부시리를 걸면 터진다") ─────────
 
 /**
- * 줄 아이템 이름에서 인장강도(kg)를 추정한다 — 아이템에 `lineStrengthKg`가 있으면 그것을 쓴다.
- *  - 카본/나일론 목줄 N호 ≈ 4N lb ≈ **1.8N kg** (1.5호 ≈ 2.7kg — 25cm 감성돔 인장 0.8~1.5kg에 여유)
+ * 줄 아이템의 인장강도(kg) — 아이템에 `lineStrengthKg`가 있으면 그것을 쓴다.
+ * 281차부터 **호수가 기준**이고 표는 `rules/LineStrength.ts` 하나다(상세 창 lb 표시도 같은 표).
+ *  - 카본/나일론 N호 ≈ 4N lb ≈ **1.8N kg** (1.5호 ≈ 2.7kg — 25cm 감성돔 인장 0.8~1.5kg에 여유)
  *  - PE 합사 N호 ≈ 20N lb ≈ **9N kg** (원줄이 목줄보다 항상 강하다)
  */
-export function lineStrengthKg(item: { name: string; subCategory?: string; lineStrengthKg?: number } | null | undefined): number | null {
-  if (!item) return null;
-  if (item.lineStrengthKg && item.lineStrengthKg > 0) return item.lineStrengthKg;
-  const m = /(\d+(?:\.\d+)?)\s*호/.exec(item.name);
-  if (!m) return null;
-  const ho = parseFloat(m[1]);
-  const isPe = /PE|합사/i.test(item.name);
-  return isPe ? ho * 9 : ho * 1.8;
+export function lineStrengthKg(item: LineStrengthSource & { subCategory?: string } | null | undefined): number | null {
+  return lineStrengthKgOf(item);
 }
