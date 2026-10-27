@@ -21,7 +21,7 @@
  *    ② 그래도 사라졌으면 `syncPrologue()`가 되살린다 — 냉장고에 있으면 꺼내 오고, 없으면 다시 준다(`repairPrologue`).
  */
 
-import { getStoryQuest, ROD_SPEC_BY_ID } from '@tra/core';
+import { getStoryQuest, ROD_SPEC_BY_ID, itemBaseId } from '@tra/core';
 import { GameState } from './GameState.js';
 import { StoryStore } from './StoryStore.js';
 import { InventoryStore, FATHER_BOX_ITEMS, type InvItem } from './InventoryStore.js';
@@ -122,8 +122,9 @@ const isBoxItem = (id: string): boolean => (boxIds ??= new Set(FATHER_BOX_ITEMS.
  * 219차 — 이 물건을 지금 잃으면(버리기 · 먹기 · 보관 · 요리 · 거래) 프롤로그가 막히는가.
  * 참이면 그 행동을 막고 「아직 필요한 물건이다」를 알린다.
  */
-export function prologueProtects(id: string): boolean {
+export function prologueProtects(rawId: string): boolean {
   if (!StoryStore.isActive(QID)) return false;
+  const id = itemBaseId(rawId);   // 282차 — 아버지의 대 · 릴은 개체 id(`inv_rod#1`)다
   if (id === PROLOGUE_SQUID_ID) return !prologueStepDone('sell') && !GameState.getFlag(flagKey('sell'));   // 261차 — 한 번 팔았으면 남은 마리는 자유
   if (id === PROLOGUE_PHOTO_ID) return !prologueStepDone('photo');
   if (isBoxItem(id)) return !prologueStepDone('rod') || !prologueStepDone('reel');

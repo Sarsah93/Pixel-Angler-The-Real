@@ -16,7 +16,7 @@
  *    구세이브의 `plantWateredMs`(화분 하나)는 기본 화분 id `plant`로 옮겨 읽는다.
  */
 
-import { InventoryStore, type InvItem, type InvCategory } from './InventoryStore.js';
+import { InventoryStore, isInstanceItem, type InvItem, type InvCategory } from './InventoryStore.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
 import {
   DEFAULT_LAYOUT, FURN_DEFS, DOOR_MAT, WALL_DECOR, footprint, inFloor, onDoorMat, wallDecorCols, ROOM_W, ROOM_H, FLOOR_TOP,
@@ -361,7 +361,7 @@ class HomeStoreManager {
   /** 보관 — 같은 아이템(쌓이는 것)이 이미 있으면 그 칸에 합친다 */
   put(kind: HomeStorageKind, item: InvItem, qty: number): boolean {
     const arr = this.boxes[kind];
-    const same = arr.findIndex((s) => s && s.id === item.id && !item.equippable);
+    const same = arr.findIndex((s) => s && s.id === item.id && !isInstanceItem(item));   // 282차 — 장비 · 단단한 루어는 개체마다 한 칸
     if (same >= 0) { arr[same]!.qty += qty; return true; }
     const idx = this.firstEmpty(kind);
     if (idx < 0) return false;

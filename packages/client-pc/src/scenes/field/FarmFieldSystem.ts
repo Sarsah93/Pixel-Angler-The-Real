@@ -29,7 +29,7 @@
 import Phaser from 'phaser';
 import {
   FARM_COLS, FARM_CELLS, getCrop, cellStage, cellReady, ripeStageOf, startOf, cultivationOf, cropStartOfItem, wildUnknown,
-  CARE_TASK_KO, PROCESS_LAST_KO, WATER_AMOUNT_KO, SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, DISEASE_DEFS, EARTHWORM_TUNING,
+  CARE_TASK_KO, PROCESS_LAST_KO, WATER_AMOUNT_KO, SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, DISEASE_DEFS, EARTHWORM_TUNING, itemBaseId,
   type CropDef, type FarmCellState, type MapObject, type WaterAmount, type CareTaskId,
 } from '@tra/core';
 import { FarmStore, HOMI_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow } from '../../store/FarmStore.js';
@@ -692,7 +692,7 @@ export class FarmFieldSystem {
     const c = FarmStore.plot(plotId).cells[t.idx];
     if (!c) return null;
     const crop = c.cropId ? getCrop(c.cropId) : undefined;
-    const id = held.id;
+    const id = itemBaseId(held.id);   // 282차 — 물뿌리개는 손 도구라 개체 id(`…#n`)다
     if (id === HOMI_ID) {
       if (!c.tilled) return { label: '호미로 일구기', run: () => this.till(t), action: 'farm' };
       if (crop && !c.process) {
@@ -768,7 +768,7 @@ export class FarmFieldSystem {
     const flash = this.host.scene.add.graphics().setDepth(6.46);
     this.drawCellBorder(flash, hit, true);
     this.host.scene.tweens.add({ targets: flash, alpha: 0, duration: 420, onComplete: () => flash.destroy() });
-    if (this.held()?.id === WATERING_CAN_ID && FarmStore.wormsAt(hit.o.instanceId, hit.idx) <= 0) { this.beginPour(hit, true); return true; }
+    if (itemBaseId(this.held()?.id ?? '') === WATERING_CAN_ID && FarmStore.wormsAt(hit.o.instanceId, hit.idx) <= 0) { this.beginPour(hit, true); return true; }
     act.run?.();
     return true;
   }

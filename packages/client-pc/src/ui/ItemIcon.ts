@@ -11,6 +11,7 @@
  */
 
 import Phaser from 'phaser';
+import { itemBaseId } from '@tra/core';
 import { addPixelIcon } from './PixelIcon.js';
 import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { ITEM_ART_BY_ID, ITEM_ART_BY_PREFIX, ITEM_ART_BY_PX } from '../data/ItemArtManifest.js';
@@ -94,7 +95,7 @@ export function itemArtKeyOf(item: { id?: string; iconTexture?: string }): strin
   const t = item.iconTexture;
   if (t && !t.startsWith('px:')) return undefined;
   if (item.id) {
-    const byId = ITEM_ART_BY_ID[item.id];
+    const byId = ITEM_ART_BY_ID[itemBaseId(item.id)];   // 282차 — 개체 id는 번호를 떼고
     if (byId) return byId;
     for (const [prefix, key] of ITEM_ART_BY_PREFIX) if (item.id.startsWith(prefix)) return key;
   }
@@ -108,7 +109,7 @@ export function itemArtKeyOf(item: { id?: string; iconTexture?: string }): strin
  * 옛 코드 그림 키(`art_*`)를 Gemini 그림으로 바꾼 것은 키가 같으므로 여기서 찾지 않아도 그대로 나온다.
  */
 export function itemImageKeyOf(scene: Phaser.Scene, item: { id?: string; iconTexture?: string }): string | undefined {
-  const byId = item.id ? ITEM_IMAGE_BY_ID[item.id] : undefined;
+  const byId = item.id ? ITEM_IMAGE_BY_ID[itemBaseId(item.id)] : undefined;
   if (byId && scene.textures.exists(byId)) return byId;
   const t = item.iconTexture;
   const byPx = t ? ITEM_IMAGE_BY_PX[t] : undefined;

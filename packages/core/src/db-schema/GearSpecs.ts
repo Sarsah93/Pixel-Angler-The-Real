@@ -8,6 +8,7 @@
 
 import type { RodSpec, ReelSpec, LineSpec, FloatSpec, HookSpec, LineForm } from '../types/Gear.js';
 import { lineLbFromHo } from '../rules/LineStrength.js';
+import { itemBaseId } from '../rules/ItemInstance.js';
 
 // ─────────────────────────────────────────────
 // 낚싯대 데이터베이스
@@ -256,11 +257,13 @@ export const HOOK_DATABASE: HookSpec[] = [
 
 // Helper functions
 export function getRodById(id: string): RodSpec | undefined {
-  return ROD_DATABASE.find((r) => r.id === id);
+  const base = itemBaseId(id);   // 282차 — 개체 id는 번호를 떼고
+  return ROD_DATABASE.find((r) => r.id === base);
 }
 
 export function getReelById(id: string): ReelSpec | undefined {
-  return REEL_DATABASE.find((r) => r.id === id);
+  const base = itemBaseId(id);
+  return REEL_DATABASE.find((r) => r.id === base);
 }
 
 export function getLineById(id: string): LineSpec | undefined {

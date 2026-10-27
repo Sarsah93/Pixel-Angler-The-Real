@@ -15,4 +15,8 @@ let keep: KeepFn | null = null;
 export function setItemKeepGuard(fn: KeepFn | null): void { keep = fn; }
 
 /** 잃으면 안 되는 물건이면 그 까닭(플레이어에게 보일 한 줄), 아니면 null */
-export function itemKeepReason(itemId: string): string | null { return keep?.(itemId) ?? null; }
+export function itemKeepReason(itemId: string): string | null {
+  // 282차 — 개체 id(`<카탈로그 id>#<번호>` — 장비 · 단단한 루어)는 번호를 떼고 판정한다(이 파일은 import 없이 둔다)
+  const k = itemId.indexOf('#');
+  return keep?.(k < 0 ? itemId : itemId.slice(0, k)) ?? null;
+}

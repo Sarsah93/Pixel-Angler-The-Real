@@ -29,10 +29,10 @@ import {
   CRAFT_BLUEPRINTS, getBlueprint, materialSaveChance, TUNING, getSkillById, skillsOfCategory,
   craftModifiers, craftSuccessFinal, craftUnitMs, craftLossChance, rollCraftQuality, craftCancelRefund,
   craftMasteryLevel, craftMasteryGain, dexterityScore,
-  craftLevelBonus, craftScrapReturn, craftScrapLearnChance, blueprintsByOutput, CRAFT_SCRAP_GROUPS,
+  craftLevelBonus, craftScrapReturn, craftScrapLearnChance, blueprintsByOutput, CRAFT_SCRAP_GROUPS, itemBaseId,
   type CraftBlueprint, type CraftMaterial, type CraftStation, type CraftGroup, type CraftModifiers, type CraftQuality,
 } from '@tra/core';
-import { InventoryStore, refreshCondition, type InvItem, type InvItemTemplate } from './InventoryStore.js';
+import { InventoryStore, refreshCondition, isInstanceItem, type InvItem, type InvItemTemplate } from './InventoryStore.js';
 import { GameState } from './GameState.js';
 import { StoryStore } from './StoryStore.js';
 import { craftOutputTemplate } from '../data/CraftOutputs.js';
@@ -148,7 +148,7 @@ function matches(i: InvItem, m: CraftMaterial): boolean {
     if (i.condition === 'spoiled') return false;
     if (i.condProfile === 'krill_block' && i.condition === 'frozen') return false;
   }
-  if (m.itemId) return i.id === m.itemId;
+  if (m.itemId) return itemBaseId(i.id) === m.itemId;   // 282차 — 재료가 장비 · 루어 개체(`lure_egi_35#2`)여도
   if (m.speciesId) return i.speciesId === m.speciesId;
   if (m.byproductKind) return i.byproductKind === m.byproductKind;
   return false;
@@ -176,7 +176,7 @@ function takeOut(m: CraftMaterial, qty: number): PaidMat[] {
 
 /** 산출이 쌓이는 물건인가(같은 id로 수량만 늘어남) — 장비 · 도구는 한 자루씩 */
 function stackable(tpl: InvItemTemplate): boolean {
-  return !(tpl.equippable || tpl.tool || tpl.category === 'gear');
+  return !(tpl.equippable || tpl.tool || tpl.category === 'gear' || isInstanceItem(tpl));   // 282차 — 개체 아이템(단단한 루어 포함)
 }
 
 const QUALITY_RANK: Record<CraftQuality, number> = { normal: 0, good: 1, great: 2 };
@@ -333,8 +333,8 @@ class CraftingStoreManager {
 
   /** 산출 1번이 들어갈 자리가 있는가 */
   private roomFor(tpl: InvItemTemplate): boolean {
-    if (InventoryStore.find(tpl.id)) return true;
-    return InventoryStore.freeSlotCount(tpl.category) > 0;
+    // 282차 — 개체 아이템(장비 · 단단한 루어)은 같은 것을 가졌어도 한 칸이 더 든다(쌓이지 않는다)
+    return Object.keys(InventoryStore.slotShortfall([{ tpl, qty: 1 }])).length === 0;
   }
 
   /**
@@ -569,9 +569,10 @@ class CraftingStoreManager {
 
   /** 산출 넣기 — 가방이 차면 보관함 */
   private giveCrafted(tpl: InvItemTemplate, n: number, j: CraftJob): void {
-    const ex = InventoryStore.find(tpl.id);
+    // 282차 — 개체 아이템(장비 · 단단한 루어)은 새 개체가 제 품질을 갖는다(이미 가진 다른 개체를 올리지 않는다)
+    const ex = isInstanceItem(tpl) ? undefined : InventoryStore.find(tpl.id);
     if (ex && tpl.craftQuality && QUALITY_RANK[tpl.craftQuality] > QUALITY_RANK[ex.craftQuality ?? 'normal']) {
-      ex.craftQuality = tpl.craftQuality;   // 같은 장비가 겹치면 더 좋은 쪽을 남긴다
+      ex.craftQuality = tpl.craftQuality;   // 같은 물건이 겹치면 더 좋은 쪽을 남긴다
     }
     if (!InventoryStore.addItem(tpl, n)) { this.stash(tpl, n); j.stored += n; }
   }
@@ -582,7 +583,8 @@ class CraftingStoreManager {
   }
 
   private stash(tpl: InvItemTemplate, n: number): void {
-    const s = this.storage.find((x) => x.tpl.id === tpl.id);
+    // 282차 — 개체 아이템은 보관함에서도 따로 둔다(품질 · 고장이 저마다 다르다)
+    const s = isInstanceItem(tpl) ? undefined : this.storage.find((x) => x.tpl.id === tpl.id);
     if (s) s.qty += n; else this.storage.push({ tpl: { ...tpl }, qty: n });
   }
 

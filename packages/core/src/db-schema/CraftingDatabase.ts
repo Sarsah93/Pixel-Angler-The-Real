@@ -15,6 +15,8 @@
  * core는 **무엇을 얼마나 먹고 무엇이 몇 개 나오는가**만 안다(렌더·인벤토리 비의존).
  */
 
+import { itemBaseId } from '../rules/ItemInstance.js';
+
 /** 제작 위치 — 맨손 / 작업대 / 고급(작업대 + 로드 빌딩 공구 세트) */
 export type CraftStation = 'hand' | 'workbench' | 'advanced';
 
@@ -662,7 +664,8 @@ export function blueprintPaperId(bpId: string): string {
 
 /** 223차 — 이 물건을 만드는 도면들(분해 · 도면 깨치기) */
 export function blueprintsByOutput(itemId: string): CraftBlueprint[] {
-  return CRAFT_BLUEPRINTS.filter((b) => b.outputId === itemId);
+  const base = itemBaseId(itemId);   // 282차 — 개체 장비 · 루어(`craft_rod_custom#3`)는 번호를 떼고
+  return CRAFT_BLUEPRINTS.filter((b) => b.outputId === base);
 }
 
 /** 223차 — 분해할 수 있는 갈래(소모품 · 구급품 · 생활용품은 분해하지 않는다) */

@@ -26,6 +26,8 @@ import {
   FLASHER_TARGET_SPECIES,
 } from '@tra/core';
 import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
+// 282차 — 개체 아이템 id(장비 · 단단한 루어는 `<카탈로그 id>#<번호>`)
+import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra/core';
 import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER } from '@tra/core';
@@ -465,6 +467,30 @@ export function isLureItem(i: InvItem): boolean {
   return i.subCategory === '루어';
 }
 
+/** 282차 — 개체 판정에 필요한 아이템 모양(템플릿 · 거래 스냅샷 · 칸 계산이 함께 쓴다) */
+export interface InstanceKindSource {
+  id: string;
+  subCategory?: string;
+  equippable?: boolean;
+  tool?: string;
+}
+
+/**
+ * 282차 — 한 개씩 따로 다루는 아이템인가(백로그 CX · 사용자 결정 「장비랑 루어만 개체로」).
+ * - 장비: 착용 · 손 도구(낚싯대 · 릴 · 뜰채 · 칼 · 물뿌리개 · 모자 · 옷 · 신발 · 장갑 · 안경 · 시계 · 가방)
+ * - 단단한 루어: 루어 카탈로그 중 소프트(웜)가 아닌 것(미노우 · 스푼 · 스피너 · 에기 · 메탈지그 · 타이라바)
+ * 웜 · 미끼 · 봉돌 · 바늘 · 찌 · 줄 같은 소모품은 지금처럼 같은 id 한 칸에 수량으로 쌓는다.
+ * 개체는 수량 1 · id `<카탈로그 id>#<번호>` — 고장 · 쓴 횟수 · 착용이 저마다 따로다.
+ */
+export function isInstanceItem(t: InstanceKindSource): boolean {
+  if (t.equippable || t.tool) return true;
+  if (t.subCategory === '루어') {
+    const spec = getLureSpec(t.id);
+    return !!spec && spec.family !== 'soft';
+  }
+  return false;
+}
+
 /** 원투 메인 싱커(무게추 봉돌) 여부 — sinkerKind 보유 */
 export function isWeightSinker(i: InvItem): boolean {
   return i.sinkerKind !== undefined;
@@ -586,7 +612,7 @@ function seedDefOf(id: string): InvItem | undefined {
 export function canonicalizeItem<T extends { id: string }>(t: T): T {
   const id = canonicalItemId(t.id);
   if (id === t.id) return t;
-  const sd = seedDefOf(id);
+  const sd = seedDefOf(itemBaseId(id));   // 282차 — 개체 id는 번호를 떼고 시드를 찾는다
   if (!sd) return { ...t, id };
   return { ...t, id, name: sd.name, category: sd.category, subCategory: sd.subCategory, basePrice: sd.basePrice, iconTexture: sd.iconTexture, icon: sd.icon };
 }
@@ -681,6 +707,8 @@ export interface InventorySaveState {
   savedAtMs?: number;
   /** 280차 — 121차 채집 · 통발 기본 도구 1회 주입을 마쳤는가(없으면 구세이브 — 한 번만 주입한다) */
   starterToolsGiven?: boolean;
+  /** 282차 — 개체 번호 순번(장비 · 단단한 루어 id `<카탈로그 id>#<번호>`). 없으면 구세이브 — 불러올 때 나눈다 */
+  instSeq?: number;
 }
 
 /** 273차 — 묶인 줄 한 가닥의 마모. `itemId`가 지금 칸의 스풀과 다르면 새로 묶은 줄(0)로 본다 */
@@ -1233,7 +1261,14 @@ class InventoryStoreManager {
   private _tree: RigTreeState = newRigTree();
   private _summary: RigSummary | null = null;
 
+  /** 282차 — 개체 번호 순번(세이브). 새 개체 id(`<카탈로그 id>#<번호>`)마다 하나씩 올린다 */
+  private _instSeq = 0;
+
   constructor() {
+    // 282차 — 시드의 장비 · 루어도 개체 id로(퀵슬롯 · 채비 참조도 옮긴다)
+    const remap = this.splitInstanceStacks();
+    this._quickslots = this._quickslots.map((id) => (id ? remap.get(id) ?? id : id));
+    (Object.keys(this._rig) as RigStepKey[]).forEach((k) => { const v = this._rig[k]; if (v) this._rig[k] = remap.get(v) ?? v; });
     // dev 기본 채비(반유동)를 트리로 옮겨 시작한다 — 새 게임은 resetAll이 빈 트리로 바꾼다
     this._tree = treeFromLegacy({ ...this._rig, hasFloatStop: true }, this.rigView);
     this.projectTree();
@@ -1296,8 +1331,73 @@ class InventoryStoreManager {
     return this._items.filter((i) => i.category === cat);
   }
 
+  /**
+   * 아이템 찾기 — 정확히 그 id가 먼저다.
+   * 282차 — 번호 없는 카탈로그 id로 개체 아이템(장비 · 단단한 루어)도 찾는다: 쓰고 있는 것(착용) → 첫 개체.
+   * 「가졌나」 판정(`find(x)`)은 그대로 맞고, 몇 개인지는 `countOf`로 센다(`find(x).qty`는 개체 하나의 수량 1이다).
+   */
   find(id: string): InvItem | undefined {
-    return this._items.find((i) => i.id === id);
+    const exact = this._items.find((i) => i.id === id);
+    if (exact || isInstanceId(id)) return exact;
+    let first: InvItem | undefined;
+    for (const i of this._items) {
+      if (!isInstanceId(i.id) || itemBaseId(i.id) !== id) continue;
+      if (i.equipped) return i;
+      first ??= i;
+    }
+    return first;
+  }
+
+  /** 282차 — 그 카탈로그 id(또는 개체 id)를 몇 개 가졌나 — 같은 물건의 개체 수까지 더한다(착용 포함) */
+  countOf(id: string): number {
+    if (isInstanceId(id)) return this._items.find((i) => i.id === id)?.qty ?? 0;
+    let n = 0;
+    for (const i of this._items) if (i.id === id || (isInstanceId(i.id) && itemBaseId(i.id) === id)) n += i.qty;
+    return n;
+  }
+
+  /** 282차 — 그 카탈로그 물건의 개체들(착용하지 않은 것 먼저 — 빼고 넘길 때 쓰던 것을 남긴다) */
+  instancesOf(id: string): InvItem[] {
+    const base = itemBaseId(id);
+    const all = this._items.filter((i) => isInstanceId(i.id) && itemBaseId(i.id) === base);
+    return [...all.filter((i) => !i.equipped), ...all.filter((i) => i.equipped)];
+  }
+
+  /** 282차 — 새 개체 id(가방에 같은 id가 없을 때까지 번호를 올린다) */
+  private nextInstanceId(id: string): string {
+    let nid = makeInstanceId(id, ++this._instSeq);
+    while (this._items.some((i) => i.id === nid)) nid = makeInstanceId(id, ++this._instSeq);
+    return nid;
+  }
+
+  /**
+   * 282차 — 개체 아이템인데 번호가 없거나 수량이 2 이상인 칸을 개체 n개로 나눈다(옛 세이브 · 시드).
+   * 첫 개체가 그 칸의 상태를 모두 잇는다(칸 · 착용 · 고장 · 쓴 횟수) — 고장은 한 번에 한 개에 생기던 것이라
+   * 나머지는 새것(고장 · 쓴 횟수 없음)으로 본다. 출처 표식(귀속 · 거래품 · 수제 품질)은 모두 잇는다.
+   * 나머지는 빈 칸 → 없으면 '잠긴 칸'(용량 밖 — 꺼낼 수 있다)에 둔다. 조용히 사라지지 않는다.
+   * @returns 옛 id → 첫 개체 id(퀵슬롯 · 채비 참조를 옮길 때 쓴다)
+   */
+  private splitInstanceStacks(): Map<string, string> {
+    const remap = new Map<string, string>();
+    const keep: InvItem[] = [];
+    const extra: InvItem[] = [];
+    for (const it of this._items) {
+      if (!isInstanceItem(it) || (isInstanceId(it.id) && it.qty <= 1)) { keep.push(it); continue; }
+      const n = Math.max(1, Math.floor(it.qty));
+      const firstId = isInstanceId(it.id) ? it.id : this.nextInstanceId(it.id);
+      if (firstId !== it.id) remap.set(it.id, firstId);
+      keep.push({ ...it, id: firstId, qty: 1 });
+      for (let k = 1; k < n; k++) {
+        extra.push({ ...it, id: this.nextInstanceId(it.id), qty: 1, equipped: false, equippedHand: undefined, fault: undefined, useCount: undefined });
+      }
+    }
+    this._items = keep;
+    for (const e of extra) {
+      const free = this.findFreeSlot(e.category);
+      e.slot = free >= 0 ? free : this.lockedSlotFor(e.category);
+      this._items.push(e);
+    }
+    return remap;
   }
 
   /** 207차 — 원투 거치대(삼발이)를 가졌나 — 1인칭 「거치하기」 게이트 */
@@ -1353,15 +1453,22 @@ class InventoryStoreManager {
     let reelId: string | null = null;
     // 234차 — 가방이 차서 못 들어간 것은 돌려준다(호출측이 발밑에 내려놓는다 — 조용히 사라지던 대 · 릴 · 귀속 대)
     const left: ParkedGear['items'] = [];
+    const idMap = new Map<string, string>();   // 282차 — 거치대에 건 id → 가방에 다시 들어간 id(개체 번호가 새로 붙을 수 있다)
     for (const { item, qty } of g.items) {
       const { slot: _slot, qty: _q, ...tpl } = item;
-      if (!this.addItem({ ...tpl, equipped: false, equippedHand: undefined }, qty, { silent: true })) { left.push({ item, qty }); continue; }
-      if (item.tool === 'rod') rodId = item.id;
-      if (item.subCategory === '릴') reelId = item.id;
+      const ids = this.addItemIds({ ...tpl, equipped: false, equippedHand: undefined }, qty, { silent: true });
+      if (!ids) { left.push({ item, qty }); continue; }
+      const got = ids[0] ?? item.id;
+      if (got !== item.id) idMap.set(item.id, got);
+      if (item.tool === 'rod') rodId = got;
+      if (item.subCategory === '릴') reelId = got;
     }
     // 258차 — 옛 세이브의 거치대 낚싯대는 옛 문법 트리일 수 있다
     //  280차 — 256 이전에 걸어 둔 대는 옛 id(구멍찌 · 카본 목줄 · 지그헤드)를 들고 있다 — addItem은 정본 id로 넣으므로 트리도 정본 id로
-    this._tree = migrateRigTree({ nodes: g.tree.nodes.map((n) => ({ ...n, itemId: n.itemId ? canonicalItemId(n.itemId) : n.itemId })) }, this.rigView);
+    this._tree = migrateRigTree({ nodes: g.tree.nodes.map((n) => {
+      if (!n.itemId) return { ...n };
+      return { ...n, itemId: idMap.get(n.itemId) ?? canonicalItemId(n.itemId) };
+    }) }, this.rigView);
     this.syncTreeWithItems();
     if (rodId) this.equipHand(rodId, 'R');
     if (reelId) this.equipItem(reelId);
@@ -1490,6 +1597,7 @@ class InventoryStoreManager {
       rigLocked: this.rigLocked,
       savedAtMs: Date.now(),
       starterToolsGiven: true,
+      instSeq: this._instSeq,
     };
   }
 
@@ -1523,7 +1631,7 @@ class InventoryStoreManager {
       const i = canonicalizeItem(migrateLegacyPackItem(i1));
       if (i.id !== i1.id) idRemap.set(i0.id, i.id);
       if (i.category !== i1.category) catChanged.add(i.id);
-      const sd = seedById.get(i.id);
+      const sd = seedById.get(itemBaseId(i.id));   // 282차 — 개체 id는 번호를 떼고 시드를 찾는다
       // 정적 기능 게이트 필드 — 구세이브에 누락됐으면 복원.
       //  tool/equippable = 손 도구(회칼/낚싯대/뜰채) 착용 게이트 · placeKey = 설치형 배치 게이트.
       //  **회칼 3종(KnifeDatabase)은 시드 미등재분(상점 구매 knife_utility/yanagiba)까지
@@ -1597,9 +1705,14 @@ class InventoryStoreManager {
     this._items = mergeSameIdItems(this._items);
     fixSlotCollisions(this._items, catChanged);
     this._catchSeq = s.catchSeq ?? 0;
+    // 282차 — 장비 · 단단한 루어를 개체로 나눈다(옛 세이브의 「같은 id 한 칸 · 수량 n」 → 번호 붙은 n개).
+    //  순번은 세이브 값과 가방에 이미 있는 번호 중 큰 쪽에서 잇는다(번호가 겹치지 않게)
+    this._instSeq = Math.max(s.instSeq ?? 0, ...this._items.map((i) => instanceNumberOf(i.id) ?? 0));
+    const instRemap = this.splitInstanceStacks();
     const valid = new Set(this._items.map((i) => i.id));
     const ref = (id: string | null | undefined): string | null => {
-      const m = id ? (idRemap.get(id) ?? canonicalItemId(id)) : id;
+      const m0 = id ? (idRemap.get(id) ?? canonicalItemId(id)) : id;
+      const m = m0 ? (instRemap.get(m0) ?? m0) : m0;
       return m && valid.has(m) ? m : null;
     };
     this._quickslots = Array.from({ length: 8 }, (_, k) => ref(s.quickslots?.[k]));
@@ -1634,7 +1747,11 @@ class InventoryStoreManager {
     // 192차 — 채비 트리. 없으면(구세이브) 평면 소켓·루어 소켓에서 옮긴다. 사라진 아이템을 가리키는 칸은 비운다.
     // 256차 — 채비 칸이 가리키는 옛 id도 정본으로(안 그러면 아래 sync가 「없는 아이템」으로 보고 칸을 비운다)
     if (s.rigTree?.nodes?.length) {
-      this._tree = { nodes: s.rigTree.nodes.map((n) => (n.itemId ? { ...n, itemId: idRemap.get(n.itemId) ?? canonicalItemId(n.itemId) } : { ...n })) };
+      this._tree = { nodes: s.rigTree.nodes.map((n) => {
+        if (!n.itemId) return { ...n };
+        const c = idRemap.get(n.itemId) ?? canonicalItemId(n.itemId);
+        return { ...n, itemId: instRemap.get(c) ?? c };   // 282차 — 개체로 나뉜 루어는 첫 개체로
+      }) };
       // 258차 — 옛 문법(목줄 → 목줄 끝 → 좁쌀봉돌 · 바늘)이면 지금 문법(목줄 → 목줄 중간 · 목줄 끝 → 바늘)으로 다시 세운다
       this._tree = migrateRigTree(this._tree, this.rigView);
     } else {
@@ -1703,8 +1820,10 @@ class InventoryStoreManager {
   resetAllDevSeed(): void {
     this.resetCommon();
     this._items = createSeedItems().map((i) => applyCookItemFields(i));   // 154차 — 조리 필드 테이블
-    this._quickslots = defaultQuickslots();
+    const remap = this.splitInstanceStacks();   // 282차 — 시드 장비 · 루어도 개체 id로
+    this._quickslots = defaultQuickslots().map((id) => (id ? remap.get(id) ?? id : id));
     this._rig = defaultRig();
+    (Object.keys(this._rig) as RigStepKey[]).forEach((k) => { const v = this._rig[k]; if (v) this._rig[k] = remap.get(v) ?? v; });
     this._tree = treeFromLegacy({ ...this._rig, hasFloatStop: true }, this.rigView);
     this.projectTree();
   }
@@ -1712,6 +1831,7 @@ class InventoryStoreManager {
   private resetCommon(): void {
     this.rigLocked = false;
     this._catchSeq = 0;
+    this._instSeq = 0;
     this.rigDepthLimitM = 5;
     this.spreader = { kind: 'NONE', hookBaits: [] };
     this.rigMode = 'bait';
@@ -1865,7 +1985,9 @@ class InventoryStoreManager {
     // 양도된 물건에 붙어 오면 안 되는 상태 — 귀속 · 착용(보내는 쪽은 애초에 올릴 수 없다)
     delete tpl.bound; delete tpl.equipped; delete tpl.equippedHand;
     tpl.traded = true;
-    if (tpl.speciesId || tpl.forageCatch) {
+    // 282차 — 상대의 개체 번호는 내 가방 번호와 겹칠 수 있다 → 카탈로그 id로 받아 내 번호를 새로 붙인다
+    if (isInstanceItem(tpl)) tpl.id = itemBaseId(tpl.id);
+    else if (tpl.speciesId || tpl.forageCatch) {
       // ⚠ 내 순번(`nextCatchSeq`)만 붙이면 **내 dev 시드 `inv_fish_1`과 충돌해 한 스택으로 합쳐졌다**(실측).
       //   시각 + 순번을 함께 붙이고, 그래도 겹치면 순번을 올린다.
       const base = t.srcId.replace(/_\d+$/, '');
@@ -1887,8 +2009,10 @@ class InventoryStoreManager {
     const need: Partial<Record<InvCategory, number>> = {};
     for (const t of items) {
       const tpl = t.payload as InvItemTemplate;
+      // 282차 — 개체 아이템(장비 · 단단한 루어)은 한 개에 한 칸
+      if (isInstanceItem(tpl)) { need[tpl.category] = (need[tpl.category] ?? 0) + Math.max(1, t.qty); continue; }
       const individual = !!(tpl.speciesId || tpl.forageCatch);
-      if (!individual && this.find(t.srcId)) continue;
+      if (!individual && this._items.some((i) => i.id === t.srcId)) continue;
       need[tpl.category] = (need[tpl.category] ?? 0) + 1;
     }
     return need;
@@ -2023,9 +2147,20 @@ class InventoryStoreManager {
   setTradedLineage(on: boolean): void { this.tradedLineage = on; }
 
   addItem(template: InvItemTemplate, qty: number, opts: { silent?: boolean } = {}): boolean {
+    return this.addItemIds(template, qty, opts) !== null;
+  }
+
+  /**
+   * `addItem`과 같고, 들어간 아이템의 id를 돌려준다(못 넣으면 null).
+   * 282차 — 개체 아이템(장비 · 단단한 루어)은 수량만큼 **따로** 들어가 번호 붙은 id가 생긴다 — 거치대 · 집 보관에서
+   * 되돌아온 대를 다시 손에 들 때처럼 「방금 들어간 그 개체」가 필요한 곳이 이 목록을 쓴다.
+   */
+  addItemIds(template: InvItemTemplate, qty: number, opts: { silent?: boolean } = {}): string[] | null {
     template = canonicalizeItem(template);   // 256차 — 옛 id(상점 · 루어 카탈로그 중복)로 들어와도 정본 칸에 쌓인다
     if (this.tradedLineage && !template.traded) template = { ...template, traded: true };
-    const existing = this.find(template.id);
+    if (isInstanceItem(template)) return this.addInstances(template, qty, opts);
+    // 282차 — 소모품은 정확히 같은 id 칸에만 쌓는다(카탈로그 id로 개체를 찾는 `find` 폴백을 타지 않는다)
+    const existing = this._items.find((i) => i.id === template.id);
     if (existing) {
       // 280차 — 상태가 다른 수량이 합쳐지면 수량 가중으로 섞는다(한쪽 상태로 통째로 바뀌지 않게)
       if (existing.condition && template.condition) {
@@ -2036,10 +2171,10 @@ class InventoryStoreManager {
       existing.qty += qty;
       if (template.traded) existing.traded = true;   // 233차 — 섞이면 보수적으로 거래품 쪽으로
       if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); LedgerStore.gained(existing.name, qty); }
-      return true;
+      return [existing.id];
     }
     const slot = this.findFreeSlot(template.category);
-    if (slot < 0) return false;
+    if (slot < 0) return null;
     const item: InvItem = {
       ...template, slot, qty,
       // 신선도 시계 시작 — 획득(어창 이송 포함) 시점부터 상온 감쇄
@@ -2049,7 +2184,38 @@ class InventoryStoreManager {
     // 위키 발견 기록 (최초 취득 1회 — 개체형 id는 위키 카탈로그에 없어 자연 무시됨)
     DiscoveryStore.record('item', template.id, 'inventory');
     if (!opts.silent) { this.newIds.add(item.id); this.onGained?.(item, qty); LedgerStore.gained(item.name, qty); }   // 211차 — 하루 기록(토스트로 본 것 = 얻은 것)
-    return true;
+    return [item.id];
+  }
+
+  /**
+   * 282차 — 개체 아이템 n개를 따로 넣는다(칸 n개 — 모자라면 하나도 넣지 않는다).
+   * 템플릿이 이미 번호 붙은 id(거치대 · 집 보관 · 바닥 · 되돌려 주기)이고 가방에 그 id가 없으면 첫 개체가 그 id를 잇는다.
+   * 둘째부터는 새것(고장 · 쓴 횟수 없음). 들어올 때는 착용하지 않은 채로 가방 칸에 놓인다.
+   */
+  private addInstances(template: InvItemTemplate, qty: number, opts: { silent?: boolean }): string[] | null {
+    const n = Math.max(0, Math.floor(qty));
+    if (n === 0) return [];
+    if (this.freeSlotCount(template.category) < n) return null;
+    const ids: string[] = [];
+    let first: InvItem | null = null;
+    for (let k = 0; k < n; k++) {
+      const keepId = k === 0 && isInstanceId(template.id) && !this._items.some((i) => i.id === template.id);
+      const id = keepId ? template.id : this.nextInstanceId(template.id);
+      const slot = this.findFreeSlot(template.category);
+      if (slot < 0) break;   // 위에서 칸 수를 셌으므로 오지 않는다
+      const item: InvItem = {
+        ...template, id, slot, qty: 1, equipped: false, equippedHand: undefined,
+        ...(k > 0 ? { fault: undefined, useCount: undefined } : {}),
+        conditionSinceMs: template.condition ? template.conditionSinceMs ?? Date.now() : undefined,
+      };
+      this._items.push(item);
+      ids.push(id);
+      first ??= item;
+      if (!opts.silent) this.newIds.add(id);
+    }
+    DiscoveryStore.record('item', itemBaseId(template.id), 'inventory');
+    if (first && !opts.silent) { this.onGained?.(first, ids.length); LedgerStore.gained(first.name, ids.length); }
+    return ids;
   }
 
   /**
@@ -2068,11 +2234,14 @@ class InventoryStoreManager {
    * 이미 가진 id는 수량만 늘어 칸이 필요 없고, 새 id만 분류별 빈 칸을 센다(`addBundle`과 같은 셈).
    * 퀘스트 보상 · 거치대 낚싯대처럼 「못 받으면 사라지는」 지급 앞에서 묻는다.
    */
-  slotShortfall(parts: readonly { tpl: Pick<InvItemTemplate, 'id' | 'category'>; qty: number }[]): Partial<Record<InvCategory, number>> {
+  slotShortfall(parts: readonly { tpl: Pick<InvItemTemplate, 'id' | 'category'> & Partial<InstanceKindSource>; qty: number }[]): Partial<Record<InvCategory, number>> {
     const need: Partial<Record<InvCategory, number>> = {};
     const seen = new Set<string>();
     for (const p of parts) {
-      if (p.qty <= 0 || this.find(p.tpl.id) || seen.has(p.tpl.id)) continue;
+      if (p.qty <= 0) continue;
+      // 282차 — 개체 아이템(장비 · 단단한 루어)은 한 개에 한 칸이다(같은 물건을 가졌어도 쌓이지 않는다)
+      if (isInstanceItem(p.tpl)) { need[p.tpl.category] = (need[p.tpl.category] ?? 0) + Math.floor(p.qty); continue; }
+      if (this._items.some((i) => i.id === p.tpl.id) || seen.has(p.tpl.id)) continue;
       seen.add(p.tpl.id);
       need[p.tpl.category] = (need[p.tpl.category] ?? 0) + 1;
     }
@@ -2091,7 +2260,8 @@ class InventoryStoreManager {
 
   /** 224차 — 시드 카탈로그의 물건 모양(칸 · 수량 제외). 없으면 null */
   seedTemplate(id: string): InvItemTemplate | null {
-    const seed = createSeedItems().find((x) => x.id === id);
+    const base = itemBaseId(id);   // 282차
+    const seed = createSeedItems().find((x) => x.id === base);
     if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? null;   // 241차 — 농산물 조각
     const { slot: _slot, qty: _qty, ...tpl } = seed;
     return tpl;
@@ -2219,7 +2389,15 @@ class InventoryStoreManager {
    * @param trimFirst 먼저 비울 칸(먹힌 바늘) — 없으면 뒤쪽 칸부터
    */
   removeQty(itemId: string, qty: number, trimFirst = -1): boolean {
-    const item = this.find(itemId);
+    const exact = this._items.find((i) => i.id === itemId);
+    if (!exact && !isInstanceId(itemId)) {
+      // 282차 — 카탈로그 id로 개체 아이템(장비 · 루어)을 n개 뺀다 — 착용하지 않은 것부터(퀘스트 넘기기 · 재료 소모)
+      const pool = this.instancesOf(itemId);
+      if (pool.length === 0 || pool.length < qty) return false;
+      for (const it of pool.slice(0, qty)) { LedgerStore.used(it.name, 1); this.deleteInstance(it.id); }
+      return true;
+    }
+    const item = exact;
     if (!item || item.qty < qty) return false;
     item.qty -= qty;
     LedgerStore.used(item.name, qty);   // 211차 — 하루 기록(팔고 · 먹고 · 쓰고 · 잃은 것)
@@ -2395,7 +2573,9 @@ class InventoryStoreManager {
     this.deleteInstance(itemId);
   }
 
-  private deleteInstance(itemId: string): void {
+  private deleteInstance(rawId: string): void {
+    // 282차 — 카탈로그 id로 불려도 그 개체 하나(`find` 폴백)를 지운다 — 참조 정리는 실제 id로
+    const itemId = this._items.some((i) => i.id === rawId) ? rawId : (this.find(rawId)?.id ?? rawId);
     this.newIds.delete(itemId);
     const idx = this._items.findIndex((i) => i.id === itemId);
     if (idx < 0) return;
@@ -2416,8 +2596,9 @@ class InventoryStoreManager {
 
   // ── 퀵슬롯 ──────────────────────────────────────────
   /** 퀵슬롯 배정 (같은 아이템이 다른 슬롯에 있으면 해제 후 이동) */
-  assignQuickslot(slotIndex: number, itemId: string): void {
+  assignQuickslot(slotIndex: number, rawId: string): void {
     if (slotIndex < 0 || slotIndex >= 8) return;
+    const itemId = this.find(rawId)?.id ?? rawId;   // 282차 — 카탈로그 id로 와도 개체 하나를 가리킨다
     for (let i = 0; i < this._quickslots.length; i++) {
       if (this._quickslots[i] === itemId) this._quickslots[i] = null;
     }
@@ -2613,6 +2794,11 @@ class InventoryStoreManager {
    * @returns 바뀌었는가 (고정 중·fixed 칸·같은 값이면 false)
    */
   setRigNode(idx: number, value: RigValue): boolean {
+    // 282차 — 카탈로그 id로 와도 개체 하나(단단한 루어 · 착용 중 아닌 것)를 가리킨다
+    if ('itemId' in value && value.itemId) {
+      const real = this.find(value.itemId);
+      if (real && real.id !== value.itemId) value = { ...value, itemId: real.id };
+    }
     const target = this._tree.nodes[idx];
     // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다.
     //   193차 — **미끼 칸만은 예외**: 낚시 뒤 미끼만 다시 끼우면 되도록(사용자 지시)

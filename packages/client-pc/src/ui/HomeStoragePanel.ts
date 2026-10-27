@@ -197,13 +197,14 @@ export class HomeStoragePanel extends DraggablePanel {
     const it = HomeStore.take(this.kind, slot);
     if (!it) return;
     const { slot: _s, qty, ...rest } = it;
-    if (!InventoryStore.find(it.id) && InventoryStore.freeSlotCount(it.category) <= 0) {
+    // 282차 — 넣기에 실패하면(빈 칸 없음 · 개체 장비는 한 개에 한 칸) 보관함에 그대로 되돌린다.
+    //  옛 검사는 「같은 id가 가방에 있으면 칸이 필요 없다」였다 — 장비 · 루어 개체는 쌓이지 않아 꺼낸 것이 사라질 수 있었다
+    if (!InventoryStore.addItem(rest, Math.max(1, qty), { silent: true })) {
       HomeStore.restore(this.kind, slot, it);
       playSfx('deny');
       this.setStatus('가방에 빈 칸이 없다', '#ff9a7a');
       return;
     }
-    InventoryStore.addItem(rest, Math.max(1, qty), { silent: true });
     playSfx('item_move');
     this.withdraws++;
     GameState.markDirty();

@@ -1047,6 +1047,8 @@ export const EN_RULES: Rule[] = [
   [/^\[요리\] 화구 설치 모드 — 뭍 위\(플레이어 (\d+)타일 이내\) 클릭 = 설치 · 우클릭\/ESC = 취소$/,
     (m) => `[Cooking] Stove placement — click on land (within ${m[1]} tiles) to place · right-click/ESC to cancel`],
   [/^(.+) 끼우기 \(x(\d+)\)$/, (m, tr) => `Fit ${tr(m[1])} (x${m[2]})`],
+  // 282차 — 채비 칸 후보 줄: 같은 개체 장비 · 루어를 고장 상태별로 묶은 줄(「클래식 스푼 14g — 부분 파손 (x1)」)
+  [/^(.+) — (.+) \(x(\d+)\)$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])} (x${m[3]})`],
   [/^([^·›]+) 올리기$/, (m, tr) => `Put on ${tr(m[1])}`],
   [/^(.+)\(으\)로 만들 수 있는 요리$/, (m, tr) => `Recipes for ${tr(m[1])}`],
   [/^용기: (.+)$/, (m, tr) => `Cookware: ${tr(m[1])}`],

@@ -15,6 +15,7 @@
  */
 
 import type { ReelCatalogEntry, ReelItemSpec, RodCatalogEntry, RodItemSpec, RodUse } from '../types/RodItem.js';
+import { itemBaseId } from '../rules/ItemInstance.js';
 
 const rod = (
   use: RodUse, lengthM: number, grade: string, lineNo: [number, number], lineBasis: 'nylon' | 'pe',
@@ -129,7 +130,8 @@ export const REEL_SPEC_BY_ID: Record<string, ReelItemSpec> = {
 };
 
 /** 하네스 복제본(`inv_rod_budget_h0`)처럼 원본 id 뒤에 꼬리가 붙은 경우 원본을 찾는다 */
-function lookupById<T>(table: Record<string, T>, id: string): T | undefined {
+function lookupById<T>(table: Record<string, T>, rawId: string): T | undefined {
+  const id = itemBaseId(rawId);   // 282차 — 개체 대 · 릴(`shop_rod_float_53#4`)은 번호를 떼고 찾는다
   if (table[id]) return table[id];
   const base = Object.keys(table).filter((k) => id.startsWith(`${k}_`)).sort((a, b) => b.length - a.length)[0];
   return base ? table[base] : undefined;
@@ -166,8 +168,10 @@ export function reelSpecFor(id: string, nameKo = ''): ReelItemSpec {
 
 /** 상점 · 도감용 */
 export function getRodCatalogEntry(id: string): RodCatalogEntry | undefined {
-  return ROD_SHOP.find((r) => r.id === id);
+  const base = itemBaseId(id);
+  return ROD_SHOP.find((r) => r.id === base);
 }
 export function getReelCatalogEntry(id: string): ReelCatalogEntry | undefined {
-  return REEL_SHOP.find((r) => r.id === id);
+  const base = itemBaseId(id);
+  return REEL_SHOP.find((r) => r.id === base);
 }

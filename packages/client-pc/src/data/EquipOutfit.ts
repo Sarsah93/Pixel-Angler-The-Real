@@ -15,6 +15,7 @@
  */
 
 import type { CharConfig, CharOutfit, HatKind, HeldKind, OuterKind, PantsKind, ShirtKind, ShoesKind } from '@tra/core';
+import { itemBaseId } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, InvItem } from '../store/InventoryStore.js';
 
@@ -115,7 +116,7 @@ function heldOf(tool: InvItem['tool']): HeldKind | undefined {
 export function gearLookOf(item: InvItem): GearLook | undefined {
   const held = heldOf(item.tool);
   if (held) return { held };
-  return ITEM_LOOK[item.id] ?? lookByKind(item);
+  return ITEM_LOOK[itemBaseId(item.id)] ?? lookByKind(item);   // 282차 — 착용품은 개체 id(`inv_cap#2`)
 }
 
 /** 기저 옷차림 위에 착용 장비를 덮은 결과 (기저는 건드리지 않는다) */

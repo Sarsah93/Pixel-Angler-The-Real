@@ -10,6 +10,7 @@
  */
 
 import type { LureSpec } from '../types/Lure.js';
+import { itemBaseId } from '../rules/ItemInstance.js';
 
 /** 기준 공기 저항 계수 (일반 채비) — 메탈지그는 이 값의 -35% */
 const BASE_CD = 0.42;
@@ -172,7 +173,8 @@ const LURE_SPEC_BORROW: Record<string, { base: string; over: Partial<LureSpec> }
 };
 
 /** 루어 id로 스펙 조회 */
-export function getLureSpec(id: string): LureSpec | undefined {
+export function getLureSpec(rawId: string): LureSpec | undefined {
+  const id = itemBaseId(rawId);   // 282차 — 개체 루어(`lure_spoon_14#3`)는 번호를 떼고 찾는다
   const own = LURES_CATALOG_DB.find((l) => l.id === id);
   if (own) return own;
   const b = LURE_SPEC_BORROW[id];

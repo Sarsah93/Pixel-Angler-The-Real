@@ -105,6 +105,6 @@ export function inventorySortCompare(): (a: InvItem, b: InvItem) => number {
     const cb = b.condition ? CONDITION_ORDER[b.condition] ?? 9 : 9;
     if (ca !== cb) return ca - cb;
     if (a.qty !== b.qty) return b.qty - a.qty;
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    return coll.compare(a.id, b.id);   // 282차 — 개체 번호(`x#2` < `x#10`)도 숫자 순
   };
 }

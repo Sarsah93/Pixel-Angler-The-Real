@@ -12,7 +12,7 @@
 
 import { LedgerStore } from './LedgerStore.js';
 import type { DiscoveryKind, DiscoverySource, DiscoveryEntry } from '@tra/core';
-import { discoveryKey, FISH_DATABASE, dishDiscoveryName } from '@tra/core';
+import { discoveryKey, FISH_DATABASE, dishDiscoveryName, itemBaseId } from '@tra/core';
 import { SHORE_CREATURE_DATABASE } from '@tra/core';
 import { migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { canonicalItemId } from './ItemIdAlias.js';
@@ -32,7 +32,8 @@ class DiscoveryStoreClass {
    * 발견 기록. 신규 발견이면 true 반환 + onNew 훅 발화.
    * 이미 발견된 대상은 무시(false) — 최초 기록 불변.
    */
-  record(kind: DiscoveryKind, id: string, source: DiscoverySource): boolean {
+  record(kind: DiscoveryKind, rawId: string, source: DiscoverySource): boolean {
+    const id = kind === 'item' ? itemBaseId(rawId) : rawId;   // 282차 — 개체 장비 · 루어(`…#n`)는 카탈로그 id로 기록
     const key = discoveryKey(kind, id);
     if (this.entries.has(key)) return false;
     const entry: DiscoveryEntry = { kind, id, firstAtMs: Date.now(), source };
@@ -46,11 +47,11 @@ class DiscoveryStoreClass {
   }
 
   isDiscovered(kind: DiscoveryKind, id: string): boolean {
-    return this.entries.has(discoveryKey(kind, id));
+    return this.entries.has(discoveryKey(kind, kind === 'item' ? itemBaseId(id) : id));
   }
 
   get(kind: DiscoveryKind, id: string): DiscoveryEntry | undefined {
-    return this.entries.get(discoveryKey(kind, id));
+    return this.entries.get(discoveryKey(kind, kind === 'item' ? itemBaseId(id) : id));
   }
 
   countByKind(kind: DiscoveryKind): number {
@@ -107,7 +108,7 @@ class DiscoveryStoreClass {
         if (!e?.kind || !e?.id) continue;
         // 171차 — 통폐합된 어종은 현행 id로 옮긴다(없는 어종이 도감에 남지 않게).
         // 256차 — 같은 물건 두 id였던 아이템(뜰채 5m 등)도 정본 id로(`ItemIdAlias`)
-        const id = e.kind === 'fish' ? (migrateSpeciesId(e.id) ?? e.id) : e.kind === 'item' ? canonicalItemId(e.id) : e.id;
+        const id = e.kind === 'fish' ? (migrateSpeciesId(e.id) ?? e.id) : e.kind === 'item' ? itemBaseId(canonicalItemId(e.id)) : e.id;
         const key = discoveryKey(e.kind, id);
         const prev = this.entries.get(key);
         if (prev && prev.firstAtMs <= e.firstAtMs) continue;   // 두 id가 한 항목이 되면 더 이른 최초 기록을 지킨다

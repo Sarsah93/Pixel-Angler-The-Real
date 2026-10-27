@@ -2075,13 +2075,13 @@ StoryStore.bind({
     }, 1);
   },
   takeQuestItems: (id, qty) => {
-    const held = InventoryStore.find(id)?.qty ?? 0;
+    const held = InventoryStore.countOf(id);   // 282차 — 개체 아이템이면 개체 수를 센다
     if (held > 0) InventoryStore.removeQty(id, Math.min(held, qty));
     // 234차 — 바닥에 놓아 둔 것도 거둔다(끝난 퀘스트의 물건이 쓸모없이 남지 않게)
     for (const g of [...GroundItemStore.all]) if (g.tpl.id === id) GroundItemStore.take(g.uid);
   },
   // 234차 — 모으기 목표 진행 = 가방 보유 수 · 보상을 주기 전에 가방 자리 확인
-  countItem: (id) => InventoryStore.find(id)?.qty ?? 0,
+  countItem: (id) => InventoryStore.countOf(id),   // 282차 — 장비 · 루어 개체는 번호가 달라도 같은 물건으로 센다
   roomFor: (items) => {
     const cat = buildItemWikiCatalog();
     const parts = items.flatMap((it) => {

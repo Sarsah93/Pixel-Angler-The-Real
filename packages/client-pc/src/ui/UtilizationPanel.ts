@@ -26,7 +26,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import {
   InventoryStore, InvItem, InvCategory, RigStepKey,
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR,
-  isBaitItem, isLureItem, isWeightSinker,
+  isBaitItem, isLureItem, isWeightSinker, isInstanceItem,
   PlateWipData, plateWipProgress, worstCondition, refreshCondition,
 } from '../store/InventoryStore.js';
 import { partKindOf, baitKeyOf, isPackItem } from '../store/RigParts.js';
@@ -39,7 +39,7 @@ import {
   getBestKnife, SashimiMode, SASHIMI_MODES,
   SASHIMI_PLATE_SPECS, MIXED_SASHIMI_PRICING, singleSashimiPlatePrice, SashimiSizeTier,
   sashimiStarsAt, sashimiStarPriceMult, sashimiPlateName, quadBalanceOf, type SashimiPlateMeta,
-  evaluateFishSellPrice, FISH_DATABASE,
+  evaluateFishSellPrice, FISH_DATABASE, itemBaseId, GEAR_FAULTS,
 } from '@tra/core';
 import { LINE_ROLE_KO, retieCutM, type LineRole, type LineWearSummary } from '@tra/core';   // 273차 — 원줄 · 목줄 내구도
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -95,6 +95,25 @@ const WEAR_BADGE: Record<Exclude<LineWearSummary['stage'], 'fresh'>, { label: st
   critical: { label: '위험', ink: '#ffffff', bg: '#c0392b' },
 };
 const CHAIN_ROW_H = NODE_H + 22;
+
+/**
+ * 282차 — 채비 칸 후보 줄 묶기. 개체 아이템(단단한 루어 등 — `<카탈로그 id>#<번호>`)은 같은 물건 · 같은 고장 상태끼리 한 줄로 모은다
+ * (스푼 셋이 「(x1)」 세 줄로 뜨지 않게). 줄을 고르면 그 무리에서 덜 쓴 개체(`useCount`가 작은 것)를 끼운다.
+ * 소모품(묶음)은 그대로 한 줄씩 — `count`가 없으면 부르는 쪽이 칸 몫(`partStockLeft`)을 적는다.
+ */
+function groupInstances(list: InvItem[]): { it: InvItem; count?: number; fault?: InvItem['fault'] }[] {
+  const out: { it: InvItem; count?: number; fault?: InvItem['fault'] }[] = [];
+  const byKey = new Map<string, { it: InvItem; count?: number; fault?: InvItem['fault'] }>();
+  for (const it of list) {
+    if (!isInstanceItem(it)) { out.push({ it }); continue; }
+    const key = `${itemBaseId(it.id)}|${it.fault ?? ''}`;
+    const g = byKey.get(key);
+    if (!g) { const ng = { it, count: 1, fault: it.fault }; byKey.set(key, ng); out.push(ng); continue; }
+    g.count = (g.count ?? 1) + 1;
+    if ((it.useCount ?? 0) < (g.it.useCount ?? 0)) g.it = it;
+  }
+  return out;
+}
 
 export class UtilizationPanel extends DraggablePanel {
   private currentTab: UtilizationTab;
@@ -720,8 +739,8 @@ export class UtilizationPanel extends DraggablePanel {
       ]
       : [
         ...retieRows(),
-        ...candidates.map((it): ChooserRow => ({
-          text: `${it.name} (x${left(it)})`,
+        ...groupInstances(candidates).map(({ it, count, fault }): ChooserRow => ({
+          text: `${it.name}${fault ? ` — ${GEAR_FAULTS[fault].labelKo}` : ''} (x${count ?? left(it)})`,
           recommended: this.nodeRecommends(n, it),
           onPick: () => {
             if (!InventoryStore.setRigNode(i, { itemId: it.id })) { this.flashBoardToast(n.slot === 'bait' ? '남은 미끼가 모자랍니다' : '남은 수가 모자랍니다', true); return; }
@@ -736,7 +755,9 @@ export class UtilizationPanel extends DraggablePanel {
         ...(n.itemId ? [{ text: '비우기', onPick: () => { InventoryStore.setRigNode(i, { itemId: null }); } }] : []),
       ];
     // 280차 — 「… — 열어서 꿰기」 줄은 이름이 길다(참갯지렁이(혼무시) 1갑 (8마리 · 60g)) — 그때만 목록을 넓힌다
-    this.mountChooserList(this, rows, listX, listY, { listW: packRows.length ? 380 : wearRole && wearView ? 300 : 260, title: `${nodeLabel(n)} 선택` });
+    //   282차 — 개체 장비 · 루어를 고장 상태별로 묶은 줄(「… — 부분 파손 (x1)」)이 있으면 넓힌다
+    const faultRow = rows.some((r) => / — .+ \(x\d+\)$/.test(r.text));
+    this.mountChooserList(this, rows, listX, listY, { listW: packRows.length ? 380 : faultRow ? 330 : wearRole && wearView ? 300 : 260, title: `${nodeLabel(n)} 선택` });
   }
 
   /** 273차 — 줄 끝을 잘라 다시 맨다(스풀에서 조금 잘려 나간다 · 마모 0) */
@@ -940,6 +961,8 @@ export class UtilizationPanel extends DraggablePanel {
         const rowTxt = this.scene.add.text(lx + 12, ry + rowH / 2, row.text, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
         }).setOrigin(0, 0.5);
+        // 282차 — 줄 글이 목록 폭을 넘지 않게(고장 표시가 붙은 개체 줄 · 긴 루어 이름) — 「추천」 배지 자리는 비운다
+        clampTextWidth(rowTxt, listW - (row.recommended ? 58 : 20));
         rowsLayer.add(rowTxt);
         if (row.recommended) {
           const badge = this.scene.add.text(lx + listW - 10, ry + rowH / 2, '추천', {

@@ -17,7 +17,13 @@ export const ITEM_ID_ALIAS: Readonly<Record<string, string>> = {
   inv_jighead: 'lure_jighead_3',  // 지그헤드 3g — 시작 아이템(낚시용품 탭) · 루어 카탈로그(루어 탭)
 };
 
-/** 정본 id(별칭이 아니면 그대로) */
+/**
+ * 정본 id(별칭이 아니면 그대로).
+ * 282차 — 개체 id(`shop_net_5#3` — 장비 · 단단한 루어)는 번호 앞(카탈로그 id)만 바꾸고 번호는 그대로 둔다.
+ */
 export function canonicalItemId(id: string): string {
-  return ITEM_ID_ALIAS[id] ?? id;
+  const k = id.indexOf('#');
+  if (k < 0) return ITEM_ID_ALIAS[id] ?? id;
+  const base = ITEM_ID_ALIAS[id.slice(0, k)];
+  return base ? base + id.slice(k) : id;
 }

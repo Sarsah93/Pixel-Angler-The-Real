@@ -708,6 +708,11 @@ export {
   lineStrengthKgOf, lineStrengthView,
 } from './rules/LineStrength.js';
 
+// 282차 — 개체 아이템 id(장비 · 단단한 루어는 `<카탈로그 id>#<번호>`)
+export {
+  ITEM_INSTANCE_SEP, itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf, sameItemKind,
+} from './rules/ItemInstance.js';
+
 // 227차 — 금어기 날짜 단위 · 지역 규정(제주)
 export type { MonthDay, ClosedSeason, LegalRegionKey, RegionalLegalRule, ResolvedLegalRule } from './types/LegalSeason.js';
 export { inSeason, seasonTouchesMonth, isClosedOn, monthsOfSeasons, formatSeasons, legalRegionOf, resolveLegal, closedFor }

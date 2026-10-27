@@ -12,7 +12,7 @@
  *   - 그 밖 — 사용자 그림(스피닝대 · 구멍찌 등)과, 다른 종류 그림을 빌려 쓰던 장비의 새 그림(원투대 · 레버브레이크 릴 · 합사 등).
  *     어느 대 · 릴 · 줄이 어느 그림인지는 아래 `rodArtKey` · `reelArtKey` · `lineArtKey`가 정한다(상점 · 시작 아이템 · 보상 · 구세이브 공용).
  */
-import { reelSpecFor, rodSpecFor } from '@tra/core';
+import { reelSpecFor, rodSpecFor, itemBaseId } from '@tra/core';
 import type { RodUse } from '@tra/core';
 
 /** 텍스처 키 → `food assets/tackle/` 원본 파일(= `public/tackle/` 카드 · `public/tackle/icon/` 아이콘 파일 이름) */
@@ -136,7 +136,7 @@ export const TACKLE_IMAGE_FILES: Record<string, string> = {
 };
 
 /** 하네스 복제본(`inv_rod_budget_h0`)처럼 꼬리가 붙은 id → 원래 id */
-const baseId = (id: string): string => id.replace(/_h\d+$/, '');
+const baseId = (id: string): string => itemBaseId(id).replace(/_h\d+$/, '');   // 282차 — 개체 번호(`#n`)도 뗀다
 
 /** 낚싯대 종류(core `RodUse`) → 그림. 갯바위 찌낚시대는 사용자 스피닝대 그림 · 선상 베이트대는 사용자 베이트대 그림 */
 const ROD_ART_BY_USE: Record<RodUse, string> = {

@@ -10,6 +10,7 @@
  */
 
 import type { KnifeSpec } from '../types/Butchery.js';
+import { itemBaseId } from '../rules/ItemInstance.js';
 
 /** 회칼 등급 카탈로그 (id = 인벤토리 '기타' 아이템 id) */
 export const KNIFE_SPECS: Record<string, KnifeSpec> = {
@@ -52,7 +53,7 @@ const KNIFE_TIER_RANK: Record<KnifeSpec['tier'], number> = {
 export function getBestKnife(inventoryItemIds: string[]): KnifeSpec | null {
   let best: KnifeSpec | null = null;
   for (const id of inventoryItemIds) {
-    const k = KNIFE_SPECS[id];
+    const k = KNIFE_SPECS[itemBaseId(id)];   // 282차 — 개체 칼(`knife_sashimi#2`)
     if (!k) continue;
     // 같은 등급이면 수율이 높은 칼(280차 — 장인 단조 > 장인 야나기바)
     if (!best || KNIFE_TIER_RANK[k.tier] > KNIFE_TIER_RANK[best.tier]
@@ -63,5 +64,5 @@ export function getBestKnife(inventoryItemIds: string[]): KnifeSpec | null {
 
 /** 회칼 아이템인지 판별 (인벤토리/상점 표시용) */
 export function isKnifeItem(itemId: string): boolean {
-  return itemId in KNIFE_SPECS;
+  return itemBaseId(itemId) in KNIFE_SPECS;
 }
