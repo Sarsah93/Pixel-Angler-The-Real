@@ -278,6 +278,11 @@ class CoolerStoreImpl {
   }
 
   // ── 어창 ────────────────────────────────────────────
+  /** 280차 — 담긴 것(어획 · 해수/얼음 · 밑밥)이 있는가 — 마지막 쿨러 · 바칸을 가방에서 빼지 못하게 하는 기준 */
+  hasContents(): boolean {
+    return this.count() > 0 || this.medium !== 'none' || this.chumRemaining > 0;
+  }
+
   count(): number {
     return this.slots.filter(Boolean).length;
   }

@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 21 — 279차 기준(「기준」 줄 · 머리 · §06 「279차 실플레이 확인」 줄) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 23 — 279차 기준(「미끼 묶음 열기」 채비 칸도 막음 · 「가구 배치」 어둠 막 · 놓을 자리 밝힘 · 「집 살림」 실내는 늘 밝음 · 머리 작업 차수 279 · 바닥 줄 워크로그 200) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 21 — 279차 기준 · 채비 문법은 258차(「279차 기준」 줄 · 미끼 칸 아래 줄 「낱개만 · 추천 표시」) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 74 — 279차(도움말 집 쪽 두 문단 · 시스템 페이지 갱신분 — 홈 · 인벤). 지도 탭 그림은 바뀐 지형이 없어 다시 찍지 않았다 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 22 — 280차 기준(「기준」 줄 · 머리 · §06 「280차 실플레이 확인」 줄) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 24 — 280차 기준(「미끼 묶음 열기」 갑째 · 열어서 꿰기 · 「아이템 점검」 줄 · 신선도 · 쿨러 · 냉장고 · 수율 줄) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 22 — 280차 기준 · 채비 문법은 258차(「280차 기준」 줄 · 미끼 칸 아래 줄 「낱개만 · 갑은 열어서」) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 75 — 280차(시스템 탭 「미끼 갑 · 같은 물건 겹치기」 · 아이템 덤프 — 참치 통조림 · 시스템 페이지 갱신분). 지도 탭 그림은 바뀐 지형이 없어 다시 찍지 않았다 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -23,10 +23,10 @@
 
 | 아티팩트 | 고칠 것 |
 |---|---|
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 74 — 279차(도움말 집 쪽 두 문단 · 시스템 페이지 갱신분 — 홈 · 인벤). 지도 탭 그림은 바뀐 지형이 없어 다시 찍지 않았다 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 23 — 279차 기준(「미끼 묶음 열기」 채비 칸도 막음 · 「가구 배치」 어둠 막 · 놓을 자리 밝힘 · 「집 살림」 실내는 늘 밝음 · 머리 작업 차수 279 · 바닥 줄 워크로그 200) |
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 21 — 279차 기준(「기준」 줄 · 머리 · §06 「279차 실플레이 확인」 줄) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 21 — 279차 기준 · 채비 문법은 258차(「279차 기준」 줄 · 미끼 칸 아래 줄 「낱개만 · 추천 표시」) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 75 — 280차(시스템 탭 「미끼 갑 · 같은 물건 겹치기」 · 아이템 덤프 — 참치 통조림 · 시스템 페이지 갱신분). 지도 탭 그림은 바뀐 지형이 없어 다시 찍지 않았다 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 24 — 280차 기준(「미끼 묶음 열기」 갑째 · 열어서 꿰기 · 「아이템 점검」 줄 · 신선도 · 쿨러 · 냉장고 · 수율 줄) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 22 — 280차 기준(「기준」 줄 · 머리 · §06 「280차 실플레이 확인」 줄) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 22 — 280차 기준 · 채비 문법은 258차(「280차 기준」 줄 · 미끼 칸 아래 줄 「낱개만 · 갑은 열어서」) |
 
 ### 머리 숫자 실측(구현 라이브러리)
 

@@ -482,10 +482,12 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
   {
     id: 'bp_bait_krill_pick', station: 'hand', group: 'bait',
     nameKo: '밑밥 크릴에서 미끼 고르기', nameEn: 'Pick Hook Krill from a Chum Block',
-    descKo: '밑밥 블록을 반쯤 녹여 머리와 꼬리가 성한 크릴만 골라낸다. 나머지는 버린다.',
-    descEn: 'Half-thaw a chum block and pick out the krill with heads and tails intact; the rest goes.',
+    descKo: '녹은 밑밥 블록에서 머리와 꼬리가 성한 크릴만 골라낸다. 나머지는 버린다.',
+    descEn: 'From a thawed chum block, pick out the krill with heads and tails intact; the rest goes.',
     materials: [{ itemId: 'inv_chum_krill_block', qty: 1, nameKo: '냉동 크릴 (밑밥 블록)', nameEn: 'Frozen Krill (chum block)' }],
-    outputId: 'inv_krill', outputQty: 1, baseSuccess: 0.95, xp: 6,
+    // 280차 — 블록 하나(600g · 「열기」 50마리)에서 한 마리만 나와 블록을 버리는 꼴이었다 → 성한 것만 20마리.
+    //  녹은 블록만 재료가 된다(클라이언트 `CraftingStore.matches` — 「열기」와 같은 관문)
+    outputId: 'inv_krill', outputQty: 20, baseSuccess: 0.95, xp: 6,
     timeSec: 30, minLevel: 2,
   },
   {

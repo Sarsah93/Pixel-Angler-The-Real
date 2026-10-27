@@ -408,14 +408,24 @@ export class GameStateManager {
     WorldDepletionStore.deserialize(saved.worldDepleted);
     MultiplayerClient.useCharacterId(this._mpUserId);
     this._deployedTraps = saved.deployedTraps ?? [];
-    // 207차 한 대(`parkedRod`) → 208차 여러 대. 구세이브 = 거치 없음
-    this._parkedRods = saved.parkedRods ?? (saved.parkedRod ? [saved.parkedRod] : []);
     // 154차 — 화구 위 조리는 오프라인(게임 종료) 중 정지한다(신선도·통발과 같은 규칙):
     //  저장~로드 실경과만큼 lastTickMs를 밀어 "그 사이 익지 않은 것"으로 만든다.
     {
       const savedAt = saved.player?.lastSavedAt ? new Date(saved.player.lastSavedAt).getTime() : Date.now();
       const gap = Math.max(0, Date.now() - savedAt);
       this._deployedStoves = (saved.deployedStoves ?? []).map((st) => ({ ...st, lastTickMs: st.lastTickMs + gap }));
+      // 207차 한 대(`parkedRod`) → 208차 여러 대. 구세이브 = 거치 없음
+      //  280차 — 거치대에 옮겨 둔 미끼의 신선도 시계도 같은 규칙으로 민다(가방 미끼는 멈추는데 거치대 미끼만 상해 돌아왔다)
+      const rods: ParkedRodSave[] = saved.parkedRods ?? (saved.parkedRod ? [saved.parkedRod] : []);
+      this._parkedRods = rods.map((r) => (r.gear ? {
+        ...r,
+        gear: {
+          ...r.gear,
+          items: r.gear.items.map(({ item, qty }) => ({
+            item: item.conditionSinceMs !== undefined ? { ...item, conditionSinceMs: item.conditionSinceMs + gap } : item, qty,
+          })),
+        },
+      } : r));
     }
     this._coolerInventory = saved.coolerInventory ?? createDefaultCoolerInventory();
     this._licenses = saved.licenses ?? [];

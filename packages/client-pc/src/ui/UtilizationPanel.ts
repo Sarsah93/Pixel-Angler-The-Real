@@ -29,7 +29,7 @@ import {
   isBaitItem, isLureItem, isWeightSinker,
   PlateWipData, plateWipProgress, worstCondition, refreshCondition,
 } from '../store/InventoryStore.js';
-import { partKindOf, baitKeyOf } from '../store/RigParts.js';
+import { partKindOf, baitKeyOf, isPackItem } from '../store/RigParts.js';
 import { clampTextWidth, fitTextHeight } from './TextFit.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { CoolerStore, ChumIngredientKind, CHUM_THROW_COST } from '../store/CoolerStore.js';
@@ -690,10 +690,30 @@ export class UtilizationPanel extends DraggablePanel {
     // item 칸 — 후보는 받는 종류만, 추천을 위로
     // 193차 — 미끼는 가방의 같은 묶음을 바늘끼리 나눠 쓴다: 남은 수(다른 바늘 몫 제외)가 모자라면 목록에서 뺀다
     const need = n.double && InventoryStore.doubleBaitAllowed() ? 2 : 1;
-    const left = (it: InvItem): number => (n.slot === 'bait' ? InventoryStore.baitStockLeft(it.id, i) : it.qty);
-    const candidates = InventoryStore.items.filter((it) => this.nodeAccepts(n, it) && (n.slot !== 'bait' || left(it) >= need))
+    // 280차 — 줄(스풀)이 아니면 같은 물건을 칸끼리 나눠 쓴다(봉돌 1개로 두 칸을 채우지 않는다)
+    const left = (it: InvItem): number => (n.slot === 'main_line' || n.slot === 'leader' ? it.qty : InventoryStore.partStockLeft(it.id, i));
+    const candidates = InventoryStore.items.filter((it) => this.nodeAccepts(n, it) && left(it) >= need)
       .sort((a, b) => Number(this.nodeRecommends(n, b)) - Number(this.nodeRecommends(n, a)));
-    const rows: ChooserRow[] = candidates.length === 0
+    // 280차 — 열지 않은 미끼 갑 · 곽은 칸 후보가 아니다(279). 대신 「열어서 꿰기」 — 하나를 열어 낱개를 가방에 넣고 한 마리를 바로 꿴다.
+    //   여는 것은 플레이어가 고른 행동이다(사용자 「미끼 갑은 열기 전까지 그대로」). 안의 것이 이 칸에 맞는 곽 · 갑만 줄을 세운다
+    const accepts = RIG_SLOTS[n.slot].accepts ?? [];
+    //   밑밥 블록(급랭 백크릴 600g)은 밑밥이다 — 미끼 한 마리 꿰자고 50마리 블록을 뜯지 않게 줄에서 뺀다(가방 「포장 뜯기」는 그대로)
+    const packRows: ChooserRow[] = n.slot !== 'bait' ? [] : InventoryStore.items.filter((it) => isPackItem(it) && !it.chumKind && it.slot >= 0).flatMap((it): ChooserRow[] => {
+      const inner = InventoryStore.packContent(it);
+      const kind = inner ? partKindOf(inner) : null;
+      if (!inner || !kind || !accepts.includes(kind)) return [];
+      return [{
+        text: `${it.name} — 열어서 꿰기`,
+        onPick: () => {
+          const r = InventoryStore.openPack(it.id);
+          if (!r.ok) { this.flashBoardToast(`열 수 없습니다 — ${r.reason ?? ''}`, true); return; }
+          this.scene.events.emit('inventory-changed');
+          if (!InventoryStore.setRigNode(i, { itemId: inner.id })) { this.flashBoardToast('남은 미끼가 모자랍니다', true); return; }
+          playSfx('item_move');
+        },
+      }];
+    });
+    const rows: ChooserRow[] = candidates.length === 0 && packRows.length === 0
       ? [
         { text: '사용 가능한 부품이 없습니다 — 직판장 채비 코너', onPick: () => { /* 안내행 */ }, muted: true },
         { text: '닫기', onPick: () => { /* 선택 없음 */ } },
@@ -704,7 +724,7 @@ export class UtilizationPanel extends DraggablePanel {
           text: `${it.name} (x${left(it)})`,
           recommended: this.nodeRecommends(n, it),
           onPick: () => {
-            if (!InventoryStore.setRigNode(i, { itemId: it.id })) { this.flashBoardToast('남은 미끼가 모자랍니다', true); return; }
+            if (!InventoryStore.setRigNode(i, { itemId: it.id })) { this.flashBoardToast(n.slot === 'bait' ? '남은 미끼가 모자랍니다' : '남은 수가 모자랍니다', true); return; }
             playSfx('item_move');
             // 세트가 권장 미끼를 정했는데 다른 미끼를 끼우면 — 끼워지긴 하지만 알려 준다
             if (n.slot === 'bait' && n.kit && KIT_DEFS[n.kit].recommendedBaits?.length && !baitRecommendedFor(n.kit, baitKeyOf(it))) {
@@ -712,9 +732,11 @@ export class UtilizationPanel extends DraggablePanel {
             }
           },
         })),
+        ...packRows,
         ...(n.itemId ? [{ text: '비우기', onPick: () => { InventoryStore.setRigNode(i, { itemId: null }); } }] : []),
       ];
-    this.mountChooserList(this, rows, listX, listY, { listW: wearRole && wearView ? 300 : 260, title: `${nodeLabel(n)} 선택` });
+    // 280차 — 「… — 열어서 꿰기」 줄은 이름이 길다(참갯지렁이(혼무시) 1갑 (8마리 · 60g)) — 그때만 목록을 넓힌다
+    this.mountChooserList(this, rows, listX, listY, { listW: packRows.length ? 380 : wearRole && wearView ? 300 : 260, title: `${nodeLabel(n)} 선택` });
   }
 
   /** 273차 — 줄 끝을 잘라 다시 맨다(스풀에서 조금 잘려 나간다 · 마모 0) */

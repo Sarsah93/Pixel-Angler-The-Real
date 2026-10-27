@@ -16,7 +16,7 @@
  *    구세이브의 `plantWateredMs`(화분 하나)는 기본 화분 id `plant`로 옮겨 읽는다.
  */
 
-import type { InvItem, InvCategory } from './InventoryStore.js';
+import { InventoryStore, type InvItem, type InvCategory } from './InventoryStore.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
 import {
   DEFAULT_LAYOUT, FURN_DEFS, DOOR_MAT, WALL_DECOR, footprint, inFloor, onDoorMat, wallDecorCols, ROOM_W, ROOM_H, FLOOR_TOP,
@@ -86,6 +86,8 @@ export interface HomeSaveState {
   tanks?: Record<string, TankFish[]>;
   /** 191차 — 방에서 아주 치운 기본 가구 id (로드 때 기본 배치로 다시 채우지 않는다 — 아버지의 낚시 상자) */
   discarded?: string[];
+  /** 280차 — 저장 시각(옷장 · 선반에 둔 미끼 · 먹거리의 신선도 시계를 게임을 끈 동안 멈추는 데 쓴다) */
+  savedAtMs?: number;
 }
 
 export interface PlaceCheck {
@@ -348,6 +350,7 @@ class HomeStoreManager {
     //  집 보관함은 내 것이라 판매 · 양도 금지와 부딪치지 않는다.
     if (item.equipped) return false;
     if (itemKeepReason(item.id)) return false;   // 234차 — 맡은 물건 · 프롤로그 물건은 집에 넣어 두지 않는다(그 일이 막힌다)
+    if (InventoryStore.coolerRemovalBlocked(item.id)) return false;   // 280차 — 담긴 것이 있는 마지막 쿨러 · 바칸
     return HOME_STORAGE[kind].accepts.includes(item.category);
   }
 
@@ -393,6 +396,7 @@ class HomeStoreManager {
       cat: { ...this.cat },
       tanks: Object.fromEntries(Object.entries(this.tanks).map(([k, v]) => [k, v.map((f) => ({ ...f }))])),
       discarded: [...this.discarded],
+      savedAtMs: Date.now(),
     };
   }
 
@@ -422,10 +426,15 @@ class HomeStoreManager {
         this.placed.push({ ...(DEFAULT_LAYOUT.find((d) => d.id === f.id) ?? f) });
       }
     }
+    // 280차 — 게임을 끈 동안은 신선도가 멈춘다(가방 · 쿨러 · 거치대와 같은 규칙) — 선반에 둔 생미끼만 꺼진 동안 상했다
+    const gap = typeof s.savedAtMs === 'number' ? Math.max(0, Date.now() - s.savedAtMs) : 0;
     for (const k of ['wardrobe', 'shelf'] as HomeStorageKind[]) {
       const src = s[k];
       if (!Array.isArray(src)) continue;
-      src.forEach((it, i) => { if (i < HOME_STORAGE[k].slots) this.boxes[k][i] = it ? { ...it } : null; });
+      src.forEach((it, i) => {
+        if (i >= HOME_STORAGE[k].slots) return;
+        this.boxes[k][i] = it ? { ...it, ...(it.conditionSinceMs !== undefined ? { conditionSinceMs: it.conditionSinceMs + gap } : {}) } : null;
+      });
     }
     // 화분 — 190차 개체별 맵이 우선, 없으면 구세이브 단일 값을 기본 화분에
     if (s.watered && typeof s.watered === 'object') {

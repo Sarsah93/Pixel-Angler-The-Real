@@ -125,3 +125,6 @@
     변형 효과를 새로 넣을 때 기존 효과 배선을 지우지 않는지 실조리 하네스로 본다(`__COOK` 되감기).
 16. **레시피 사진 = `FireRecipeDatabase.photoKey` + `BootScene` 한 줄 + `public/food/icon/` 판**(255) — 칸(≤ 72px)은 `__icon`을 쓴다(`fitFishTexture`).
     사진을 바꾸면 `node tools/dish_photos.cjs`(원본 `food assets/dishes/` → 셀 3px · 아이콘). 옛 세이브 요리는 불러올 때 `refreshDishPhoto`가 바꾼다.
+17. **회칼은 `KNIFE_SPECS` 표에 있어야 회칼이다**(280) — 손 도구(`tool: 'knife'`)여도 표에 없으면 회뜨기 단추가 「회칼을 손에 …」로 잠기고
+   손질은 「회칼 없음 — 막칼」(수율 0.85)로 돈다(장인 단조 야나기바 · 정옥선의 칼 실측). 새 칼은 상점 · 보상 데이터와 함께 이 표에 넣는다.
+   같은 등급이면 수율 높은 칼이 이긴다(`getBestKnife`). 요리의 식는 시계(`dish.cookedAtMs`)도 꺼진 시간만큼 민다(280).

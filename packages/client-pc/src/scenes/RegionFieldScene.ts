@@ -144,7 +144,7 @@ import { pumpTitleBanners, TITLE_RARITY_COLOR, titleTagStyle } from '../ui/Title
 import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
-import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, type RegionFishFarms } from '@tra/core';
+import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
@@ -185,7 +185,7 @@ import { DraggablePanel, restoreHandCursor } from '../ui/DraggablePanel.js';
 import { PauseMenu, type PauseMenuItem } from '../ui/PauseMenu.js';
 import { cv, drawBlockedX, okBadLegend, shapeCuesOn } from '../ui/ColorAssist.js';
 import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
-import { InventoryStore, InvItem } from '../store/InventoryStore.js';
+import { InventoryStore, InvItem, isSealedBaitBundle } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { LedgerStore } from '../store/LedgerStore.js';
@@ -3907,12 +3907,14 @@ export class RegionFieldScene extends Phaser.Scene {
         continue;
       }
       // 272차 — 묶음 판매(바늘 10 · 봉돌 6 · 묶음추 4 …): 장바구니 수량 = 묶음 수, 가방에는 낱개로(`packQty`는 가방에 싣지 않는다)
-      const { packQty: _packQty, ...tpl } = entry;
+      const { packQty: _packQty, bundle: _bundle, ...tpl } = entry;
       const units = qty * packQtyOf(entry);
+      // 280차 — 미끼 갑(청갯지렁이 · 혼무시 1갑)은 갑째 넣는다 — 열기 전까지 그대로(사용자 지시). 세트 상품(루어 · 에기)만 산 자리에서 푼다
+      const opensNow = !!entry.bundle && !isSealedBaitBundle(entry.id);
       // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
       if (entry.furnKind) {
         for (let i = 0; i < qty; i++) HomeStore.addStored(entry.furnKind);
-      } else if (!(entry.bundle ? InventoryStore.addBundle(entry.bundle, qty) : InventoryStore.addItem(tpl, units))) {
+      } else if (!(opensNow ? InventoryStore.addBundle(entry.bundle!, qty) : InventoryStore.addItem(tpl, units))) {
         // 188차 — 세트 상품은 구성품으로 풀어 넣는다(전부 들어갈 때만)
         failed.push(`${entry.name}(가방에 자리 없음)`);
         continue;
@@ -3948,8 +3950,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const failed: string[] = [];
     for (const { item, qty } of lines) {
       // 쿨러는 내용물(어획/해수·얼음/밑밥)이 남아 있으면 판매 불가 (유실 방지)
-      if (item.id === 'inv_cooler'
-        && (CoolerStore.count() > 0 || CoolerStore.medium !== 'none' || CoolerStore.chumRemaining > 0)) {
+      if (InventoryStore.coolerRemovalBlocked(item.id, qty)) {   // 280차 — 바칸 포함 · 마지막 그릇일 때만
         failed.push(`${item.name}(내용물이 남아 있음)`);
         continue;
       }
@@ -6058,7 +6059,11 @@ export class RegionFieldScene extends Phaser.Scene {
       placeKo: this.node.name, placeEn: this.node.nameEn,
       has: (itemId) => !!InventoryStore.find(itemId),   // 235차 — 실제 물건을 쓰는 장면(M7-04 가족사진)
       // 237차 — N19-8 첫물: 가방(보관함 아님)에 든 텃밭 수확물 하나
-      produce: () => InventoryStore.items.find((i) => i.slot >= 0 && i.qty > 0 && isProduceItem(i))?.id ?? null,
+      //  280차 — 낱개를 먼저 건넨다(포장한 팩이 앞에 있으면 딸기 25개 한 팩이 통째로 빠졌다)
+      produce: () => {
+        const held = InventoryStore.items.filter((i) => i.slot >= 0 && i.qty > 0 && isProduceItem(i));
+        return (held.find((i) => !looseOfPack(i.id)) ?? held[0])?.id ?? null;
+      },
     });
     if (!def) return;
     this.clearSceneExtras();

@@ -28,6 +28,7 @@ import { GameState, type ParkedRodSave } from '../../store/GameState.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { a11ySig, cvCss, shapeCuesOn } from '../../ui/ColorAssist.js';
 import { InventoryStore, type ParkedGear, type InvItem } from '../../store/InventoryStore.js';
+import { isPackItem } from '../../store/RigParts.js';
 import { GroundItemStore } from '../../store/GroundItemStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
@@ -284,7 +285,8 @@ export class RodHolderSystem {
     if (!g) return InventoryStore.hookNeedsBait() && !InventoryStore.rigSummary().baitIds.some(Boolean);
     const baitIds = new Set(g.tree.nodes.filter((n) => n.slot === 'bait' && n.itemId).map((n) => n.itemId as string));
     if (baitIds.size === 0) return false;   // 미끼 없는 채비(반짝이 카드 등)
-    return !g.items.some((e) => baitIds.has(e.item.id) && e.qty > 0);
+    // 280차 — 279 이전 세이브는 곽 · 갑이 미끼 칸에 꿰여 있을 수 있다 — 곽은 미끼로 치지 않는다(따먹히면 곽째 사라졌다)
+    return !g.items.some((e) => baitIds.has(e.item.id) && e.qty > 0 && !isPackItem(e.item));
   }
 
   /** 입질 창을 놓쳤다 — 미끼 하나를 따먹혔다 */
@@ -297,7 +299,7 @@ export class RodHolderSystem {
       return true;
     }
     const baitIds = new Set(g.tree.nodes.filter((n) => n.slot === 'bait' && n.itemId).map((n) => n.itemId as string));
-    const e = g.items.find((x) => baitIds.has(x.item.id) && x.qty > 0);
+    const e = g.items.find((x) => baitIds.has(x.item.id) && x.qty > 0 && !isPackItem(x.item));
     if (!e) return false;
     e.qty -= 1; e.item.qty = e.qty;
     g.items = g.items.filter((x) => x.qty > 0);

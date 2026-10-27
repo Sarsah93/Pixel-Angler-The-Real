@@ -155,9 +155,29 @@ export const LURES_CATALOG_DB: LureSpec[] = [
   },
 ];
 
+/**
+ * 280차 — 카탈로그 밖의 루어(제작품 · 옛 시드)가 빌려 쓰는 제원.
+ * 없을 때는 채비 무게 0g · 소프트 루어 취급 · 두족류 묶임(`spawnBinding`) 없음으로 읽혀
+ * 튜닝 에기로는 오징어가 낚이지 않았다. 바탕 루어의 제원에 다른 값만 덮어 id를 그 아이템 id로 돌려준다.
+ * 라인업 목록(`LURES_CATALOG_DB` · `getLuresByKind`)에는 나오지 않는다 — 조회 전용.
+ */
+const LURE_SPEC_BORROW: Record<string, { base: string; over: Partial<LureSpec> }> = {
+  // 튜닝 에기 3.5호 — 시트 납으로 침강 자세를 잡았다(조금 더 무겁고 빨리 가라앉는다)
+  craft_egi_tuned: { base: 'lure_egi_35', over: { nameKo: '튜닝 에기 3.5호', nameEn: 'Tuned Egi #3.5', brand: '수제', weightG: 21.0, sinkRateMps: 0.45 } },
+  // 커스텀 미노우(자개 도색) — 시판 미노우 그대로에 반사광만 바꿨다
+  craft_lure_custom: { base: 'lure_minnow_float', over: { nameKo: '커스텀 미노우 (자개 도색)', nameEn: 'Custom Minnow (abalone inlay)', brand: '수제' } },
+  // 옛 시드 · 제작 — 미노우 90F · 메탈지그 20g(주조)
+  inv_minnow: { base: 'lure_minnow_float', over: { nameKo: '미노우 90F (플로팅)', nameEn: 'Minnow 90F (Floating)', sizeLabel: '90mm 10g', weightG: 10.0 } },
+  inv_metaljig: { base: 'lure_metaljig_28', over: { nameKo: '메탈지그 20g', nameEn: 'Metal Jig 20g', brand: '수제', sizeLabel: '20g', weightG: 20.0, sinkRateMps: 0.8 } },
+};
+
 /** 루어 id로 스펙 조회 */
 export function getLureSpec(id: string): LureSpec | undefined {
-  return LURES_CATALOG_DB.find((l) => l.id === id);
+  const own = LURES_CATALOG_DB.find((l) => l.id === id);
+  if (own) return own;
+  const b = LURE_SPEC_BORROW[id];
+  const base = b ? LURES_CATALOG_DB.find((l) => l.id === b.base) : undefined;
+  return base && b ? { ...base, ...b.over, id } : undefined;
 }
 
 /** 세부 종류로 필터 (UI 라인업 표시용) */

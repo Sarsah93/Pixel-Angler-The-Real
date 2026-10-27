@@ -89,6 +89,7 @@ export const EN_RIG: Record<string, string> = {
   '고기를 물 밖으로 들어 올릴 때 바늘이 빠지지 않게 떠 올립니다. 자루가 수면에 닿지 않는 높은 자리나 테트라포드 구멍에서는 쓸 수 없습니다.':
     "Scoops the fish so the hook can't pull free while you lift it out. It can't be used where the handle won't reach the water, or in tetrapod holes.",
   '남은 미끼가 모자랍니다': 'Not enough bait left',
+  '남은 수가 모자랍니다': 'Not enough left',
   '같은 미끼가 두 마리 이상 남아 있어야 합니다': 'You need at least two of the same bait left',
   '반짝이 바늘만 달린 채비 — 미끼가 없어 전갱이만 작은 멸치로 보고 덤빈다.': 'Flasher hooks only — with no bait, only horse mackerel take them for tiny anchovies.',
   '「한 바늘에 두 미끼」를 배웠다. 미끼 칸 아래 x2를 켜면 같은 미끼를 두 마리 꿴다 — 던질 때마다 두 개씩 줄지만 입질이 조금 오른다.':
@@ -106,6 +107,8 @@ export const EN_RIG: Record<string, string> = {
     'Hooks share the bait in your bag — you cannot put the same bait on more hooks than you have, and a bite only uses up the bait on the hook that was taken. If more of that bait is left, the hook stays baited.',
   '채비를 고정해도 미끼 칸은 바꿀 수 있습니다 — 낚시 뒤 미끼만 다시 끼우면 됩니다. 미끼가 하나도 없으면 고정 · 캐스팅이 되지 않습니다(반짝이 카드 채비 제외).':
     'Bait slots stay editable even on a locked rig — after fishing, just re-bait. With no bait at all the rig cannot be locked or cast (except a flasher card rig).',
+  '생미끼는 갑으로 팔고, 곽크릴은 곽째 팝니다. 산 갑 · 곽은 연 적 없는 그대로 가방에 들어가 바늘에 바로 꿰이지 않습니다 — 가방에서 「열기」 · 「포장 뜯기」를 하거나, 채비 창 미끼 칸에서 「열어서 꿰기」를 고르면 한 갑을 열어 한 마리를 바로 꿰고 나머지는 가방에 남습니다(언 곽크릴은 언 크릴이 나옵니다). 갑에 든 지렁이도 산 때부터 조금씩 상합니다 — 연 지렁이는 갑의 상태를 그대로 잇고, 상한 갑은 열어도 쓸 수 없습니다.':
+    'Live bait is sold by the box and krill by the carton. A box or carton you buy stays sealed in your bag and cannot go on a hook as it is — use "Open" or "Open pack" in the bag, or pick "Open … and bait" in the rig window\'s bait slot to open one box, put one on the hook and keep the rest in your bag (a frozen carton gives frozen krill). Worms in a box age from the day you buy them — opened worms keep the box\'s freshness, and a spoiled box has nothing usable inside.',
   '스킬 「한 바늘에 두 미끼」(낚시)를 배우면 미끼 칸 아래 x2 단추가 생깁니다. 켜면 같은 미끼를 두 마리 꿰어 던질 때마다 2개씩 줄고, 켠 바늘마다 입질이 1% 더 오릅니다(두 미끼로 오르는 몫은 최대 2%).':
     'Learning the Fishing skill Two Baits, One Hook adds an x2 button under each bait slot. Turned on, the hook carries two of the same bait — two are used per cast, and each such hook adds another 1% to bites (up to 2% in total from doubled hooks).',
   '채비 엮기 (찌 · 원투 · 구멍치기)': 'Building a Rig (float · surf · hole)',
@@ -157,6 +160,9 @@ export const EN_RIG_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => str
   [/^줄 끝을 잘라 다시 매기 — ([\d.]+)m 소모 \((.+)\)$/, (m, tr) => `Cut the end and re-tie — uses ${m[1]}m (${tr(m[2]).toLowerCase()})`],
   [/^(원줄|목줄) 끝을 잘라 다시 맸다 — (.+)$/, (m, tr) => `Re-tied the ${tr(m[1]).toLowerCase()} — ${tr(m[2])}`],
   [/^다시 맬 수 없습니다 — (.+)$/, (m, tr) => `Can't re-tie — ${tr(m[1])}`],
+  // 280차 — 미끼 칸 「열어서 꿰기」
+  [/^(.+) — 열어서 꿰기$/, (m, tr) => `Open ${tr(m[1])} and bait`],
+  [/^열 수 없습니다 — (.+)$/, (m, tr) => `Can't open — ${tr(m[1])}`],
   [/^(원줄|목줄)이 많이 쓸렸다 — 채비 창에서 줄 끝을 잘라 다시 매는 게 좋겠다$/, (m, tr) => `The ${tr(m[1]).toLowerCase()} is badly worn — cut the end and re-tie it in the rig window`],
   [/^(원줄|목줄)이 끊어지기 직전이다 — 이대로는 큰 고기를 못 버틴다$/, (m, tr) => `The ${tr(m[1]).toLowerCase()} is about to snap — it won't hold a big fish like this`],
   [/^(.+) 선택$/, (m, tr) => `Choose ${tr(m[1])}`],

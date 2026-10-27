@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 279차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 280차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-27 279차) — 열지 않은 미끼 묶음은 채비 칸에 못 끼운다 · 집 안은 늘 밝다 · 가구 배치 때만 어둡게(손 아래 가구 · 놓을 자리 밝힘)**
+**최근 변경 (2026-10-27 280차) — 미끼 갑은 열기 전까지 갑째 · 아이템 버그 전수 점검(26건 고침)**
+
+- 사용자 「미끼 갑은 열기 전까지 그대로 두도록 바꿔줘. 아 그리고, 이런 아이템 관련 버그가 없는 지 전체적으로 검수해줘.」
+- 갑: 구매 · 불러오기 모두 갑째(`isSealedBaitBundle`) · 채비 창 미끼 칸 「… — 열어서 꿰기」(`packContent` · `openPack`) · 갑 신선도 시계(산 때부터 · 연 지렁이가 잇는다 · 상한 갑 거절).
+- 점검 네 갈래(장착 · 묶음 · 분류 · 불러오기) → 26건: 고장 대 칸 없음 · 같은 id 신선도 수량 가중(`blendCondition`) · 칸 몫(`partStockLeft` · `trimOverCommitted`) · 통발 갑째 · 「사용하기」 헛소모 ·
+  회칼 표 둘 · 수제 채비 · 카탈로그 밖 루어 빌린 제원 · 쿨러 · 바칸 · 거래 · 냉장고 · 기본 도구 표식 · 오프라인 시계(요리 · 거치대 · 선반).
+- 검증: 하네스 14/14 · 21/21 · pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. 상세: [280차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md).
+
+**이전 변경 (2026-10-27 279차) — 열지 않은 미끼 묶음은 채비 칸에 못 끼운다 · 집 안은 늘 밝다 · 가구 배치 때만 어둡게(손 아래 가구 · 놓을 자리 밝힘)**
 
 - QA 둘: 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 · 「집 내부(다른 상점 내부들도 마찬가지겠지?)는 항상 밝고, 가구 배치할 때, 어두움(DIMMING)처리 하되, 배치할 가구 및 영역을 하이라이트」.
 - 미끼 갑: 267은 `isBaitItem`(낚시 중 고르기)만 막아 채비 창 미끼 칸(`partKindOf`)에 곽크릴 · 청갯지렁이 1갑이 꿰였다 → `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null ·
@@ -336,14 +344,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 다리: 1칸 폭 대각 데크(`D`) · 보도 · 방파제 선이 꼭짓점만 닿아 4-연결 걷기에서 끊겼다(OSM 다리 251개 아래 물 0 — 전부 꼭짓점 문제) →
   빌더 `bridge_osm_pinches`(물 모서리 한 칸) · 속초는 `tools/fix_walk_pinches.py`(재빌드하면 손본 1,640칸 손실) · 12지역 137칸(태안 나래교 · 서귀포 새연교 → 새섬 · 인천 매립지).
 - 검증: 놀이 하네스 42/42 · 다리 하네스 5/5(나래교 69칸 방향키로 건넘) · pageerror 0 · 빌드 3/3 · typecheck 0. 상세: [278차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-278-forage-game-freeze-guide-footbridge-pinch.md).
-
-**이전 변경 (2026-10-26 277차) — 가방 「정리」 · 차도 위 가게 자리와 차 엉킴 · 안내 말풍선 끄고 켜기 · 가게 · 집 ESC = 일시정지 메뉴**
-
-- 사용자 요청 넷: 「인벤토리 자동정렬 … 유사 품목 순 -> 가나다/알파벳 순」 · 「부산 백운포 … 차들이 멈춰있거나 저렇게 배치」 · 「안내 팝업 메시지 … 환경설정에서 끄고 켤 수 있도록」 · 「편의점이나 마트에서 esc … pause menu가 나오도록」.
-- 가방 「정리」(재화 띠 단추 · `InventorySort` — 낚시용품은 채비를 매는 차례 → 보이는 이름 순 · `sortCategory`는 칸 번호만) · 백운포 원인 = 사거리 모서리 가게 [F] 자리가 아스팔트(문 앞 넷이 차도면 BFS를 건너뛰었다) + 차가 다른 도로의 차를 몰랐다 →
-  문 BFS ≤ 4(길 건너 금지 `crossesRoad`) · 가게 사람 `poiNpcSpot` · 인물 `nearestStandable` · 걷기 `offRoad` · 차 `crossBlocked`(가까운 쪽 먼저 · 10초 교착 풀기) · 주인공 대기 = 지나갈 통로 · 사고 정지 180 → 20초.
-- 설정 「화면」 「안내 말풍선」(`setGuideTipsEnabled` — 끄면 본 것으로 치지 않음) · `ui/PauseMenu` 공용 — 가게 안 · 집 안 ESC도 일시정지 메뉴(나가기는 문 매트).
-- 검증: 감사 13지역 [F] 차도 위 972 → 371 · 가게 사람 66 → 0 · 이야기 인물 5 → 0 · 다른 도로 차 겹침 488 → 55 · 하네스 21/21 · 빌드 3/3 · typecheck 0. 상세: [277차 워크로그](../docs/wiki/03-WORKLOG/2026-10-26-277-bag-sort-road-spots-guide-toggle-pause-menu.md).
 
 ---
 

@@ -22,15 +22,16 @@ const CRAFT_ONLY: Record<string, InvItemTemplate> = {
   // ── 채비 묶음 (완성 채비 — 바늘 소켓에 그대로 장착) ──
   craft_rig_chinu: {
     id: 'craft_rig_chinu', name: '감성돔 묶음 채비 (수제)', icon: '', iconTexture: 'art_rig_card',
-    category: 'tackle', subCategory: '바늘', basePrice: 2200, equippable: false,
+    category: 'tackle', subCategory: '바늘/훅', basePrice: 2200, equippable: false,   // 280차 — 「바늘」은 어느 채비 칸도 받지 않았다
   },
   craft_rig_blackfish: {
     id: 'craft_rig_blackfish', name: '벵에돔 목줄 채비 (수제)', icon: '', iconTexture: 'art_rig_card',
-    category: 'tackle', subCategory: '바늘', basePrice: 2600, equippable: false,
+    category: 'tackle', subCategory: '바늘/훅', basePrice: 2600, equippable: false,
   },
   craft_rig_surf: {
     id: 'craft_rig_surf', name: '원투 카드 채비 3단 (수제)', icon: '', iconTexture: 'art_rig_card',
     category: 'tackle', subCategory: '편대', basePrice: 5200, equippable: false,
+    rigPart: 'card_rig', kitHooks: 3, sinkerWeightG: 38,   // 280차 — 단수 · 자중이 없어 바늘 하나 · 0g으로 읽혔다(상점 3단 카드와 같은 값)
   },
 
   // ── 구급품 (효과 수치는 data/ItemVitals.ts 가 단일 소스) ──

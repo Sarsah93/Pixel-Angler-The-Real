@@ -13,23 +13,8 @@ import {
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
-import { InvItem, isWeightSinker, isBaitItem } from './InventoryStore.js';
-
-/** 낚싯대 미끼 이름 → BaitKey 매핑 (오라클 baitPreference 키와 일치) */
-function baitKeyOf(item: InvItem): string | undefined {
-  const n = item.name;
-  if (n.includes('혼무시')) return 'worm_king';
-  if (n.includes('땅지렁이')) return 'earthworm';   // 248차 — 텃밭에서 주운 땅지렁이(「지렁이」보다 먼저)
-  if (n.includes('지렁이')) return 'worm_blue';
-  if (n.includes('크릴')) return 'krill';
-  if (n.includes('빵') || n.includes('떡밥')) return 'bread';
-  if (n.includes('생선') || n.includes('오징어')) return 'fishcut';
-  if (n.includes('옥수수')) return 'corn';
-  if (n.includes('성게')) return 'urchin';   // 225차 — '성게'도 '게'를 품으므로 게보다 먼저 본다
-  if (n.includes('게') || n.includes('소라')) return 'crab';
-  if (n.includes('조개') || n.includes('개불')) return 'shellfish';
-  return undefined;
-}
+import { InventoryStore, InvItem, isWeightSinker, isBaitItem } from './InventoryStore.js';
+import { baitKeyOf } from './RigParts.js';
 
 /** 찌 이름에서 호수 추출 (예: '구멍찌 0.8호' → 0.8) */
 function floatHoOf(item: InvItem): number | undefined {
@@ -98,8 +83,11 @@ class RecommendationStoreManager {
 
   /** 미끼 추천 여부 — 추천 BaitKey 목록에 포함 */
   isBaitRecommended(item: InvItem, reco: RigRecommendation): boolean {
-    if (!isBaitItem(item)) return false;
-    const key = baitKeyOf(item);
+    // 280차 — 갑 · 곽은 안의 미끼로 본다(상점은 크릴 · 지렁이 · 혼무시를 갑으로만 팔아 「추천」이 한 번도 붙지 않았다).
+    //  이름 → 미끼 종류는 낚시 쪽과 같은 표(RigParts.baitKeyOf — 참갯지렁이 · 갯강구 · 살아 있는 물고기까지)
+    const bait = isBaitItem(item) ? item : InventoryStore.packContent(item);
+    if (!bait || !(bait.subCategory ?? '').includes('미끼')) return false;
+    const key = baitKeyOf(bait);
     return key !== undefined && reco.baitKeys.includes(key as never);
   }
 

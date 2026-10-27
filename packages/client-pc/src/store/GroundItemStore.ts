@@ -71,7 +71,8 @@ class GroundItemStoreClass {
 
   /** 바닥에 놓기 — 같은 칸에 같은 아이템이 있으면 수량을 합친다 */
   drop(regionId: string, tx: number, ty: number, item: InvItem | InvItemTemplate, qty: number, placed = false, mapKey?: string): GroundItem {
-    const { qty: _q, slot: _s, ...tpl } = item as InvItem;
+    // 280차 — 바닥에 놓인 것은 손에 든 것이 아니다(장착 표식이 남으면 주웠을 때 가방 칸에 있으면서 「오른손」으로 남았다)
+    const { qty: _q, slot: _s, equipped: _e, equippedHand: _h, ...tpl } = item as InvItem;
     const same = this._items.find((g) => g.regionId === regionId && g.mapKey === mapKey && g.tx === tx && g.ty === ty && g.tpl.id === tpl.id);
     if (same) {
       same.qty += qty;

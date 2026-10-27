@@ -8,7 +8,7 @@
  *  - 세이브(GameState SaveData.fridge)에 영속.
  */
 
-import type { InvItem } from './InventoryStore.js';
+import { refreshCondition, type InvItem } from './InventoryStore.js';
 import { migrateLegacyPackItem } from '../data/CropItems.js';
 
 export type FridgeSection = 'freezer' | 'fridge';
@@ -56,7 +56,9 @@ class FridgeStoreManager {
     if (idx < 0 || idx >= arr.length || arr[idx]) return false;
     const stored: InvItem = { ...item };
     if (stored.condition) {
-      stored.condition = section === 'freezer' ? 'frozen' : 'chilled';
+      refreshCondition(stored);
+      // 280차 — 이미 나빠지거나 상한 것은 냉장 · 냉동으로 되살리지 않는다(상한 생선이 「냉장」으로 나와 회 · 제값이 됐다)
+      if (stored.condition !== 'bad' && stored.condition !== 'spoiled') stored.condition = section === 'freezer' ? 'frozen' : 'chilled';
       stored.conditionSinceMs = Date.now();   // 보관 시점 기록 (꺼낼 때까지 정지 취급)
     }
     arr[idx] = stored;

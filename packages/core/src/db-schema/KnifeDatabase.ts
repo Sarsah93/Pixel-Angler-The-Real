@@ -28,6 +28,17 @@ export const KNIFE_SPECS: Record<string, KnifeSpec> = {
     id: 'knife_yanagiba', nameKo: '장인 야나기바', tier: 'yanagiba',
     toolYieldFactor: 1.1, toolThinness: 1.25,
   },
+  // 280차 — 상점 · 퀘스트 보상 회칼 두 자루가 표에 없어 손에 들어도 「회칼 없음 — 막칼」로 읽혔다
+  //  야나기바 (장인 단조) — 식자재마트 해금(M1-07) · 수율 상한(1.15)
+  knife_yanagiba_pro: {
+    id: 'knife_yanagiba_pro', nameKo: '야나기바 (장인 단조)', tier: 'yanagiba',
+    toolYieldFactor: 1.15, toolThinness: 1.35,
+  },
+  //  정옥선의 손질 칼 — 회 · 손질 이야기 보상(귀속) · 회칼과 야나기바 사이
+  qr_knife_okseon: {
+    id: 'qr_knife_okseon', nameKo: '정옥선의 손질 칼', tier: 'sashimi',
+    toolYieldFactor: 1.05, toolThinness: 1.1,
+  },
 };
 
 const KNIFE_TIER_RANK: Record<KnifeSpec['tier'], number> = {
@@ -43,7 +54,9 @@ export function getBestKnife(inventoryItemIds: string[]): KnifeSpec | null {
   for (const id of inventoryItemIds) {
     const k = KNIFE_SPECS[id];
     if (!k) continue;
-    if (!best || KNIFE_TIER_RANK[k.tier] > KNIFE_TIER_RANK[best.tier]) best = k;
+    // 같은 등급이면 수율이 높은 칼(280차 — 장인 단조 > 장인 야나기바)
+    if (!best || KNIFE_TIER_RANK[k.tier] > KNIFE_TIER_RANK[best.tier]
+      || (KNIFE_TIER_RANK[k.tier] === KNIFE_TIER_RANK[best.tier] && k.toolYieldFactor > best.toolYieldFactor)) best = k;
   }
   return best;
 }

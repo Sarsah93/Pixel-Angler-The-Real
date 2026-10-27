@@ -127,6 +127,7 @@ function produceBaseValue(crop: CropDef, baseId: string, grade: CropGrade): numb
 }
 
 function produceCookIngredient(crop: CropDef, baseId: string): string | undefined {
+  if (looseOfPack(baseId)) return undefined;   // 280차 — 팩은 요리 재료가 아니다(뜯어서 낱개로) — 아래 중간 수확물 재료로 새지 않게
   if (baseId === crop.harvest.itemId) return crop.cookIngredient;
   if (baseId === crop.harvest.ripenTo?.itemId) return crop.harvest.ripenTo.cookIngredient;
   return crop.interim?.cookIngredient;

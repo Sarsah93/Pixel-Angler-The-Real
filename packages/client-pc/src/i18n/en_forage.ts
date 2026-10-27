@@ -27,7 +27,7 @@ export const EN_FORAGE: Record<string, string> = {
   '통발이 조류에 쓸려 사라졌다…': 'The trap was swept away by the current…', '빈 통발…': 'Empty trap…',
   '낮에는 야행성 생물이 숨는다 — 야간(일몰 후)이 적기': 'Nocturnal creatures hide by day — after sunset is best',
   '조위가 높다 — 간조 전후가 적기': 'Tide is high — around low tide is best',
-  '통발 놓기': 'Set a Trap', '통발 (보유)': 'Traps (owned)', '미끼': 'Bait', '없음 — 직판장에서 구매': 'None — buy at the fish market',
+  '통발 놓기': 'Set a Trap', '통발 (보유)': 'Traps (owned)', '미끼': 'Bait', '없음 — 직판장에서 구매': 'None — buy at the fish market', '낱개 미끼 없음 — 가방에서 갑을 열어 주세요': 'No loose bait — open a pack in your bag',
   '통발과 미끼를 고르세요': 'Choose a trap and bait', '설치 위치 고르기': 'Choose a spot', '심화': 'adv.', '기본': 'basic',
   '설치 = 통발 1 + 미끼 1 소모 · 수거 시 통발 반환(분실·파손 제외) · 침지는 실시간 · 산란기 도루묵(10~12월) 포획은 조례 위반':
     'Deploy = 1 trap + 1 bait · trap returned on retrieval (unless lost/broken) · soak time is real time · sandfish caught in spawning season (Oct–Dec) violates the ordinance',

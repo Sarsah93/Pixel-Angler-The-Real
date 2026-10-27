@@ -429,7 +429,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       // 224차 — 미끼용 빵가루 반죽은 200g 한 봉지로 판다. 가방에서 「포장 뜯기」를 하면 바늘에 다는 경단 10개가 된다.
       { id: 'inv_breadbait_pack', name: '빵가루 반죽 (200g)', icon: '', iconTexture: 'art_breadpack', category: 'tackle', subCategory: '반죽미끼', basePrice: 3000, price: 4000, maxPerPurchase: 10, equippable: false,
         unpack: { id: 'inv_breadbait', qty: 10 }, desc: '벵에돔·숭어용 반죽 미끼 한 봉지. 뜯으면 경단 10개 — 잡어 성화를 피한다.' },
-      { id: 'inv_can',      name: '참치 통조림 (묶음)',      icon: '', iconTexture: 'art_can_tuna', category: 'food',       subCategory: '가공품',     basePrice: 2000, price: 2200, maxPerPurchase: 20, equippable: false, desc: '마트 대용량 특가.' },
+      // 280차 — 한 개를 파는데 「(묶음)」이라 적혀 있었다(편의점 것과 같은 물건 · 같은 칸 — 마트가 조금 싸다)
+      { id: 'inv_can',      name: '참치 통조림',             icon: '', iconTexture: 'art_can_tuna', category: 'food',       subCategory: '가공품',     basePrice: 2000, price: 2200, maxPerPurchase: 20, equippable: false, desc: '마트 특가. 편의점보다 조금 싸다.' },
       { id: 'inv_ice_bulk',   name: '대용량 각얼음',    icon: '', iconTexture: 'art_ice_bag', category: 'consumable', subCategory: '보냉', basePrice: 4000, price: 4500, maxPerPurchase: 10, equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉 (마트 특가).' },
       { id: 'inv_coarse_salt', name: '굵은소금',        icon: '', iconTexture: 'art_coarse_salt', category: 'consumable', subCategory: '조미/손질', basePrice: 2000, price: 2500, maxPerPurchase: 10, equippable: false, desc: '문어 손질(소금 치대기) 재료 — 점액과 이물을 걷어낸다. 1회 1개 소모.' },
       { id: 'inv_bucket',     name: '낚시용 두레박',    icon: '', iconTexture: 'art_bucket', category: 'etc', subCategory: '낚시도구', basePrice: 9000, price: 11000, maxPerPurchase: 1, equippable: false, desc: '바다 근처에서 쿨러에 해수를 채우는 도구 (소모되지 않음).' },
@@ -488,11 +489,13 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_bakkan', name: '다낚스 살림용 바칸', icon: '', iconTexture: 'item_bakkan_danax', category: 'etc', subCategory: '낚시도구', basePrice: 38000, price: 46000, maxPerPurchase: 1, equippable: false,
         desc: '다낚스 살림용 바칸. 쿨러처럼 어획을 담고 밑밥을 갠다 — 해수를 채워 두면 잡은 것이 산다.' },
       { id: 'inv_fishcut',   name: '생선 조각 미끼', icon: '', iconTexture: 'art_fishcut', category: 'tackle', subCategory: '선어미끼', basePrice: 3000,  price: 3500,  maxPerPurchase: 10, condition: 'chilled', equippable: false, desc: '갈치/우럭용 절단 미끼.' },
-      // 224차 — 생미끼는 마리가 아니라 「갑」으로 판다. 한 갑을 사면 가방에 마리 수만큼 들어간다(사용자 지시 — 혼무시 1갑 ≈ 15,000원 · 8마리 · 60g).
-      { id: 'pack_ragworm', name: '청갯지렁이 1갑 (8마리)', icon: '', iconTexture: 'item_ragworm_pack', category: 'tackle', subCategory: '생미끼', basePrice: 5000, price: 6000, maxPerPurchase: 5, equippable: false,
+      // 224차 — 생미끼는 마리가 아니라 「갑」으로 판다(사용자 지시 — 혼무시 1갑 ≈ 15,000원 · 8마리 · 60g).
+      //   280차 — 산 갑은 갑째 가방에 든다(「열기」 · 채비 창 「열어서 꿰기」로 낱개 — 사용자 「미끼 갑은 열기 전까지 그대로」).
+      //   갑에도 신선도 시계가 돈다(산 때부터 · 열면 지렁이가 그 상태를 잇는다) — 열지 않고 두면 갑째 상한다
+      { id: 'pack_ragworm', name: '청갯지렁이 1갑 (8마리)', icon: '', iconTexture: 'item_ragworm_pack', category: 'tackle', subCategory: '생미끼', basePrice: 5000, price: 6000, maxPerPurchase: 5, condition: 'live', equippable: false,
         bundle: [{ tpl: { id: 'inv_ragworm', name: '청갯지렁이', icon: '', iconTexture: 'item_ragworm', category: 'tackle', subCategory: '생미끼', basePrice: 600, condition: 'live', equippable: false }, qty: 8 }],
         desc: '원투·도다리용 생미끼 한 갑. 여덟 마리가 들어 있다.' },
-      { id: 'pack_honmushi', name: '참갯지렁이(혼무시) 1갑 (8마리 · 60g)', icon: '', iconTexture: 'item_honmushi_pack', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, equippable: false,
+      { id: 'pack_honmushi', name: '참갯지렁이(혼무시) 1갑 (8마리 · 60g)', icon: '', iconTexture: 'item_honmushi_pack', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, condition: 'live', equippable: false,
         bundle: [{ tpl: { id: 'inv_honmushi', name: '혼무시', icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼', basePrice: 1500, condition: 'live', equippable: false }, qty: 8 }],
         desc: '굵고 냄새가 진한 참갯지렁이 한 갑(8마리 · 60g 남짓). 감성돔 · 참돔 · 대물 원투용.' },
       // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.

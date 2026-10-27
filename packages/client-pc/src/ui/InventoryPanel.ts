@@ -25,7 +25,6 @@ import {
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
   CONDITION_NEXT, conditionRemainMs, formatDhms, plateWipProgress,
  isBundlePack } from '../store/InventoryStore.js';
-import { CoolerStore } from '../store/CoolerStore.js';
 import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
@@ -746,9 +745,13 @@ export class InventoryPanel extends DraggablePanel {
     const raw = (item.subCategory === PRODUCE_SUB || item.subCategory === PIECE_SUB) ? rawEatStatus(item.id) : null;
     // 243차 — 씨앗 · 모종 · 농자재(퇴비 · 지주대 · 포장 용기 …)는 텃밭 창에서 쓴다 — 가방 「사용하기」는 효과 없이 하나를 없앴다
     const farmGoods = item.subCategory === SEED_SUB || item.subCategory === FARM_SUB;
-    const usable = !farmGoods && (item.category === 'consumable'
-      || item.skillReset === true
-      || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory) && (raw === null || raw.kind === 'eat')));
+    // 280차 — 먹거나 써서 **효과가 있는 것만**(허기 · 수분 · 체력 · 피로 · 치료 · 버프 · 따뜻한 요리).
+    //  분류만 보던 때는 밑밥 블록 · 각얼음 · 집어제 · 부탄 · 양념 · 날 해파리 · 불가사리가 「사용하기」 한 번에 효과 없이 사라졌다
+    const effect = !!(item.hungerRestore || item.hydrationRestore || item.hpRestore || item.fatigueRestore
+      || item.cureKind || item.drainBuffMult || item.fatigueRebound || item.dish || item.dishInstance || raw?.kind === 'eat');
+    const usable = !farmGoods && (item.skillReset === true
+      || (effect && (item.category === 'consumable'
+        || (item.category === 'food' && !rawFishSubCats.includes(item.subCategory) && (raw === null || raw.kind === 'eat')))));
     if (usable) {
       actions.push({
         label: '사용하기',
@@ -1263,8 +1266,8 @@ export class InventoryPanel extends DraggablePanel {
   /** 버리기/완전제거 확인창 — "정말 버리시겠습니까?" 예/아니오 */
   private confirmDiscard(item: InvItem, all: boolean): void {
     // 쿨러는 내용물(어획/해수·얼음/밑밥)이 있으면 버릴 수 없다 (유실 방지)
-    if (item.id === 'inv_cooler'
-      && (CoolerStore.count() > 0 || CoolerStore.medium !== 'none' || CoolerStore.chumRemaining > 0)) {
+    // 280차 — 바칸도 같은 어창이다(마지막 그릇일 때만 막는다)
+    if (InventoryStore.coolerRemovalBlocked(item.id, all ? item.qty : 1)) {
       this.setStatus('쿨러 안에 내용물(어획/해수·얼음/밑밥)이 있어 버릴 수 없습니다 — 먼저 비우세요');
       return;
     }

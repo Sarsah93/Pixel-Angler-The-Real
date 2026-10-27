@@ -9,7 +9,7 @@
 import Phaser from 'phaser';
 import { getTrapById, TRAP_DATABASE } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
-import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
+import { InventoryStore, isBaitItem, type InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 
@@ -17,6 +17,23 @@ const PANEL_W = 420;
 const PANEL_H = 372;
 const COL_W = 190;
 const ROW_H = 26;
+
+/**
+ * 통발에 넣을 미끼 — 낱개 미끼만(280차). 곽 · 갑(청갯지렁이 1갑 · 곽크릴 등)은 고르면 한 통이 통째로 빠졌다
+ * (설치 = 미끼 1 소모인데 그 1이 갑 하나였다). 열어서 낱개를 꺼내면 여기에 뜬다.
+ */
+function trapBaits(): InvItem[] {
+  return InventoryStore.items.filter((i) => isBaitItem(i) && i.qty > 0 && i.slot >= 0);
+}
+
+/** 280차 — 낱개 미끼는 없고 열지 않은 갑 · 곽만 있는가(빈 목록 사유를 바꿔 말한다) */
+function onlySealedBait(): boolean {
+  return InventoryStore.items.some((i) => {
+    if (i.qty <= 0 || i.slot < 0 || isBaitItem(i)) return false;
+    const inner = InventoryStore.packContent(i);
+    return !!inner && inner.subCategory.includes('미끼');
+  });
+}
 
 export interface TrapDeployCallbacks {
   onClose: () => void;
@@ -35,7 +52,7 @@ export class TrapDeployPanel extends DraggablePanel {
     this.content = scene.add.container(0, 0);
     this.add(this.content);
     const traps = InventoryStore.items.filter((i) => i.trapSpecId && i.qty > 0);
-    const baits = InventoryStore.items.filter((i) => /미끼/.test(i.subCategory) && i.qty > 0 && i.slot >= 0);
+    const baits = trapBaits();
     this.selTrap = traps[0] ?? null;
     this.selBait = baits[0] ?? null;
     this.render();
@@ -48,7 +65,7 @@ export class TrapDeployPanel extends DraggablePanel {
     const top = this.contentTop;
     const hasAdv = GameState.hasLicense('trap_advanced');
     const traps = InventoryStore.items.filter((i) => i.trapSpecId && i.qty > 0);
-    const baits = InventoryStore.items.filter((i) => /미끼/.test(i.subCategory) && i.qty > 0 && i.slot >= 0);
+    const baits = trapBaits();
 
     const head = (x: number, label: string): void => {
       const t = sc.add.text(x, top, label, { fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fd5ff', fontStyle: 'bold' });
@@ -57,10 +74,10 @@ export class TrapDeployPanel extends DraggablePanel {
     head(14, '통발 (보유)');
     head(14 + COL_W + 12, '미끼');
 
-    const list = (x: number, items: InvItem[], sel: InvItem | null, onSel: (i: InvItem) => void, sub: (i: InvItem) => string, disabled: (i: InvItem) => boolean): void => {
+    const list = (x: number, items: InvItem[], sel: InvItem | null, onSel: (i: InvItem) => void, sub: (i: InvItem) => string, disabled: (i: InvItem) => boolean, emptyKo = '없음 — 직판장에서 구매'): void => {
       let y = top + 22;
       if (items.length === 0) {
-        const t = sc.add.text(x, y, '없음 — 직판장에서 구매', { fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#8a97a8' });
+        const t = sc.add.text(x, y, emptyKo, { fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#8a97a8' });
         this.content.add(t);
         return;
       }
@@ -84,7 +101,8 @@ export class TrapDeployPanel extends DraggablePanel {
       const spec = getTrapById(i.trapSpecId ?? '');
       return spec?.licenseTier === 'advanced' ? '심화' : '기본';
     }, (i) => (getTrapById(i.trapSpecId ?? '')?.licenseTier === 'advanced' && !hasAdv));
-    list(14 + COL_W + 12, baits, this.selBait, (i) => { this.selBait = i; }, () => '', () => false);
+    list(14 + COL_W + 12, baits, this.selBait, (i) => { this.selBait = i; }, () => '', () => false,
+      onlySealedBait() ? '낱개 미끼 없음 — 가방에서 갑을 열어 주세요' : '없음 — 직판장에서 구매');
 
     // 선택 요약 + 안내 — 흐름 배치
     const spec = this.selTrap ? getTrapById(this.selTrap.trapSpecId ?? '') : undefined;

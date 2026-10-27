@@ -32,7 +32,7 @@ import {
   craftLevelBonus, craftScrapReturn, craftScrapLearnChance, blueprintsByOutput, CRAFT_SCRAP_GROUPS,
   type CraftBlueprint, type CraftMaterial, type CraftStation, type CraftGroup, type CraftModifiers, type CraftQuality,
 } from '@tra/core';
-import { InventoryStore, type InvItem, type InvItemTemplate } from './InventoryStore.js';
+import { InventoryStore, refreshCondition, type InvItem, type InvItemTemplate } from './InventoryStore.js';
 import { GameState } from './GameState.js';
 import { StoryStore } from './StoryStore.js';
 import { craftOutputTemplate } from '../data/CraftOutputs.js';
@@ -142,6 +142,12 @@ export interface CraftScrapResult {
 /** 인벤토리 아이템이 이 재료에 해당하는가 (itemId | speciesId | byproductKind) */
 function matches(i: InvItem, m: CraftMaterial): boolean {
   if (i.slot < 0) return false;   // 쓰고 있는 장비는 재료로 집지 않는다
+  // 280차 — 상한 것은 재료가 아니다 · 얼어 있는 크릴 블록은 「열기」처럼 녹은 뒤에만(제작으로 해동 관문을 건너뛰었다)
+  if (i.condition) {
+    refreshCondition(i);
+    if (i.condition === 'spoiled') return false;
+    if (i.condProfile === 'krill_block' && i.condition === 'frozen') return false;
+  }
   if (m.itemId) return i.id === m.itemId;
   if (m.speciesId) return i.speciesId === m.speciesId;
   if (m.byproductKind) return i.byproductKind === m.byproductKind;

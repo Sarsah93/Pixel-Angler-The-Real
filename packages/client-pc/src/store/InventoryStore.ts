@@ -45,6 +45,7 @@ import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
 import { PRODUCE_SUB, cropItemTemplate, migrateLegacyPackItem } from '../data/CropItems.js';
 import { StoryStore } from './StoryStore.js';
+import { CoolerStore } from './CoolerStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
 import { rigViewOf, isPackItem } from './RigParts.js';
@@ -444,6 +445,16 @@ export function bundlePartsOf(itemId: string): readonly { tpl: InvItemTemplate; 
   return null;
 }
 
+/**
+ * 280차 — 미끼 갑인가(상점 묶음 중 구성품이 전부 미끼 — 청갯지렁이 1갑 · 혼무시 1갑).
+ * 사용자 「미끼 갑은 열기 전까지 그대로 두도록」 — 사도 갑째 가방에 들어가고, 불러와도 저절로 풀지 않는다.
+ * 가방 「열기」나 채비 창 미끼 칸 「열어서 꿰기」로만 낱개가 된다. 루어 · 에기 세트는 전처럼 산 자리에서 푼다.
+ */
+export function isSealedBaitBundle(itemId: string): boolean {
+  const parts = bundlePartsOf(itemId);
+  return !!parts && parts.length > 0 && parts.every((p) => (p.tpl.subCategory ?? '').includes('미끼'));
+}
+
 /** 바늘 소켓에 들어가는 아이템 — 단품 바늘 또는 루어(바늘 일체형) */
 export function isHookItem(i: InvItem): boolean {
   return i.subCategory === '바늘/훅' || i.subCategory === '루어';
@@ -609,13 +620,15 @@ function fixSlotCollisions(items: InvItem[], movedIn: ReadonlySet<string> = new 
   const moved: InvItem[] = [];
   const ordered = [...items.filter((i) => !movedIn.has(i.id)), ...items.filter((i) => movedIn.has(i.id))];
   for (const it of ordered) {
-    if (it.slot < 0) continue;
+    // 280차 — 착용하지 않았는데 칸이 없는(slot < 0) 아이템은 빈 칸으로 돌려보낸다(고장으로 손에서 내린 대 · 릴)
+    if (it.slot < 0) { if (!it.equipped) moved.push(it); continue; }
     let set = used.get(it.category);
     if (!set) used.set(it.category, (set = new Set()));
     if (set.has(it.slot)) moved.push(it); else set.add(it.slot);
   }
   for (const it of moved) {
-    const set = used.get(it.category)!;
+    let set = used.get(it.category);
+    if (!set) used.set(it.category, (set = new Set()));
     let free = 0;
     while (set.has(free)) free++;
     it.slot = free;
@@ -666,6 +679,8 @@ export interface InventorySaveState {
   lineWear?: Partial<Record<LineRole, LineWearRef>>;
   /** 저장 시각 (ms) — 로드 시 오프라인 경과만큼 신선도 시각을 밀어 "정지"시킨다 */
   savedAtMs?: number;
+  /** 280차 — 121차 채집 · 통발 기본 도구 1회 주입을 마쳤는가(없으면 구세이브 — 한 번만 주입한다) */
+  starterToolsGiven?: boolean;
 }
 
 /** 273차 — 묶인 줄 한 가닥의 마모. `itemId`가 지금 칸의 스풀과 다르면 새로 묶은 줄(0)로 본다 */
@@ -1039,6 +1054,7 @@ export function conditionRemainMs(item: Pick<InvItem, 'condition' | 'conditionSi
  */
 export function msToSpoiled(item: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>): number {
   if (!item.condition || item.conditionSinceMs === undefined) return Number.POSITIVE_INFINITY;
+  if (item.condition === 'spoiled') return 0;   // 280차 — 이미 상한 것은 남은 시간 0(종착 = Infinity로 읽혀 「가장 먼저 상하는 조각」에서 빠졌다)
   let total = conditionRemainMs(item);
   if (!Number.isFinite(total)) return total;
   let cond = condNextOf(item.condition, item.condProfile);
@@ -1050,6 +1066,43 @@ export function msToSpoiled(item: Pick<InvItem, 'condition' | 'conditionSinceMs'
     cond = condNextOf(cond, item.condProfile);
   }
   return total;
+}
+
+/**
+ * 280차 — 같은 id 칸에 상태가 다른 수량이 합쳐질 때의 신선도.
+ * 칸은 id당 하나라 상태를 둘로 나눌 수 없다 — 한쪽 상태로 통째로 바뀌면
+ * 상한 지렁이 1마리 + 새 갑 8마리 = 9마리 전부 상함, 거꾸로 묵은 수확물 + 갓 거둔 것 = 전부 싱싱(되살리기)이 된다.
+ * 그래서 **수량 가중 평균으로 부패까지 남은 시간**을 잡고, 더 싱싱한 쪽의 전이 경로 위에서 그 시간에 맞는 단계로 되돌린다.
+ */
+export function blendCondition(
+  a: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>, qa: number,
+  b: Pick<InvItem, 'condition' | 'conditionSinceMs' | 'condProfile'>, qb: number,
+): { condition: InvCondition; conditionSinceMs: number } | undefined {
+  if (!a.condition || a.conditionSinceMs === undefined || !b.condition || b.conditionSinceMs === undefined) return undefined;
+  a = { condition: a.condition, conditionSinceMs: a.conditionSinceMs, condProfile: a.condProfile };
+  b = { condition: b.condition, conditionSinceMs: b.conditionSinceMs, condProfile: b.condProfile };
+  refreshCondition(a);
+  refreshCondition(b);
+  const msA = msToSpoiled(a);
+  const msB = msToSpoiled(b);
+  if (!Number.isFinite(msA) || !Number.isFinite(msB) || qa + qb <= 0) return undefined;
+  const target = (msA * qa + msB * qb) / (qa + qb);
+  const fresher = msA >= msB ? a : b;
+  const profile = fresher.condProfile;
+  // 더 싱싱한 쪽의 지금 단계부터 종착까지 — 각 단계 뒤에 남는 시간(tail)을 세어 target이 들어가는 단계를 찾는다
+  const path = conditionPath(fresher.condition!, profile);
+  const dur = path.map((c) => condDurationOf(c, profile) * 60_000);
+  const now = Date.now();
+  for (let k = 0; k < path.length; k++) {
+    if (!Number.isFinite(dur[k])) return { condition: path[k], conditionSinceMs: now };   // 종착(상함)
+    let tail = 0;
+    for (let j = k + 1; j < path.length; j++) if (Number.isFinite(dur[j])) tail += dur[j];
+    if (target > tail) {
+      const inStage = Math.min(dur[k], target - tail);   // 이 단계에서 남은 시간(평균이라 더 싱싱한 쪽보다 길 수 없다)
+      return { condition: path[k], conditionSinceMs: now - (dur[k] - inStage) };
+    }
+  }
+  return { condition: path[path.length - 1], conditionSinceMs: now };
 }
 
 /**
@@ -1282,7 +1335,7 @@ class InventoryStoreManager {
       if (!it) continue;
       const qty = Math.min(q, it.qty);
       if (qty <= 0) continue;
-      items.push({ item: { ...it, qty }, qty });
+      items.push({ item: { ...it, qty, equipped: false, equippedHand: undefined }, qty });   // 280차 — 옮겨 둔 사본은 장착 표식 없이
       if (it.qty > qty) it.qty -= qty;
       else this.deleteInstance(id);
     }
@@ -1307,7 +1360,8 @@ class InventoryStoreManager {
       if (item.subCategory === '릴') reelId = item.id;
     }
     // 258차 — 옛 세이브의 거치대 낚싯대는 옛 문법 트리일 수 있다
-    this._tree = migrateRigTree({ nodes: g.tree.nodes.map((n) => ({ ...n })) }, this.rigView);
+    //  280차 — 256 이전에 걸어 둔 대는 옛 id(구멍찌 · 카본 목줄 · 지그헤드)를 들고 있다 — addItem은 정본 id로 넣으므로 트리도 정본 id로
+    this._tree = migrateRigTree({ nodes: g.tree.nodes.map((n) => ({ ...n, itemId: n.itemId ? canonicalItemId(n.itemId) : n.itemId })) }, this.rigView);
     this.syncTreeWithItems();
     if (rodId) this.equipHand(rodId, 'R');
     if (reelId) this.equipItem(reelId);
@@ -1321,6 +1375,17 @@ class InventoryStoreManager {
 
   itemAtSlot(cat: InvCategory, slot: number): InvItem | undefined {
     return this._items.find((i) => i.category === cat && i.slot === slot);
+  }
+
+  /**
+   * 280차 — 쿨러 · 바칸(같은 어창을 쓰는 그릇)을 이만큼 빼면 하나도 안 남는데 어창에 담긴 것이 있는가.
+   * 버리기 · 팔기 · 거래 · 집 보관이 모두 이것을 본다(옛 검사는 쿨러 id만 봐서 바칸은 담긴 채로 버려졌다).
+   */
+  coolerRemovalBlocked(itemId: string, qty = 1): boolean {
+    if (itemId !== 'inv_cooler' && itemId !== 'inv_bakkan') return false;
+    if (!CoolerStore.hasContents()) return false;
+    const held = (this.find('inv_cooler')?.qty ?? 0) + (this.find('inv_bakkan')?.qty ?? 0);
+    return held - qty <= 0;
   }
 
   /** 쿨러(아이스박스) 보유 여부 — 어창 보관/밑밥 배합 기능 게이트. 229차 — 살림용 바칸도 같은 구실을 한다 */
@@ -1424,6 +1489,7 @@ class InventoryStoreManager {
       lineWear: { main: { ...this._lineWear.main }, leader: { ...this._lineWear.leader } },
       rigLocked: this.rigLocked,
       savedAtMs: Date.now(),
+      starterToolsGiven: true,
     };
   }
 
@@ -1464,8 +1530,13 @@ class InventoryStoreManager {
       //   isKnifeItem으로 손 도구 강제 복원** — 52차 손 장착 개편 전 세이브 대응.
       //  유저 상태(qty/condition/equipped/equippedHand/slot 등)는 절대 덮어쓰지 않는다(?? = null/undefined만).
       const knife = isKnifeItem(i.id);
+      // 280차 — 수제 원투 카드 채비 3단은 칸 종류 · 단수 없이 저장됐다(바늘 하나 · 0g으로 읽혔다)
+      const craftCard = i.id === 'craft_rig_surf';
+      const rigPart = i.rigPart ?? sd?.rigPart ?? (craftCard ? ('card_rig' as const) : undefined);
       return {
         ...i,
+        // 280차 — 수제 묶음 채비(감성돔 · 벵에돔)는 「바늘」로 저장돼 어느 채비 칸에도 안 들어갔다 → 바늘 칸 분류로
+        subCategory: (i.subCategory === '바늘' && i.id.startsWith('craft_rig_')) ? '바늘/훅' : i.subCategory,
         tool: i.tool ?? sd?.tool ?? (knife ? ('knife' as const) : undefined),
         equippable: i.equippable ?? sd?.equippable ?? (knife ? true : undefined),
         placeKey: i.placeKey ?? sd?.placeKey,
@@ -1491,13 +1562,13 @@ class InventoryStoreManager {
         // 188차 — 상점 집어제는 한동안 `chumKind` 없이 팔렸다(밑밥 배합 칸에 안 뜬다). 시드 백필.
         chumKind: i.chumKind ?? sd?.chumKind,
         // 192차 — 채비 칸 종류·묶음추 바늘 수. 구 「면도래 8호」는 그림이 스냅 도래라 이름을 바로잡는다.
-        rigPart: i.rigPart ?? sd?.rigPart,
-        kitHooks: i.kitHooks ?? sd?.kitHooks,
+        rigPart,
+        kitHooks: i.kitHooks ?? sd?.kitHooks ?? (craftCard ? 3 : undefined),
         cardFlasher: i.cardFlasher ?? sd?.cardFlasher,
         // 196차 — 뜰채 자루 길이: 이름의 「N m」에서 읽는다(시드·상점 공통). 이모지 아이콘은 픽셀 아이콘으로 바꾼다
         netReachM: i.netReachM ?? sd?.netReachM ?? (i.tool === 'net' ? netReachFromName(i.name) : undefined),
         // 193차 — 카드 채비는 아래 봉돌까지 한 벌(자중). 시드에 없는 상점 구매분은 단수로 추정
-        sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (i.rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
+        sinkerWeightG: i.sinkerWeightG ?? sd?.sinkerWeightG ?? (rigPart === 'card_rig' ? ((i.kitHooks ?? 3) >= 7 ? 60 : (i.kitHooks ?? 3) >= 5 ? 45 : 38) : undefined),
         name: (i.id === 'inv_swivel' && i.name === '면도래 8호') ? '핀 도래 8호'
           : (i.id === 'inv_ragworm' && i.name === '갯지렁이') ? '청갯지렁이'   // 225차 — 상점 갑 이름과 맞춘다
           // 229차 — 크릴 개명(급랭 백크릴 600g · 미끼용 크릴). 구 상점 「냉동 크릴 (각크릴)」도 블록으로 본다
@@ -1517,6 +1588,8 @@ class InventoryStoreManager {
         // 저장돼 있으므로 로드 시 비워준다. 소켓만 반납하므로 손실 위험 없음.
         slot: i.equipped ? SLOT_EQUIPPED : i.slot,
         conditionSinceMs: i.conditionSinceMs !== undefined ? i.conditionSinceMs + offlineGap : undefined,
+        // 280차 — 요리의 식는 시계(조리 시각)도 게임을 끈 동안은 멈춘다(신선도와 같은 규칙 — 불 위 냄비는 이미 민다)
+        dish: i.dish ? { ...i.dish, cookedAtMs: i.dish.cookedAtMs + offlineGap } : i.dish,
       };
     }).map((i) => refreshDishPhoto(refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i)))))
       .map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
@@ -1572,8 +1645,10 @@ class InventoryStoreManager {
     }
     this.syncTreeWithItems();
 
-    // 121차 — 구세이브에 채집·통발 기본 도구가 없으면 1회 주입 (상점에서 팔 수 없는 etc 아이템이라 '판매 후 재주입' 혼선 없음)
-    for (const id of ['inv_headlamp', 'inv_tongs', 'inv_trap_trap_crab_basic']) {
+    // 121차 — 구세이브에 채집·통발 기본 도구가 없으면 1회 주입.
+    //  280차 — 「1회」를 세이브 표식으로 지킨다. 지금은 셋 다 상점에서 사고 · 만들고 · 통발은 놓으면 가방에서 빠지므로,
+    //  표식 없이 「가방에 없으면」만 보면 불러올 때마다 새로 생겼다(놓은 통발을 거두면 둘 · 제작 재료 되살아남 · 새 게임 공짜 도구).
+    for (const id of s.starterToolsGiven ? [] : ['inv_headlamp', 'inv_tongs', 'inv_trap_trap_crab_basic']) {
       if (this.find(id)) continue;
       const sd = seedById.get(id);
       if (!sd) continue;
@@ -1584,13 +1659,15 @@ class InventoryStoreManager {
     //   (그 시절 세트는 루어 탭·루어 채비 어디에도 나타나지 않아 산 값이 사라진 상태였다)
     for (const def of Object.values(SHOP_CATALOG)) {
       for (const e of def.sells) {
-        if (!e.bundle) continue;
+        if (!e.bundle || isSealedBaitBundle(e.id)) continue;   // 280차 — 미끼 갑은 열기 전까지 그대로
         const held = this.find(e.id);
         if (!held || held.slot < 0) continue;
         const n = held.qty;
+        const keep = { ...held };
         const { slot: _s, qty: _q, ...tpl } = held;
         this.deleteInstance(held.id);
-        if (!this.addBundle(e.bundle, n)) this.addItem(tpl, n, { silent: true });   // 칸이 없으면 그대로 둔다
+        // 칸이 없으면 그대로 둔다 — 280차: 잠긴 칸(용량 밖)에 있던 세트는 addItem도 실패해 사라졌다 → 원래 자리로 되돌린다
+        if (!this.addBundle(e.bundle, n) && !this.addItem(tpl, n, { silent: true })) this._items.push(keep);
       }
     }
     // dev 전용 — 기존 세이브에도 손질 검증용 테스트 어획이 없으면 주입 (2026-07-30)
@@ -1747,6 +1824,11 @@ class InventoryStoreManager {
    */
   tradeBlockReason(item: InvItem): string | null {
     if (item.bound) return '귀속 아이템은 양도할 수 없습니다';
+    // 280차 — 상점이 사지 않는 것은 거래(돈이 오간다)로도 넘기지 못한다: 채집물(조례 — 판매 · 유통 금지) · 법에 걸린 어획물
+    if (item.forageCatch) return '채집물은 팔거나 넘길 수 없습니다 (조례)';
+    const law = StoryStore.sellVerdict(item);
+    if (law) return law.reasonKo;
+    if (this.coolerRemovalBlocked(item.id, item.qty)) return '쿨러에 담긴 것이 있습니다 — 먼저 비우세요';
     // 234차 — 맡은 물건(어촌계 자전거 등) · 프롤로그에 아직 필요한 물건은 넘기지 못한다(넘기면 그 일이 막힌다)
     const keep = itemKeepReason(item.id);
     if (keep) return keep;
@@ -1945,6 +2027,12 @@ class InventoryStoreManager {
     if (this.tradedLineage && !template.traded) template = { ...template, traded: true };
     const existing = this.find(template.id);
     if (existing) {
+      // 280차 — 상태가 다른 수량이 합쳐지면 수량 가중으로 섞는다(한쪽 상태로 통째로 바뀌지 않게)
+      if (existing.condition && template.condition) {
+        const mixed = blendCondition(existing, existing.qty,
+          { condition: template.condition, conditionSinceMs: template.conditionSinceMs ?? Date.now(), condProfile: template.condProfile ?? existing.condProfile }, qty);
+        if (mixed) { existing.condition = mixed.condition; existing.conditionSinceMs = mixed.conditionSinceMs; }
+      }
       existing.qty += qty;
       if (template.traded) existing.traded = true;   // 233차 — 섞이면 보수적으로 거래품 쪽으로
       if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); LedgerStore.gained(existing.name, qty); }
@@ -2043,18 +2131,42 @@ class InventoryStoreManager {
 
   /**
    * 267차 — 묶음 열기. 상점 묶음(`bundle` — 청갯지렁이 1갑 8마리 등)을 가방에 든 채면 하나를 열어 구성품으로 바꾼다.
-   * 산 자리에서 바로 풀리는 게 정상(`handleBuy`)이지만, 옛 세이브 · 이야기 보상 · 바닥 줍기로 묶음째 든 것을 위한 길.
+   * 280차부터 미끼 갑은 사도 갑째 들어오므로(`isSealedBaitBundle`) 이것이 낱개를 얻는 길이다. 루어 · 에기 세트는 산 자리에서 풀린다.
    */
   openBundle(itemId: string): { ok: boolean; name?: string; qty?: number; reason?: string } {
     const it = this.find(itemId);
     const parts = it ? bundlePartsOf(it.id) : null;
     if (!it || !parts) return { ok: false, reason: '열 묶음이 아니다.' };
+    // 280차 — 미끼 갑은 갑째 시계가 돈다(산 때부터). 상한 갑은 열어도 쓸 수 없고, 연 지렁이는 갑의 상태 · 시계를 잇는다
+    //  (갑에 시계가 없으면 열지 않고 묵혀 두었다가 열 때마다 갓 산 지렁이가 나왔다)
+    refreshCondition(it);
+    if (it.condition === 'spoiled') return { ok: false, reason: '이미 상했다 — 열어도 쓸 수 없다.' };
+    const inner = it.condition
+      ? parts.map((p) => (p.tpl.condition ? { tpl: { ...p.tpl, condition: it.condition, conditionSinceMs: it.conditionSinceMs }, qty: p.qty } : p))
+      : parts;
     const need = parts.filter((p) => !this.find(p.tpl.id)).length - (it.qty === 1 ? 1 : 0);
     if (need > 0 && this.freeSlotCount(parts[0].tpl.category) < need) return { ok: false, reason: '가방에 자리가 없다.' };
     if (!this.removeQty(it.id, 1)) return { ok: false, reason: '열 묶음이 아니다.' };
-    if (!this.addBundle(parts, 1)) { this.addItem(it, 1, { silent: true }); return { ok: false, reason: '가방에 자리가 없다.' }; }
+    if (!this.addBundle(inner, 1)) { this.addItem(it, 1, { silent: true }); return { ok: false, reason: '가방에 자리가 없다.' }; }
     const total = parts.reduce((a, p) => a + p.qty, 0);
     return { ok: true, name: parts.map((p) => p.tpl.name).join(' · '), qty: total };
+  }
+
+  /**
+   * 280차 — 곽 · 갑 안에 든 것 한 가지(구성품이 하나일 때만). 포장(`unpack`)이면 뜯어 나오는 물건, 상점 묶음이면 그 구성품.
+   * 채비 창 미끼 칸이 「열어서 꿰기」 후보를 고를 때 쓴다(안의 것이 그 칸에 맞는지 본다).
+   */
+  packContent(it: Pick<InvItem, 'id' | 'unpack'>): InvItemTemplate | null {
+    if (it.unpack) return this.seedTemplate(it.unpack.id);
+    const parts = bundlePartsOf(it.id);
+    return parts && parts.length === 1 ? parts[0].tpl : null;
+  }
+
+  /** 280차 — 곽 · 갑 하나를 연다(포장 = 「포장 뜯기」 · 상점 묶음 = 「열기」와 같은 길) */
+  openPack(itemId: string): { ok: boolean; name?: string; qty?: number; reason?: string } {
+    const it = this.find(itemId);
+    if (!it) return { ok: false, reason: '열 것이 없다.' };
+    return it.unpack ? this.unpack(itemId) : this.openBundle(itemId);
   }
 
   /**
@@ -2101,13 +2213,18 @@ class InventoryStoreManager {
     return false;
   }
 
-  /** 수량 차감 (판매/사용) — 0 이하가 되면 인스턴스 제거. 성공 여부 반환 */
-  removeQty(itemId: string, qty: number): boolean {
+  /**
+   * 수량 차감 (판매/사용) — 0 이하가 되면 인스턴스 제거. 성공 여부 반환.
+   * 280차 — 남은 수가 채비에 꿰인 수보다 적어지면 그만큼 칸을 비운다(`trimOverCommitted` — 미끼 1마리로 바늘 셋이 차 있던 일).
+   * @param trimFirst 먼저 비울 칸(먹힌 바늘) — 없으면 뒤쪽 칸부터
+   */
+  removeQty(itemId: string, qty: number, trimFirst = -1): boolean {
     const item = this.find(itemId);
     if (!item || item.qty < qty) return false;
     item.qty -= qty;
     LedgerStore.used(item.name, qty);   // 211차 — 하루 기록(팔고 · 먹고 · 쓰고 · 잃은 것)
     if (item.qty <= 0) this.deleteInstance(itemId);
+    else this.trimOverCommitted(itemId, trimFirst);
     return true;
   }
 
@@ -2156,6 +2273,14 @@ class InventoryStoreManager {
     if (free < 0) return false;
     item.slot = free;
     return true;
+  }
+
+  /** 280차 — 그 분류에서 아무도 쓰지 않는 첫 칸 번호(용량 밖이면 '잠긴 칸' — 패널이 그려 꺼낼 수 있게 한다) */
+  private lockedSlotFor(cat: InvCategory): number {
+    const used = new Set(this._items.filter((i) => i.category === cat && i.slot >= 0).map((i) => i.slot));
+    let s = 0;
+    while (used.has(s)) s++;
+    return s;
   }
 
   /** 착용 (일반 장비) — 같은 부위 기존 착용은 그리드로 반환 후 교체 */
@@ -2264,6 +2389,7 @@ class InventoryStoreManager {
     LedgerStore.used(item.name, !all && item.qty > 1 ? 1 : item.qty);   // 211차
     if (!all && item.qty > 1) {
       item.qty -= 1;
+      this.trimOverCommitted(itemId);   // 280차 — 1개 버리기도 채비 몫을 다시 센다
       return;
     }
     this.deleteInstance(itemId);
@@ -2353,11 +2479,44 @@ class InventoryStoreManager {
    * @param exceptIdx 지금 바꾸려는 칸(자기 몫은 빼고 센다)
    */
   baitStockLeft(itemId: string, exceptIdx = -1): number {
+    return this.partStockLeft(itemId, exceptIdx);
+  }
+
+  /** 280차 — 이 칸이 그 아이템을 몇 개 쓰는가(줄 칸은 스풀 길이를 쓰므로 0 · 미끼는 두 미끼면 2 · 그 밖의 부품은 1) */
+  private nodeUse(n: { slot: string; itemId?: string; double?: boolean }): number {
+    if (!n.itemId || n.slot === 'main_line' || n.slot === 'leader') return 0;
+    return n.slot === 'bait' ? this.baitUse(n) : 1;
+  }
+
+  /**
+   * 280차 — 이 부품을 몇 개 더 칸에 넣을 수 있나. 미끼만이 아니라 봉돌 · 도래 · 바늘도 칸끼리 나눠 쓴다
+   * (고리봉돌 1개가 미끄럼 봉돌 칸과 목줄 봉돌 칸에 동시에 들어가 무게가 두 번 셈해졌다).
+   */
+  partStockLeft(itemId: string, exceptIdx = -1): number {
     const it = this.find(itemId);
     if (!it) return 0;
     let used = 0;
-    this._tree.nodes.forEach((n, i) => { if (i !== exceptIdx && n.itemId === itemId) used += this.baitUse(n); });
+    this._tree.nodes.forEach((n, i) => { if (i !== exceptIdx && n.itemId === itemId) used += this.nodeUse(n); });
     return it.qty - used;
+  }
+
+  /**
+   * 280차 — 가방 수보다 많이 꿰인 칸을 비운다(먼저 `firstIdx`, 그다음 뒤쪽 칸부터). 칸을 비우면 그 뒤에 달린 것도 풀리므로
+   * 인덱스를 매번 다시 찾는다. 버리기 · 거래 · 통발 미끼 · 밑밥 통 · 거치대로 수가 줄어든 뒤에 부른다.
+   */
+  private trimOverCommitted(itemId: string, firstIdx = -1): void {
+    if (!this.find(itemId) || this.partStockLeft(itemId) >= 0) return;
+    for (let guard = 0; guard < 64 && this.partStockLeft(itemId) < 0; guard++) {
+      let i = firstIdx >= 0 && this._tree.nodes[firstIdx]?.itemId === itemId && this.nodeUse(this._tree.nodes[firstIdx]) > 0 ? firstIdx : -1;
+      firstIdx = -1;
+      for (let k = this._tree.nodes.length - 1; i < 0 && k >= 0; k--) {
+        const n = this._tree.nodes[k];
+        if (n.itemId === itemId && this.nodeUse(n) > 0) i = k;
+      }
+      if (i < 0) break;
+      this._tree = setRigValue(this._tree, i, { itemId: null }, null);
+    }
+    this.projectTree();
   }
 
   /** 193차 — 미끼 칸의 「한 바늘에 두 미끼」 켜고 끄기 (고정 중에도 된다 — 미끼는 소모품이다) */
@@ -2405,19 +2564,8 @@ class InventoryStoreManager {
     if (!it) return null;
     const name = it.name;
     const use = Math.min(it.qty, Math.max(1, this.baitUse(n)));
-    const id = n.itemId;
-    this.removeQty(id, use);                    // 다 떨어지면 deleteInstance → 트리 동기화(칸 비움)
-    if (this.find(id) && this.baitStockLeft(id) < 0) {
-      // 남은 수로는 다 못 끼운다 — 먹힌 바늘부터, 그다음은 뒤쪽 바늘부터 비운다
-      const order = [idx, ...this._tree.nodes.map((_, i) => i).reverse().filter((i) => i !== idx)];
-      for (const i of order) {
-        if (this.baitStockLeft(id) >= 0) break;
-        if (this._tree.nodes[i]?.slot === 'bait' && this._tree.nodes[i].itemId === id) {
-          this._tree = setRigValue(this._tree, i, { itemId: null }, null);
-        }
-      }
-      this.projectTree();
-    }
+    // 다 떨어지면 deleteInstance → 트리 동기화(칸 비움). 남은 수로 다 못 끼우면 먹힌 바늘부터, 그다음 뒤쪽 바늘부터 비운다(280차 — removeQty가 맡는다)
+    this.removeQty(n.itemId, use, idx);
     return name;
   }
 
@@ -2469,10 +2617,11 @@ class InventoryStoreManager {
     // 155차 — 고정된 채비는 [고정 해제]로 풀어야 편집된다.
     //   193차 — **미끼 칸만은 예외**: 낚시 뒤 미끼만 다시 끼우면 되도록(사용자 지시)
     if (this.rigLocked && target?.slot !== 'bait') return false;
-    if (target?.slot === 'bait' && 'itemId' in value && value.itemId) {
+    if (target && 'itemId' in value && value.itemId && target.slot !== 'main_line' && target.slot !== 'leader') {
       // 가방에 남은 수만큼만 끼운다 — 두 미끼를 켠 칸이면 2개가 필요하다
-      const need = target.double && this.doubleBaitAllowed() ? 2 : 1;
-      if (this.baitStockLeft(value.itemId, idx) < need) return false;
+      //  280차 — 미끼만이 아니라 봉돌 · 도래 · 바늘도(1개로 두 칸을 채우지 않는다)
+      const need = target.slot === 'bait' && target.double && this.doubleBaitAllowed() ? 2 : 1;
+      if (this.partStockLeft(value.itemId, idx) < need) return false;
     }
     const item = 'itemId' in value && value.itemId ? this.rigView(value.itemId) : null;
     // 279차 — 칸이 받지 않는 물건은 넣지 않는다(채비 창 후보 `nodeAccepts`와 같은 판정).
@@ -2496,6 +2645,8 @@ class InventoryStoreManager {
     // 279차 — 곽 · 갑이 칸에 남은 세이브(채비 창이 묶음째 꿰게 두던 때)도 그 칸을 비운다 — 묶음은 가방에 그대로 있다
     const next = dropMissingItems(this._tree, (id) => { const it = this.find(id); return !!it && !isPackItem(it); });
     if (next !== this._tree) this._tree = next;
+    // 280차 — 남은 수보다 많이 꿰인 칸(옛 세이브 · 거치대에서 돌아온 한 벌)도 비운다
+    for (const id of new Set(this._tree.nodes.map((n) => n.itemId).filter((x): x is string => !!x))) this.trimOverCommitted(id);
     this.projectTree();
   }
 
@@ -2841,6 +2992,9 @@ class InventoryStoreManager {
     if (!gearUsable(fault) && item.equipped) {
       item.equipped = false;
       item.equippedHand = undefined;
+      // 280차 — 내린 장비는 가방 칸으로 돌아간다(칸 없이 남으면 가방 · 장비 창 어디에도 안 보여 수리도 못 했다).
+      //  빈 칸이 없으면 '잠긴 칸'(용량 밖 — 꺼낼 수 있다)에 둔다 — 조용히 사라지지 않는다.
+      if (!this.returnToGrid(item)) item.slot = this.lockedSlotFor(item.category);
     }
     return true;
   }
