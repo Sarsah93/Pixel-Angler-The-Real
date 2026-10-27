@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 281차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 282차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-27 281차) — 줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)**
+**최근 변경 (2026-10-27 282차) — 장비 · 단단한 루어 개체 분리 · main 반영 · 91차 배포**
+
+- 사용자 「장비랑 루어만 개체로 나누는 걸로 진행해줘」(백로그 CX) → 장비(착용 · 손 도구) + 단단한 루어는 id `<카탈로그 id>#<번호>`(core `itemBaseId`).
+  웜 · 미끼 · 봉돌 · 바늘 · 찌 · 줄은 묶음 그대로.
+- 가방: `find` 폴백 · `countOf` · 넣기 = 칸 n개 통째로 · 옛 세이브 나누기(첫 개체가 착용 · 고장 · 쓴 횟수) · 거래 새 번호 · 채비 창 묶음 줄 · 감사 11곳.
+- 검증: 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0. 상세: [282차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-282-gear-lure-instances.md).
+
+**이전 변경 (2026-10-27 281차) — 줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)**
 
 - 사용자 「n호수로 하고, lb까지 표시 … 너가 결정해줘」 → core `rules/LineStrength.ts` 한 표(모노 1.8kg ≈ 4lb/호 · 합사 9kg ≈ 20lb/호 · 판정 값 그대로).
   상세 창 「인장 강도 12lb (5.4kg)」 · 줄 제원표 lb를 같은 표에서 · 아이템 `lineStrengthLb`는 읽지 않음.
@@ -334,15 +341,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 점검 네 갈래(장착 · 묶음 · 분류 · 불러오기) → 26건: 고장 대 칸 없음 · 같은 id 신선도 수량 가중(`blendCondition`) · 칸 몫(`partStockLeft` · `trimOverCommitted`) · 통발 갑째 · 「사용하기」 헛소모 ·
   회칼 표 둘 · 수제 채비 · 카탈로그 밖 루어 빌린 제원 · 쿨러 · 바칸 · 거래 · 냉장고 · 기본 도구 표식 · 오프라인 시계(요리 · 거치대 · 선반).
 - 검증: 하네스 14/14 · 21/21 · pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. 상세: [280차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md).
-
-**이전 변경 (2026-10-27 279차) — 열지 않은 미끼 묶음은 채비 칸에 못 끼운다 · 집 안은 늘 밝다 · 가구 배치 때만 어둡게(손 아래 가구 · 놓을 자리 밝힘)**
-
-- QA 둘: 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 · 「집 내부(다른 상점 내부들도 마찬가지겠지?)는 항상 밝고, 가구 배치할 때, 어두움(DIMMING)처리 하되, 배치할 가구 및 영역을 하이라이트」.
-- 미끼 갑: 267은 `isBaitItem`(낚시 중 고르기)만 막아 채비 창 미끼 칸(`partKindOf`)에 곽크릴 · 청갯지렁이 1갑이 꿰였다 → `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null ·
-  `setRigNode`가 칸 종류(`RIG_SLOTS[slot].accepts`)를 본다 · 불러올 때 그 칸 비움(묶음은 가방에) · 「정리」 무리는 미끼 곁.
-- 집: 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만 시각을 따른다) · 배치 어둠 막(`HomeDecorMode.veil` α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부를 뚫고 테두리 ·
-  WebGL 복구 때 `repaint()` · 가이드 · 도움말 · 영어. 가게 실내는 이미 밝다(depth 70~99 — 바꾸지 않음).
-- 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(라이브러리 23 · 과업 21 · 순서도 21 · 위키 74) · main 빨리 감기(`f650407`) · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 정적 2,004 다름 0 · 기동 15.9초 · pageerror 0). 상세: [279차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md).
 
 ---
 

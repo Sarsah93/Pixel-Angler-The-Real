@@ -80,19 +80,27 @@
   → **278 채집 놀이 멈춤 · 오류(닫은 창의 가이드) · 조작 가이드 「방법」 · 건널 수 없던 보행 다리 12지역 137칸 보정(꼭짓점만 맞닿은 칸)**
   → **279 열지 않은 미끼 묶음은 채비 칸에 못 끼움 · 집 안은 늘 밝음 · 가구 배치 때만 어둠 막(손 아래 가구 · 놓을 자리 밝힘) · main 반영 · 89차 배포**
   → **280 미끼 갑은 열기 전까지 갑째(채비 창 「열어서 꿰기」 · 갑 신선도 시계) · 아이템 버그 전수 점검 26건**
-  → **281 줄 세기 호수 기준 하나로(lb는 표시값) · main 반영 · 90차 배포 · 하모니 v2(일일 점검을 제품 점검으로)**.
+  → **281 줄 세기 호수 기준 하나로(lb는 표시값) · main 반영 · 90차 배포 · 하모니 v2(일일 점검을 제품 점검으로)**
+  → **282 장비 · 단단한 루어 개체 분리(번호 붙은 id · 웜 · 미끼 · 소모품은 묶음) · main 반영 · 91차 배포**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **282차**: **장비 · 단단한 루어 개체 분리 · main 반영 · 91차 배포** —
+  사용자 「장비(낚싯대 · 릴 · 옷 · 칼)와 루어만 … 개체로 나누는 걸로 진행해줘. (커밋 재배포까지 다 해줘)」 →
+  장비(착용 · 손 도구) + 단단한 루어(소프트 아닌 것)는 id `<카탈로그 id>#<번호>`(core `rules/ItemInstance.ts` `itemBaseId` · 순번 `instSeq`) · 웜 · 미끼 · 봉돌 · 바늘 · 찌 · 줄은 묶음 그대로 ·
+  `find` 폴백(착용 → 첫 개체) · `countOf` · 넣기 = 칸 n개 통째로 · 옛 세이브 나누기(첫 개체가 착용 · 고장 · 쓴 횟수 · 퀵슬롯 · 채비 참조) · 거래 새 번호 · 거치대 ·
+  채비 창 「같은 물건 · 같은 고장」 묶음 줄 · core 조회 9곳 정규화 · 감사 11곳(프롤로그 보호 · 착용 모습 · 제작 재료 · 물뿌리개 · 집 보관함 · 도감) ·
+  검증 = 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0.
+  **다음 = 사용자 실검증 · 찌도 개체로 할지(백로그 DA)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-282-gear-lure-instances.md`.
 - **281차**: **줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)** —
   사용자 「n호수로 하고, lb까지 표시할 수 있으면 … 너가 결정해줘」 · 하모니 「기획&개발 관련 develop은 하나도 없는 것 같고 … git 히스토리 관리 정도」 →
   core `rules/LineStrength.ts`(모노 1.8kg ≈ 4lb/호 · 합사 9kg ≈ 20lb/호 · 판정 값 그대로) · 상세 창 「12lb (5.4kg)」 · 줄 제원표 카본 · 합사 lb 정정 ·
   main 빨리 감기 `f400f33` · 90차 배포(gh-pages `c31bc79`) · 하모니 v2(`harmony-state` — 갈래 = 아이템 · 그림 · 흐름 · 밸런스 · 보안 · 접근성 요일 순환 · 시나리오 50 · 버그 패턴 44 · 하네스 본 · 예산 4% · 결함 PR 허용) ·
   예약 작업 지침은 에이전트가 못 바꿔 사용자가 `harmony/trigger-prompt-v2.md`를 붙여 넣는다.
-  **다음 = 사용자 실검증(CZ) · 개체 분리 판단(CX) · 첫 v2 하모니 보고(10-28)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-281-line-strength-ho-deploy90-harmony-v2.md`.
+  **다음 = 사용자 실검증(CZ) · ~~개체 분리 판단(CX)~~ ✅282 · 첫 v2 하모니 보고(10-28)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-281-line-strength-ho-deploy90-harmony-v2.md`.
 - **280차**: **미끼 갑은 열기 전까지 갑째 · 아이템 버그 전수 점검(26건 고침)** —
   사용자 「미끼 갑은 열기 전까지 그대로 두도록 바꿔줘. 아 그리고, 이런 아이템 관련 버그가 없는 지 전체적으로 검수해줘.」 →
   구매 · 불러오기 갑째(`isSealedBaitBundle`) · 채비 창 미끼 칸 「… — 열어서 꿰기」(`packContent` · `openPack`) · 갑 신선도 시계(연 지렁이가 잇는다 · 상한 갑 거절) ·
@@ -100,13 +108,7 @@
   통발 갑째 · 「사용하기」 효과 있을 때만 · 회칼 표(단조 야나기바 · 정옥선 칼) · 수제 채비 칸 · 카탈로그 밖 루어 빌린 제원 · 쿨러 · 바칸 마지막 그릇 · 거래(채집물 · 법 어획물) ·
   냉장고 되살림 · 기본 도구 표식(`starterToolsGiven`) · 오프라인 시계(요리 · 거치대 · 선반) ·
   검증 = 하네스 14/14 · 21/21 · pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
-  **다음 = 사용자 실검증 · 장비 개체 분리(백로그 CX · CZ — CY는 281 해결)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md`.
-- **279차**: **열지 않은 미끼 묶음은 채비 칸에 못 끼운다 · 집 안은 늘 밝다 · 가구 배치 때만 어둡게** —
-  QA 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 · 「집 내부(다른 상점 내부들도 마찬가지겠지?)는 항상 밝고, 가구 배치할 때, 어두움(DIMMING)처리 하되, 배치할 가구 및 영역을 하이라이트」 →
-  267은 `isBaitItem`만 막아 채비 창 미끼 칸(`partKindOf`)이 열려 있었다 · `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null · `setRigNode` 칸 종류 검사(`RIG_SLOTS[slot].accepts`) · 불러올 때 칸 비움 ·
-  집 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만) · `HomeDecorMode.veil`(α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부(`checkPlace`) 뚫기 + 테두리 · WebGL 복구 `repaint()` · 가게 실내는 이미 밝음(depth 70~99) ·
-  검증 = 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 기동 15.9초 · pageerror 0).
-  **다음 = 사용자 실검증 · 막 세기 조율 · 미끼 갑 불러오기 자동 열기 결정(백로그 CV · CW)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md`.
+  **다음 = 사용자 실검증 · ~~장비 개체 분리(CX)~~ ✅282 · CZ — CY는 281 해결**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md`.
 
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
@@ -210,14 +212,14 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `c31bc79` — **최근 90차 배포 2026-10-27 = 281차 코드까지 포함**(281 줄 세기 호수 기준 · 280 미끼 갑 갑째 · 「열어서 꿰기」 · 아이템 점검 26건) —
   main `f400f33` · 실행 19 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 10.3초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280 · 281차).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 76 = 281차**(「세기 = 호수」 줄 · 아이템 덤프 — 75 = 280 미끼 갑)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 77 = 282차**(시스템 「장비 · 루어는 한 개씩」 — 76 = 281 줄 세기)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 23 = 281차 기준) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 25 = 281차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 23 = 281차 기준 · 문법은 258차) · 위키(위 줄 — 76 = 281 줄 세기).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 24 = 282차 기준) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 26 = 282차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 24 = 282차 기준 · 문법은 258차) · 위키(위 줄 — 77 = 282 개체).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차
