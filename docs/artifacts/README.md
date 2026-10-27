@@ -11,7 +11,7 @@
 | 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 24 — 282차 기준(「기준」 줄 · 머리 · §06 「282차 실플레이 확인」 줄 · 280차 줄에서 CX 빼기) |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 26 — 282차 기준(「장비 · 루어 개체」 줄 신설 — 카탈로그 id#번호 · 옛 세이브 나누기 · 칸 n개 통째로) |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 24 — 282차 기준 · 채비 문법은 258차(「282차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 77 — 282차(시스템 탭 「장비 · 루어는 한 개씩」 신설). 아이템 덤프 · 지도 탭 그림은 바뀐 것이 없어 그대로 |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 78 — 282(2) 채소 그림 복구(69 ~ 77은 그림 목록에서 작물 키 100개가 빠져 채소 323개가 그림 없이 나갔다). 77 = 282차 시스템 탭 「장비 · 루어는 한 개씩」 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -23,7 +23,7 @@
 
 | 아티팩트 | 고칠 것 |
 |---|---|
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 77 — 282차(시스템 탭 「장비 · 루어는 한 개씩」 신설). 아이템 덤프 · 지도 탭 그림은 바뀐 것이 없어 그대로 |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 78 — 282(2) 채소 그림 복구(69 ~ 77은 그림 목록에서 작물 키 100개가 빠져 채소 323개가 그림 없이 나갔다). 77 = 282차 시스템 탭 「장비 · 루어는 한 개씩」 |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 26 — 282차 기준(「장비 · 루어 개체」 줄 신설 — 카탈로그 id#번호 · 옛 세이브 나누기 · 칸 n개 통째로) |
 | 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 24 — 282차 기준(「기준」 줄 · 머리 · §06 「282차 실플레이 확인」 줄 · 280차 줄에서 CX 빼기) |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 24 — 282차 기준 · 채비 문법은 258차(「282차 기준」 줄) |

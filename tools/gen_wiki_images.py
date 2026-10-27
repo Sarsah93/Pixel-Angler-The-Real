@@ -208,7 +208,18 @@ def main() -> int:
         total += save(img, os.path.join(args.out, name))
         manifest[f'sk:{key}'] = {'f': name, 'w': img.width, 'h': img.height}
 
-    with open(os.path.join(args.out, 'manifest.json'), 'w', encoding='utf-8') as fh:
+    # 282차 — 작물 초상(`px:crop_*`)은 `tools/wiki_crop_img.cjs`가 이 목록에 더한다. 목록을 새로 쓰면서 그 키를 버리면
+    #   위키 채소 그림이 전부 사라진다(272 ~ 282차 Version 69 ~ 77 — 그림 파일은 남아 있었다). 옛 목록의 작물 키를 그대로 잇는다.
+    man_path = os.path.join(args.out, 'manifest.json')
+    if os.path.isfile(man_path):
+        with open(man_path, encoding='utf-8') as fh:
+            prev = json.load(fh)
+        kept = {k: v for k, v in prev.items()
+                if k.startswith('px:crop_') and k not in manifest and os.path.isfile(os.path.join(args.out, v['f']))}
+        manifest.update(kept)
+        print(f'작물 초상 키 {len(kept)}개를 옛 목록에서 이음(wiki_crop_img.cjs 몫)')
+
+    with open(man_path, 'w', encoding='utf-8') as fh:
         json.dump(manifest, fh, ensure_ascii=False)
 
     print(f'images {len(manifest)} · {total / 1024 / 1024:.2f} MB · out={args.out}')

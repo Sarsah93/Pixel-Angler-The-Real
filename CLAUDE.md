@@ -213,7 +213,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
 - 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eadbeaf` — **최근 91차 배포 2026-10-27 = 282차 코드까지 포함**(282 장비 · 단단한 루어 개체 분리 · 281 줄 세기 호수 기준 · 280 미끼 갑 갑째) —
   main `b5e6086` · 실행 20 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 9.4초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280~282차).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 77 = 282차**(시스템 「장비 · 루어는 한 개씩」 — 76 = 281 줄 세기)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 78 = 282(2)**
+  (채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다 · 77 = 282 개체)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.

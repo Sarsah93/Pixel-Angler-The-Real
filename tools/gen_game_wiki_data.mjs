@@ -455,6 +455,16 @@ const items = itemCatalog.map((it) => ({
   img: imgOf(it.imgKey) ?? imgOf(it.iconTexture),   // 255차 — 게임과 같은 그림 고르기(`dump_wiki_items.mjs` imgKey)
   spec: itemSpec(it.tpl ?? {}, it),
 }));
+// 282차 — 그림 없는 아이템 경고. 그림 목록(manifest)이 새로 쓰이며 작물 키가 빠져 채소 323개가 그림 없이 나간 적이 있다(272 ~ 282).
+{
+  const bare = items.filter((x) => !x.img);
+  if (bare.length) {
+    const by = {};
+    for (const x of bare) by[x.groupLabel] = (by[x.groupLabel] ?? 0) + 1;
+    console.warn(`[위키] 그림 없는 아이템 ${bare.length}개 — ${Object.entries(by).map(([k, n]) => `${k} ${n}`).join(' · ')} (예: ${bare.slice(0, 5).map((x) => x.id).join(', ')})`);
+    if (bare.some((x) => x.id.startsWith('crop_'))) console.warn('[위키] ⚠ 작물 그림이 빠졌다 — `node tools/wiki_crop_img.cjs`를 먼저 돌린다');
+  }
+}
 
 /** 템플릿에 실린 제원을 사람이 읽는 줄로 (없는 필드는 싣지 않는다) */
 function itemSpec(t, it = {}) {

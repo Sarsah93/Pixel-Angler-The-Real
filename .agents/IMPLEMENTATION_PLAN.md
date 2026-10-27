@@ -206,6 +206,8 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 - 보조 감사 11곳: 프롤로그 보호 · 착용 모습 · 그림 표 · 제작 재료 · 물뿌리개 · 집 보관함 꺼내기 · 도감 · 정렬.
 - 검증: 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0. 잔여 = 백로그 DA(찌 · 목록 묶음 · 실검증).
 - main 빨리 감기(`b5e6086`) · 91차 배포(실행 20 · gh-pages `eadbeaf` · 기동 9.4초 · 4xx 0 · pageerror 0).
+- (2) 위키 채소 그림 복구: 272차부터 그림 목록(`tools/wiki_img/manifest.json`)에서 작물 키 100개 누락 → Version 78.
+  `gen_wiki_images.py` 작물 키 잇기 · 그림 없는 아이템 경고(게임 무관 — 하네스 5/5).
 - 상세: [워크로그 282](../docs/wiki/03-WORKLOG/2026-10-27-282-gear-lure-instances.md)
 
 ### 281차 (2026-10-27) — 줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)

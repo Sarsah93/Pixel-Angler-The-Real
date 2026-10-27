@@ -107,3 +107,49 @@
   남은 과업 설계 [Version 24](https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4) · 구현 라이브러리 [Version 26](https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5) ·
   채비 모딩 순서도 [Version 24](https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1)(「282차 기준」 줄 · 문법 그대로) · 위키 [Version 77](https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c)(시스템 「장비 · 루어는 한 개씩」)
 - [x] main 빨리 감기(`000fe27` → `b5e6086`) · 「테스트 배포」 91차(실행 20 · gh-pages `eadbeaf`) · 배포본 점검(위 §5) · CLAUDE 배포 줄
+
+---
+
+## 282(2) — 위키 채소 그림 복구(같은 날)
+
+### 1. 배경
+
+사용자 「Pixel Angler The Real Wiki 아티팩트에 채소들이 전부 보이지 않아. 어떻게 된거야? (인게임에도 문제 생긴거 아니야?)」
+
+### 2. 원인 — 위키 그림 목록에서 작물 키가 빠짐(게임 무관)
+
+- 위키는 그림을 `tools/wiki_img/manifest.json`(키 → 파일)으로 찾는다. 작물 초상 키 `px:crop_*` 100개는 `tools/wiki_crop_img.cjs`가 이 목록에 **더한다**.
+- `tools/gen_wiki_images.py`는 목록을 **새로 쓴다**(작물 키를 모른다). 272차(10-26 03:38 · 위키 Version 69)에 이것만 돌리고 `wiki_crop_img.cjs`를 건너뛰었다.
+  스킬 `asset-pipeline`에 순서가 적혀 있었지만 지켜지지 않았다.
+- 그 뒤 Version 69 ~ 77 아홉 판이 아이템 854개 중 **323개(먹을거리 322 · 소모품 1 — 작물 · 요리 재료 채소 · 팩)** 를 그림 없이 냈다.
+  농사 탭 그림 0장(옛 판) — 그림 파일 100장은 디스크와 아티팩트(`img/px_crop_*.png`)에 그대로 있었고 HTML이 가리키지 않았을 뿐이다.
+- 게임은 이 목록을 쓰지 않는다(`public/crops/` + `data/CropPortraits.ts` → BootScene `cropicon_` · `cropimg_`).
+  282차 아이콘 코드 변경(`itemBaseId`)은 `#` 없는 작물 id에 영향 없음.
+
+### 3. 변경
+
+| 구분 | 파일 | 내용 |
+|---|---|---|
+| 수정 | [`tools/gen_wiki_images.py`](../../../tools/gen_wiki_images.py) | 목록을 새로 쓸 때 옛 목록의 `px:crop_*` 키(파일이 있는 것)를 잇는다 — 「작물 초상 키 N개를 옛 목록에서 이음」 |
+| 수정 | [`tools/gen_game_wiki_data.mjs`](../../../tools/gen_game_wiki_data.mjs) | 그림 없는 아이템 경고(분류별 수 · 예) · 작물이 빠지면 「`wiki_crop_img.cjs`를 먼저」 경고 |
+| 재실행 | `node tools/wiki_crop_img.cjs` | manifest 764 → 864키(작물 100) |
+| 재발행 | 위키 아티팩트 | **Version 78**(HTML만 — 그림 파일은 아티팩트에 이미 있었다) |
+
+### 5. 검증
+
+| 대상 | 방법 | 결과 |
+|---|---|---|
+| 게임(dev) | 하네스 `rcrop.cjs` — 작물 텍스처 · 가방 음식 탭 · 상세 창 | 아이콘 100/100 · 카드 100/100 · 가방 칸 8종 · 딸기 상세 카드 · **5/5** · pageerror 0 · 스크린샷 육안 |
+| 배포본(91차) | gh-pages `crops/` 파일 수 | 300(원본 · 카드 · 아이콘 × 100) = 원본과 같음 |
+| 생성기 보호 | `gen_wiki_images.py --out <사본>` | 864키 · 작물 100 유지 |
+| 위키 | 발행된 Version 78 index.html을 받아 로컬 img와 띄움(`wikichk282b.cjs`) | 농사 탭 0 → **86장** · 먹을거리 34 → 44장(작물 10) · 9개 탭 깨진 그림 0 · pageerror 0 · 생성기 경고 0(그림 없는 아이템 0) |
+
+### 7. 위험·부작용
+
+- 작물 키 보존은 `px:crop_` 접두사만 — 다른 도구가 목록에 더하는 키가 새로 생기면 같은 보호를 더한다(지금은 작물뿐).
+- 초상을 다시 구운 뒤에는 여전히 `wiki_crop_img.cjs`를 돌려야 크기(w/h)가 맞는다 — 보존은 옛 값을 이을 뿐이다.
+
+### 8. 후속 반영
+
+- [x] `02-SYSTEMS/photo-pixel-art.md` §6 함정 34 · 스킬 `asset-pipeline` ⑤ · ⑥ 줄
+- [x] `CLAUDE.md` · `docs/artifacts/README.md` 위키 Version 78 · AGENTS §9 · PLAN 한 줄

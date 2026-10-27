@@ -216,6 +216,8 @@ node tools/pixelize_crops.cjs                                                   
 - **잎 · 줄기 사이에 갇힌 흰 배경**(245)은 테두리 BFS가 못 닿아 어두운 창에서 흰 점이 된다 — `pixelize_crops.cjs`의 `holes`(기본 180)가
   둘레가 어두운 흰 섬만 뺀다(흰 작물 하이라이트는 둘레가 밝아 남는다). 초상을 다시 구우면 전부에 걸리므로 `git diff --stat`으로 바뀐 수를 본다(245 = 71장).
 - 초상을 다시 구운 뒤 위키: `python3.13 tools/gen_wiki_images.py`(Pillow는 3.13에만 있다) → `node tools/wiki_crop_img.cjs` → `node tools/dump_wiki_items.mjs`(새 아이템이 있으면)
+  ⚠ 282(2) — `gen_wiki_images.py`는 그림 목록을 새로 쓴다(지금은 옛 작물 키를 잇는다).
+  생성기가 「그림 없는 아이템 N개」를 찍으면 발행하지 않는다(272 ~ 282 채소 323개 누락 전례).
   → `node tools/gen_game_wiki_data.mjs --html`. 아티팩트에는 바뀐 그림만 `files`로 올린다(245 = 105장).
 
 ## ⑦ 어종 그림 — 원본 · 카드 · 아이콘 · 사진 없는 어종 Gemini (246차)
