@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 282차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 283차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,17 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-27 282차) — 장비 · 단단한 루어 개체 분리 · main 반영 · 91차 배포**
+**최근 변경 (2026-10-27 283차) — 일지 초상을 그림 얼굴로 · 목표 옆 진행 레일**
+
+- 사용자 실검증 「일지에서는 … 일러스트 변경이 적용되지 않았네」 → 스스로 정한 할 일(「막차」)은 의뢰인이 `''`라
+  `q.giver ?? 'player'`가 빈 글자를 넘겨
+  그림 얼굴을 건너뛰었다 → `q.giver || 'player'`(일지 두 곳 · 혼잣말 · 대화창은 원래 정상).
+- 「빨간색 점선 화살표 … 더 세련된 도형으로」 → 이야기 탭 진행 레일(`drawProgressRail`)
+  — 청록 선 · 점 · 금빛 고리 · 숨 쉬는 후광 · 금빛 줄 바탕 · 흐려지는 꼬리.
+- 검증: 하네스(일지 이미지 키 `face2_` 0 · 레일 확대 캡처 · 트윈 쌓임 없음) · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
+  상세: [283차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-283-journal-face-progress-rail.md).
+
+**이전 변경 (2026-10-27 282차) — 장비 · 단단한 루어 개체 분리 · main 반영 · 91차 배포**
 
 - 사용자 「장비랑 루어만 개체로 나누는 걸로 진행해줘」(백로그 CX) → 장비(착용 · 손 도구) + 단단한 루어는 id `<카탈로그 id>#<번호>`(core `itemBaseId`).
   웜 · 미끼 · 봉돌 · 바늘 · 찌 · 줄은 묶음 그대로.
@@ -335,14 +345,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - main 빨리 감기(`f400f33`) · **90차 배포**(실행 19 · gh-pages `c31bc79` · 기동 10.3초 · pageerror 0).
 - 하모니 v2(사용자 「git 히스토리 관리 정도」 지적): 제품 갈래 6 + 기본 · 문서 · 요일 순환 · 시나리오를 실제로 돌림 · 버그 패턴 44 · 예산 4% · 결함 PR 허용(`harmony-state`).
 - 검증: 하네스(상세 창 · 하네스 본) pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0. 상세: [281차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-281-line-strength-ho-deploy90-harmony-v2.md).
-
-**이전 변경 (2026-10-27 280차) — 미끼 갑은 열기 전까지 갑째 · 아이템 버그 전수 점검(26건 고침)**
-
-- 사용자 「미끼 갑은 열기 전까지 그대로 두도록 바꿔줘. 아 그리고, 이런 아이템 관련 버그가 없는 지 전체적으로 검수해줘.」
-- 갑: 구매 · 불러오기 모두 갑째(`isSealedBaitBundle`) · 채비 창 미끼 칸 「… — 열어서 꿰기」(`packContent` · `openPack`) · 갑 신선도 시계(산 때부터 · 연 지렁이가 잇는다 · 상한 갑 거절).
-- 점검 네 갈래(장착 · 묶음 · 분류 · 불러오기) → 26건: 고장 대 칸 없음 · 같은 id 신선도 수량 가중(`blendCondition`) · 칸 몫(`partStockLeft` · `trimOverCommitted`) · 통발 갑째 · 「사용하기」 헛소모 ·
-  회칼 표 둘 · 수제 채비 · 카탈로그 밖 루어 빌린 제원 · 쿨러 · 바칸 · 거래 · 냉장고 · 기본 도구 표식 · 오프라인 시계(요리 · 거치대 · 선반).
-- 검증: 하네스 14/14 · 21/21 · pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. 상세: [280차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md).
 
 ---
 

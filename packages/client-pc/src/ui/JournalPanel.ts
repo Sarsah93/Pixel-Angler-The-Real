@@ -460,7 +460,8 @@ export class JournalPanel extends DraggablePanel {
     // 177차 — 발주자가 없는(스스로 정한) 할 일은 주인공 얼굴을 세운다. 회색 점은 잠긴 것에만 남긴다.
     if (!locked) {
       const cfg = q.giver ? characterOf(q.giver) : characterLook();
-      const key = ensureFacePortrait(this.scene, cfg, 2, q.giver ?? 'player');
+      // 283차 — 스스로 정한 할 일은 의뢰인이 빈 글자('')다. `??`는 빈 글자를 통과시켜 그림 얼굴을 건너뛰었다 → `||`
+      const key = ensureFacePortrait(this.scene, cfg, 2, q.giver || 'player');
       const fx = cx + C_FACE / 2;
       const plate = this.scene.add.graphics();
       plate.fillStyle(0x0b1a28, 1); plate.fillRect(fx - 15, y - 15, 30, 30);
@@ -947,7 +948,7 @@ export class JournalPanel extends DraggablePanel {
   /**
    * 챕터 하나 = **세로 체인 하나** (사용자 지정 — 타르코프 챕터 화면).
    *
-   * 붉은 점선 척추를 따라 체크박스 행이 내려오고, **지금 자리**에 ▼ 화살표가 선다.
+   * 진행 레일(283차 — 옛 붉은 점선 + ▼)을 따라 체크박스 행이 내려오고, **지금 자리**에 금빛 고리가 선다(`drawProgressRail`).
    * ⚠ R2 — 미래 목표는 그리지 않는다. 지나온 것과 **지금 하나**까지다.
    */
   private renderChain(): void {
@@ -994,32 +995,34 @@ export class JournalPanel extends DraggablePanel {
     const hd = this.scene.add.text(bx + 4, y, '목표', { fontFamily: FONT, fontSize: '12px', color: '#6f8ba1' });
     c.add(hd); y += hd.height + 8;
 
-    // 붉은 점선 척추
+    // 283차 — 진행 레일(사용자 「삼각형과 점선을 합친 도형 … 좀 더 세련된 도형으로」 — 옛 붉은 점선 + ▼).
+    //   지나온 칸 = 청록 실선 + 작은 점(체크 칸과 같은 색) · 지금 칸 = 금빛 고리(장 배너 색 · 숨 쉬듯 빛남) ·
+    //   그 아래는 레일이 흐려지며 끝난다(앞일은 그리지 않는다 — R2).
     const spineX = bx + 12;
-    const spine = this.scene.add.graphics();
-    const rowTop = y;
+    const nodes: { y: number; done: boolean; cur: boolean }[] = [];
+    const doneCount = chain.filter((x) => x.done).length;
 
     let drawn = 0;
     for (const r of chain) {
       if (y + 26 > PANEL_H - this.contentTop - 12) break;
       // 체크박스
       const box = this.scene.add.graphics();
-      box.fillStyle(r.done ? 0x14352c : 0x0e1c2a, 1); box.fillRect(spineX + 10, y + 2, 13, 13);
-      box.lineStyle(1, r.done ? 0x4af2a1 : 0x3c6f95, 1); box.strokeRect(spineX + 10, y + 2, 13, 13);
+      box.fillStyle(r.done ? 0x14352c : 0x0e1c2a, 1); box.fillRect(spineX + 14, y + 2, 13, 13);
+      box.lineStyle(1, r.done ? 0x4af2a1 : 0x3c6f95, 1); box.strokeRect(spineX + 14, y + 2, 13, 13);
       if (r.done) {
         box.lineStyle(2, 0xd8ffe8, 1);
-        box.lineBetween(spineX + 13, y + 8, spineX + 16, y + 12);
-        box.lineBetween(spineX + 16, y + 12, spineX + 21, y + 4);
+        box.lineBetween(spineX + 17, y + 8, spineX + 20, y + 12);
+        box.lineBetween(spineX + 20, y + 12, spineX + 25, y + 4);
       }
       c.add(box);
-      const t = this.scene.add.text(spineX + 32, y + 9, r.label, {
+      const t = this.scene.add.text(spineX + 36, y + 9, r.label, {
         fontFamily: FONT, fontSize: '13px',
         color: r.done ? C_DIM : C_TEXT, fontStyle: r.done ? 'normal' : 'bold',
       }).setOrigin(0, 0.5);
       clampTextWidth(t, bw - 130);
       c.add(t);
       if (r.note) {
-        const n = this.scene.add.text(spineX + 32, y + 24, r.note, {
+        const n = this.scene.add.text(spineX + 36, y + 24, r.note, {
           fontFamily: FONT, fontSize: '10px', color: '#6a7f92',
         }).setOrigin(0, 0);
         clampTextWidth(n, bw - 130);
@@ -1035,21 +1038,12 @@ export class JournalPanel extends DraggablePanel {
         bg.fillStyle(0xffb26b, 1); bg.fillRect(px, y + 6, (pw * r.cur) / Math.max(1, r.target), 6);
         c.add([bg, p2]);
       }
-      // 지금 자리 화살표
-      if (!r.done && drawn === chain.filter((x) => x.done).length) {
-        const ar = this.scene.add.graphics();
-        ar.fillStyle(0xe0483a, 1);
-        ar.fillTriangle(spineX - 6, y + 4, spineX + 4, y + 4, spineX - 1, y + 14);
-        c.add(ar);
-      }
+      // 레일 마디 — 체크 칸 한가운데 높이(y + 2 + 13/2)
+      nodes.push({ y: y + 8.5, done: r.done, cur: !r.done && drawn === doneCount });
       y += r.note ? 38 : 26;
       drawn++;
     }
-
-    // 척추 — 점선
-    spine.lineStyle(2, 0xe0483a, 0.85);
-    for (let sy = rowTop; sy < y - 8; sy += 7) spine.lineBetween(spineX, sy, spineX, sy + 4);
-    c.add(spine);
+    this.drawProgressRail(c, spineX, nodes, bx + bw - 4);
 
     const tail = this.scene.add.text(bx + 4, y + 10,
       '다음 할 일은 그 사람과 이야기해야 열립니다.', {
@@ -1059,6 +1053,56 @@ export class JournalPanel extends DraggablePanel {
 
     enforceTextBounds(c, PANEL_W - 10, 'JournalPanel/chain');
     applyScreenFixed(this);
+  }
+
+  /**
+   * 283차 — 목표 목록 옆 진행 레일. 마디(`nodes`)는 위에서부터 지나온 칸 · 지금 칸 순서다.
+   *  - 마디 사이 = 2px 청록 실선(지나온 길)
+   *  - 지나온 마디 = 어두운 테를 두른 청록 점 · 지금 마디 = 금빛 고리 + 가운데 점 + 숨 쉬는 후광
+   *  - 지금 마디 아래 = 금빛 꼬리가 몇 칸에 걸쳐 흐려진다(다음 일이 남았다는 뜻만 — 앞일은 그리지 않는다)
+   *  - 지금 할 일 줄 = 은은한 금빛 바탕(`right` = 줄 오른쪽 끝)
+   */
+  private drawProgressRail(c: Phaser.GameObjects.Container, x: number, nodes: { y: number; done: boolean; cur: boolean }[], right: number): void {
+    if (!nodes.length) return;
+    const RAIL = 0x2f9a72, DONE = 0x4af2a1, NOW = 0xd8b25f, HOLE = 0x0e1c2a;
+    const now0 = nodes.find((n) => n.cur);
+    if (now0) {
+      // 지금 할 일 줄 — 은은한 금빛 바탕(글 아래에 깔리게 컨테이너 맨 아래로)
+      const band = this.scene.add.graphics();
+      band.fillStyle(NOW, 0.07); band.fillRoundedRect(x + 10, now0.y - 11, right - x - 10, 22, 4);
+      band.lineStyle(1, NOW, 0.22); band.strokeRoundedRect(x + 10, now0.y - 11, right - x - 10, 22, 4);
+      c.addAt(band, 0);
+    }
+    const g = this.scene.add.graphics();
+    g.fillStyle(RAIL, 0.9);
+    for (let i = 0; i + 1 < nodes.length; i++) g.fillRect(x - 1, nodes[i].y, 2, nodes[i + 1].y - nodes[i].y);
+    const now = nodes.find((n) => n.cur);
+    if (now) {
+      const steps = 6;
+      for (let k = 0; k < steps; k++) {
+        g.fillStyle(NOW, 0.5 * (1 - k / steps));
+        g.fillRect(x - 1, now.y + 7 + k * 3, 2, 3);
+      }
+    }
+    for (const n of nodes) {
+      if (n.cur) continue;
+      g.fillStyle(HOLE, 1); g.fillCircle(x, n.y, 5);
+      g.fillStyle(n.done ? DONE : 0x3c6f95, 1); g.fillCircle(x, n.y, 3);
+    }
+    c.add(g);
+    if (!now) return;
+    const halo = this.scene.add.graphics().setPosition(x, now.y);
+    halo.fillStyle(NOW, 0.3); halo.fillCircle(0, 0, 9);
+    const ring = this.scene.add.graphics();
+    ring.fillStyle(HOLE, 1); ring.fillCircle(x, now.y, 6);
+    ring.lineStyle(2, NOW, 1); ring.strokeCircle(x, now.y, 5);
+    ring.fillStyle(NOW, 1); ring.fillCircle(x, now.y, 2);
+    c.add([halo, ring]);
+    this.scene.tweens.add({
+      targets: halo, alpha: { from: 1, to: 0.2 }, scale: { from: 0.8, to: 1.2 },
+      duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+    halo.once('destroy', () => this.scene.tweens.killTweensOf(halo));
   }
 
   /**
@@ -1257,7 +1301,7 @@ export class JournalPanel extends DraggablePanel {
       g.fillStyle(0x12263a, 1); g.fillRect(DET_X + 4, py, faceW, faceW);
       g.lineStyle(1, 0x3c6f95, 1); g.strokeRect(DET_X + 4, py, faceW, faceW);
       c.add(g);
-      const key = ensureFacePortrait(this.scene, q.giver ? characterOf(q.giver) : characterLook(), FACE, q.giver ?? 'player');
+      const key = ensureFacePortrait(this.scene, q.giver ? characterOf(q.giver) : characterLook(), FACE, q.giver || 'player');   // 283차 — 빈 의뢰인 = 주인공
       c.add(this.scene.add.image(DET_X + 4, py, key).setOrigin(0, 0).setDisplaySize(faceW, faceW));   // 267차 — 그림 초상(192px)도 칸에 맞춘다
       const nm = this.scene.add.text(DET_X + 4 + faceW / 2, py + faceW + 4,
         q.giver ? (npc?.nameKo ?? '') : (GameState.player.nickname || '나'), {
