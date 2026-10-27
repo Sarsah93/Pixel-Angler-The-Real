@@ -147,8 +147,8 @@
     "title": "모든 창을 열고 · ESC · 닫기 · 다시 열기를 되풀이해도 오류 0",
     "how": "필드에서 단축키로 여는 창 전부(REFERENCE.md §2)를 차례로 열고 ESC · ✕ · 다시 열기 3회. pageerror · 남은 popupStack · 입력 잠김(`uiBlocked`) 확인",
     "mode": "하네스",
-    "last_run": null,
-    "result": null,
+    "last_run": "2026-10-28",
+    "result": "통과",
     "findings": []
    },
    {
@@ -174,8 +174,8 @@
     "title": "탭 숨김 · WebGL 컨텍스트 유실 뒤 복귀",
     "how": "`document.hidden` 흉내 · `WEBGL_lose_context`로 강제 유실 → 복구 후 필드 · 집 · 1인칭 화면이 다시 그려지는가(266차)",
     "mode": "하네스",
-    "last_run": null,
-    "result": null,
+    "last_run": "2026-10-28",
+    "result": "통과",
     "findings": []
    },
    {
@@ -201,9 +201,11 @@
     "title": "세이브가 깨졌거나 비었을 때",
     "how": "localStorage 슬롯에 잘린 JSON · 다른 버전 · 빈 객체를 넣고 불러오기. 빈 슬롯처럼 조용히 넘어가는지(F-0016) · 게임이 멈추는지",
     "mode": "하네스",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-10-28",
+    "result": "발견 1 (F-0100)",
+    "findings": [
+     "F-0100"
+    ]
    }
   ],
   "q4-balance": [

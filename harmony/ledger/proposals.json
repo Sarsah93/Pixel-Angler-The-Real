@@ -413,6 +413,22 @@
    ],
    "origin": "일일 점검 — P-0020 중 확인된 한 줄",
    "lane": "d0-docs"
+  },
+  {
+   "id": "P-0024",
+   "date": "2026-10-28",
+   "domain": "q3-flow",
+   "kind": "적용",
+   "title": "구조가 깨진 세이브를 빈 슬롯으로 취급",
+   "pr": 14,
+   "branch": "harmony/2026-10-28-save-shape",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0100"
+   ],
+   "origin": "일일 점검 S3-07",
+   "lane": "q3-flow"
   }
  ]
 }

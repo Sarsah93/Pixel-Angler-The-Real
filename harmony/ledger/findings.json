@@ -1825,6 +1825,23 @@
    "last_seen": "2026-10-24",
    "resolved_at": "2026-10-24",
    "lane": "b0-baseline"
+  },
+  {
+   "id": "F-0100",
+   "lane": "q3-flow",
+   "severity": "경미",
+   "title": "구조가 깨진 세이브({} 등)가 정상 슬롯으로 보이다가 이어하기에서 던진다",
+   "evidence": "packages/client-pc/src/store/GameState.ts parseSaveData · getSlotMeta",
+   "why": "JSON만 읽히면 통과, player 검사 없음",
+   "repro": "슬롯 localStorage를 '{}'로 두고 getSlotMeta · loadFromSlot 호출(하네스 S3-07)",
+   "expected": "빈 슬롯 취급",
+   "actual": "meta.exists=true, load 시 GameState not initialized 예외",
+   "player_impact": "깨진 슬롯 이어하기 시 오류 · 상태 비어 버림",
+   "pattern": "BP-45",
+   "first_seen": "2026-10-28",
+   "last_seen": "2026-10-28",
+   "status": "열림",
+   "pr": 14
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."
