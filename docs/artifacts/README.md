@@ -8,7 +8,7 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 25 — 283차 기준(「기준」 줄 · 머리 · §06 「283차 실플레이 확인」 줄) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 26 — 283차 기준 · 92차 배포(「기준」 줄 · 머리 · §06 「283차 실플레이 확인」 줄) |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 27 — 283차 기준(조행록(일지) 줄 — 진행 레일 · 그림 얼굴 줄 — 빈 의뢰인 `\|\|`). 26 = 282 장비 · 루어 개체 |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 25 — 283차 기준 · 채비 문법은 258차(「283차 기준」 줄) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 79 — 283차(시스템 탭 「일지 초상 · 목표 진행 레일」). 78 = 282(2) 채소 그림 복구 |
@@ -25,7 +25,7 @@
 |---|---|
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 79 — 283차(시스템 탭 「일지 초상 · 목표 진행 레일」). 78 = 282(2) 채소 그림 복구 |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 27 — 283차 기준(조행록(일지) 줄 — 진행 레일 · 그림 얼굴 줄 — 빈 의뢰인 `\|\|`). 26 = 282 장비 · 루어 개체 |
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 25 — 283차 기준(「기준」 줄 · 머리 · §06 「283차 실플레이 확인」 줄) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 26 — 283차 기준 · 92차 배포(「기준」 줄 · 머리 · §06 「283차 실플레이 확인」 줄) |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 25 — 283차 기준 · 채비 문법은 258차(「283차 기준」 줄) |
 
 ### 머리 숫자 실측(구현 라이브러리)

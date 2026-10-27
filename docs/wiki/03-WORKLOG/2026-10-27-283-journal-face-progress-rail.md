@@ -1,11 +1,11 @@
-# 283차 — 일지 초상을 그림 얼굴로 · 목표 옆 진행 레일
+# 283차 — 일지 초상을 그림 얼굴로 · 목표 옆 진행 레일 · main 반영 · 92차 배포
 
 | | |
 |---|---|
 | **날짜** | 2026-10-27 |
 | **시스템** | `스토리`(일지 J — 할 일 표 · 상세 · 이야기 탭) · 얼굴 초상 |
 | **트리거** | 사용자 실검증(로컬 dev 서버) — 일지 초상 · 목표 화살표 두 가지 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` → main 빨리 감기(사용자 「main에도 반영해줘」 흐름 그대로) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck`(`cde8d84` · `bef0850`) → main 빨리 감기 `bef0850`(사용자 「아티팩트 수정 및 Main에 반영해주고, 재배포까지 해줘」) → 「테스트 배포」 실행 21(92차 · gh-pages `1f2975d`) |
 | **빌드·타입체크** | 3/3 · 0 오류 |
 
 ---
@@ -56,6 +56,7 @@
 | 후광 트윈 | 이야기 탭을 다섯 번 다시 그린 뒤 1.5초 뒤 살아 있는 트윈 | 전 2 · 후 2(후광 1 + 다른 요소 1) — 쌓이지 않음 |
 | 빌드 | `npx pnpm run build` · client `typecheck` | 3/3 · 0 오류 |
 | 위키 | 생성기 경고(그림 없는 아이템) | 0 · Version 79 발행 |
+| 92차 배포본 | gh-pages `1f2975d`를 하위 경로로 띄워 Playwright 기동 · 로컬 dist 대조 · 번들 grep | 기동 17.0초 · 4xx 0 · pageerror 0 · 정적 2,003 중 같음 2,001(번들 · index는 CI 해시) · 번들에 `giver\|\|"player"` 2곳 · 레일 색 |
 
 재현 절차(다음 회귀):
 
@@ -78,4 +79,5 @@
 - [x] 워크로그 색인 `03-WORKLOG/README.md` §3.1
 - [x] `02-SYSTEMS/story-quests.md` — §4 표 한 줄 · §6 함정(빈 의뢰인 · `??` vs `||`)
 - [x] `.agents/AGENTS.md` §9 · `.agents/IMPLEMENTATION_PLAN.md` · `CLAUDE.md` 요약
-- [x] 아티팩트 4개 — 같은 주소: 남은 과업 설계 Version 25 · 구현 라이브러리 Version 27 · 채비 모딩 순서도 Version 25(「283차 기준」 줄) · 위키 Version 79
+- [x] 아티팩트 4개 — 같은 주소: 남은 과업 설계 Version 25 → 26(92차 배포 줄) · 구현 라이브러리 Version 27 · 채비 모딩 순서도 Version 25(「283차 기준」 줄) · 위키 Version 79
+- [x] main 빨리 감기 · 「테스트 배포」 92차 · 배포본 점검(§5) · CLAUDE 배포 줄

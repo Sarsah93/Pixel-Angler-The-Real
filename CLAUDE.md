@@ -82,18 +82,19 @@
   → **280 미끼 갑은 열기 전까지 갑째(채비 창 「열어서 꿰기」 · 갑 신선도 시계) · 아이템 버그 전수 점검 26건**
   → **281 줄 세기 호수 기준 하나로(lb는 표시값) · main 반영 · 90차 배포 · 하모니 v2(일일 점검을 제품 점검으로)**
   → **282 장비 · 단단한 루어 개체 분리(번호 붙은 id · 웜 · 미끼 · 소모품은 묶음) · main 반영 · 91차 배포**
-  → **283 일지 초상을 그림 얼굴로(빈 의뢰인 `||`) · 이야기 탭 목표 진행 레일**.
+  → **283 일지 초상을 그림 얼굴로(빈 의뢰인 `||`) · 이야기 탭 목표 진행 레일 · main 반영 · 92차 배포**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
-- **283차**: **일지 초상을 그림 얼굴로 · 목표 옆 진행 레일** —
+- **283차**: **일지 초상을 그림 얼굴로 · 목표 옆 진행 레일 · main 반영 · 92차 배포** —
   사용자 실검증(로컬 dev) 「일지에서는 … 일러스트 변경이 적용되지 않았네」 · 「빨간색 점선 화살표 … 더 세련된 도형으로」 →
   스스로 정한 할 일(「막차」)은 의뢰인이 `''`라 `q.giver ?? 'player'`가 빈 글자를 넘겨 그림 얼굴을 건너뜀 → `||`(일지 두 곳) ·
   이야기 탭 붉은 점선 + ▼ → `drawProgressRail`(청록 선 · 점 · 금빛 고리 · 숨 쉬는 후광 · 금빛 줄 바탕 · 흐려지는 꼬리) ·
-  검증 = 하네스(일지 이미지 키 `face2_` 0 · 레일 확대 캡처 · 트윈 쌓임 없음) · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
+  검증 = 하네스(일지 이미지 키 `face2_` 0 · 레일 확대 캡처 · 트윈 쌓임 없음) · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 ·
+  main 빨리 감기 `bef0850` · 92차 배포(실행 21 · gh-pages `1f2975d` · pageerror 0).
   **다음 = 사용자 실검증(레일 색 · 바탕 세기)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-283-journal-face-progress-rail.md`.
 - **282차**: **장비 · 단단한 루어 개체 분리 · main 반영 · 91차 배포** —
   사용자 「장비(낚싯대 · 릴 · 옷 · 칼)와 루어만 … 개체로 나누는 걸로 진행해줘. (커밋 재배포까지 다 해줘)」 →
@@ -209,8 +210,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eadbeaf` — **최근 91차 배포 2026-10-27 = 282차 코드까지 포함**(282 장비 · 단단한 루어 개체 분리 · 281 줄 세기 호수 기준 · 280 미끼 갑 갑째) —
-  main `b5e6086` · 실행 20 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 9.4초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280~282차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `1f2975d` — **최근 92차 배포 2026-10-27 = 283차 코드까지 포함**(283 일지 초상 그림 얼굴 · 목표 진행 레일 · 282 장비 · 루어 개체 · 281 줄 세기) —
+  main `bef0850` · 실행 21 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 17.0초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280~283차).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 79 = 283**(시스템 「일지 초상 · 목표 진행 레일」)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
@@ -218,7 +219,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 25 = 283차 기준) ·
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 26 = 283차 · 92차 배포) ·
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 27 = 283차 기준) ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 25 = 283차 기준 · 문법은 258차) · 위키(위 줄 — 79 = 283).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
