@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 # 판정 기준 — 바꿀 때는 PROTOCOL §5와 함께 고친다.
-TARGET_PCT = 4.0        # 실행 1회 목표: 예산의 4% 이하(2026-10-28 사용자 승인 — 게임을 띄워 시나리오를 돌린다. v1은 1%)
+TARGET_PCT = 4.0        # 실행 1회 목표: 예산의 4% 이하(2026-10-27 사용자 승인 — 게임을 띄워 시나리오를 돌린다. v1은 1%)
 GROWTH_ALERT = 0.15     # 직전 3회 평균보다 15% 넘게 늘면 「증가」
 WINDOW = 3
 
@@ -47,7 +47,7 @@ def verdict(rows: list[dict]) -> str:
         ratio = (last["used"] - avg) / avg if avg else 0.0
         grow = ratio > GROWTH_ALERT
         base = f"직전 {len(prev)}회 평균 {avg / 1000:.0f}k 대비 {ratio * 100:+.0f}%"
-    # v2(2026-10-28): 목표를 넘을 때만 절감책을 채택한다. 늘기만 하고 목표 안이면 「지켜봄」 —
+    # v2(2026-10-27): 목표를 넘을 때만 절감책을 채택한다. 늘기만 하고 목표 안이면 「지켜봄」 —
     # 시나리오를 돌리는 날과 안 돌리는 날의 폭이 커서, 증가만으로 채택하면 사다리를 금방 다 쓴다.
     if over:
         action = "절감책 1단계 채택 필요"
