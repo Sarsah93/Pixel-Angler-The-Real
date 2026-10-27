@@ -79,13 +79,20 @@
   → **277 가방 「정리」 · 차도 위 가게 자리 · 차끼리 겹치지 않기(백운포) · 안내 말풍선 끄고 켜기 · 가게 · 집 ESC = 일시정지 메뉴**
   → **278 채집 놀이 멈춤 · 오류(닫은 창의 가이드) · 조작 가이드 「방법」 · 건널 수 없던 보행 다리 12지역 137칸 보정(꼭짓점만 맞닿은 칸)**
   → **279 열지 않은 미끼 묶음은 채비 칸에 못 끼움 · 집 안은 늘 밝음 · 가구 배치 때만 어둠 막(손 아래 가구 · 놓을 자리 밝힘) · main 반영 · 89차 배포**
-  → **280 미끼 갑은 열기 전까지 갑째(채비 창 「열어서 꿰기」 · 갑 신선도 시계) · 아이템 버그 전수 점검 26건**.
+  → **280 미끼 갑은 열기 전까지 갑째(채비 창 「열어서 꿰기」 · 갑 신선도 시계) · 아이템 버그 전수 점검 26건**
+  → **281 줄 세기 호수 기준 하나로(lb는 표시값) · main 반영 · 90차 배포 · 하모니 v2(일일 점검을 제품 점검으로)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **281차**: **줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)** —
+  사용자 「n호수로 하고, lb까지 표시할 수 있으면 … 너가 결정해줘」 · 하모니 「기획&개발 관련 develop은 하나도 없는 것 같고 … git 히스토리 관리 정도」 →
+  core `rules/LineStrength.ts`(모노 1.8kg ≈ 4lb/호 · 합사 9kg ≈ 20lb/호 · 판정 값 그대로) · 상세 창 「12lb (5.4kg)」 · 줄 제원표 카본 · 합사 lb 정정 ·
+  main 빨리 감기 `f400f33` · 90차 배포(gh-pages `c31bc79`) · 하모니 v2(`harmony-state` — 갈래 = 아이템 · 그림 · 흐름 · 밸런스 · 보안 · 접근성 요일 순환 · 시나리오 50 · 버그 패턴 44 · 하네스 본 · 예산 4% · 결함 PR 허용) ·
+  예약 작업 지침은 에이전트가 못 바꿔 사용자가 `harmony/trigger-prompt-v2.md`를 붙여 넣는다.
+  **다음 = 사용자 실검증(CZ) · 개체 분리 판단(CX) · 첫 v2 하모니 보고(10-28)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-281-line-strength-ho-deploy90-harmony-v2.md`.
 - **280차**: **미끼 갑은 열기 전까지 갑째 · 아이템 버그 전수 점검(26건 고침)** —
   사용자 「미끼 갑은 열기 전까지 그대로 두도록 바꿔줘. 아 그리고, 이런 아이템 관련 버그가 없는 지 전체적으로 검수해줘.」 →
   구매 · 불러오기 갑째(`isSealedBaitBundle`) · 채비 창 미끼 칸 「… — 열어서 꿰기」(`packContent` · `openPack`) · 갑 신선도 시계(연 지렁이가 잇는다 · 상한 갑 거절) ·
@@ -93,19 +100,13 @@
   통발 갑째 · 「사용하기」 효과 있을 때만 · 회칼 표(단조 야나기바 · 정옥선 칼) · 수제 채비 칸 · 카탈로그 밖 루어 빌린 제원 · 쿨러 · 바칸 마지막 그릇 · 거래(채집물 · 법 어획물) ·
   냉장고 되살림 · 기본 도구 표식(`starterToolsGiven`) · 오프라인 시계(요리 · 거치대 · 선반) ·
   검증 = 하네스 14/14 · 21/21 · pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
-  **다음 = 사용자 실검증 · 장비 개체 분리 · 줄 세기 기준(백로그 CX · CY · CZ)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md`.
+  **다음 = 사용자 실검증 · 장비 개체 분리(백로그 CX · CZ — CY는 281 해결)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-280-sealed-bait-box-item-audit.md`.
 - **279차**: **열지 않은 미끼 묶음은 채비 칸에 못 끼운다 · 집 안은 늘 밝다 · 가구 배치 때만 어둡게** —
   QA 「'열기(unbox)'하지 않은 팩 덩어리를 미끼 란에 끼울 수 없도록」 · 「집 내부(다른 상점 내부들도 마찬가지겠지?)는 항상 밝고, 가구 배치할 때, 어두움(DIMMING)처리 하되, 배치할 가구 및 영역을 하이라이트」 →
   267은 `isBaitItem`만 막아 채비 창 미끼 칸(`partKindOf`)이 열려 있었다 · `RigParts.isPackItem`(unpack · 상점 bundle 7개) → `partKindOf` null · `setRigNode` 칸 종류 검사(`RIG_SLOTS[slot].accepts`) · 불러올 때 칸 비움 ·
   집 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만) · `HomeDecorMode.veil`(α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부(`checkPlace`) 뚫기 + 테두리 · WebGL 복구 `repaint()` · 가게 실내는 이미 밝음(depth 70~99) ·
   검증 = 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main 빨리 감기 · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 기동 15.9초 · pageerror 0).
   **다음 = 사용자 실검증 · 막 세기 조율 · 미끼 갑 불러오기 자동 열기 결정(백로그 CV · CW)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md`.
-- **278차**: **채집 놀이 멈춤 · 오류 · 조작 가이드 · 건널 수 없던 보행 다리 전 지역 보정** —
-  사용자 「갯강구 … 미니게임 어떻게 하는 지 모르겠고 … esc 눌렀더니 … 에러 문구가 뜨고 화면이 freeze」 · 「태안 안흥 … 캐릭터가 지나갈 수 없는 다리 … 전체 맵 검수 … 지형을 너무 늘리지 않는 선에서」 →
-  놀이 가이드가 물가 캐스팅 안내(passive) 뒤에 영영 줄 섬 → 판 멈춤 → ESC 뒤 닫힌 창 `build()`가 `scene.textures`를 읽어 던짐 · `GuideTour.request(… { preempt, force })` · 닫힌 창 null · 1.5초 안전망 · 제목줄 「방법」 · 갈래별 조작 문장 `_v3` · F1 단락 ·
-  보행 다리 = 1칸 폭 대각 데크 · 보도 · 방파제 선이 꼭짓점만 닿음(OSM 다리 251 아래 물 0) · 빌더 `bridge_osm_pinches`(물 모서리 한 칸) · 속초는 `tools/fix_walk_pinches.py`(재빌드 시 손본 1,640칸 손실) · 12지역 137칸 ·
-  검증 = 놀이 하네스 42/42 · 다리 하네스 5/5(나래교 69칸 · 새연교 → 새섬) · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
-  **다음 = 사용자 실검증 · 1칸 폭 계단 데크 체감 · 인천 매립지(백로그 CU)**. 상세 `docs/wiki/03-WORKLOG/2026-10-27-278-forage-game-freeze-guide-footbridge-pinch.md`.
 
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
@@ -156,7 +157,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
    완료 시 변경 목록과 함께 "커밋 대기"로 보고.
    - **예외(2026-10-08 지시)**: 하모니 일일 점검 예약 작업은 `harmony-state`와 `harmony/`로 시작하는 브랜치에만 푸시하고
      풀 리퀘스트를 연다. `main` · `gh-pages` 푸시와 병합은 여전히 사용자만 한다. 일반 세션에는 이 예외가 없다.
-     (기록과 절차는 `harmony-state` 브랜치의 `harmony/README.md`)
+     (기록과 절차는 `harmony-state` 브랜치의 `harmony/README.md` — 2026-10-27 v2: 제품 점검 갈래 · 재현 + 검증된 작은 결함 수정 PR · 예산 4%)
 1. `@tra/core`에 렌더링/브라우저 코드 금지.
 2. 필드에서 연 하위 씬에서 `scene.start('RegionFieldScene')` 금지 — 반드시 `scene.stop()` + `scene.resume('RegionFieldScene')`.
 3. `GameState`(대문자 싱글톤)만 사용, `gameState` 소문자 인스턴스 없음.
@@ -206,17 +207,17 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `74cd4fd` — **최근 89차 배포 2026-10-27 = 279차까지 포함**(279 미끼 갑 채비 칸 금지 · 집 늘 밝음 · 가구 배치 어둠 막 · 278 채집 놀이 멈춤 · 보행 다리 · 277 가방 정리 · 차도 위 가게 자리) —
-  main `f650407` · 실행 18 · 정적 2,004(같음 2,001 · 다름 0) · 기동 15.9초(헤드리스) · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(277 · 278 · 279차 — 89차 기록 커밋이 머리).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `c31bc79` — **최근 90차 배포 2026-10-27 = 281차 코드까지 포함**(281 줄 세기 호수 기준 · 280 미끼 갑 갑째 · 「열어서 꿰기」 · 아이템 점검 26건) —
+  main `f400f33` · 실행 19 · 정적 2,003(같음 2,001 · 번들 · index는 CI 빌드 해시) · 기동 10.3초(헤드리스) · 4xx 0 · pageerror 0. main은 2026-10-27 사용자 지시로 작업 브랜치에 빨리 감기했다(280 · 281차).
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 75 = 280차**(시스템 탭 「미끼 갑 · 같은 물건 겹치기」 · 아이템 덤프 — 74 = 279 도움말 집 쪽)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 76 = 281차**(「세기 = 호수」 줄 · 아이템 덤프 — 75 = 280 미끼 갑)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 22 = 280차 기준) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 24 = 280차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 22 = 280차 기준 · 문법은 258차) · 위키(위 줄 — 75 = 280 시스템 탭 · 아이템).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 23 = 281차 기준) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 25 = 281차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 23 = 281차 기준 · 문법은 258차) · 위키(위 줄 — 76 = 281 줄 세기).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

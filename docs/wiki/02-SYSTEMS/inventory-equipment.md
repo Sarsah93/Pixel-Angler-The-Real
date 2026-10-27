@@ -179,3 +179,5 @@
    표식(`starterToolsGiven`)은 `serialize`가 늘 `true`로 쓴다 — 표식 없는 세이브만 한 번.
 18. **꺼진 동안 멈추는 시계는 전부 민다**(280) — 가방 `conditionSinceMs` · 요리 `dish.cookedAtMs` · 쿨러 · 거치대 사본 · 집 옷장 · 선반(`savedAtMs`) · 화구.
    새 「시각」 필드를 저장하면 `deserialize`에서 같은 오프라인 간격을 더한다.
+19. **줄 세기 표시는 호수에서 나온다**(281) — 상세 창 「인장 강도 12lb (5.4kg)」는 `lineStrengthView`(core 호수 표)다.
+   상점 · 시드의 `lineStrengthLb`를 고쳐도 화면은 안 바뀐다 — 값을 바꿀 일이 있으면 core 표(`MONO_LINE_KG_PER_HO` · `PE_LINE_KG_PER_HO`)다.

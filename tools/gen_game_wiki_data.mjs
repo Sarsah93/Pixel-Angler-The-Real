@@ -688,6 +688,7 @@ const rules = [
       ['밑걸림 끌어냄', `채비를 건지면 목줄 ${core.TUNING.lineWear.snagPullLeader} · 원줄 ${core.TUNING.lineWear.snagPullMain} × 재질 쓸림 — 잘려 나간 줄은 새 줄`],
       ['캐스팅', `던질 때마다 ${core.TUNING.lineWear.castK} × 재질(합사 ${core.LINE_MATERIAL_TRAITS.pe_braid.cast} · 나일론 · 카본 ${core.LINE_MATERIAL_TRAITS.nylon.cast}) · 목줄은 1/3 — 합사 원줄 100번 = ${(core.TUNING.lineWear.castK * core.LINE_MATERIAL_TRAITS.pe_braid.cast * 100).toFixed(2)}`],
       ['바닥 끌림', `여 위를 1m 끌릴 때 ${core.TUNING.lineWear.dragPerM} × 바닥 근접도(밑걸림과 같은 값) × 재질 쓸림 — 목줄 · 원줄은 ${core.TUNING.lineWear.dragMainFrac}`],
+      ['세기 = 호수', `나일론 · 카본 1호 ≈ ${core.MONO_LINE_KG_PER_HO}kg(${core.lineLbFromHo(1, false)}lb) · 합사 1호 ≈ ${core.PE_LINE_KG_PER_HO}kg(${core.lineLbFromHo(1, true)}lb) — 상세 창 · 판정 · 상점 설명이 한 표(281)`],
       ['재질', ['nylon', 'fluorocarbon', 'pe_braid'].map((k) => `${core.LINE_MATERIAL_TRAITS[k].labelKo} — ${core.LINE_MATERIAL_TRAITS[k].traitKo}`).join(' / ')],
       ['단계', `새 줄(< ${core.TUNING.lineWear.stageLight}) · 쓸림 조금 · 쓸림 심함(≥ ${core.TUNING.lineWear.stageHeavy} — 채비 창 칸 배지 「심함」 · 1인칭 알림) · 끊어지기 직전(≥ ${core.TUNING.lineWear.stageCritical} — 배지 「위험」 · 던질 때마다 알림)`],
       ['다시 매기', `채비 창에서 원줄 · 목줄 칸 → 「줄 끝을 잘라 다시 매기」 — 목줄 ${core.TUNING.lineWear.retieLeaderM}m · 원줄 ${core.TUNING.lineWear.retieMainM}m를 스풀에서 잘라 내고 마모 0 · 채비 고정 중에도 된다`],

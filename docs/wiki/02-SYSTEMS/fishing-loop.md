@@ -141,6 +141,11 @@
 
 ## 6. 함정·불변조건
 
+> **281차 신규 함정**
+> 1. **줄 세기는 호수 표 하나다**(`core/rules/LineStrength.ts`) — 모노 1호 = 1.8kg(≈4lb) · 합사 1호 = 9kg(≈20lb).
+>    낚시 판정(`lineStrengthKg`) · 상세 창 「인장 강도」 · 줄 제원표(`LINE_DATABASE.strengthLb`) · 상점 설명이 모두 이 표다.
+>    아이템의 `lineStrengthLb`는 옛 표시값이라 읽지 않는다 — 새 줄은 `lineNo` · `lineMaterial`만 바르게 넣으면 된다.
+>
 > **273차 신규 함정**
 > 1. **줄 세기는 `lineCapacityKg()` 하나다** — 마모 · 나일론 젖음이 반영된 값이다. 공칭(호수 환산)이 필요하면 `lineNominalCapacityKg()`.
 >    파이트 분모 · 드랙 · 대 과부하 판정이 이 값을 쓰므로 쓸린 줄은 같은 고기에 더 쉽게 터진다 — 설계다.

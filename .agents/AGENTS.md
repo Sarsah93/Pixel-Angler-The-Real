@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 280차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 281차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-27 280차) — 미끼 갑은 열기 전까지 갑째 · 아이템 버그 전수 점검(26건 고침)**
+**최근 변경 (2026-10-27 281차) — 줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)**
+
+- 사용자 「n호수로 하고, lb까지 표시 … 너가 결정해줘」 → core `rules/LineStrength.ts` 한 표(모노 1.8kg ≈ 4lb/호 · 합사 9kg ≈ 20lb/호 · 판정 값 그대로).
+  상세 창 「인장 강도 12lb (5.4kg)」 · 줄 제원표 lb를 같은 표에서 · 아이템 `lineStrengthLb`는 읽지 않음.
+- main 빨리 감기(`f400f33`) · **90차 배포**(실행 19 · gh-pages `c31bc79` · 기동 10.3초 · pageerror 0).
+- 하모니 v2(사용자 「git 히스토리 관리 정도」 지적): 제품 갈래 6 + 기본 · 문서 · 요일 순환 · 시나리오를 실제로 돌림 · 버그 패턴 44 · 예산 4% · 결함 PR 허용(`harmony-state`).
+- 검증: 하네스(상세 창 · 하네스 본) pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0. 상세: [281차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-281-line-strength-ho-deploy90-harmony-v2.md).
+
+**이전 변경 (2026-10-27 280차) — 미끼 갑은 열기 전까지 갑째 · 아이템 버그 전수 점검(26건 고침)**
 
 - 사용자 「미끼 갑은 열기 전까지 그대로 두도록 바꿔줘. 아 그리고, 이런 아이템 관련 버그가 없는 지 전체적으로 검수해줘.」
 - 갑: 구매 · 불러오기 모두 갑째(`isSealedBaitBundle`) · 채비 창 미끼 칸 「… — 열어서 꿰기」(`packContent` · `openPack`) · 갑 신선도 시계(산 때부터 · 연 지렁이가 잇는다 · 상한 갑 거절).
@@ -335,15 +343,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 집: 어둠 배율 0(창밖 · 스탠드 · 수조 번짐만 시각을 따른다) · 배치 어둠 막(`HomeDecorMode.veil` α 0.6 · depth 50) · 손 아래 가구 · 든 가구를 놓을 수 있는 칸 전부를 뚫고 테두리 ·
   WebGL 복구 때 `repaint()` · 가이드 · 도움말 · 영어. 가게 실내는 이미 밝다(depth 70~99 — 바꾸지 않음).
 - 검증: 하네스 20/20 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(라이브러리 23 · 과업 21 · 순서도 21 · 위키 74) · main 빨리 감기(`f650407`) · **89차 배포**(실행 18 · gh-pages `74cd4fd` · 정적 2,004 다름 0 · 기동 15.9초 · pageerror 0). 상세: [279차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-279-pack-bait-slot-home-bright-decor-dim.md).
-
-**이전 변경 (2026-10-27 278차) — 채집 놀이 멈춤 · 오류(닫은 창의 가이드) · 조작 가이드 보강 · 건널 수 없던 보행 다리 전 지역 보정**
-
-- 사용자 리포트 둘: 「갯강구 … 미니게임 어떻게 하는 지 모르겠고 … esc 눌렀더니 … 에러 문구가 뜨고 화면이 freeze」 · 「태안 안흥 … 캐릭터가 지나갈 수 없는 다리 … 전체 맵 검수 … 지형을 너무 늘리지 않는 선에서」.
-- 놀이: 가이드가 물가 캐스팅 안내(passive — 스스로 안 끝남) 뒤에 영영 줄 서서 판이 멈췄고, ESC 뒤 닫힌 창의 `build()`가 `scene.textures`를 읽어 던졌다 →
-  `GuideTour.request(…, { preempt, force })` · 닫힌 창 null · `build` 예외 삼킴 · 1.5초 안전망 · 닫은 누름 버림 · 제목줄 「방법」 · 갈래별 조작 문장(`_v3`) · F1 「놀이 조작」.
-- 다리: 1칸 폭 대각 데크(`D`) · 보도 · 방파제 선이 꼭짓점만 닿아 4-연결 걷기에서 끊겼다(OSM 다리 251개 아래 물 0 — 전부 꼭짓점 문제) →
-  빌더 `bridge_osm_pinches`(물 모서리 한 칸) · 속초는 `tools/fix_walk_pinches.py`(재빌드하면 손본 1,640칸 손실) · 12지역 137칸(태안 나래교 · 서귀포 새연교 → 새섬 · 인천 매립지).
-- 검증: 놀이 하네스 42/42 · 다리 하네스 5/5(나래교 69칸 방향키로 건넘) · pageerror 0 · 빌드 3/3 · typecheck 0. 상세: [278차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-278-forage-game-freeze-guide-footbridge-pinch.md).
 
 ---
 
