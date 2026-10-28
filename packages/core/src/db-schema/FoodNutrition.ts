@@ -49,7 +49,7 @@ export const FOOD_NUTRITION: Record<string, FoodNutrition> = {
   shop_black_sea_bream_sashimi_small: { g: 300, kcal: 330, ml: 130 },
   // ── 삶은 문어 (098차) ──
   boiled_octopus: { g: 300, kcal: 250, ml: 120 },
-  // ── 불요리 9종 (1인분) ──
+  // ── 불요리 10종 (1인분) ──
   stew_red:         { g: 650, kcal: 520, ml: 380 },
   stew_red_whole:   { g: 700, kcal: 560, ml: 380 },
   stew_clear:       { g: 650, kcal: 430, ml: 420 },
@@ -59,6 +59,8 @@ export const FOOD_NUTRITION: Record<string, FoodNutrition> = {
   soup_clam:        { g: 600, kcal: 320, ml: 450 },
   porridge_abalone: { g: 500, kcal: 450, ml: 300 },
   grill_eel:        { g: 280, kcal: 780, ml: 40 },
+  // 284차 — 나물 볶음 1인분(데친 나물 150g + 들기름 반 큰술 · 들깨가루)
+  stirfry_namul:    { g: 150, kcal: 130, ml: 90 },
 };
 
 /** 영양 → 허기·수분 회복 % (하루 필요량 대비) */

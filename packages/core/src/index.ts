@@ -891,6 +891,8 @@ export type {
   CropDisease, CropDiseaseState, CareTaskId, CareWorkKind, CareTaskDef, CropCarePlan, DiseaseDef,
   // 247차 — 재배 요소(물 양 · 품 · 도구 · 거둔 뒤 밭 손질 · 철 · 늘리기)
   WaterAmount, OverwaterHarm, HarvestBy, FieldProcessDef, OffTimingKind, CropPropagation, CropCultivation, FieldProcessStage, FarmLaborAction,
+  // 284차 — 무게 수확물 봉지 · 부산물
+  CropBag, CropByproduct, ByproductUse,
 } from './types/Farming.js';
 export {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
@@ -898,7 +900,16 @@ export {
   FARM_SUPPLIES, getFarmSupply, supplyOfFacility,
   // 243차 — 포장(낱개 → 팩)
   FARM_PACK_CONTAINER, isProducePack, packOfLoose, looseOfPack, legacyPackItemId,
+  // 284차 — 무게(g) 수확물 · 봉지 담기 · 옛 단위 이전 · 부산물
+  FARM_BAG_CONTAINER, produceUnitG, bagsOfLoose, looseOfBag, isProduceBag, legacyUnitGrams, byproductOf,
 } from './db-schema/CropDatabase.js';
+// 284차 — 밭 부산물(깻대 · 콩대 · 보릿짚 · 옥수숫대 · 검불 · 폐배지 · 깻묵) · 방앗간
+export { FARM_RESIDUES, farmResidueDef, mulchResidues } from './db-schema/FarmResidues.js';
+export type { FarmResidueDef } from './db-schema/FarmResidues.js';
+export {
+  OIL_BOTTLE_SIZES, MILL_TUNING, SPOON_ML, OIL_BOTTLES, oilBottleDef, OILCAKE_ID, MILL_SERVICES, millService, oilQuote, grindQuote, maxBottles,
+} from './rules/OilMill.js';
+export type { OilBottleMl, MillServiceId, OilBottleDef, MillServiceDef, MillQuote } from './rules/OilMill.js';
 export type { FarmSupplyDef } from './db-schema/CropDatabase.js';
 export { variantsOf, baseCropOf, variantUnlockKo } from './db-schema/CropDatabase.js';
 // 241차 — 날로 먹기(수확물 · 조각 · 영양)
@@ -919,6 +930,7 @@ export { harvestPreview } from './simulation/FarmSim.js';
 // 247차 — 재배 요소: 저절로 난 싹 · 모종 꺼내기 · 밭 손질 · 포기 나누기 · 산채 모종 들어오는 날
 export {
   wildUnknown, pullSeedlings, processStageOf, processHoursLeft, startFieldProcess, finishFieldProcess, divideBlockKo, divideCell, rareArrivalInDays,
+  rollByproducts,
 } from './simulation/FarmSim.js';
 export {
   SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, TROWEL_ID, FLAIL_ID, WINNOW_ID, GLOVES_ID, CULTIVATION_TUNING, FARM_LABOR, FARM_SECONDS,
@@ -938,6 +950,8 @@ export {
   // 245차 — 작물 84종의 일 · 병해충 16종 · 새 자재
   DISEASE_DEFS, PREVENT_LEAD_MONTHS, carePlanSummaryEn, riskMonthsOf, taskWhenKo, taskWhenEn, monthRuns, monthsKo, monthsEn, diseaseOnsetKo,
   STEVIA_ID, FARM_HOMI_ID, NET_ID, BIRD_NET_ID, FLEECE_ID, STRAW_ID, TRELLIS_ID, PEAT_ID, SHEARS_ID,
+  // 284차 — 보릿짚 짚 덮기 · 순지르기에서 딴 깻순
+  BARLEY_STRAW_ID, PERILLA_SHOOT_ID,
   // 247차 — 거둔 뒤 밭 손질의 작업 장면
   PROCESS_WORK_DEFS,
 } from './db-schema/CropCareDatabase.js';

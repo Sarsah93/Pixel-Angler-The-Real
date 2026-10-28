@@ -46,6 +46,7 @@ import { ConsignQueue } from '../store/ConsignQueue.js';
 import { CraftingStore } from '../store/CraftingStore.js';
 import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, coopDuesFeeCut, REGION_DATABASE } from '@tra/core';
 import { t, getLocale } from '../i18n/I18n.js';
+import { qtyBadge } from './QtyLabel.js';
 
 export type ShopTab = 'buy' | 'fav' | 'sell' | 'repair' | 'consign';
 
@@ -733,7 +734,7 @@ export class ShopPanel extends DraggablePanel {
           speciesId: item.speciesId, lengthCm: item.lengthCm,
           priceLabel: `${this.sellPriceOf(item).toLocaleString()}원`,
           // 221차 — 담은 수 / 가진 수
-          qtyLabel: inCart && inCart.qty < item.qty ? `${inCart.qty}/${item.qty}` : item.qty > 1 ? `x${item.qty}` : '',
+          qtyLabel: inCart && inCart.qty < item.qty ? `${inCart.qty}/${item.qty}` : qtyBadge(item),
           condition: item.condition,
           trend: this.trendOf(item),
           selected: !!inCart,

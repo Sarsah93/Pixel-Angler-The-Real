@@ -1,7 +1,7 @@
 # S4. 회썰기 · 플레이팅 · 요리
 
 > 상태 **🟢 운영**(회·접시·**불요리**) / **⬜ 미착수**(스시).
-> 관련 차수 65·66·68·69·73·74·75·154·**156**·**235**(가게 채소 별 상한)·**255**(요리 개체화 2단계 · 요리 사진)
+> 관련 차수 65·66·68·69·73·74·75·154·**156**·**235**(가게 채소 별 상한)·**255**(요리 개체화 2단계 · 요리 사진)·**284**(나물 볶음 · 텃밭 부산물 재료)
 
 ---
 
@@ -18,7 +18,7 @@
 | core | `MIXED_SASHIMI_PRICING` / `SINGLE_SASHIMI_PRICING` (`types/Economy.ts` 계열) | 모듬 고정표 / 단품 = kg시세 × 필요원물 ÷ 실수율 × 인분마진 |
 | client | `ui/SashimiPanel.ts` | 썰기 모달 — 뷰 분기(탑/측면/엔가와 스트립) · 컷 분리 팬아웃 |
 | client | `ui/UtilizationPanel.ts` | 도마 스테이징 · 접시 플레이팅 · [사시미 만들기]/[불요리 안내] |
-| core | `types/Cooking.ts` · `db-schema/CookwareDatabase.ts` · `CookIngredientDatabase.ts` · `FireRecipeDatabase.ts` | 불요리 계약 · 화구 2/용기 4/연료 1 · 재료 34 + `ingredientOfItem` · 레시피 9(서더리/통생선 매운탕 분리) |
+| core | `types/Cooking.ts` · `db-schema/CookwareDatabase.ts` · `CookIngredientDatabase.ts` · `FireRecipeDatabase.ts` | 불요리 계약 · 화구 2/용기 4/연료 1 · 재료 42(284 +8 — 시래기 · 우거지 · 고구마줄기 · 토란대 · 나물 · 들기름 · 들깨가루 · 깨소금) + `ingredientOfItem` · 레시피 10(서더리/통생선 매운탕 분리 · 284 나물 볶음) |
 | core | `simulation/CookingSim.ts` · `TUNING.cook` | 열·익음·탐·단계·구성 검사·별 5개·감쇠 (`stepCook`/`evaluateSession`/`finishCook`/`dishStarsAt`) |
 | client | `store/CookingStore.ts` | 화구 상태(설치·용기·연료·세션) · wall-clock 동기화 · 내리기 → `inv_dish_*` · `starsOfItem` · 세이브 `deployedStoves` |
 | client | `scenes/field/StoveFieldSystem.ts` · `ui/StoveDeployPanel.ts` · `ui/CookingPanel.ts` | 탑다운 설치/뷰/`[F]` · 조합 선택 · 조리 패널(재료 스테퍼·단면·온도·불·별) |
@@ -62,6 +62,7 @@
 | **유도선 dev 편집기(F9)** — 핸들 드래그·[복사]·오버라이드 소비 (엔가와·전 필렛·고급 공통) | ✅ | 86 |
 | **스시**(고급 조각 '요리하기') | ⬜ | 스텁만 존재 |
 | **불요리** — 조합 설치 · 집 주방 · 레시피 9 · 실시간 시뮬 · 별 5개 · 감쇠 · 걸어두기 · 도움말 · EN | ✅ | **154·157** |
+| **나물 볶음 · 텃밭 부산물 재료**(284) — 팬 · 나물 1~2묶음(시래기 · 우거지 · 고구마줄기 · 토란대 · 깻순 · 산나물) + 기름(들기름 · 참기름 · 식용유) · 다진마늘 · 간장/소금 · 들깨가루 · 깨소금(선택) · 140~200℃ · 12분 · 2인분 · 효과 「속 편한 반찬」 · 생선조림 바닥에 시래기 · 우거지 · 고구마줄기(택1 · 선택) · 요리 사진(Gemini) · 요리 창 상태 글은 레시피 역할로 주재료를 가른다 | ✅ | **284** — 상세 [284](../03-WORKLOG/2026-10-28-284-byproducts-grain-weight-oil-mill.md) · 나물 갈래별 이름은 백로그 DB |
 | **요리 개체화** — 어종 조리 프로필 · `DishInstance`(이름·회복치·효과·가격) · 상세보기 · **요리 도감 탭(N)** | ✅ | **156·157** — 서더리/통생선 매운탕 분리 |
 | **요리 개체화 2단계** — 변형 레시피 2 → 8(지리 · 생선구이 · 생선조림 · 오징어볶음 · 조개탕 · 장어구이 · 전복죽만 고정) · 이름 틀 · 상에 오르는 이름 · 효과 = 주재료 특성(`TUNING.cook.variantEffect`) · 조리 프로필 3 → 58 · 요리 도감 쪽 넘김 | ✅ | **255** — 도감 후보 254 + 전복죽 · 시험 22 |
 | 요리 개체화 — 아이템 라이브러리(Stage 8) · 표시만 되는 효과 5의 효과 장치(Stage 9) · `TUNING.cook` 실플레이 조율 | ⬜ | 156 · 255 잔여 |

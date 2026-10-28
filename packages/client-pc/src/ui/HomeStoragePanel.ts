@@ -18,6 +18,7 @@ import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { HomeStore, HOME_STORAGE, type HomeStorageKind } from '../store/HomeStore.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { qtyBadge } from './QtyLabel.js';
 
 const PANEL_W = 620;
 const PANEL_H = 430;
@@ -114,8 +115,8 @@ export class HomeStoragePanel extends DraggablePanel {
       const it = slots[i];
       if (!it) continue;
       this.content.add(createItemIcon(scene, cx + CELL / 2, cy + CELL / 2 - 4, it, 28));
-      if (it.qty > 1) {
-        this.content.add(scene.add.text(cx + CELL - 3, cy + CELL - 2, `x${it.qty}`, {
+      if (it.qty > 1 || it.unitG) {
+        this.content.add(scene.add.text(cx + CELL - 3, cy + CELL - 2, qtyBadge(it), {
           fontFamily: FONT, fontSize: '10px', color: '#e8f2fa', fontStyle: 'bold',
         }).setOrigin(1, 1));
       }
@@ -146,7 +147,7 @@ export class HomeStoragePanel extends DraggablePanel {
       const icon = createItemIcon(scene, this.listX + 15, ry + (ROW_H - 3) / 2, item, 20);
       const name = setSlotLabel(scene.add.text(this.listX + 30, ry + (ROW_H - 3) / 2, '', {
         fontFamily: FONT, fontSize: `${SLOT_LABEL_PX}px`, color: '#c8dceb',
-      }).setOrigin(0, 0.5), item.name, LIST_W - 50, item.qty > 1 ? ` x${item.qty}` : '');
+      }).setOrigin(0, 0.5), item.name, LIST_W - 50, qtyBadge(item) ? ` ${qtyBadge(item)}` : '');
       const hit = scene.add.rectangle(this.listX + (LIST_W - 10) / 2, ry + (ROW_H - 3) / 2, LIST_W - 10, ROW_H - 3, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => this.setStatus(item.name, '#c8dceb'));

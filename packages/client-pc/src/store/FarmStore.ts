@@ -38,6 +38,8 @@ import {
   TROWEL_ID, GLOVES_ID, WINNOW_ID, WILD_SPROUTS,
   // 248차 — 땅지렁이
   rollEarthworms, EARTHWORM_TUNING, type EarthwormAct,
+  // 284차 — 밭 부산물(퇴비 대신 넣기) · 관리 자재 대체
+  FARM_RESIDUES, type CareTaskDef,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
   type CareStatus, type CareTaskId, type CropDisease, type FarmCellState, type WaterAmount, type CropCultivation, type MoistureState,
 } from '@tra/core';
@@ -46,12 +48,15 @@ import { InventoryStore, type InvCategory } from './InventoryStore.js';
 import { StoryStore } from './StoryStore.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { cropItemTemplate, variantNoticeKo, looseCountKo, EARTHWORM_ID, EARTHWORM_TEMPLATE } from '../data/CropItems.js';
+import { gramsText } from '../ui/QtyLabel.js';
 
 /** 집 안 선반 구획 키 */
 export const INDOOR_PLOT = 'indoor';
 /** 호미 · 퇴비 · 물뿌리개 아이템 id */
 export const HOMI_ID = 'farm_homi';
 export const COMPOST_ID = 'farm_compost';
+/** 284차 — 관리 일 자재 한 줄(대체 `alt` 포함 — 볏짚 대신 보릿짚 500g) */
+type CareNeed = NonNullable<CareTaskDef['needs']>[number];
 export const WATERING_CAN_ID = 'inv_watering_can';
 /** 247차 — 목장갑(장비 가게) — 가시 작물을 거둘 때 코팅 장갑 대신 */
 export const WORK_GLOVES_ID = 'inv_gloves_work';
@@ -361,17 +366,40 @@ class FarmStoreImpl {
     return careStatusList(cell, crop, Date.now()).map((st) => ({ st, missing: this.missingFor(st.def.needs, st.def.tools) }));
   }
 
-  private missingFor(needs?: { itemId: string; qty: number }[], tools?: string[]): FarmCareRow['missing'] {
+  private missingFor(needs?: CareNeed[], tools?: string[]): FarmCareRow['missing'] {
     const out: FarmCareRow['missing'] = [];
     for (const n of needs ?? []) {
       const have = InventoryStore.find(n.itemId)?.qty ?? 0;
-      if (have < n.qty) out.push({ itemId: n.itemId, name: cropItemTemplate(n.itemId)?.name ?? n.itemId, need: n.qty, have });
+      // 284차 — 대신 쓸 것(볏짚 대신 보릿짚 500g)이 있으면 모자라지 않다
+      if (have < n.qty && !this.altOf(n)) out.push({ itemId: n.itemId, name: cropItemTemplate(n.itemId)?.name ?? n.itemId, need: n.qty, have });
     }
     // 245차 — 도구(호미 · 전정가위)는 가방에 하나 있으면 된다 · 닳지 않는다
     for (const t of tools ?? []) {
       if (!InventoryStore.find(t)) out.push({ itemId: t, name: cropItemTemplate(t)?.name ?? t, need: 1, have: 0, tool: true });
     }
     return out;
+  }
+
+  /** 284차 — 원래 자재가 모자랄 때 대신 쓸 수 있는 것(가방에 그만큼 있는 첫 대체) */
+  private altOf(n: CareNeed): { itemId: string; qty: number } | null {
+    for (const a of n.alt ?? []) if ((InventoryStore.find(a.itemId)?.qty ?? 0) >= a.qty) return a;
+    return null;
+  }
+
+  /** 284차 — 자재 하나로 몇 칸을 할 수 있는가(원래 자재 + 대체) */
+  private needCells(n: CareNeed): number {
+    let k = Math.floor((InventoryStore.find(n.itemId)?.qty ?? 0) / Math.max(1, n.qty));
+    for (const a of n.alt ?? []) k += Math.floor((InventoryStore.find(a.itemId)?.qty ?? 0) / Math.max(1, a.qty));
+    return k;
+  }
+
+  /** 284차 — 자재를 쓴다(원래 자재가 모자라면 대체로). 쓴 것 이름(대체일 때만)을 돌려준다 */
+  private consumeNeed(n: CareNeed): string | null {
+    if ((InventoryStore.find(n.itemId)?.qty ?? 0) >= n.qty) { InventoryStore.removeQty(n.itemId, n.qty); return null; }
+    const a = this.altOf(n);
+    if (!a) return null;
+    InventoryStore.removeQty(a.itemId, a.qty);
+    return cropItemTemplate(a.itemId)?.name ?? a.itemId;
   }
 
   /** 245차 — 모자란 것 한 줄(「복합비료 2개(1개)가 있어야 한다 — 종묘사에서 판다」 · 도구는 「호미가 있어야 한다 — 생활용품점에서 판다」) */
@@ -411,7 +439,7 @@ class FarmStoreImpl {
     });
     const def = planOfCell(base, crop).tasks.find((t) => t.id === id);
     let k = cells.length;
-    for (const n of def?.needs ?? []) k = Math.min(k, Math.floor((InventoryStore.find(n.itemId)?.qty ?? 0) / Math.max(1, n.qty)));
+    for (const n of def?.needs ?? []) k = Math.min(k, this.needCells(n));
     return cells.length ? cells.slice(0, Math.max(1, k)) : [idx];
   }
 
@@ -438,6 +466,8 @@ class FarmStoreImpl {
     let clumsy = false;
     let lastMsg = '';
     let cropId = '';
+    const usedAlt = new Set<string>();
+    const yields = new Map<string, number>();
     for (const i of cells) {
       const cell = p.cells[i];
       const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
@@ -445,7 +475,9 @@ class FarmStoreImpl {
       if (i !== first && !this.careCheck(plotId, i, id).ok) continue;
       const r = coreDoCare(cell, crop, id, Date.now(), score);
       if (!r.ok) continue;
-      for (const n of r.needs) InventoryStore.removeQty(n.itemId, n.qty);
+      for (const n of r.needs) { const alt = this.consumeNeed(n); if (alt) usedAlt.add(alt); }
+      // 284차 — 일하며 딴 것(순지르기한 깻순)
+      if (r.yields) yields.set(r.yields.itemId, (yields.get(r.yields.itemId) ?? 0) + r.yields.qty);
       done++;
       doneCells.push(i);
       clumsy ||= !!r.clumsy;
@@ -458,7 +490,14 @@ class FarmStoreImpl {
     GameState.markDirty();
     StoryStore.event({ kind: 'farm', action: 'care', cropId });
     const name = CARE_TASK_KO[id];
-    const message = done > 1 ? (clumsy ? `${name} ${done}칸 — 서툴러서 효과가 절반이다` : `${name} ${done}칸 — 했다`) : lastMsg;
+    let message = done > 1 ? (clumsy ? `${name} ${done}칸 — 서툴러서 효과가 절반이다` : `${name} ${done}칸 — 했다`) : lastMsg;
+    if (usedAlt.size) message += ` — ${josa([...usedAlt].join(' · '), '을', '를')} 대신 썼다`;
+    // 284차 — 딴 것을 가방에(자리가 없으면 밭가에 두고 온다)
+    for (const [itemId, qty] of yields) {
+      const tpl = cropItemTemplate(itemId);
+      if (!tpl) continue;
+      message += InventoryStore.addItem(tpl, qty) ? ` — ${tpl.name} ${qty}개를 땄다` : ` — 가방에 자리가 없어 ${josa(tpl.name, '은', '는')} 두고 왔다`;
+    }
     // 248차 — 김매기 · 북주기는 호미로 겉흙을 긁는다 — 지렁이가 드러날 수 있다
     if (id === 'weed' || id === 'hill_up') return this.withWorms({ ok: true, message }, plotId, doneCells, id);
     return { ok: true, message };
@@ -535,20 +574,33 @@ class FarmStoreImpl {
     return this.withWorms({ ok: true, message: n > 1 ? `${n}칸을 일궜다` : '흙을 일궜다' }, plotId, tilled, 'till');
   }
 
-  /** 퇴비를 넣는다(칸 하나 · 퇴비 1) */
-  compost(plotId: string, idx: number): FarmActionResult {
+  /**
+   * 284차 — 퇴비 칸에 넣을 것: 밭 부산물(깻대 · 콩대 · 옥수숫대 · 검불 · 폐배지 · 깻묵 · 보릿짚 — 한 칸 분 g이 있을 때)이 먼저,
+   * 없으면 퇴비 한 자루. 사 온 퇴비보다 밭에서 난 것을 먼저 돌려준다(영농부산물 토양 환원). 보릿짚은 짚 덮기에도 쓰여 뒤로 둔다.
+   */
+  compostSource(): { itemId: string; qty: number; name: string; residue: boolean } | null {
+    const order = [...FARM_RESIDUES].sort((a, b) => (a.mulchPerCell ? 1 : 0) - (b.mulchPerCell ? 1 : 0));
+    for (const r of order) {
+      if ((InventoryStore.find(r.itemId)?.qty ?? 0) >= r.soilPerCell) return { itemId: r.itemId, qty: r.soilPerCell, name: r.nameKo, residue: true };
+    }
     const it = InventoryStore.find(COMPOST_ID);
-    if (!it || it.qty <= 0) return fail('퇴비가 없다');
+    return it && it.qty > 0 ? { itemId: COMPOST_ID, qty: 1, name: it.name, residue: false } : null;
+  }
+
+  /** 퇴비를 넣는다(칸 하나 · 퇴비 1 — 284차 밭 부산물이 한 칸 분 있으면 그것부터) */
+  compost(plotId: string, idx: number): FarmActionResult {
+    const src = this.compostSource();
+    if (!src) return fail('퇴비가 없다 — 털고 남은 깻대 · 콩대 같은 밭 부산물도 퇴비 대신 넣을 수 있다');
     const c = this.plot(plotId).cells[idx];
     if (!c?.tilled) return fail('먼저 땅을 일궈야 한다');
     if (c.compost) return fail('이번 작기에는 이미 퇴비를 넣었다');
     const tired = this.tiredBlock();
     if (tired) return fail(tired);
     if (!compostCell(c)) return fail('퇴비를 넣을 수 없다');
-    InventoryStore.removeQty(COMPOST_ID, 1);
+    InventoryStore.removeQty(src.itemId, src.qty);
     this.spend(laborOf('compost').fatigue);
     GameState.markDirty();
-    return { ok: true, message: '퇴비를 넣었다' };
+    return { ok: true, message: src.residue ? `${src.name} ${gramsText(src.qty)}을 잘게 썰어 흙에 넣었다 — 퇴비 한 칸 분` : '퇴비를 넣었다' };
   }
 
   /** 물을 준다 — 물뿌리개로 구획 전체(일군 칸) · 247차 양을 고른다(기본 보통) */
@@ -906,7 +958,21 @@ class FarmStoreImpl {
     const frosted = r.frosted ? ' — 서리 맞은 끝물, 이 칸은 끝났다' : '';
     const sick = (r.diseaseMult ?? 1) < 0.85 ? ` — 병으로 ${Math.round((1 - (r.diseaseMult ?? 1)) * 100)}% 줄었다` : '';
     const variant = opened.length ? ` — 종묘사에 ${opened.map((v) => v.nameKo).join(' · ')}이 들어온다` : '';
-    return { ok: true, message: `${tpl.name} ${r.qty}개를 거뒀다${bonus}${turning}${frosted}${sick}${variant}`, harvested };
+    // 284차 — 함께 나온 것(무청 · 배추 겉잎 · 토란대 · 옥수숫대 · 깻대 · 콩대 · 보릿짚 · 검불 · 폐배지). 가방에 자리가 없으면 밭가에 두고 온다
+    const extras: string[] = [];
+    const left: string[] = [];
+    for (const b of r.byproducts ?? []) {
+      const btpl = cropItemTemplate(b.itemId);
+      if (!btpl || b.qty <= 0) continue;
+      const amount = btpl.unitG ? gramsText(b.qty * btpl.unitG) : `${b.qty}개`;
+      if (InventoryStore.addItem(btpl, b.qty)) {
+        harvested.push({ itemId: btpl.id, qty: b.qty, name: btpl.name });
+        extras.push(`${btpl.name} ${amount}`);
+      } else left.push(btpl.name);
+    }
+    const extra = (extras.length ? ` — ${extras.join(' · ')}도 나왔다` : '') + (left.length ? ` — 가방에 자리가 없어 ${josa(left.join(' · '), '은', '는')} 두고 왔다` : '');
+    const amount = tpl.unitG ? `${gramsText(r.qty * tpl.unitG)}을` : `${r.qty}개를`;
+    return { ok: true, message: `${tpl.name} ${amount} 거뒀다${bonus}${turning}${frosted}${sick}${variant}${extra}`, harvested };
   }
 
   /** 걷어 낸다(자라던 것을 버린다 — 일군 땅은 남는다) */

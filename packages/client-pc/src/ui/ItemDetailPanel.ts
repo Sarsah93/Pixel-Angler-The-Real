@@ -17,10 +17,12 @@ import {
   rawEatStatus, rawEatLineKo, variantsOf, baseCropOf, variantUnlockKo, cropOfProduce as cropOfProduceId, type RawEatDef,
   cultivationOf, WATER_AMOUNT_KO, OVERWATER_KO, processLineKo, toolLineKo, timingLineKo, laborLineKo, propagateLineKo,
   packOfLoose, looseOfPack, FARM_TUNING as FARM_TUNING_243,
+  bagsOfLoose, looseOfBag, byproductOf, farmResidueDef, oilBottleDef,
   type CropDef, type CropStart, type CropRarity, type CropDifficulty, type LicenseType,
 } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, produceBaseName, looseShortName, looseCountKo, EARTHWORM_ID, EARTHWORM_DESC } from '../data/CropItems.js';
+import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, RESIDUE_SUB, produceBaseName, looseShortName, looseCountKo, EARTHWORM_ID, EARTHWORM_DESC } from '../data/CropItems.js';
+import { gramsText, qtyWord } from './QtyLabel.js';
 import { FarmStore } from '../store/FarmStore.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
@@ -266,7 +268,20 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   rows.push(...variantRows(crop));   // 241차
   const raw = rawEatRow(item.id);   // 241차
   if (raw.row) rows.push(raw.row);
-  rows.push({ label: '파는 값 (오늘)', value: `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
+  // 284차 — 털어 낸 낱알(g)은 가게가 사지 않는다 — 봉지 값을 보여 준다 · 먹는 부산물은 쓰임
+  const loose = item.unitG ? bagsOfLoose(item.id) : [];
+  if (loose.length) {
+    rows.push({ label: '파는 값 (오늘)', value: '낱알은 사지 않는다 — 봉지에 담아 판다', color: '#ff9a5a' });
+    for (const b of loose) {
+      rows.push({ label: `${gramsText(b.bag.grams)} 봉지`, value: `${InventoryStore.getSellPrice({ ...item, id: b.bagItemId, qty: 1, unitG: undefined } as InvItem).toLocaleString()}원` });
+    }
+  } else {
+    rows.push({ label: '파는 값 (오늘)', value: `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` });
+  }
+  const bp = byproductOf(parseProduceId(item.id).baseId);
+  if (bp?.def.kind === 'food' && bp.def.cookIngredient) {
+    rows.push({ label: '요리 재료', value: getCookIngredient(bp.def.cookIngredient)?.nameKo ?? bp.def.cookIngredient, color: '#8affb0' });
+  }
   const idx = crop.price.season[kstMonthOf(Date.now()) - 1] ?? 1;
   const trend = idx >= 1.15 ? { v: '귀한 철 — 값이 오른다', c: '#8affb0' } : idx <= 0.88 ? { v: '흔한 철 — 값이 내린다', c: '#ff9a5a' } : { v: '보통', c: undefined };
   rows.push({ label: '이번 달 시세', value: trend.v, color: trend.c });
@@ -278,7 +293,7 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
     const v = pct < 5 ? '평년과 비슷하다' : mr > 1 ? `평년보다 ${pct}% 비싸다` : `평년보다 ${pct}% 싸다`;
     rows.push({ label: '올해 시세', value: `${v} (${mm}/${dd} 소매가)`, color: pct < 5 ? undefined : mr > 1 ? '#8affb0' : '#ff9a5a' });
   }
-  rows.push({ label: '사 주는 곳', value: '식자재 마트 · 식당' });
+  rows.push({ label: '사 주는 곳', value: loose.length ? '식자재 마트 · 식당 (봉지만)' : '식자재 마트 · 식당' });
   if (crop.cookIngredient) rows.push({ label: '요리', value: '직접 기른 채소 — 요리 별 다섯 개를 막지 않는다', color: '#8affb0' });
   if (cropStartOfItem(item.id)) rows.push({ label: '시루', value: '콩나물로 앉힐 수 있다' });
   rows.push({ label: '구하기', value: CROP_RARITY[crop.rarity].ko, color: CROP_RARITY[crop.rarity].color });
@@ -286,8 +301,8 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   // 243차 — 포장: 낱개는 「포장하기」로 팩이 되고(용기 1개), 팩은 「포장 뜯기」로 낱개가 된다
   const pk = packRows(item.id);
   rows.push(...pk.rows);
-  rows.push({ label: '보유 수량', value: `${item.qty}개` });
-  let desc = crop.noteKo + variantDesc(crop) + raw.desc + pk.desc;
+  rows.push({ label: '보유 수량', value: item.unitG ? qtyWord(item, item.qty) : `${item.qty}개` });
+  let desc = (bp ? bp.def.noteKo : crop.noteKo) + variantDesc(crop) + raw.desc + pk.desc;
   if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
   return { title: item.name, subtitle: '농산물', rows, desc };
 }
@@ -309,7 +324,57 @@ function packRows(itemId: string): { rows: ItemDetailRow[]; desc: string } {
       desc: `\n[포장] 「포장 뜯기」로 같은 등급 낱개가 된다 — 용기는 버린다.`,
     };
   }
+  // 284차 — 낱알 봉지 ↔ 낱알(g)
+  const bags = bagsOfLoose(itemId);
+  if (bags.length) {
+    return {
+      rows: [{ label: '봉지 담기', value: bags.map((b) => gramsText(b.bag.grams)).join(' · ') + ' (곡물 봉투 1장)', color: '#8fd4ff' }],
+      desc: '\n[봉지] 털어 낸 낱알은 가게가 사지 않는다. 가방에서 「봉지 담기」로 곡물 봉투(생활용품점 · 방앗간)에 담아 판다. 방앗간에 맡기면 기름 · 가루가 된다.',
+    };
+  }
+  const lb = looseOfBag(itemId);
+  if (lb) {
+    return {
+      rows: [{ label: '들어 있는 것', value: `낱알 ${gramsText(lb.grams)}` }],
+      desc: '\n[봉지] 「봉지 뜯기」로 같은 등급 낱알이 된다 — 봉투는 버린다.',
+    };
+  }
   return { rows: [], desc: '' };
+}
+
+/** 284차 — 밭 부산물(깻대 · 콩대 · 보릿짚 · 옥수숫대 · 검불 · 폐배지 · 깻묵) 상세 */
+function residueDetail(item: Pick<InvItem, 'id' | 'name' | 'qty'> & Partial<InvItem>): ItemDetailData | null {
+  const def = farmResidueDef(item.id);
+  if (!def) return null;
+  const rows: ItemDetailRow[] = [
+    { label: '무게', value: qtyWord(item, item.qty) },
+    { label: '밭에 넣기', value: `${gramsText(def.soilPerCell)} = 퇴비 한 칸 분`, color: '#8affb0' },
+  ];
+  if (def.mulchPerCell) rows.push({ label: '짚 덮기', value: `${gramsText(def.mulchPerCell)} = 볏짚 한 칸 분`, color: '#8affb0' });
+  rows.push({ label: '사 주는 곳', value: '없음 — 밭에 넣어 쓴다' });
+  return {
+    title: item.name, subtitle: '밭 부산물', rows,
+    desc: `${def.noteKo}\n[밭에 넣기] 텃밭 칸에서 퇴비 대신 넣는다 — 모자라면 퇴비를 넣을 때처럼 「퇴비 넣기」가 이것부터 쓴다.`,
+  };
+}
+
+/** 284차 — 기름병(방앗간에서 짠 참기름 · 들기름) 상세 */
+function oilBottleDetail(item: Pick<InvItem, 'id' | 'name' | 'qty'>): ItemDetailData | null {
+  const def = oilBottleDef(item.id);
+  if (!def) return null;
+  const sesame = def.itemId.startsWith('oil_sesame');
+  return {
+    title: item.name, subtitle: '양념', rows: [
+      { label: '병', value: `${def.ml}ml` },
+      { label: '병 따기', value: `${sesame ? '참기름' : '들기름'} 1큰술 ${def.spoons}개`, color: '#8fd4ff' },
+      { label: '파는 값 (오늘)', value: `${InventoryStore.getSellPrice({ ...item, qty: 1 } as InvItem).toLocaleString()}원` },
+      { label: '사 주는 곳', value: '식자재 마트 · 식당 (따지 않은 병)' },
+      { label: '보유 수량', value: `${item.qty}병` },
+    ],
+    desc: sesame
+      ? '직접 기른 참깨를 방앗간에서 볶아 짠 참기름. 「병 따기」로 1큰술씩 요리에 쓴다 — 죽을 볶고 볶음 · 나물을 마무리한다.'
+      : '직접 기른 들깨를 방앗간에서 짠 들기름. 「병 따기」로 1큰술씩 요리에 쓴다 — 나물을 볶으면 향이 짙다. 따면 오래 두지 않는 편이 좋다.',
+  };
 }
 
 /**
@@ -321,7 +386,7 @@ function lineStrengthLabel(item: Pick<InvItem, 'name' | 'lineNo' | 'lineMaterial
   return v ? `${v.lb}lb (${v.kg}kg)` : '-';
 }
 
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack' | 'unitG'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 229차 — 패류독소: 채취 금지 기간에 캔 조개(또는 그것이 들어간 요리). 모든 갈래의 맨 위에 보라 물방울로
@@ -396,6 +461,15 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const st = rawEatStatus(item.id);
     const crop = st ? cropOfProduceId(st.baseId) : undefined;
     if (st?.kind === 'eat' && crop) return pieceDetail(item, crop, st.def);
+  }
+  // 284차 — 밭 부산물 · 기름병
+  if (item.subCategory === RESIDUE_SUB) {
+    const d = residueDetail(item);
+    if (d) return d;
+  }
+  if (oilBottleDef(item.id)) {
+    const d = oilBottleDetail(item);
+    if (d) return d;
   }
   // 235차 — 텃밭: 수확물(등급 꼬리 포함)이 먼저 — 직접 기른 콩은 수확물이면서 콩나물 시루의 씨앗이다
   if (item.subCategory === PRODUCE_SUB) {

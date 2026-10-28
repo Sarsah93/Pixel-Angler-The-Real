@@ -25,7 +25,7 @@ import type { BuildingKind } from './ShopCatalog.js';
 export type InteriorTemplate = 'store' | 'food' | 'tackle' | 'clinic' | 'auction' | 'home';
 
 /** [F]로 하는 일 — 실제 동작은 필드 씬이 맡는다(거래 · 위판 · 진료 흐름을 그대로 쓴다) */
-export type InteriorAction = 'trade' | 'consign' | 'clinic' | 'sit' | 'schedule';
+export type InteriorAction = 'trade' | 'consign' | 'clinic' | 'sit' | 'schedule' | 'mill';   // 284차 — 방앗간 압착기(맡기기 · 찾기)
 
 /** 가구 · 집기 그림 종류 (`ui/InteriorArt.ts`) */
 export type FixtureArt =
@@ -36,7 +36,9 @@ export type FixtureArt =
   | 'crate_row' | 'podium' | 'ice_pile' | 'hand_cart'
   // 216차 — 집 · 공방 · 민박
   | 'wardrobe' | 'tv' | 'sink' | 'fridge' | 'low_table' | 'cushion' | 'futon' | 'futon_open'
-  | 'bed' | 'desk' | 'sofa' | 'rug' | 'suitcase' | 'bamboo' | 'tool_wall' | 'workbench';
+  | 'bed' | 'desk' | 'sofa' | 'rug' | 'suitcase' | 'bamboo' | 'tool_wall' | 'workbench'
+  // 284차 — 방앗간 압착기
+  | 'oil_press';
 
 export interface FixtureDef {
   id: string;
@@ -115,6 +117,8 @@ const STORE_VARIANT: Record<string, { accent: number; goods: number[]; cooler: b
   pharmacy: { accent: 0x2a9a8a, goods: [0xf0f0e8, 0x58b0d8, 0xe86a6a, 0x9ad070, 0xf0d070, 0xc8c8d8], cooler: false, greet: '어디가 불편하세요?' },
   // 238차 — 종묘사: 초록 모종판 · 흙 포대 · 약병
   nursery: { accent: 0x4a8a3a, goods: [0x5cb84a, 0x8fd16a, 0x5c3f24, 0xd8b878, 0x3a8ad0, 0xe8d040], cooler: false, greet: '모종은 철 봐 가며 들여요. 뭐 찾으세요?' },
+  // 284차 — 방앗간: 기름병 · 깨 자루 · 고춧가루 봉지 · 떡
+  mill: { accent: 0x8a5a2a, goods: [0xd8a040, 0xb8862a, 0x5a4a3a, 0xe8d8b0, 0xc8402a, 0xf0e8d8], cooler: false, greet: '깨 털어 오셨어요? 볶아서 바로 짜 드려요.' },
 };
 
 const FOOD_VARIANT: Record<string, { floor: FloorStyle; wall: WallStyle; accent: number; decor: InteriorLayout['wallDecor']; role: CharRole; greet: string }> = {
@@ -153,7 +157,10 @@ function storeLayout(kind: BuildingKind): InteriorLayout {
       { id: 'back', art: 'back_shelf', tx: 9, ty: 3, fw: 3, fh: 1 },
       { id: 'counter', art: 'counter', tx: 8, ty: 4, fw: 1, fh: 3, action: 'trade' },
       { id: 'gondola_a', art: 'gondola', tx: 1, ty: 5, fw: 4, fh: 1 },
-      { id: 'gondola_b', art: 'gondola', tx: 1, ty: 7, fw: 4, fh: 1 },
+      // 284차 — 방앗간은 아래 곤돌라 자리에 압착기(맡기기 · 찾기)
+      kind === 'mill'
+        ? { id: 'press', art: 'oil_press', tx: 1, ty: 7, fw: 4, fh: 1, action: 'mill' }
+        : { id: 'gondola_b', art: 'gondola', tx: 1, ty: 7, fw: 4, fh: 1 },
       { id: 'stock', art: 'stock_boxes', tx: 9, ty: 7, fw: 3, fh: 1 },
     ],
     people: [{ tx: 10.2, ty: 5.7, dir: 'left', role: kind === 'pharmacy' ? 'expert' : 'office', greetKo: v.greet }],
@@ -525,7 +532,7 @@ export function interiorLayoutOf(kind: BuildingKind | null, name: string): Inter
 
 /** 개발 · 검증용 — 다섯 틀의 대표 배치 */
 export const SAMPLE_LAYOUTS = (): InteriorLayout[] => [
-  storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'), storeLayout('nursery'),
+  storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'), storeLayout('nursery'), storeLayout('mill'),
   foodLayout('restaurant'), foodLayout('cafe'), foodLayout('pub'),
   tackleLayout(), clinicLayout(), auctionLayout(),
   ...Object.entries(HOME_LAYOUTS).map(([id, f]) => f(id)),

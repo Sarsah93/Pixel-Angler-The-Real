@@ -31,6 +31,7 @@ import { t } from '../i18n/I18n.js';
 import { cropItemTemplate } from '../data/CropItems.js';
 import { shapeOf, CONTAINER, type Shape } from '../data/CropShapes.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { qtyWord } from './QtyLabel.js';
 
 const PANEL_W = 600;
 const PANEL_H = 400;
@@ -170,7 +171,9 @@ export class FarmWorkPanel extends DraggablePanel {
     y += how.height + 10;
     const cells = Math.max(1, this.opts.cells ?? 1);
     const uses = [
-      ...(this.def.needs ?? []).map((n) => `${t(cropItemTemplate(n.itemId)?.name ?? n.itemId)} ×${n.qty * cells}`),
+      // 284차 — 대신 쓸 수 있는 것(볏짚 대신 보릿짚 500g)은 「또는」으로 잇는다
+      ...(this.def.needs ?? []).map((n) => `${t(cropItemTemplate(n.itemId)?.name ?? n.itemId)} ×${n.qty * cells}`
+        + (n.alt ?? []).map((a) => ` ${t('또는')} ${t(cropItemTemplate(a.itemId)?.name ?? a.itemId)} ${qtyWord({ unitG: cropItemTemplate(a.itemId)?.unitG }, a.qty * cells, '×')}`).join('')),
       ...(this.def.tools ?? []).map((id) => t(cropItemTemplate(id)?.name ?? id)),
       ...(this.opts.uses ?? []).map((n) => t(n)),
     ];

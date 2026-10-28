@@ -8,7 +8,7 @@
  *    빼먹으면 프록시를 건너뛰어 403 「unregistered callers」가 난다(2026-10-14 실측).
  *
  *  사용:
- *    NODE_USE_ENV_PROXY=1 node tools/gemini_crop_art.cjs --out <폴더> [--only crop_a,crop_b] [--set main|extra|pack|all]
+ *    NODE_USE_ENV_PROXY=1 node tools/gemini_crop_art.cjs --out <폴더> [--only crop_a,crop_b] [--set main|extra|pack|byproduct|bag|all]
  *        [--model gemini-nano-banana-2.1] [--jobs 3] [--tries 4] [--tag v2] [--force] [--dry]
  *    결과: <폴더>/<id>[.<tag>].png(PNG32 — JPEG 응답을 ImageMagick `convert`로 바꾼다) + <폴더>/_log.jsonl(모델 · 토큰 · 시간)
  *    검수 뒤 `--install`(고른 판은 `<id>.png` 이름으로 둔다)이 긴 변 640px PNG로 `food assets/crops/asis/`에 넣고,
@@ -18,6 +18,8 @@
  *  화풍 참고 그림 = 사용자가 Gemini 앱으로 변환한 기존 초상 3장(딸기 · 청치마 · 감자 — `asis/`).
  *  그림 한 장 = 수확물 한 단위(가방 칸 하나)다 — 「한 줌」은 한 줌, 「(1개)」는 한 개, 「1kg」은 서너 개 무더기.
  *  생김새 설명(LOOKS)은 수확물 기본 id 기준이고, 이름 · 단위는 core 작물 DB에서 읽는다.
+ *  284차 — `--set byproduct`(먹는 부산물 — 무청 · 배추 겉잎 · 토란대 · 깻순) · `--set bag`(낟알 봉지 — 용기가 그림의 일부 ·
+ *   낱알 초상을 「담을 내용물」로 함께 보낸다 — `CONTENT_REF`).
  */
 'use strict';
 const fs = require('fs');
@@ -125,17 +127,61 @@ const LOOKS = {
   crop_wood_ear_pack: '뚜껑 달린 투명 플라스틱 용기에 귀 모양으로 주름진 반투명 갈색 생목이버섯 여러 장을 담은 한 팩.',
   crop_blueberry_pack: '뚜껑 달린 작은 투명 플라스틱 용기에 분이 하얗게 낀 남보라색 블루베리를 가득 담은 한 팩.',
   crop_strawberry_pack: '투명 플라스틱 용기에 빨간 딸기 스무 개 남짓을 꼭지가 위로 오게 가지런히 담은 한 팩.',
+  // ── 284차 — 먹는 부산물 4(`CropDef.byproducts` kind 'food') — 본 수확물과 헷갈리지 않게 「무엇이 없는지」를 적는다 ──
+  crop_radish_greens: '무에서 잘라 낸 무청 한 묶음. 길고 거친 짙은 초록 잎(깃꼴로 깊게 갈라져 들쭉날쭉하고 잔털이 있다)이 연초록의 굵고 긴 잎줄기에 달려 있고, '
+    + '잎줄기 밑동을 모아 끈으로 묶었다. 밑동은 가지런히 잘린 연초록 단면 — 흰 무 뿌리는 없다.',
+  // 1차는 배추 반 통처럼 오므라진 덩어리였다 → 낱장으로 펼쳐 겹친다 · 통 · 밑동 없음
+  crop_cabbage_outer: '배추 한 통에서 한 장씩 떼어 낸 겉잎 넉 장을 부채처럼 펼쳐 겹쳐 놓은 모습. 잎 한 장 한 장은 길쭉하고 끝이 둥글며, 짙은 초록에 거칠게 주름지고 가장자리가 물결친다. '
+    + '잎마다 아래쪽에 넓적하고 두툼한 흰 · 연초록 잎줄기가 있고, 아래 끝은 한 장씩 떼어 낸 낱장 끝이다. '
+    + '잎들이 한 덩어리로 오므라져 있지 않고 낱장으로 펼쳐져 겹친다 — 배추 통 · 노란 속잎 · 뿌리 밑동 없음.',
+  crop_taro_stem: '잎을 잘라 낸 토란대(토란 잎자루) 한 묶음. 매끈하고 곧은 긴 줄기 대여섯 대 — 아래쪽은 붉은 자줏빛, 위로 갈수록 연초록이고 '
+    + '잘린 끝 단면은 스펀지 같은 연초록 — 를 가운데에서 끈으로 묶었다. 넓은 토란 잎 · 둥근 토란 알 없음.',
+  crop_perilla_shoot: '순지르기한 깻순 한 줌. 짧고 연한 초록 줄기 끝에 작고 여린 연두색 깻잎(둥근 하트 모양 · 가장자리 톱니 · 잔털)이 서너 장씩 오므라져 모인 새순 여러 개. '
+    + '손바닥만 한 큰 깻잎 · 씨 · 꽃 없음.',
+  // ── 284차 — 낟알 봉지 7(`harvest.bags`) — 같은 곡물 봉투(크라프트 지퍼 봉투 · 앞면 투명 창)에 담았다. 큰 봉지는 꽉 차 불룩, 작은 봉지는 덜 차 위가 접힌다
+  //   (초상은 긴 변을 맞춰 그려지므로 크기 대신 「찬 정도 · 생김새」로 가른다). 속 낟알은 낱알 초상을 함께 보내 같은 알로 그린다(`CONTENT_REF`)
+  crop_deulkkae_b500: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 작은 것 하나. '
+    + '들깨 500g은 봉투의 아래 절반만 채운다 — 투명 창의 아래 절반에만 작고 둥근 회갈색 · 짙은 갈색 들깨 알(지름 2mm 안팎 · 가는 그물 무늬)이 차 있고, 창 위쪽 절반은 비어 봉투 안쪽이 들여다보인다. '
+    + '빈 윗부분은 홀쭉하게 쭈글쭈글 주름져 있다(꽉 찬 큰 봉투와 한눈에 갈리게).',
+  crop_deulkkae_b1000: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 큰 것 하나. '
+    + '들깨 1kg이 지퍼 바로 아래까지 꽉 차서 봉투가 통통하게 불룩하고 묵직하게 서 있다. 투명 창 가득 작고 둥근 회갈색 · 짙은 갈색 들깨 알이 빽빽하다.',
+  crop_chamkkae_b300: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 작은 것 하나. '
+    + '참깨 300g은 봉투의 아래 절반만 채운다 — 투명 창의 아래 절반에만 작고 납작한 물방울 모양의 아이보리 · 연한 노란빛 참깨 알이 차 있고, 창 위쪽 절반은 비어 봉투 안쪽이 들여다보인다. '
+    + '빈 윗부분은 홀쭉하게 쭈글쭈글 주름져 있다(꽉 찬 큰 봉투와 한눈에 갈리게).',
+  crop_chamkkae_b500: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 큰 것 하나. '
+    + '참깨 500g이 지퍼 바로 아래까지 꽉 차서 봉투가 통통하게 불룩하고 묵직하게 서 있다. 투명 창 가득 작고 납작한 아이보리 · 연한 노란빛 참깨 알이 빽빽하다.',
+  crop_soybean_b500: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 작은 것 하나. '
+    + '콩 500g은 봉투의 아래 절반만 채운다 — 투명 창의 아래 절반에만 둥글고 매끈한 연노랑 백태 콩알이 차 있고, 창 위쪽 절반은 비어 봉투 안쪽이 들여다보인다. '
+    + '빈 윗부분은 홀쭉하게 쭈글쭈글 주름져 있다(꽉 찬 큰 봉투와 한눈에 갈리게).',
+  crop_soybean_b1000: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 큰 것 하나. '
+    + '콩 1kg이 지퍼 바로 아래까지 꽉 차서 봉투가 통통하게 불룩하고 묵직하게 서 있다. 투명 창 가득 둥글고 매끈한 연노랑 백태 콩알이 빽빽하다.',
+  crop_barley_b1000: '크라프트 종이 지퍼 곡물 봉투(위에 지퍼 입구 · 바닥이 넓어 세워진다 · 앞면 가운데에 큰 투명 직사각형 창) 큰 것 하나. '
+    + '보리 1kg이 지퍼 바로 아래까지 꽉 차서 봉투가 통통하게 불룩하고 묵직하게 서 있다. 투명 창 가득 껍질 벗긴 황금빛 보리 낟알(길쭉한 타원 · 가운데 세로 골)이 빽빽하다.',
+};
+
+/** 284차 — 봉지 그림에 함께 보내는 「담을 내용물」 그림(낱알 초상 — `asis/<id>.png`). 봉지 속 알을 낱알 그림과 같은 알로 그리게 한다 */
+const CONTENT_REF = {
+  crop_deulkkae_b500: 'crop_deulkkae', crop_deulkkae_b1000: 'crop_deulkkae',
+  crop_chamkkae_b300: 'crop_chamkkae', crop_chamkkae_b500: 'crop_chamkkae',
+  crop_soybean_b500: 'crop_soybean', crop_soybean_b1000: 'crop_soybean',
+  crop_barley_b1000: 'crop_barley',
 };
 
 const STYLE_INTRO = '첨부한 그림 세 장은 화풍 참고용입니다. 이 그림들과 같은 픽셀 아트 화풍으로 새 그림 한 장을 그려 주세요. '
   + '같은 도트 크기, 진한 윤곽선, 밝은 하이라이트와 어두운 그늘의 단계, 선명한 색을 맞춥니다. '
   + '참고 그림 속 물체(딸기 · 상추 · 감자)는 그리지 마세요.';
 // 팩은 포장 용기가 그림의 일부다 — 「접시 · 바구니 없음」 대신 「한 팩 · 비스듬히 위에서 · 라벨 없음」(245)
+// 284차 — 낟알 봉지(`kind: 'bag'`)도 용기가 그림의 일부다 — 팩과 같은 생각으로 「봉지 하나 · 창 너머 낟알 · 쏟아진 알 없음」
 const taskText = (it) => `그릴 것: ${it.nameKo} (${it.nameEn}). ${it.look}\n` + (it.kind === 'pack'
   ? '조건: 순백색 단색 배경. 포장한 한 팩만 화면 가운데에 크게, 비스듬히 위에서 본 모습이라 용기 속 내용물이 잘 보인다. '
     + '라벨 · 가격표 · 글자 · 바닥 그림자 · 테두리 없음. 사진이 아니라 픽셀 아트.'
-  : '조건: 순백색 단색 배경. 물체는 화면 가운데에 크게, 한 단위(하나 · 한 줌 · 한 묶음 · 한 무더기)만. '
-    + '바닥 그림자 · 접시 · 바구니 · 글자 · 테두리 없음. 사진이 아니라 픽셀 아트.');
+  : it.kind === 'bag'
+    ? '조건: 순백색 단색 배경. 낟알을 담은 봉투 하나만 화면 가운데에 크게, 비스듬히 앞 위에서 본 모습이라 봉투 앞면 투명 창 너머 낟알이 잘 보인다. '
+      + '봉투 밖으로 쏟아진 낟알 · 숟가락 · 그릇 · 바닥 그림자 · 테두리 없음. 라벨 · 스티커 · 가격표 · 글자 · 숫자 · 로고 없음. 사진이 아니라 픽셀 아트.'
+    : '조건: 순백색 단색 배경. 물체는 화면 가운데에 크게, 한 단위(하나 · 한 줌 · 한 묶음 · 한 무더기)만. '
+      + '바닥 그림자 · 접시 · 바구니 · 글자 · 테두리 없음. 사진이 아니라 픽셀 아트.');
+const CONTENT_TEXT = '마지막 그림은 이 봉투에 담을 낟알입니다(이미 게임에 있는 그림). 봉투 창 너머 알갱이를 이 그림과 같은 색 · 모양 · 크기로 그리세요. '
+  + '이 낟알 더미를 봉투 밖에 따로 그리지는 마세요.';
 
 function parseArgs(argv) {
   const P = { out: '', only: null, set: 'main', model: 'gemini-nano-banana-2.1', jobs: 3, tries: 4, tag: '', force: false, dry: false, install: false };
@@ -169,8 +215,15 @@ async function targets(set) {
       if (c.interim) out.push({ id: c.interim.itemId, nameKo: c.interim.labelKo, nameEn: c.interim.labelEn, kind: 'extra' });
     }
     if ((set === 'pack' || set === 'all') && h.pack) out.push({ id: h.pack.itemId, nameKo: h.pack.nameKo, nameEn: h.pack.nameEn, kind: 'pack' });
+    // 284차 — 먹는 부산물(무청 · 겉잎 · 토란대 · 깻순 — 밭에 넣는 부산물 `kind: 'residue'`는 아이템 그림 `item_looks/mill.cjs`) · 낟알 봉지
+    if (set === 'byproduct' || set === 'all') {
+      for (const b of c.byproducts ?? []) if (b.kind === 'food') out.push({ id: b.itemId, nameKo: b.nameKo, nameEn: b.nameEn, kind: 'byproduct' });
+    }
+    if (set === 'bag' || set === 'all') for (const b of h.bags ?? []) out.push({ id: b.itemId, nameKo: b.nameKo, nameEn: b.nameEn, kind: 'bag' });
   }
-  return out;
+  // 같은 부산물이 두 작물에 걸릴 수 있다(깻순 = 깻잎 · 들깨) — id 하나에 한 장
+  const seen = new Set();
+  return out.filter((t) => !seen.has(t.id) && seen.add(t.id));
 }
 
 /** 참고 그림 — 긴 변 512px PNG로 줄여 한 번만 만든다(요청 크기 · 토큰 절약) */
@@ -186,9 +239,20 @@ function refParts(outDir) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** 284차 — 봉지의 「담을 내용물」 그림(낱알 초상 asis → 긴 변 512px) — 없으면 빈 배열 */
+function contentParts(outDir, id) {
+  const src = CONTENT_REF[id];
+  if (!src) return [];
+  const dir = path.join(outDir, '_refs');
+  fs.mkdirSync(dir, { recursive: true });
+  const dst = path.join(dir, `${src}.png`);
+  if (!fs.existsSync(dst)) execFileSync('convert', [path.join(ASIS, `${src}.png`), '-resize', '512x512>', `PNG32:${dst}`]);
+  return [{ text: CONTENT_TEXT }, { inlineData: { mimeType: 'image/png', data: fs.readFileSync(dst).toString('base64') } }];
+}
+
 async function generateOne(it, P, refs) {
   const body = {
-    contents: [{ role: 'user', parts: [{ text: STYLE_INTRO }, ...refs, { text: taskText(it) }] }],
+    contents: [{ role: 'user', parts: [{ text: STYLE_INTRO }, ...refs, { text: taskText(it) }, ...contentParts(P.out, it.id)] }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },
   };
   let last = '';
@@ -266,5 +330,5 @@ async function main() {
   console.log(`끝: 성공 ${done} · 실패 ${fail}${failed.length ? ` (${failed.join(', ')})` : ''}`);
 }
 
-module.exports = { LOOKS, STYLE_INTRO, taskText, targets };
+module.exports = { LOOKS, CONTENT_REF, STYLE_INTRO, taskText, targets };
 if (require.main === module) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });

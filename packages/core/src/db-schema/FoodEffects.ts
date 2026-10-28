@@ -36,6 +36,9 @@ export const RECIPE_EFFECTS: Record<string, FoodEffectDef> = {
     nameKo: '개운함', nameEn: 'Refreshed', descKo: '30분 동안 피로 회복량 +10%', descEn: 'Fatigue recovers 10% faster for 30 min' },
   porridge_abalone: { id: 'restorative', kind: 'fatigue_recovery', magnitude: 0.12, durationMin: 45,
     nameKo: '회복식', nameEn: 'Restorative', descKo: '45분 동안 피로 회복 속도 +12%', descEn: 'Fatigue recovers 12% faster for 45 min' },
+  // 284차 — 나물 볶음: 기름진 것 없이 속이 편하다
+  stirfry_namul: { id: 'light_meal', kind: 'fatigue_recovery', magnitude: 0.06, durationMin: 30,
+    nameKo: '속 편한 반찬', nameEn: 'Easy on the stomach', descKo: '30분 동안 피로 증가량 -6%', descEn: 'Fatigue builds 6% slower for 30 min' },
   grill_eel: { id: 'stamina', kind: 'fatigue_recovery', magnitude: 0.12, durationMin: 60,
     nameKo: '원기회복', nameEn: 'Revitalised', descKo: '60분 동안 피로 감소 속도 +12%', descEn: 'Fatigue recovers 12% faster for 60 min' },
 };

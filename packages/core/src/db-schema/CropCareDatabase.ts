@@ -212,6 +212,10 @@ export const NET_ID = 'farm_insect_net';
 export const BIRD_NET_ID = 'farm_bird_net';
 export const FLEECE_ID = 'farm_fleece';
 export const STRAW_ID = 'farm_straw';
+/** 284차 — 보릿짚(밭 부산물 · g) — 볏짚 대신 짚 덮기 */
+export const BARLEY_STRAW_ID = 'res_barley_straw';
+/** 284차 — 깻순(들깨 · 깻잎 순지르기에서 나오는 새순 — 나물) */
+export const PERILLA_SHOOT_ID = 'crop_perilla_shoot';
 export const TRELLIS_ID = 'farm_trellis_net';
 export const PEAT_ID = 'farm_peat';
 export const SHEARS_ID = 'farm_shears';
@@ -385,7 +389,8 @@ const frostCover = (months: number[], how?: How): CareTaskDef => ({
 /** 짚 덮기 — 겨울 덮기(달력) · 마름 막기(날) · 열매 받침(달력) */
 const strawMulch = (o: { window?: [number, number]; months?: number[]; effect?: CareTaskDef['effect']; missed?: CareTaskDef['missed']; how: How }): CareTaskDef => ({
   id: 'straw_mulch', dayWindow: o.window ?? [0, 0], ...(o.months ? { months: o.months } : {}),
-  needs: [{ itemId: STRAW_ID, qty: 1 }], work: 'place', seconds: 7, fatigue: 3,
+  // 284차 — 보릿짚 500g이 볏짚 한 칸 분을 대신한다(보리를 털고 남은 짚)
+  needs: [{ itemId: STRAW_ID, qty: 1, alt: [{ itemId: BARLEY_STRAW_ID, qty: 500 }] }], work: 'place', seconds: 7, fatigue: 3,
   ...(o.effect ? { effect: o.effect } : {}), missed: o.missed ?? { yieldMult: 0.93 },
   howKo: o.how[0], howEn: o.how[1],
 });
@@ -643,8 +648,9 @@ export const CROP_CARE_PLANS: Readonly<Record<string, CropCarePlan>> = {
   // ── 잎채소 ──
   perilla: { diseases: [], tasks: [
     thin([10, 20]),
-    pinchTip([30, 45], ['키가 30~40cm 되면 원줄기 끝을 순지른다 — 곁가지가 늘어 딸 잎이 많아진다.',
-      'At 30–40cm tall, pinch out the leading tip — more side branches, more leaves to pick.'], 0.9),
+    { ...pinchTip([30, 45], ['키가 30~40cm 되면 원줄기 끝을 순지른다 — 곁가지가 늘어 딸 잎이 많아진다. 딴 순은 깻순 나물이다.',
+      'At 30–40cm tall, pinch out the leading tip — more side branches, more leaves to pick. The pinched tips are perilla-shoot greens.'], 0.9),
+      yields: { itemId: PERILLA_SHOOT_ID, qty: [1, 2] } },   // 284차 — 순지른 새순(깻순 한 줌)
     feed({ window: [30, 45], repeat: { everyDays: 20, times: 2 }, how: ['잎을 따는 동안 스무날마다 웃거름을 준다 — 잎이 넓고 연하다.',
       'While picking, feed every twenty days — broad, tender leaves.'] }),
   ] },
@@ -880,8 +886,9 @@ export const CROP_CARE_PLANS: Readonly<Record<string, CropCarePlan>> = {
   // ── 247차 — 깨(들깨 · 참깨) ──
   deulkkae: { diseases: [], tasks: [
     thin([10, 20], ['한 구멍에 두세 포기만 남기고 솎는다 — 배게 서면 웃자라 쓰러진다.', 'Thin to two or three plants a hole — crowded plants grow leggy and fall over.']),
-    pinchTip([30, 45], ['키가 30~40cm 되면 원줄기 끝을 순지른다 — 곁가지가 늘고 키가 낮아져 쓰러지지 않는다.',
-      'At 30–40cm, pinch out the leading tip — more side branches, a shorter plant, and it will not lodge.'], 0.9),
+    { ...pinchTip([30, 45], ['키가 30~40cm 되면 원줄기 끝을 순지른다 — 곁가지가 늘고 키가 낮아져 쓰러지지 않는다. 딴 순은 깻순 나물이다.',
+      'At 30–40cm, pinch out the leading tip — more side branches, a shorter plant, and it will not lodge. The pinched tips are perilla-shoot greens.'], 0.9),
+      yields: { itemId: PERILLA_SHOOT_ID, qty: [1, 2] } },   // 284차 — 순지른 새순(깻순 한 줌 — 수확은 줄지 않는다)
     weed({ window: [15, 35] }),
   ] },
   chamkkae: { diseases: ['blight'], tasks: [

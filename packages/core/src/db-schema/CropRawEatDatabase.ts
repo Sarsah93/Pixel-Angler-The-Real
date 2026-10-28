@@ -16,7 +16,7 @@
 
 import type { FoodNutrition } from './FoodNutrition.js';
 import { FOOD_NUTRITION } from './FoodNutrition.js';
-import { CROP_DATABASE, parseProduceId, PRODUCE_GRADE_SUFFIX, looseOfPack } from './CropDatabase.js';
+import { CROP_DATABASE, parseProduceId, PRODUCE_GRADE_SUFFIX, looseOfPack, looseOfBag } from './CropDatabase.js';
 
 /** 날로 먹을 수 있는 수확물 — 영양은 단위 하나(조각이 있으면 조각 하나) */
 export interface RawEatDef extends FoodNutrition {
@@ -154,6 +154,11 @@ export const CROP_NO_RAW: Readonly<Record<string, NoRawDef>> = {
   crop_eomnamu: { whyKo: '쓰고 가시가 있다 — 데친다', whyEn: 'Bitter and thorny — blanch' },
   crop_meowi: { whyKo: '쓰고 독성이 있다 — 데쳐서 우린다', whyEn: 'Bitter and toxic raw — blanch and soak' },
   crop_turmeric: { whyKo: '향신료다 — 쓰고 흙내가 난다', whyEn: 'A spice — bitter and earthy raw' },
+  // 284차 — 먹는 부산물
+  crop_radish_greens: { whyKo: '억세고 맵다 — 데쳐서 시래기로 쓴다', whyEn: 'Tough and peppery — blanch them into siraegi' },
+  crop_cabbage_outer: { whyKo: '억센 겉잎이다 — 데쳐서 우거지로 쓴다', whyEn: 'Tough outer leaves — blanch them into ugeoji' },
+  crop_taro_stem: { whyKo: '옥살산칼슘 바늘이 입을 찌른다 — 껍질을 벗겨 푹 삶는다', whyEn: 'Calcium-oxalate needles sting the mouth — peel and boil them well' },
+  crop_perilla_shoot: { whyKo: '풋내가 세다 — 데쳐서 나물로 볶는다', whyEn: 'Strongly grassy raw — blanch and stir-fry as greens' },
 };
 
 /** 날로 먹기 판정 — 먹을 수 있다 · 나눠야 한다 · 못 먹는다 · 243차 포장한 팩(뜯어야 한다) · 수확물이 아니다(null) */
@@ -172,6 +177,12 @@ export function rawEatStatus(itemId: string): RawEatStatus | null {
     if (lp) {
       const looseBaseId = lp.crop.harvest.itemId;
       return { kind: 'pack', baseId: parseProduceId(itemId).baseId, looseBaseId, units: lp.units, edible: !!CROP_RAW_EAT[looseBaseId] };
+    }
+    // 284차 — 낱알 봉지도 뜯어야 한다(깨 · 콩 · 보리 낱알은 날로 못 먹는다)
+    const lb = looseOfBag(itemId);
+    if (lb) {
+      const looseBaseId = lb.crop.harvest.itemId;
+      return { kind: 'pack', baseId: parseProduceId(itemId).baseId, looseBaseId, units: lb.grams, edible: !!CROP_RAW_EAT[looseBaseId] };
     }
   }
   const baseId = isPiece ? itemId.slice(0, -PIECE_SUFFIX.length) : parseProduceId(itemId).baseId;
@@ -211,13 +222,14 @@ for (const id of RAW_EAT_ITEM_IDS) {
   }
 }
 
-/** 수확물 기본 id 전부(본 · 붉어진 것 · 중간) — 시험 · 위키가 빠진 것을 찾는다 */
+/** 수확물 기본 id 전부(본 · 붉어진 것 · 중간 · 284차 먹는 부산물) — 시험 · 위키가 빠진 것을 찾는다 */
 export function allProduceBaseIds(): string[] {
   const ids: string[] = [];
   for (const c of CROP_DATABASE) {
     ids.push(c.harvest.itemId);
     if (c.harvest.ripenTo) ids.push(c.harvest.ripenTo.itemId);
     if (c.interim) ids.push(c.interim.itemId);
+    for (const b of c.byproducts ?? []) if (b.kind === 'food') ids.push(b.itemId);   // 284차 — 먹는 부산물
   }
   return [...new Set(ids)];
 }

@@ -60,6 +60,8 @@ import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { t } from '../i18n/I18n.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
+import { qtyBadge, qtyWord } from './QtyLabel.js';
+import { CHUM_GRAIN_PORTION_G } from '../data/CropItems.js';
 
 /** 추천 배너용 미끼 이름 (RigRecommender의 BaitKey → 화면 이름, R1) */
 const BAIT_KEY_KO: Record<string, string> = {
@@ -2024,7 +2026,7 @@ export class UtilizationPanel extends DraggablePanel {
       this.bodyContainer.add(hit);
     }
     const lbl = this.scene.add.text(bx + bw / 2, by + bh - 18,
-      `${t(item.name)} ×${item.qty}`, {
+      `${t(item.name)} ${qtyWord(item, item.qty, '×')}`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a2c1a', fontStyle: 'bold',
       }).setOrigin(0.5);
     this.bodyContainer.add(lbl);
@@ -2106,8 +2108,8 @@ export class UtilizationPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#cfe3f2',
       }).setOrigin(0.5, 1), item.name, cell - 6);   // 188차 — 8px 대신 이름 축약
       this.bodyContainer.add(nm);
-      if (item.qty > 1) {
-        const q = this.scene.add.text(cx + cell - 6, cy + 4, `x${item.qty}`, {
+      if (item.qty > 1 || item.unitG) {
+        const q = this.scene.add.text(cx + cell - 6, cy + 4, qtyBadge(item), {
           fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
         }).setOrigin(1, 0);
         this.bodyContainer.add(q);
@@ -2452,7 +2454,7 @@ export class UtilizationPanel extends DraggablePanel {
       const kd = this.scene.add.text(cx + cell / 2, cy + cell - 12, kindLabel[item.chumKind!], {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#8fb8d0',
       }).setOrigin(0.5);
-      const q = this.scene.add.text(cx + cell - 6, cy + 4, `x${item.qty}`, {
+      const q = this.scene.add.text(cx + cell - 6, cy + 4, qtyWord(item, item.qty), {
         fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
       }).setOrigin(1, 0);
       this.bodyContainer.add([nm, kd, q]);
@@ -2511,7 +2513,10 @@ export class UtilizationPanel extends DraggablePanel {
     refreshCondition(item);
     if (item.chumKind === 'krill' && item.condition === 'frozen') { playSfx('deny'); this.chumNotice('꽁꽁 얼어 있다 — 녹인 뒤에 갠다'); return; }
     if (item.condition === 'spoiled') { playSfx('deny'); this.chumNotice('상했다 — 밑밥에 넣을 수 없다'); return; }
-    if (!InventoryStore.removeQty(item.id, 1)) return;
+    // 284차 — g으로 세는 낟알(보리)은 한 번에 한 줌(200g)
+    const use = item.unitG ? Math.ceil(CHUM_GRAIN_PORTION_G / item.unitG) : 1;
+    if (item.qty < use) { playSfx('deny'); this.chumNotice(`낟알이 ${CHUM_GRAIN_PORTION_G}g은 있어야 한 줌이다`); return; }
+    if (!InventoryStore.removeQty(item.id, use)) return;
 
     CoolerStore.addChumIngredient(item.chumKind, item.name);
     playSfx(item.chumKind === 'krill' ? 'item_drop' : 'farm_fertilize');

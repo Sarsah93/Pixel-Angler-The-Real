@@ -17,7 +17,7 @@ OSM 가게 이름을 게임 상호(`name_alias.json` — 실제 상호를 조금
   OSM 빌드(`build_osm_tilemap.py`)가 pois.json을 새로 쓰면 이 스크립트를 한 번 더 돌린다.
 - 중복: OSM에 같은 이름(공백 · 기호 무시)이 8칸 안에 있으면 캡처 쪽을 버린다(OSM 정본 유지).
   캡처끼리도 같은 이름이 6칸 안이면 하나만(캡처가 겹쳐 같은 가게가 두 번 찍힌다).
-- 분류: R 음식점 · C 카페/빵 · P 주점 · V 편의점/슈퍼 · M 마트 · H 약국 · L 숙박 · S 종묘사(238차 — OSM `shop=garden_centre`).
+- 분류: R 음식점 · C 카페/빵 · P 주점 · V 편의점/슈퍼 · M 마트 · H 약국 · L 숙박 · S 종묘사(238차 — OSM `shop=garden_centre`) · O 방앗간(284차 — `shopKind: 'mill'`).
 - osmId는 음수(-(캡처번호 × 1000 + 순번)) — 거래처 키(`<region>:osm:<id>`)가 OSM과 겹치지 않는다.
 
 사용: python tools/merge_capture_pois.py [region=sokcho_v2] [--auto]   (capture_pois.json이 없는 지역은 게임 상호만 적용 · --auto = 표에 없는 가게 자동 변환 — 262차)
@@ -49,6 +49,7 @@ CAT = {
     'H': {'type': 'pharmacy'},
     'L': {'type': 'lodging'},
     'S': {'type': 'shop', 'shopKind': 'garden_centre'},   # 238차 — 종묘사(모종 · 씨앗 · 농자재 · 농약)
+    'O': {'type': 'shop', 'shopKind': 'mill'},            # 284차 — 방앗간(기름 짜기 · 들깨 갈기 · 참깨 볶기 — OSM 표준 태그 없음)
 }
 
 

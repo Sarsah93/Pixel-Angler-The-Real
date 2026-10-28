@@ -20,6 +20,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { MP_TRADE_MAX_ITEMS, type MpTradeItem, type MpTradeState } from '@tra/core';
 import type { QuantityDialogConfig } from './Dialogs.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
+import { qtyWord } from './QtyLabel.js';
 
 const W = 760, H = 540;
 const FONT = '"Noto Sans KR", sans-serif';
@@ -147,7 +148,7 @@ export class TradePanel extends DraggablePanel {
       const remain = item.qty - (inOffer?.qty ?? 0);
       const icon = createItemIcon(this.scene, PAD + 20, ry + ROW_H / 2, item, 16);
       if (icon) b.add(icon);
-      const label = this.scene.add.text(PAD + 36, ry + ROW_H / 2, `${item.name}  x${remain}${inOffer ? `  (제안 ${inOffer.qty})` : ''}`, {
+      const label = this.scene.add.text(PAD + 36, ry + ROW_H / 2, `${item.name}  ${qtyWord(item, remain)}${inOffer ? `  (제안 ${qtyWord(item, inOffer.qty, '')})` : ''}`, {
         fontFamily: FONT, fontSize: '11px', color: remain > 0 ? '#d0e8f5' : '#5a6b78',
       }).setOrigin(0, 0.5);
       clampTextWidth(label, W - PAD * 2 - 60);
@@ -204,7 +205,7 @@ export class TradePanel extends DraggablePanel {
       const icon = createItemIcon(this.scene, x + 18, ry + ROW_H / 2, { id: it.srcId, icon: '', iconTexture: tex, name: it.name, category: 'etc', subCategory: '' } as unknown as InvItem, 16);
       if (icon) b.add(icon);
       const note = InventoryStore.tradeNoteOf(it);
-      const t = this.scene.add.text(x + 34, ry + ROW_H / 2, `${it.name}  x${it.qty}${note ? `  · ${note}` : ''}`, { fontFamily: FONT, fontSize: '11px', color: '#d0e8f5' }).setOrigin(0, 0.5);
+      const t = this.scene.add.text(x + 34, ry + ROW_H / 2, `${it.name}  ${qtyWord({ unitG: InventoryStore.find(it.srcId)?.unitG }, it.qty)}${note ? `  · ${note}` : ''}`, { fontFamily: FONT, fontSize: '11px', color: '#d0e8f5' }).setOrigin(0, 0.5);
       clampTextWidth(t, COL_W - 70);
       b.add(t);
       if (mine && !side.offer.locked) {

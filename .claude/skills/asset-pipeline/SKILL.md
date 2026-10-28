@@ -219,6 +219,9 @@ node tools/pixelize_crops.cjs                                                   
   ⚠ 282(2) — `gen_wiki_images.py`는 그림 목록을 새로 쓴다(지금은 옛 작물 키를 잇는다).
   생성기가 「그림 없는 아이템 N개」를 찍으면 발행하지 않는다(272 ~ 282 채소 323개 누락 전례).
   → `node tools/gen_game_wiki_data.mjs --html`. 아티팩트에는 바뀐 그림만 `files`로 올린다(245 = 105장).
+  ⚠ 284 — 봉지처럼 id에 숫자가 든 초상(`crop_chamkkae_b300`)도 있다. `wiki_crop_img.cjs` 파일명 정규식은 `[a-z0-9_]`다(숫자를 빼면 위키에 그림 없이 나간다).
+- **부산물 · 봉지 초상은 `--set byproduct` · `--set bag`**(284 — 11장). 봉지는 「종이 봉지에 담긴 낱알 · 글자 없음」 조건이다.
+  기름병 · 깻묵 · 밭 부산물 같은 아이템 그림은 `tools/item_looks/mill.cjs` → `item_cards.cjs`(⑨ 장비 밖 아이템 그림).
 
 ## ⑦ 어종 그림 — 원본 · 카드 · 아이콘 · 사진 없는 어종 Gemini (246차)
 

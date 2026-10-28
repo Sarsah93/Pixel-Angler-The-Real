@@ -52,6 +52,10 @@ export const COOK_ITEMS: Record<string, CookItemDef> = {
   cook_pepper: { cookIngredient: 'pepper' },
   cook_sesame_oil: { cookIngredient: 'sesame_oil' },
   cook_cooking_oil: { cookIngredient: 'cooking_oil' },
+  // 284차 — 방앗간 것(기름병을 따면 1큰술씩 · 갈고 볶은 것) · 식자재마트에도 있다
+  cook_perilla_oil: { cookIngredient: 'perilla_oil' },
+  cook_perilla_powder: { cookIngredient: 'perilla_powder' },
+  cook_sesame_salt: { cookIngredient: 'sesame_salt' },
   // 굵은소금(문어 손질용 · 097차)도 소금이다 — 손질과 요리가 같은 봉지를 쓴다
   inv_coarse_salt: { cookIngredient: 'salt' },
   // ── 용기 ──
@@ -113,6 +117,10 @@ export const COOK_CORNER = [
   S('cook_pepper', '후추', 200, 250, 20, '구이 마무리. 1큰술.'),
   S('cook_sesame_oil', '참기름', 500, 600, 20, '죽을 볶고 볶음을 마무리한다. 1큰술.'),
   S('cook_cooking_oil', '식용유', 200, 250, 30, '팬 구이·볶음. 1큰술.'),
+  // 284차 — 나물 볶음의 기름 · 고소한 맛(방앗간에서 짜고 · 갈고 · 볶은 것과 같은 재료)
+  S('cook_perilla_oil', '들기름', 450, 550, 20, '나물을 볶는다. 향이 짙다. 1큰술.'),
+  S('cook_perilla_powder', '들깨가루', 300, 400, 20, '나물 볶음을 고소하게 감친다. 1큰술.'),
+  S('cook_sesame_salt', '깨소금', 250, 300, 20, '나물 마무리에 뿌린다. 1큰술.'),
   // 용기 · 화구 · 연료 (기타)
   { id: 'cook_pot_camp', name: '코펠 냄비 (1.8L)', icon: '', iconTexture: 'art_pot_camp', category: 'etc', subCategory: '조리도구', basePrice: 18000, price: 22000, maxPerPurchase: 2, equippable: false,
     desc: '가볍고 얇다 — 빨리 끓고 빨리 식는다. 탕·조림·죽.', ...COOK_ITEMS.cook_pot_camp },
@@ -127,3 +135,14 @@ export const COOK_CORNER = [
   { id: 'cook_butane_can', name: '부탄 캐니스터', icon: '', iconTexture: 'art_gascan', category: 'consumable', subCategory: '연료', basePrice: 1500, price: 2000, maxPerPurchase: 10, equippable: false,
     desc: '강불 기준 55분. 끼우면 되돌릴 수 없다.', ...COOK_ITEMS.cook_butane_can },
 ] as const;
+
+/**
+ * 284차 — 식자재마트 요리 코너 물건의 가방 모양(값 · 진열 수 · 설명 제외). 없으면 null.
+ * 기름병을 따면 나오는 1큰술(`cook_sesame_oil` · `cook_perilla_oil`)처럼 가게 밖에서 생기는 길이 쓴다.
+ */
+export function cookCornerTemplate(id: string): InvItemTemplate | null {
+  const e = COOK_CORNER.find((x) => x.id === id);
+  if (!e) return null;
+  const { price: _p, maxPerPurchase: _m, desc: _d, ...tpl } = e;
+  return { ...tpl } as InvItemTemplate;
+}

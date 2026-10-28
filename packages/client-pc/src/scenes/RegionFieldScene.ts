@@ -177,6 +177,7 @@ import { UtilizationPanel, UtilizationTab } from '../ui/UtilizationPanel.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { ShopPanel, shopBuyUnitPrice, shopSellUnitPrice, entryKey } from '../ui/ShopPanel.js';
+import { MillPanel } from '../ui/MillPanel.js';
 import { ShopStore } from '../store/ShopStore.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
@@ -445,6 +446,8 @@ export class RegionFieldScene extends Phaser.Scene {
   private utilPanel: UtilizationPanel | null = null;
   private coolerPanel: CoolerPanel | null = null;
   private shopPanel: ShopPanel | null = null;
+  /** 284차 — 방앗간 압착기 창 */
+  private millPanel: MillPanel | null = null;
 
   // ── 건물(상점) ──
   /** 196차 — branch = 판매처(시세 하락·가게 수요를 따로 센다) */
@@ -683,6 +686,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.equipPanel = null;
     this.utilPanel = null;
     this.shopPanel = null;
+    this.millPanel = null;   // 284차
     this.buildings = [];
     this.nearBuilding = null;
     this.interior = null;
@@ -1802,6 +1806,8 @@ export class RegionFieldScene extends Phaser.Scene {
         || k === 'department_store' || k === 'kiosk') return 'daily';
       // 238차 — 종묘사 · 화원 · 농자재(OSM shop=garden_centre · florist · agrarian · farm): 모종 · 씨앗 · 농약
       if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm') return 'nursery';
+      // 284차 — 방앗간(게임 캡처 POI `shopKind: 'mill'` · OSM 가게 이름이 방앗간 · 기름집인 곳)
+      if (k === 'mill' || /방앗간|기름집/.test(poi.name ?? '')) return 'mill';
       return null;
     }
     return null;
@@ -1895,6 +1901,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (bk === 'market' && interiorTemplateOf('market', name) === 'auction') return { w: 4, h: 3, kind: 'industrial', levels: 1 };
     const size: Record<BuildingKind, [number, number]> = {
       convenience: [2, 2], mart: [3, 2], market: [3, 2], restaurant: [3, 2], cafe: [2, 2], pub: [2, 2], pharmacy: [2, 2], daily: [3, 2], nursery: [3, 2],
+      mill: [2, 2],
     };
     const [w, hh] = size[bk];
     return { w, h: hh, kind: 'commercial', levels: bk === 'mart' || bk === 'daily' || bk === 'pharmacy' ? 2 : (h < 0.5 ? 1 : 2) };
@@ -2420,7 +2427,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
         convenience: 0x2f8a57, mart: 0xc8662a, market: 0x2a6aa8, restaurant: 0xa8402a,
-        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a,
+        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a,
       };
       const g = this.add.graphics();
       g.fillStyle(0x3a2616, 1); g.fillRect(10, 18, 4, 12);            // 기둥
@@ -3633,6 +3640,7 @@ export class RegionFieldScene extends Phaser.Scene {
         break;
       case 'clinic': this.openClinic(); break;
       case 'schedule': this.openAuctionBoard(); break;
+      case 'mill': this.openMill(at.branch); break;
     }
   }
 
@@ -6383,7 +6391,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 상점 카테고리 → 미니맵 아이콘 키 */
   private static readonly MINI_SHOP_ICON: Record<BuildingKind, string> = {
     convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food',
-    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery',
+    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill',
   };
 
   /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */
@@ -7730,6 +7738,21 @@ export class RegionFieldScene extends Phaser.Scene {
    * 같이 봐준다 — 실제 의원의 동작이고, "병원까지 갔는데 하나만 고쳐준다"가 더 이상하다.
    * ⚠ 수면(침대)과 달리 **저장하지 않는다**(126차 규칙 — 침대 저장 정책 불침범).
    */
+  /** 284차 — 방앗간 압착기 [F]: 깨 맡기기 · 찾기 · 무르기(`ui/MillPanel`) */
+  private openMill(branch?: MarketBranch): void {
+    if (this.millPanel) return;
+    this.dismountBike();
+    const name = branch?.name ?? SHOP_CATALOG.mill.name;
+    this.millPanel = this.openPopup(
+      (close) => new MillPanel(this, 40, 60, name, {
+        onClose: close,
+        onChanged: () => { this.events.emit('inventory-changed'); },
+        log: (line) => this.hud?.pushLog(line),
+      }),
+      () => { this.millPanel = null; },
+    );
+  }
+
   private openClinic(): void {
     const fee = TUNING.craft.hospitalFee;
     const treatable = GameState.statuses.filter((a) => {

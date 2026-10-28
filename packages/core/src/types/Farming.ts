@@ -112,6 +112,71 @@ export interface CropHarvest {
    * 값: 팩 = 낱개 기준가 × `units`(제값) · 낱개로 팔면 `FARM_TUNING.looseSellMult`만 쳐준다(가게가 다시 담는다).
    */
   pack?: CropPack;
+  /**
+   * 284차 — 무게로 세는 수확물(사용자 「상품성을 지니는 수준을 중량으로 — 몇 백 그람 단위로」).
+   * 한 단위 = 이 g(1이면 qty가 곧 g). 털어 낸 낱알(들깨 · 참깨 · 콩 · 보리)이 이것이다 — `qtyPerCell` · `price.base`도 같은 g 기준.
+   */
+  unitG?: number;
+  /**
+   * 284차 — 봉지 단위(무게 수확물). 낱알은 가게가 사지 않는다 — 가방 「봉지 담기」로 낱알 g + 곡물 봉투 1개 → 봉지 1개.
+   * 봉지 값 = 낱알 g 기준가 × g(제값) · 「봉지 뜯기」로 낱알이 돌아온다(봉투는 버린다).
+   */
+  bags?: CropBag[];
+}
+
+/** 284차 — 무게 수확물을 담는 봉지 한 가지(참깨 300g · 500g …) */
+export interface CropBag {
+  /** 봉지 아이템 기본 id(`crop_chamkkae_b300`) — 등급 꼬리는 낱알과 같은 규칙 */
+  itemId: string;
+  nameKo: string;
+  nameEn: string;
+  /** 한 봉지에 담는 g */
+  grams: number;
+}
+
+/**
+ * 284차 — 부산물이 하는 일(사용자 「쓰임새가 있는 부산물」 — 쓰임이 없는 것은 넣지 않는다).
+ * cook = 불요리 재료 · sell = 식자재마트 · 식당이 산다 · soil = 잘게 썰어 밭에 넣는다(퇴비 대신 — 영농부산물 환원) ·
+ * mulch = 짚 덮기에 볏짚 대신 · chum = 밑밥(낟알 · 가루) · oil = 방앗간에서 기름을 짠다 · tea = 말려 차로 끓인다
+ */
+export type ByproductUse = 'cook' | 'sell' | 'soil' | 'mulch' | 'chum' | 'oil' | 'tea';
+
+/**
+ * 284차 — 작물의 부산물(무청 · 토란대 · 깻대 · 콩대 · 보릿짚 …). 본 수확(또는 털기)과 함께 가방에 들어온다.
+ *  - `food` = 먹는 것(농산물 — 가게가 산다 · 날로 먹기 표) · `residue` = 밭 부산물(줄기 · 짚 · 검불 — g으로 센다 · 가게는 안 산다).
+ *  - 양은 **칸당 [최소, 최대] × 섬**(`perCell`) 또는 **본 수확물 한 단위당**(`perUnit` — 무 1개에 무청 한 묶음).
+ *    남는 몫은 그 확률로 하나 더 준다(기대값이 정확히 맞는다 — 236 덤과 같은 식).
+ */
+export interface CropByproduct {
+  itemId: string;
+  nameKo: string;
+  nameEn: string;
+  kind: 'food' | 'residue';
+  /** 나오는 때 — harvest = 거둘 때 함께(캐기 · 베기 · 따기) · process = 밭 손질 끝(털기 · 키질) · care = 관리 일에서(순지르기 — `CareTaskDef.yields`) */
+  at: 'harvest' | 'process' | 'care';
+  /** 칸당 [최소, 최대](섬 1.0 기준) — 단위는 이 부산물의 단위(residue = g) */
+  perCell?: [number, number];
+  /** 본 수확물 한 단위당 부산물 단위 수(기대값) */
+  perUnit?: number;
+  /** g으로 세는 부산물(residue는 늘 1) */
+  unitG?: number;
+  /** 단위 값(원 · 상 등급) — food만(0이면 가게가 안 산다) */
+  price: number;
+  /** 품질이 떨어지기 시작할 때까지(일 — 신선도 표시) */
+  holdDays: number;
+  /** 요리 재료 id(core `COOK_INGREDIENTS`) */
+  cookIngredient?: string;
+  /** 쓰임(상세 · 위키 「쓰임」 줄) */
+  uses: ByproductUse[];
+  /** 키질했을 때만 따로 나온다(검불 — 키질 안 하면 낱알에 섞여 품질이 준다) */
+  winnowedOnly?: boolean;
+  /** 칸이 끝날 때만(마지막 수확 — 버섯 배지가 다 빠진 뒤의 폐배지) */
+  onEnd?: boolean;
+  /** 밭에 넣을 때(soil) 한 칸 몫 — 이만큼(단위)을 넣으면 그 칸에 퇴비를 넣은 것과 같다 */
+  soilPerCell?: number;
+  /** 한 줄(상세 · 위키) */
+  noteKo: string;
+  noteEn: string;
 }
 
 /** 243차 — 포장 단위(팩) */
@@ -299,8 +364,14 @@ export interface CareTaskDef {
   dayWindow: [number, number];
   /** 반복 — 한 번 한 뒤 며칠마다 · 몇 번 더(추비 · 방제) */
   repeat?: { everyDays: number; times: number };
-  /** 칸마다 쓰는 물건 */
-  needs?: { itemId: string; qty: number }[];
+  /**
+   * 칸마다 쓰는 물건. 284차 — `alt` = 대신 쓸 수 있는 것(보릿짚 500g이 볏짚 1칸 분을 대신한다) — 앞의 것부터 가방에 있는 것을 쓴다.
+   */
+  needs?: { itemId: string; qty: number; alt?: { itemId: string; qty: number }[] }[];
+  /**
+   * 284차 — 일을 하면 나오는 것(순지르기한 들깨 순 = 깻순 나물). 칸당 [최소, 최대] × 섬(서툴면 절반).
+   */
+  yields?: { itemId: string; qty: [number, number] };
   /** 245차 — 가방에 있어야 하는 도구(닳지 않는다 — 호미 · 전정가위) */
   tools?: string[];
   work: CareWorkKind;
@@ -516,6 +587,8 @@ export interface CropDef {
   rebalance?: number;
   /** 요리 재료 id(core `COOK_INGREDIENTS`) — 있으면 수확물이 그 재료로 들어간다 */
   cookIngredient?: string;
+  /** 284차 — 부산물(무청 · 토란대 · 깻대 · 콩대 · 보릿짚 · 옥수숫대 …) */
+  byproducts?: CropByproduct[];
   /** 출처 · 근거 메모(위키 · 상세 보기 꼬리) */
   noteKo: string;
   /** 같은 메모의 영어(i18n 사전이 데이터를 그대로 읽는다) */
@@ -672,4 +745,6 @@ export interface FarmHarvestResult {
   offsets?: { itemId: string; qty: number };
   /** 247차 — 밭 손질 결과(키질 · 비 맞음 · 꼬투리 터짐 — 화면 설명용) */
   processNote?: { winnowed?: boolean; rainLoss?: number; shatterLoss?: number };
+  /** 284차 — 함께 나온 부산물(아이템 id · 수 — residue는 g) */
+  byproducts?: { itemId: string; qty: number }[];
 }

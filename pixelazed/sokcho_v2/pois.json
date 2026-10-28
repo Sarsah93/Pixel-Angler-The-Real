@@ -4871,5 +4871,15 @@
   "ty": 294,
   "osmId": -83067,
   "src": "capture"
+ },
+ {
+  "type": "shop",
+  "shopKind": "mill",
+  "name": "설악기름방앗간",
+  "nameEn": "Seorak Oil Mill",
+  "tx": 372,
+  "ty": 292,
+  "osmId": -83068,
+  "src": "capture"
  }
 ]

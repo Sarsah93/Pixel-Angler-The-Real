@@ -28,6 +28,7 @@ import {
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
   CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW, carePlanSummaryKo, carePlanSummaryEn,
+  FARM_RESIDUES, OIL_BOTTLES, MILL_SERVICES,
 } from '@tra/core';
 import { startItemName, startItemNameEn, looseShortNamePairs } from '../data/CropItems.js';
 import { EN_PLACES } from './places.js';
@@ -108,10 +109,16 @@ function buildRuntimeDict(): void {
     if (c.harvest.ripenTo) put(c.harvest.ripenTo.nameKo, c.harvest.ripenTo.nameEn);
     if (c.interim) put(c.interim.labelKo, c.interim.labelEn);
     if (c.harvest.pack) put(c.harvest.pack.nameKo, c.harvest.pack.nameEn);   // 243차 — 포장한 팩
+    for (const b of c.harvest.bags ?? []) put(b.nameKo, b.nameEn);   // 284차 — 봉지(참깨 300g …)
+    for (const b of c.byproducts ?? []) { put(b.nameKo, b.nameEn); put(b.noteKo, b.noteEn); }   // 284차 — 부산물
     for (const st of c.starts) put(startItemName(c, st), startItemNameEn(c, st));
   }
   for (const [ko, en] of looseShortNamePairs()) put(ko, en);   // 243차 — 「딸기 25개」의 앞부분
   for (const sp of FARM_SUPPLIES) { put(sp.nameKo, sp.nameEn); put(sp.descKo, sp.descEn); }
+  // 284차 — 밭 부산물(깻대 · 콩대 · 보릿짚 …) · 기름병 · 방앗간 일(데이터 Ko/En 쌍이 정본)
+  for (const r of FARM_RESIDUES) { put(r.nameKo, r.nameEn); put(r.noteKo, r.noteEn); }
+  for (const b of OIL_BOTTLES) put(b.nameKo, b.nameEn);
+  for (const m of MILL_SERVICES) { put(m.nameKo, m.nameEn); put(m.howKo, m.howEn); }
   // 241차 — 날로 먹기 메모 · 못 먹는 이유 · 조각 이름 · 개량종 다른 점
   for (const d of Object.values(CROP_RAW_EAT)) { put(d.noteKo, d.noteEn); if (d.pieces) put(d.pieces.labelKo, d.pieces.labelEn); if (d.bite) put(d.bite.labelKo, d.bite.labelEn); }
   for (const d of Object.values(CROP_NO_RAW)) put(d.whyKo, d.whyEn);

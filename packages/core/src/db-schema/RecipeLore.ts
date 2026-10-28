@@ -72,6 +72,14 @@ export const RECIPE_LORE: Record<string, RecipeLore> = {
     ingredientTipKo: '전복이 클수록 맛이 진해집니다.',
     ingredientTipEn: 'The bigger the abalone, the richer the porridge.',
   },
+  stirfry_namul: {
+    shortDescriptionKo: '데친 나물을 들기름에 볶아 들깨가루로 감친 반찬.',
+    shortDescriptionEn: 'Blanched greens fried in perilla oil and finished with perilla powder.',
+    cookingTipKo: '센 불보다 중불에서 달달 볶아야 나물이 질기지 않습니다. 들깨가루는 나물이 부드러워진 뒤에 넣으세요.',
+    cookingTipEn: 'Fry on medium rather than high heat so the greens stay tender. Add the perilla powder once they soften.',
+    ingredientTipKo: '무청 · 배추 겉잎 · 토란대 · 고구마줄기 · 깻순 · 산나물 — 텃밭에서 버리던 것이 다 나물이 됩니다.',
+    ingredientTipEn: 'Radish greens, outer cabbage leaves, taro stems, sweet potato stems, perilla shoots and wild greens — what the garden used to throw away all becomes namul.',
+  },
   grill_eel: {
     shortDescriptionKo: '지방이 많은 장어를 소금이나 양념으로 구운 것.',
     shortDescriptionEn: 'Fatty eel grilled with salt or sauce.',

@@ -13,7 +13,7 @@
 
 import { cvCss, shapeCuesOn } from '../ui/ColorAssist.js';
 import {
-  TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem,
+  TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem, reqFor,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
   isVariantRecipe, createDishInstance, cookSpeciesNames, recipeEffectOf, dishDiscoveryId, isFarmProduce,
@@ -428,7 +428,8 @@ class CookingStoreClass {
     }
     if (s.contents.length === 0) return { text: `${name} — 재료 대기`, color: '#c8d8e8' };
     if (s.heat === 0) return { text: `${name} — 불 꺼짐`, color: '#ffe0a8' };
-    const mains = s.contents.filter((c) => { const d = getCookIngredient(c.ing); return d && (d.kind === 'main' || d.kind === 'grain'); });
+    // 284차 — 주재료는 레시피가 정한다(나물 볶음의 나물은 재료 종류로는 채소다)
+    const mains = s.contents.filter((c) => { const role = (r ? reqFor(r, c.ing)?.req.role : undefined) ?? getCookIngredient(c.ing)?.kind; return role === 'main' || role === 'grain'; });
     const prog = mains.length ? Math.min(1, mains.reduce((a, c) => a + Math.min(1, c.doneness), 0) / mains.length) : 0;
     return { text: `${name} ${s.boiling ? '끓는 중' : '데우는 중'} ${Math.round(prog * 100)}%`, color: '#ffe0a8' };
   }

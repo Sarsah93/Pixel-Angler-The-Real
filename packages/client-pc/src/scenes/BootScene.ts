@@ -118,11 +118,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image('food_stew_red', 'food/stew_red.png');                   // 서더리 매운탕
     this.load.image('food_stew_red_whole', 'food/stew_red_whole.png');       // 통생선 매운탕
     // 나머지 레시피 7종(255차 — Gemini · 매운탕과 같은 셀 3px · 188칸 · `tools/dish_photos.cjs`가 `food assets/dishes/`에서 굽는다)
-    for (const id of ['stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'porridge_abalone', 'grill_eel']) {
+    for (const id of ['stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'porridge_abalone', 'grill_eel', 'stirfry_namul']) {   // 284차 나물 볶음
       this.load.image(`food_${id}`, `food/${id}.png`);
     }
     // 255차 — 칸 아이콘 판(긴 변 64px · `food/icon/`) — 가방 · 상점 칸은 570px 사진을 줄여 그리지 않는다(`fitFishTexture`)
-    for (const id of ['assorted_sashimi', 'stew_red', 'stew_red_whole', 'stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'porridge_abalone', 'grill_eel']) {
+    for (const id of ['assorted_sashimi', 'stew_red', 'stew_red_whole', 'stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'porridge_abalone', 'grill_eel', 'stirfry_namul']) {
       this.load.image(`food_${id}__icon`, `food/icon/${id}.png`);
     }
 

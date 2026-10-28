@@ -356,6 +356,7 @@ export class InteriorSystem {
       case 'clinic': return '[F] 진료 접수';
       case 'sit': return '[F] 앉기';
       case 'schedule': return '[F] 경매 시간 보기';
+      case 'mill': return '[F] 깨 맡기기 · 찾기';
     }
   }
 

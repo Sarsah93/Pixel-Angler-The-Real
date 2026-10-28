@@ -85,7 +85,7 @@ const TOOL_EN_BY_KO: Record<string, string> = Object.fromEntries(Object.keys(TOO
 const toolEn = (ko: string): string => TOOL_EN_BY_KO[ko] ?? ko;
 const lc1 = (x: string): string => x.charAt(0).toLowerCase() + x.slice(1);
 /** 거둔 문장 꼬리 한 조각 */
-function harvestTailEn(seg: string, tr: (s: string) => string): string {
+export function harvestTailEn(seg: string, tr: (s: string) => string): string {
   if (seg === '검붉게 덜 익은 것이라 품질이 떨어진다') return 'picked while turning, so lower quality';
   if (seg === '서리 맞은 끝물, 이 칸은 끝났다') return 'frost-hit last picking, this cell is done';
   let q = /^병으로 (\d+)% 줄었다$/.exec(seg);

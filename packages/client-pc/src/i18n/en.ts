@@ -24,6 +24,7 @@ import { EN_TOUR_PANELS2 } from './en_tour_panels2.js';
 import { EN_HOME, EN_HOME_RULES } from './en_home.js';
 import { EN_RIG, EN_RIG_RULES } from './en_rig.js';
 import { EN_FARM, EN_FARM_RULES } from './en_farm.js';
+import { EN_MILL, EN_MILL_RULES, EN_MILL_TAIL_RULES } from './en_mill.js';
 
 /** 기본 사전 — 분야별 사전(EN_ITEMS/EN_RIG_COOKING/EN_HELP)보다 우선한다 */
 const EN_BASE: Record<string, string> = {
@@ -681,7 +682,7 @@ export const EN_DICT: Record<string, string> = {
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_BASE,
   // 214차 — 인물의 집 · 문 두드리기
   '정옥선의 집': "Jeong Okseon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeonsu's house",
   '강두철의 집': "Kang Ducheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
@@ -978,6 +979,7 @@ export const EN_RULES: Rule[] = [
   ...EN_TOUR_RULES,    // 188차 일지 순서형 접기
   ...EN_HOME_RULES,    // 189차 집 실내
   ...EN_RIG_RULES,     // 192차 채비 모딩 트리
+  ...EN_MILL_RULES,    // 284차 무게 수확 · 봉지 · 부산물 · 방앗간
   ...EN_FARM_RULES,    // 235차 텃밭
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],
@@ -1487,4 +1489,6 @@ export const EN_RULES: Rule[] = [
   [/^행동 피로 -(\d+)%$/, 'Fatigue from actions -$1%'],
   // 224차 — 채집 로그 꼬리(놓침 · 다침 문장은 위 규칙이 옮긴다). 첫 일치라 맨 끝에 둔다
   [/^\[채집\] (.+)$/, (m, tr) => `[Gather] ${tr(m[1])}`],
+  // 284차 — 「참깨 480g」 같은 이름 + 무게(넓게 잡는다 — 맨 끝)
+  ...EN_MILL_TAIL_RULES,
 ];

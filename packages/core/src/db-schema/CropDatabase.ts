@@ -20,7 +20,8 @@
  * ⚠ 아이템 id 규칙: 씨앗 `seed_*` · 모종 `sdl_*` · 종구/종서/배지 `set_*` · 수확물 `crop_*`(클라이언트 `CropItems`가 템플릿을 만든다).
  */
 
-import type { CropCare, CropDef, CropDifficulty, CropGrade, CropStart, FarmFacility, FarmSite, CropPack } from '../types/Farming.js';
+import type { CropCare, CropDef, CropDifficulty, CropGrade, CropStart, FarmFacility, FarmSite, CropPack, CropBag, CropByproduct } from '../types/Farming.js';
+import { farmResidueDef } from './FarmResidues.js';
 
 const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -69,6 +70,18 @@ const seedling = (crop: string, months: number[], perCell: number, days: number,
 const setOf = (crop: string, months: number[], establish: number, days: number, cost: number, labelKo: string, labelEn: string, extra: Partial<CropStart> = {}): CropStart =>
   ({ kind: 'set', itemId: `set_${crop}`, perCell: 1, establish, days, months, cost, labelKo, labelEn, ...extra });
 
+/** 284차 — 밭 부산물 줄(g · 퇴비 대신 밭에 넣기 — `FarmResidues`) */
+const residue = (id: string, at: CropByproduct['at'], perCell: [number, number], extra: Partial<CropByproduct> = {}): CropByproduct => {
+  const r = farmResidueDef(id);
+  if (!r) throw new Error(`밭 부산물 정의 없음: ${id}`);
+  return {
+    itemId: id, nameKo: r.nameKo, nameEn: r.nameEn, kind: 'residue', at, perCell, unitG: 1, price: 0, holdDays: 999,
+    uses: r.mulchPerCell ? ['soil', 'mulch'] : ['soil'], soilPerCell: r.soilPerCell, noteKo: r.noteKo, noteEn: r.noteEn, ...extra,
+  };
+};
+/** 284차 — 키질로 갈라낸 검불(낱알 1g당 g · 키질했을 때만) */
+const chaff = (perUnit: number): CropByproduct => ({ ...residue('res_chaff', 'process', [0, 0]), perCell: undefined, perUnit, winnowedOnly: true });
+
 export const CROP_DATABASE: CropDef[] = [
   // ═════ 실내 — 시루 · 배지 (철 무관 · 매일 거리) ═════
   {
@@ -77,7 +90,8 @@ export const CROP_DATABASE: CropDef[] = [
     // 나물콩 100g → 콩나물 400~600g(5~8일 · 재래 나물콩 시험 121~695%) · 직접 키운 백태 200g으로도 앉힌다(1.8배)
     starts: [
       seed('bean_sprout', ALL, 0.92, 6, 1200, { labelKo: '나물콩 100g (시루 한 번)', labelEn: 'Sprouting soybeans 100g (one jar)' }),
-      { kind: 'seed', itemId: 'crop_soybean', perCell: 1, establish: 0.85, days: 6, months: ALL, cost: 0, qtyMult: 1.8 },
+      // 284차 — 직접 거둔 콩은 g으로 센다(한 시루 = 200g)
+      { kind: 'seed', itemId: 'crop_soybean', perCell: 200, establish: 0.85, days: 6, months: ALL, cost: 0, qtyMult: 1.8 },
     ],
     harvest: { itemId: 'crop_bean_sprout', nameKo: '콩나물 한 줌 (100g)', nameEn: 'Bean sprouts, a handful (100g)', qtyPerCell: [4, 6], holdDays: 2 },
     price: { base: 330, season: P_FLAT, volatility: 0.08 }, cookIngredient: 'bean_sprout',
@@ -116,6 +130,7 @@ export const CROP_DATABASE: CropDef[] = [
       pack: { itemId: 'crop_oyster_mushroom_pack', nameKo: '느타리 한 팩 (200g)', nameEn: 'Oyster mushrooms, a pack (200g)', units: 2 } },
     price: { base: 1000, season: P_MUSHROOM, volatility: 0.1 },
     // 236차 — 송이 크기는 들쭉날쭉하다: 거둘 때마다 0~30% 덤(bonusSteps 3 · 평균 +15%)
+    byproducts: [residue('res_spent_substrate', 'harvest', [1000, 1300], { onEnd: true })],   // 284차 — 다 거둔 배지(1.5kg → 수분 빠진 폐배지)
     noteKo: '배지 1.5kg에서 두 번 돋는다. 세 번째는 거의 나지 않는다. 첫물이 가장 굵다.',
     noteEn: 'A 1.5kg block fruits twice; a third flush hardly comes. The first flush is the thickest.',
   },
@@ -213,6 +228,13 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seed('perilla', [4, 5], 0.7, 60, 200), seedling('perilla', [5, 6], 4, 35, 300)],
     harvest: { itemId: 'crop_perilla', nameKo: '깻잎 한 묶음 (20장)', nameEn: 'Perilla leaves, a bundle (20 leaves)', qtyPerCell: [2, 3], repeat: { everyDays: 5, times: 12 }, holdDays: 7 },
     price: { base: 800, season: P_PERILLA, volatility: 0.2 },
+    // 284차 — 깻순(순지르기한 새순 — 관리 일 `pinch_tip`에서 나온다 · 들깨 밭에서도 같은 것) · 데쳐 볶는 나물
+    byproducts: [{
+      itemId: 'crop_perilla_shoot', nameKo: '깻순 한 줌 (100g)', nameEn: 'Perilla shoots, a handful (100g)', kind: 'food', at: 'care',
+      price: 800, holdDays: 2, cookIngredient: 'namul', uses: ['cook', 'sell'],
+      noteKo: '순지르기로 딴 들깨 새순. 살짝 데쳐 들기름에 볶으면 깻순나물 — 깻잎보다 연하고 향이 짙다.',
+      noteEn: 'Perilla tips pinched out while training the plant. Blanched and stir-fried in perilla oil they make kkaesun namul — softer than the leaves, with a stronger scent.',
+    }],
     noteKo: '들깨 한 포기에서 한여름 내내 잎을 딴다. 순을 지르면 곁가지가 늘어난다.',
     noteEn: 'One perilla plant gives leaves all summer. Pinch the tip and it branches out.',
   },
@@ -314,6 +336,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seedling('bangpung', [3, 4, 9, 10], 6, 50, 700)],
     harvest: { itemId: 'crop_bangpung', nameKo: '방풍나물 한 단 (200g)', nameEn: 'Hog fennel, a bunch (200g)', qtyPerCell: [2, 3], repeat: { everyDays: 20, times: 2 }, holdDays: 10 },
     price: { base: 3500, season: P_WILD, volatility: 0.15 }, rebalance: 0.9,
+    cookIngredient: 'namul',   // 284차 — 데쳐서 나물 볶음
     noteKo: '갯기름나물. 바닷바람을 맞는 자리에서 향이 짙다. 봄에 순을 꺾는다.',
     noteEn: 'A coastal herb that smells strongest where the sea wind hits it. Snap off the shoots in spring.',
   },
@@ -327,6 +350,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seedling('gomchwi', [3, 4, 10], 9, 45, 900)],
     harvest: { itemId: 'crop_gomchwi', nameKo: '곰취 한 묶음 (100g)', nameEn: 'Gomchwi, a bundle (100g)', qtyPerCell: [4, 6], repeat: { everyDays: 20, times: 2 }, holdDays: 10 },
     price: { base: 1100, season: P_WILD, volatility: 0.15 }, rebalance: 0.85,
+    cookIngredient: 'namul',   // 284차 — 데쳐서 나물 볶음
     noteKo: '고랭지 그늘 산나물. 볕이 세면 잎이 탄다 — 차광막 아래에서만.',
     noteEn: 'A shade-loving highland green. Strong sun scorches the leaves — grows only under a shade net.',
   },
@@ -348,6 +372,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seedling('samnamul', [3, 4, 10], 4, 50, 2500)],
     harvest: { itemId: 'crop_samnamul', nameKo: '눈개승마 한 묶음 (100g)', nameEn: 'Samnamul, a bundle (100g)', qtyPerCell: [3, 5], holdDays: 10 },
     price: { base: 3500, season: P_WILD, volatility: 0.1 }, rebalance: 0.7,
+    cookIngredient: 'namul',   // 284차 — 데쳐서 나물 볶음
     noteKo: '삼나물. 울릉도에서 처음 길러 낸 산채로 다른 나물보다 두세 배 비싸다.',
     noteEn: 'A mountain green first farmed on Ulleungdo, two or three times the price of other greens.',
   },
@@ -358,6 +383,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seedling('eosuri', [3, 4, 10], 4, 45, 1200)],
     harvest: { itemId: 'crop_eosuri', nameKo: '어수리 한 묶음 (100g)', nameEn: 'Eosuri, a bundle (100g)', qtyPerCell: [1, 2], repeat: { everyDays: 25, times: 1 }, holdDays: 10 },
     price: { base: 2000, season: P_WILD, volatility: 0.12 }, rebalance: 0.85,
+    cookIngredient: 'namul',   // 284차 — 데쳐서 나물 볶음
     noteKo: '해발 700m 위에서 자라던 산나물. 2년생 모종으로 시작한다.',
     noteEn: 'A green that grew wild above 700m. Start it from two-year-old seedlings.',
   },
@@ -368,6 +394,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seedling('bujigaengi', [3, 4, 9], 6, 40, 800)],
     harvest: { itemId: 'crop_bujigaengi', nameKo: '부지깽이 한 묶음 (100g)', nameEn: 'Bujigaengi, a bundle (100g)', qtyPerCell: [3, 4], repeat: { everyDays: 20, times: 1 }, holdDays: 10 },
     price: { base: 1100, season: P_WILD, volatility: 0.12 }, rebalance: 0.9,
+    cookIngredient: 'namul',   // 284차 — 데쳐서 나물 볶음
     noteKo: '섬쑥부쟁이. 울릉도 봄나물 — 차광 없이도 자란다.',
     noteEn: 'An island aster, a spring green from Ulleungdo — grows without shade.',
   },
@@ -415,7 +442,7 @@ export const CROP_DATABASE: CropDef[] = [
     },
     interim: {
       itemId: 'crop_pepper_leaf', labelKo: '고춧잎 한 줌 (100g)', labelEn: 'Chili leaves, a handful (100g)',
-      window: [0.5, 1.0], qtyPerCell: [2, 3], mainYieldMult: 0.97, price: 1200, inMart: false,
+      window: [0.5, 1.0], qtyPerCell: [2, 3], mainYieldMult: 0.97, price: 1200, inMart: false, cookIngredient: 'namul',   // 284차 — 고춧잎나물
     },
     price: { base: 120, season: P_CHILI, volatility: 0.25 }, cookIngredient: 'chili_green',
     noteKo: '씨앗은 2월 따뜻한 실내 트레이에 뿌려 모종을 키우고, 모종은 늦서리가 끝난 4월 하순~5월 상순에 옮겨 심는다. 끝물에 잎을 훑어 고춧잎 나물을 한다.',
@@ -471,6 +498,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seed('corn', [4, 5, 6], 0.75, 90, 400), seedling('corn', [5], 4, 70, 300)],
     harvest: { itemId: 'crop_corn', nameKo: '찰옥수수 (1자루)', nameEn: 'Waxy corn (one ear)', qtyPerCell: [2, 4], holdDays: 7 },
     price: { base: 1000, season: P_CORN, volatility: 0.2 },
+    byproducts: [residue('res_corn_stalk', 'harvest', [1200, 2400])],   // 284차 — 옥수숫대(포기당 0.5~1kg 생체 · 추정)
     noteKo: '수염이 갈색으로 마르면 거둔다. 삶은 알갱이는 감성돔 미끼가 된다.',
     noteEn: 'Harvest when the silk dries brown. Boiled kernels make bait for black sea bream.',
   },
@@ -511,8 +539,9 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [setOf('sweet_potato', [5, 6], 0.9, 120, 1200, '고구마순 (1칸 분 · 4줄기)', 'Sweet potato slips (one cell, 4)')],
     harvest: { itemId: 'crop_sweet_potato', nameKo: '고구마 1kg', nameEn: 'Sweet potatoes 1kg', qtyPerCell: [1, 3], holdDays: 20 },
     interim: {
-      itemId: 'crop_sweetpotato_stem', labelKo: '고구마순 한 단 (300g)', labelEn: 'Sweet potato stems, a bunch (300g)',
-      window: [0.4, 0.8], qtyPerCell: [2, 3], mainYieldMult: 0.95, price: 2500, inMart: false,
+      // 284차 — 시장 이름 「고구마줄기」(고구마순과 같은 것 — 심는 순과 헷갈리지 않게) · 생선조림 바닥 · 나물 볶음
+      itemId: 'crop_sweetpotato_stem', labelKo: '고구마줄기 한 단 (300g)', labelEn: 'Sweet potato stems, a bunch (300g)',
+      window: [0.4, 0.8], qtyPerCell: [2, 3], mainYieldMult: 0.95, price: 2500, inMart: false, cookIngredient: 'sweetpotato_stem',
     },
     price: { base: 5000, season: P_SWEETPOTATO, volatility: 0.2 },
     noteKo: '서리 오기 전에 캔다. 줄기는 껍질을 벗겨 나물로 볶는다.',
@@ -529,6 +558,13 @@ export const CROP_DATABASE: CropDef[] = [
       window: [0.18, 0.45], qtyPerCell: [1, 2], mainYieldMult: 1.0, price: 1200, seedOnly: true, inMart: false,
     },
     price: { base: 2000, season: P_RADISH, volatility: 0.35 }, cookIngredient: 'radish',
+    // 284차 — 무청(무 한 개에 한 묶음 300~500g · 데치면 시래기 — 조사: 생무청 10kg → 시래기 1kg · 시래기 고등어조림)
+    byproducts: [{
+      itemId: 'crop_radish_greens', nameKo: '무청 한 묶음 (약 400g)', nameEn: 'Radish greens, a bunch (about 400g)', kind: 'food', at: 'harvest',
+      perUnit: 1, price: 500, holdDays: 3, cookIngredient: 'siraegi', uses: ['cook', 'sell'],
+      noteKo: '무에 달린 잎줄기. 데치면 시래기다 — 생선조림 바닥에 깔고 나물로 볶는다. 말리면 열에 하나로 준다.',
+      noteEn: 'The leafy tops of the radish. Blanched, they become siraegi — laid under braised fish or stir-fried as greens. Dried, they shrink to a tenth.',
+    }],
     noteKo: '처서 무렵 뿌린다. 솎은 어린 무는 열무처럼 먹는다.',
     noteEn: 'Sow in late August. Eat the thinned young radishes like summer radish greens.',
   },
@@ -543,6 +579,13 @@ export const CROP_DATABASE: CropDef[] = [
       window: [0.15, 0.4], qtyPerCell: [1, 2], mainYieldMult: 1.0, price: 1200, seedOnly: true, inMart: false,
     },
     price: { base: 4000, season: P_CABBAGE, volatility: 0.45 },
+    // 284차 — 겉잎(통에서 다듬어 내는 억센 잎 · 데치면 우거지 — 우거지 코다리조림 · 해장국)
+    byproducts: [{
+      itemId: 'crop_cabbage_outer', nameKo: '배추 겉잎 (우거지감 · 약 300g)', nameEn: 'Outer cabbage leaves (for ugeoji, about 300g)', kind: 'food', at: 'harvest',
+      perUnit: 1, price: 400, holdDays: 4, cookIngredient: 'ugeoji', uses: ['cook', 'sell'],
+      noteKo: '배추를 다듬으며 떼어 낸 바깥 억센 잎. 데치면 우거지 — 생선조림에 얹으면 비린 맛을 잡는다.',
+      noteEn: 'The tough outer leaves trimmed off the head. Blanched, they are ugeoji — laid over braised fish they take the fishiness away.',
+    }],
     noteKo: '입동 무렵 속이 차면 김장. 날씨 따라 값이 몇 배로 뛴다.',
     noteEn: 'When the hearts fill in early November, it is kimchi-making time. Bad weather can multiply the price.',
   },
@@ -563,7 +606,7 @@ export const CROP_DATABASE: CropDef[] = [
     harvest: { itemId: 'crop_garlic', nameKo: '통마늘 (1통 · 약 50g)', nameEn: 'Garlic bulb (one, about 50g)', qtyPerCell: [30, 36], holdDays: 20 },
     interim: {
       itemId: 'crop_garlic_scape', labelKo: '마늘종 한 단 (300g)', labelEn: 'Garlic scapes, a bunch (300g)',
-      window: [0.78, 0.93], qtyPerCell: [1, 2], mainYieldMult: 1.05, price: 2500, inMart: false,
+      window: [0.78, 0.93], qtyPerCell: [1, 2], mainYieldMult: 1.05, price: 2500, inMart: false, cookIngredient: 'namul',   // 284차 — 마늘종볶음
     },
     price: { base: 600, season: P_GARLIC, volatility: 0.2 }, cookIngredient: 'garlic',
     noteKo: '가을에 심어 겨울을 나고 하지에 캔다. 마늘종은 5월 잠깐.',
@@ -593,6 +636,13 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [setOf('taro', [4, 5], 0.85, 150, 2500, '종토란 (1칸 분)', 'Seed taro (one cell)')],
     harvest: { itemId: 'crop_taro', nameKo: '토란 1kg', nameEn: 'Taro 1kg', qtyPerCell: [1, 2], holdDays: 25 },
     price: { base: 6000, season: [1.02, 1.02, 1.02, 1.02, 1.02, 1.02, 0.93, 1.02, 1.21, 0.93, 0.84, 0.93], volatility: 0.15 },
+    // 284차 — 토란대(잎자루 — 조사: 10a 엽병 100~310kg : 덩이 730~1,680kg → 덩이의 14~18%). 옥살산칼슘 — 장갑 · 푹 삶기
+    byproducts: [{
+      itemId: 'crop_taro_stem', nameKo: '토란대 한 묶음 (300g)', nameEn: 'Taro stems, a bunch (300g)', kind: 'food', at: 'harvest',
+      perCell: [0.6, 1.2], price: 1500, holdDays: 5, cookIngredient: 'taro_stem', uses: ['cook', 'sell'],
+      noteKo: '토란 잎자루. 맨손으로 만지면 가렵다 — 장갑을 끼고 껍질을 벗겨 푹 삶는다. 들깨가루에 볶으면 토란대나물.',
+      noteEn: 'The leaf stalks of taro. Bare hands itch — peel them with gloves on and boil them well. Stir-fried with perilla powder, they make taro-stem namul.',
+    }],
     noteKo: '추석 토란국. 잎이 우산만큼 큰 물 좋아하는 덩이.',
     noteEn: 'For Chuseok taro soup. A water-loving tuber with leaves as big as umbrellas.',
   },
@@ -642,8 +692,11 @@ export const CROP_DATABASE: CropDef[] = [
     inMart: false, site: 'plot', growMonths: [3, 4, 5, 6, 10, 11], overwinter: true, water: 'low',
     // 10a 400~500kg → 칸당 약 0.45kg · 압맥(눌린 보리)으로 밑밥에 넣는다
     starts: [seed('barley', [10, 11], 0.85, 150, 300)],
-    harvest: { itemId: 'crop_barley', nameKo: '보리 낟알 500g', nameEn: 'Barley grain 500g', qtyPerCell: [1, 1], holdDays: 15 },
-    price: { base: 1500, season: P_FLAT, volatility: 0.1 },
+    // 284차 — 털어 낸 낟알은 g으로 센다(사용자 「상품성을 지니는 수준을 중량으로」) · 1kg 봉지로 판다 · 보릿짚은 짚 덮기 · 밭에 넣기
+    harvest: { itemId: 'crop_barley', nameKo: '보리 낟알', nameEn: 'Barley grain', qtyPerCell: [400, 500], holdDays: 15, unitG: 1,
+      bags: [{ itemId: 'crop_barley_b1000', nameKo: '보리 한 봉지 (1kg)', nameEn: 'Barley, a bag (1kg)', grams: 1000 }] },
+    price: { base: 3, season: P_FLAT, volatility: 0.1 },
+    byproducts: [residue('res_barley_straw', 'process', [420, 600]), chaff(0.15)],   // 284차 — 보릿짚(수확지수 0.46~0.54) · 까락 · 겨 검불
     noteKo: '가을에 뿌려 겨울을 나고 6월에 벤다. 눌러 압맥을 만들면 밑밥 재료.',
     noteEn: 'Sow in autumn, let it winter over, cut it in June. Rolled barley goes into groundbait.',
   },
@@ -652,8 +705,14 @@ export const CROP_DATABASE: CropDef[] = [
     inMart: true, site: 'plot', growMonths: [6, 7, 8, 9, 10], water: 'low',
     // 10a 200~250kg → 칸당 약 220g · 직접 키운 백태로 콩나물을 앉힐 수 있다
     starts: [seed('soybean', [5, 6], 0.75, 120, 300)],
-    harvest: { itemId: 'crop_soybean', nameKo: '콩 (백태) 200g', nameEn: 'Soybeans 200g', qtyPerCell: [1, 1], holdDays: 20 },
-    price: { base: 1600, season: P_PULSE, volatility: 0.1 },
+    // 284차 — g으로 센다 · 500g · 1kg 봉지로 판다
+    harvest: { itemId: 'crop_soybean', nameKo: '콩 (백태)', nameEn: 'Soybeans', qtyPerCell: [180, 250], holdDays: 20, unitG: 1,
+      bags: [
+        { itemId: 'crop_soybean_b500', nameKo: '콩 한 봉지 (500g)', nameEn: 'Soybeans, a bag (500g)', grams: 500 },
+        { itemId: 'crop_soybean_b1000', nameKo: '콩 한 봉지 (1kg)', nameEn: 'Soybeans, a bag (1kg)', grams: 1000 },
+      ] },
+    price: { base: 8, season: P_PULSE, volatility: 0.1 },
+    byproducts: [residue('res_bean_stalk', 'process', [160, 330]), chaff(0.2)],   // 284차 — 콩대 · 깍지(수확지수 0.38~0.56)
     noteKo: '꼬투리가 누렇게 마르면 거둔다. 콩나물 시루에도 앉힌다.',
     noteEn: 'Harvest when the pods dry yellow. They also go into the sprouting jar.',
   },
@@ -663,8 +722,14 @@ export const CROP_DATABASE: CropDef[] = [
     inMart: true, site: 'plot', growMonths: [6, 7, 8, 9, 10], water: 'mid',
     // 씨용 들깨 — 6월 중순 파종 · 이식(적기 — 너무 이르면 웃자라 쓰러진다) → 10월 초중순 베기. 10a 70~100kg → 칸당 약 100g
     starts: [seed('deulkkae', [6], 0.75, 115, 300), seedling('deulkkae', [6, 7], 4, 95, 200)],
-    harvest: { itemId: 'crop_deulkkae', nameKo: '들깨 (100g)', nameEn: 'Perilla seeds (100g)', qtyPerCell: [1, 1], holdDays: 10 },
-    price: { base: 1800, season: P_PULSE, volatility: 0.12 },
+    // 284차 — 털어 낸 깨는 g으로 센다 · 500g · 1kg 봉지로 판다 · 방앗간에서 들기름(350ml ≈ 950g) · 들깨가루
+    harvest: { itemId: 'crop_deulkkae', nameKo: '들깨', nameEn: 'Perilla seeds', qtyPerCell: [80, 120], holdDays: 10, unitG: 1,
+      bags: [
+        { itemId: 'crop_deulkkae_b500', nameKo: '들깨 한 봉지 (500g)', nameEn: 'Perilla seeds, a bag (500g)', grams: 500 },
+        { itemId: 'crop_deulkkae_b1000', nameKo: '들깨 한 봉지 (1kg)', nameEn: 'Perilla seeds, a bag (1kg)', grams: 1000 },
+      ] },
+    price: { base: 18, season: P_PULSE, volatility: 0.12 },
+    byproducts: [residue('res_sesame_stalk', 'process', [300, 550]), chaff(0.3)],   // 284차 — 들깻대(수확지수 0.15~0.25 추정) · 키질한 검불
     noteKo: '깻잎을 따는 그 들깨 — 씨를 받으려면 6월에 심어 10월에 벤다. 베어 말려 털고 키질해야 들깨가 된다.',
     noteEn: 'The same plant that gives perilla leaves — for seed, plant in June and cut in October. Cut, dry, thresh and winnow before it becomes perilla seed.',
   },
@@ -673,8 +738,14 @@ export const CROP_DATABASE: CropDef[] = [
     inMart: true, site: 'plot', growMonths: [5, 6, 7, 8, 9], water: 'low',
     // 5월 상중순 파종 → 8월 하순~9월 베기(아래 꼬투리가 벌어질 때). 10a 40~60kg → 칸당 약 50g · 습해 · 역병에 약하다
     starts: [seed('chamkkae', [5, 6], 0.7, 100, 300)],
-    harvest: { itemId: 'crop_chamkkae', nameKo: '참깨 (50g)', nameEn: 'Sesame seeds (50g)', qtyPerCell: [1, 1], holdDays: 7 },
-    price: { base: 1800, season: P_PULSE, volatility: 0.12 },
+    // 284차 — g으로 센다 · 300g · 500g 봉지로 판다(작은 텃밭도 한 봉지를 채우게) · 방앗간에서 참기름(350ml ≈ 850g) · 깨소금
+    harvest: { itemId: 'crop_chamkkae', nameKo: '참깨', nameEn: 'Sesame seeds', qtyPerCell: [40, 60], holdDays: 7, unitG: 1,
+      bags: [
+        { itemId: 'crop_chamkkae_b300', nameKo: '참깨 한 봉지 (300g)', nameEn: 'Sesame seeds, a bag (300g)', grams: 300 },
+        { itemId: 'crop_chamkkae_b500', nameKo: '참깨 한 봉지 (500g)', nameEn: 'Sesame seeds, a bag (500g)', grams: 500 },
+      ] },
+    price: { base: 36, season: P_PULSE, volatility: 0.12 },
+    byproducts: [residue('res_sesame_stalk', 'process', [80, 230]), chaff(0.3)],   // 284차 — 참깻대(수확지수 0.18~0.38) · 키질한 검불
     noteKo: '물 빠짐 좋은 밭에서 기른다 — 장마에 물이 고이면 역병으로 쓰러진다. 베어 세워 말린 뒤 거꾸로 들고 턴다.',
     noteEn: 'Grow it in free-draining ground — water pooling in the monsoon brings blight. Cut, stand to dry, then hold upside down and shake out the seed.',
   },
@@ -688,6 +759,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seed('gondre', [3, 4], 0.55, 90, 400), seedling('gondre', [4, 5, 9], 6, 40, 600)],
     harvest: { itemId: 'crop_gondre', nameKo: '곤드레 한 묶음 (200g)', nameEn: 'Gondre, a bundle (200g)', qtyPerCell: [2, 3], repeat: { everyDays: 20, times: 2 }, holdDays: 10 },
     price: { base: 2500, season: P_WILD, volatility: 0.12 },
+    cookIngredient: 'namul',   // 284차 — 데쳐서 나물 볶음
     noteKo: '고려엉겅퀴 잎. 데쳐 들기름에 버무려 지은 곤드레밥이 정선의 맛이다.',
     noteEn: 'Korean thistle leaves. Blanched and tossed in perilla oil, they make gondre rice, the taste of Jeongseon.',
   },
@@ -815,6 +887,7 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [setOf('lions_mane', ALL, 0.9, 40, 7000, '노루궁뎅이 배지 (1kg)', 'Lion\'s mane block (1kg)')],
     harvest: { itemId: 'crop_lions_mane', nameKo: '노루궁뎅이 한 송이 (200g)', nameEn: 'Lion\'s mane, one head (200g)', qtyPerCell: [1, 2], repeat: { everyDays: 20, times: 1 }, holdDays: 2, bonusSteps: 3 },
     price: { base: 5000, season: P_SHIITAKE, volatility: 0.1 }, rebalance: 0.85,
+    byproducts: [residue('res_spent_substrate', 'harvest', [650, 850], { onEnd: true })],   // 284차 — 다 거둔 배지(1kg)
     noteKo: '흰 털이 늘어진 공 모양 버섯. 습도를 높게 지켜야 돋는다 — 전복 · 관자 버터구이에 곁들인다.',
     noteEn: 'A ball of hanging white spines that only fruits in steady high humidity. Serve it with abalone or scallops seared in butter.',
   },
@@ -826,6 +899,7 @@ export const CROP_DATABASE: CropDef[] = [
     harvest: { itemId: 'crop_wood_ear', nameKo: '생목이 (1개)', nameEn: 'Fresh wood ear (one)', qtyPerCell: [20, 30], repeat: { everyDays: 15, times: 2 }, holdDays: 3, bonusSteps: 3,
       pack: { itemId: 'crop_wood_ear_pack', nameKo: '생목이 한 팩 (150g)', nameEn: 'Fresh wood ear, a pack (150g)', units: 10 } },
     price: { base: 150, season: P_SHIITAKE, volatility: 0.1 },
+    byproducts: [residue('res_spent_substrate', 'harvest', [800, 1100], { onEnd: true })],   // 284차 — 다 거둔 배지(한 봉)
     noteKo: '국산 생목이는 귀하다. 탱글한 식감을 해파리냉채 · 해물볶음에.',
     noteEn: 'Fresh domestic wood ear is hard to find. Its bouncy bite suits jellyfish salad and seafood stir-fries.',
   },
@@ -1141,6 +1215,8 @@ for (const c of CROP_DATABASE) {
   if (c.harvest.ripenTo) PRODUCE_BASE_IDS.set(c.harvest.ripenTo.itemId, c);
   if (c.interim) PRODUCE_BASE_IDS.set(c.interim.itemId, c);
   if (c.harvest.pack) PRODUCE_BASE_IDS.set(c.harvest.pack.itemId, c);   // 243차 — 포장한 팩
+  for (const b of c.harvest.bags ?? []) PRODUCE_BASE_IDS.set(b.itemId, c);   // 284차 — 낱알 봉지
+  for (const b of c.byproducts ?? []) if (b.kind === 'food') PRODUCE_BASE_IDS.set(b.itemId, c);   // 284차 — 먹는 부산물
 }
 
 /** 수확물 아이템(등급 꼬리 포함) → 작물(본 수확 · 붉어진 것 · 중간 수확 · 243차 팩 모두) */
@@ -1187,6 +1263,66 @@ export function legacyPackItemId(itemId: string, savedName: string | undefined):
 /** 텃밭에서 거둔 것인가(등급 꼬리 포함) */
 export function isFarmProduce(itemId: string): boolean {
   return !!cropOfProduce(itemId);
+}
+
+// ─────────────────────────────────────────────
+// 284차 — 무게 수확물(낱알 g) · 봉지
+// ─────────────────────────────────────────────
+
+/** 284차 — 곡물 봉투(생활용품점 · 낱개로 산다). 「봉지 담기」 한 번에 하나 든다 */
+export const FARM_BAG_CONTAINER = 'farm_grain_bag';
+
+/** 284차 — g으로 세는 수확물인가(등급 꼬리 포함 · 낱알만 — 봉지는 아니다). 한 단위의 g(없으면 null) */
+export function produceUnitG(itemId: string): number | null {
+  const c = cropOfProduce(itemId);
+  if (!c?.harvest.unitG) return null;
+  return parseProduceId(itemId).baseId === c.harvest.itemId ? c.harvest.unitG : null;
+}
+
+/** 284차 — 낱알(등급 꼬리 포함) → 담을 수 있는 봉지들(같은 등급 id). 무게 수확물이 아니면 빈 배열 */
+export function bagsOfLoose(itemId: string): { crop: CropDef; bag: CropBag; bagItemId: string; grade: CropGrade }[] {
+  const c = cropOfProduce(itemId);
+  const { baseId, grade } = parseProduceId(itemId);
+  if (!c?.harvest.bags || baseId !== c.harvest.itemId) return [];
+  return c.harvest.bags.map((bag) => ({ crop: c, bag, bagItemId: produceItemId(bag.itemId, grade), grade }));
+}
+
+/** 284차 — 봉지(등급 꼬리 포함) → 뜯으면 나오는 낱알 id(같은 등급) · g. 봉지가 아니면 null */
+export function looseOfBag(itemId: string): { crop: CropDef; bag: CropBag; looseItemId: string; grams: number; grade: CropGrade } | null {
+  const c = cropOfProduce(itemId);
+  const { baseId, grade } = parseProduceId(itemId);
+  const bag = c?.harvest.bags?.find((b) => b.itemId === baseId);
+  if (!c || !bag) return null;
+  return { crop: c, bag, looseItemId: produceItemId(c.harvest.itemId, grade), grams: bag.grams, grade };
+}
+
+/** 284차 — 봉지인가(등급 꼬리 포함) */
+export function isProduceBag(itemId: string): boolean {
+  return !!looseOfBag(itemId);
+}
+
+/**
+ * 284차 — 구세이브 이전: 283차까지 단위로 센 낱알(「들깨 (100g)」 1개 = 100g)을 g으로 바꾼다.
+ * 저장된 이름이 옛 단위 이름으로 시작하면 그 배수를 돌려준다(이름이 바뀌어 두 번 곱하지 않는다).
+ */
+const LEGACY_UNIT_NAMES: Record<string, { nameKo: string; grams: number }> = {
+  crop_deulkkae: { nameKo: '들깨 (100g)', grams: 100 },
+  crop_chamkkae: { nameKo: '참깨 (50g)', grams: 50 },
+  crop_soybean: { nameKo: '콩 (백태) 200g', grams: 200 },
+  crop_barley: { nameKo: '보리 낟알 500g', grams: 500 },
+};
+export function legacyUnitGrams(itemId: string, savedName: string | undefined): number | null {
+  if (!savedName) return null;
+  const old = LEGACY_UNIT_NAMES[parseProduceId(itemId).baseId];
+  return old && savedName.startsWith(old.nameKo) ? old.grams : null;
+}
+
+/** 284차 — 먹는 부산물인가(등급 꼬리 포함) → 그 정의 · 작물 */
+export function byproductOf(itemId: string): { crop: CropDef; def: CropByproduct } | null {
+  const c = cropOfProduce(itemId);
+  const base = parseProduceId(itemId).baseId;
+  const def = c?.byproducts?.find((b) => b.itemId === base || b.itemId === itemId);
+  return c && def ? { crop: c, def } : null;
 }
 
 // ─────────────────────────────────────────────
@@ -1268,6 +1404,10 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
   { itemId: 'farm_pack_tray', nameKo: '농산물 포장 용기', nameEn: 'Produce clamshell', price: 100, kind: 'consumable', icon: 'it_pack_tray', buyMax: 50,
     descKo: '뚜껑 달린 투명 용기. 낱개로 거둔 딸기 · 방울토마토 · 블루베리 · 버섯 · 새싹채소를 가방에서 「포장하기」로 한 팩씩 담는다. 팩은 제값을 받는다.',
     descEn: 'A clear lidded tub. Use "Pack" in your bag to put loose strawberries, cherry tomatoes, blueberries, mushrooms or microgreens into packs. Packs fetch the full price.' },
+  // ── 284차 — 낱알 봉지(사용자 「상품성을 지니는 수준을 중량으로 — 몇 백 그람 단위로」) · 지퍼 곡물 봉투 낱개 100원 안팎
+  { itemId: 'farm_grain_bag', nameKo: '곡물 봉투', nameEn: 'Grain bag', price: 100, kind: 'consumable', icon: 'it_breadpack', buyMax: 50,
+    descKo: '지퍼 달린 곡물 봉투. 털어 둔 깨 · 콩 · 보리를 가방에서 「봉지 담기」로 300g · 500g · 1kg씩 담는다. 낱알은 가게가 사지 않는다 — 봉지째 판다.',
+    descEn: 'A zip-top grain bag. Use "Bag" in your bag to fill threshed sesame, perilla, beans or barley into 300g, 500g or 1kg bags. Shops won\'t buy loose grain — sell it bagged.' },
   // ── 241차 — 스테비아 농법(스테비아 토마토) · 1L 1.5만 → 1칸 한 번 분 1,200원
   { itemId: 'farm_stevia', nameKo: '스테비아 발효액 (1칸 한 번 분)', nameEn: 'Stevia ferment (one application)', price: 1200, kind: 'consumable', shop: 'nursery', icon: 'it_stevia',
     descKo: '스테비아 잎을 삭힌 액. 포기 둘레 흙에 붓고 잎에 뿌리면 토마토가 달아진다 — 스테비아 토마토 모종에만 쓴다.', descEn: 'Fermented stevia leaf. Poured round the plant and misted on the leaves it sweetens the fruit — only for stevia tomato plants.' },

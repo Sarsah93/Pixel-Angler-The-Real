@@ -12,7 +12,7 @@
  * 출력: `packages/client-pc/public/crops/<id>.png`(초상 · 셀 6px · 긴 변 ≈ 1,152px) · `<id>_icon.png`(64px · 면적 평균) ·
  *       `packages/client-pc/src/data/CropPortraits.ts`(있는 초상 목록 — BootScene이 읽는다).
  *
- *   node tools/pixelize_crops.cjs [--only crop_peanut] [--in "food assets/crops"] [--out packages/client-pc/public/crops] [--style auto|pixelart|asis|photo|kuwahara]
+ *   node tools/pixelize_crops.cjs [--only crop_peanut[,crop_b…]] [--in "food assets/crops"] [--out packages/client-pc/public/crops] [--style auto|pixelart|asis|photo|kuwahara]
  *   손잡이(기본값은 DEFAULTS — 2026-10-13 딸기 · 상추 9종 · 바칸 · 곽크릴 참고본 쌍으로 보정): --levels --phi --bilateral --sigr --dog --edge
  *   --sat --contrast --colors(0 = 팔레트 안 줄임) --unsharp --detail --detailStep --outline --outlineDark --cells --cell --tol --close
  *
@@ -459,7 +459,7 @@ async function main() {
   const IN = P.in, OUT = P.out;
   if (!fs.existsSync(IN)) { console.error('입력 폴더가 없다:', IN); process.exit(1); }
   fs.mkdirSync(OUT, { recursive: true });
-  const pick = (dir) => fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).filter((f) => !P.only || path.parse(f).name === P.only).map((f) => path.join(dir, f)) : [];
+  const pick = (dir) => fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).filter((f) => !P.only || P.only.split(',').includes(path.parse(f).name)).map((f) => path.join(dir, f)) : [];
   // 같은 id가 사진과 asis/ 양쪽에 있으면 asis(사용자 변환본)가 이긴다 — 사진은 참고 · 보정용으로 남겨 둔다
   const asisFiles = pick(path.join(IN, 'asis')).map((f) => ({ f, style: 'asis' })); const asisIds = new Set(asisFiles.map((x) => path.parse(x.f).name));
   const photoFiles = pick(IN).filter((f) => !asisIds.has(path.parse(f).name) || (console.log(`${path.parse(f).name}: asis/ 변환본이 있어 사진은 건너뛴다`), false)).map((f) => ({ f, style: P.style }));
@@ -486,7 +486,7 @@ async function main() {
   }
   // 목록 TS — BootScene이 읽는다(기본 출력 폴더일 때만 — 시험용 --out 폴더로 돌릴 때 목록을 덮지 않는다)
   if (path.resolve(OUT) !== path.resolve('packages/client-pc/public/crops')) { console.log('시험 출력 폴더 — CropPortraits.ts는 건드리지 않는다'); return; }
-  const have = fs.readdirSync(OUT).filter((f) => /^crop_[a-z_]+\.png$/.test(f) && !f.endsWith('_icon.png') && !f.endsWith('_card.png')).map((f) => f.slice(0, -4)).sort();
+  const have = fs.readdirSync(OUT).filter((f) => /^crop_[a-z0-9_]+\.png$/.test(f) && !f.endsWith('_icon.png') && !f.endsWith('_card.png')).map((f) => f.slice(0, -4)).sort();
   const ts = `/**\n * @file CropPortraits.ts\n * @description 241차 — 작물 초상이 있는 수확물 기본 id 목록(자동 생성 — \`node tools/pixelize_crops.cjs\`).\n *  BootScene이 \`crops/<id>_card.png\`(상세 창 카드 · 244차) · \`crops/<id>_icon.png\`(64px 아이콘)를 \`cropimg_<id>\` · \`cropicon_<id>\`로 싣는다.\n *  \`crops/<id>.png\`(셀 6px 원본)는 위키 그림 재료다 — 게임은 싣지 않는다.\n *  목록에 없는 작물은 16px 손그림 픽셀 아이콘(\`px:<id>\`)을 그대로 쓴다. 손으로 고치지 말 것.\n */\nexport const CROP_PORTRAITS: readonly string[] = [\n${have.map((x) => `  '${x}',`).join('\n')}\n];\n`;
   fs.writeFileSync('packages/client-pc/src/data/CropPortraits.ts', ts);
   console.log(`초상 ${have.length}장 → CropPortraits.ts`);

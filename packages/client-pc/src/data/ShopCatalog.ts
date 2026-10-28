@@ -12,13 +12,14 @@ import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { reelArtKey, rodArtKey } from './TackleTextures.js';
 import { COOK_CORNER } from './CookItems.js';
 import { dailyFarmEntries, nurseryFarmEntries, PRODUCE_SUB } from './CropItems.js';
-import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId } from '@tra/core';
+import { millShopEntries } from './MillItems.js';
+import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId, produceUnitG, oilBottleDef } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
 
 /** 건물(상점) 종류 */
 export type BuildingKind =
-  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery';
+  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery' | 'mill';
 
 export const BUILDING_LABEL: Record<BuildingKind, string> = {
   convenience: '편의점',
@@ -30,6 +31,7 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   pharmacy: '약국',
   daily: '생활용품점',
   nursery: '종묘사',   // 238차 — 모종 · 씨앗 · 농자재 · 농약
+  mill: '방앗간',      // 284차 — 참기름 · 들기름 짜기 · 들깨 갈기 · 참깨 볶기
 };
 
 /**
@@ -41,6 +43,7 @@ export const BUILDING_GOODS: Record<BuildingKind, string> = {
   mart: '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러',
   daily: '낚싯대 · 릴 · 원줄 · 손도구 · 가구',
   nursery: '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약',
+  mill: '기름 짜기 · 들깨 갈기 · 참깨 볶기 · 곡물 봉투',
   convenience: '간식 · 생수 · 각얼음 · 상비약',
   pharmacy: '붕대 · 구급품 · 약',
   restaurant: '식사 · 매운탕 · 회',
@@ -63,6 +66,7 @@ export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
   mart: { open: 10, close: 22 },
   daily: { open: 10, close: 22 },
   nursery: { open: 8, close: 19 },   // 238차 — 종묘사는 아침 일찍 열고 저녁에 닫는다
+  mill: { open: 8, close: 19 },      // 284차 — 방앗간도 아침 일찍 연다(새벽 떡 · 기름 짜기)
   pharmacy: { open: 10, close: 22 },
   restaurant: { open: 10, close: 22 },
   cafe: { open: 10, close: 22 },
@@ -613,6 +617,19 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     ],
     buysCategories: [],
   },
+  /**
+   * 방앗간(284차 — 사용자 「방앗간 가게로 하고 병은 180ml · 350ml 두 가지로」) — 곡물 봉투 · 덜어 파는 들기름 · 들깨가루 · 깨소금.
+   * 기름 짜기 · 들깨 갈기 · 참깨 볶기는 가게 안 압착기([F])에서 맡긴다(`ui/MillPanel` · `store/MillQueue`). 병은 팔지 않는다.
+   */
+  mill: {
+    kind: 'mill',
+    name: '설악기름방앗간',
+    greeting: '깨 털어 오셨어요? 볶아서 바로 짜 드려요.',
+    sells: [
+      ...millShopEntries(),
+    ],
+    buysCategories: [],
+  },
   pub: {
     kind: 'pub',
     name: '포구 주점',
@@ -674,7 +691,10 @@ export function shopBuysItem(
   i: Pick<InvItemTemplate, 'id' | 'category' | 'speciesId' | 'dish' | 'dishInstance' | 'sashimi' | 'byproductKind' | 'subCategory' | 'catchMethod'>,
 ): boolean {
   // 235차 — 텃밭 농산물은 식자재마트 · 식당만 산다(직판장은 수산물 가게다)
-  if (i.subCategory === PRODUCE_SUB) return !!def.buysProduce;
+  //  284차 — 털어 낸 낱알(g)은 사지 않는다(봉지에 담아 판다 — 사용자 「상품성을 지니는 수준을 중량으로」)
+  if (i.subCategory === PRODUCE_SUB) return !!def.buysProduce && !produceUnitG(i.id);
+  // 284차 — 방앗간에서 짠 기름병(따지 않은 것)도 농산물처럼 산다. 병은 가게가 팔지 않으니 되파는 길이 없다
+  if (oilBottleDef(i.id)) return !!def.buysProduce;
   if (!def.buysCategories.includes(i.category)) return false;
   if (i.category === 'gear') return true;
   if (i.category === 'food') {

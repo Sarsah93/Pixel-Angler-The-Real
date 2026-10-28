@@ -12,7 +12,8 @@ import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { LINE_DATABASE } from '@tra/core';
 import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
 import { CROP_ITEM_TEMPLATES, PRODUCE_SUB, EARTHWORM_TEMPLATE, EARTHWORM_DESC } from './CropItems.js';
-import { cropOfProduce } from '@tra/core';
+import { cropOfProduce, byproductOf, farmResidueDef, parseProduceId, oilBottleDef } from '@tra/core';
+import { MILL_ITEM_TEMPLATES } from './MillItems.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { SHOP_CATALOG, BUILDING_LABEL, NPC_SHOP_EXTRAS, NPC_SHOP_LABEL } from './ShopCatalog.js';
 
@@ -110,11 +111,26 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
   for (const t of CROP_ITEM_TEMPLATES) {
     if (map.has(t.id)) continue;
     const crop = t.subCategory === PRODUCE_SUB ? cropOfProduce(t.id) : undefined;
+    // 284차 — 먹는 부산물(무청 · 토란대 …)은 그 부산물 메모 · 밭 부산물(깻대 · 깻묵 …)은 밭 부산물 메모
+    const bp = byproductOf(parseProduceId(t.id).baseId);
+    const desc = bp?.def.noteKo ?? farmResidueDef(t.id)?.noteKo ?? crop?.noteKo ?? '';
     map.set(t.id, {
       id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
       category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
-      desc: crop?.noteKo ?? '', soldAt: [], isSeed: false,
+      desc, soldAt: [], isSeed: false,
       tpl: { ...t },
+    });
+  }
+
+  // 4b-2) 284차 — 방앗간에서 짜 오는 기름병(가게가 팔지 않는다 — 깨를 맡겨야 생긴다)
+  for (const t of MILL_ITEM_TEMPLATES) {
+    if (map.has(t.id)) continue;
+    const def = oilBottleDef(t.id);
+    map.set(t.id, {
+      id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
+      category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
+      desc: def ? `방앗간에 깨를 맡겨 짜 온다 — 「병 따기」로 1큰술 ${def.spoons}개가 된다. 따지 않은 병은 식자재마트 · 식당이 산다.` : '',
+      soldAt: [], isSeed: false, tpl: { ...t },
     });
   }
 

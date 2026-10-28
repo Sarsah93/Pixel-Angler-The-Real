@@ -43,6 +43,13 @@ export const COOK_INGREDIENTS: CookIngredientDef[] = [
   I('chili_green', '청양고추', 'Green chili', 'finish', 'ea', 8, 70, 80, 225),
   I('chili_red', '홍고추', 'Red chili', 'finish', 'ea', 8, 70, 80, 225),
   I('lemon', '레몬', 'Lemon', 'finish', 'ea', 30, 70, 60, 180),
+  // 284차 — 텃밭 부산물 · 나물(데친 한 묶음 = 1). 생선조림 바닥 · 나물 볶음의 주재료(조사: 시래기 고등어조림 · 우거지 코다리조림 ·
+  //  갈치 고구마줄기조림 · 토란대 들깨나물). 토란대는 질겨 오래 익힌다
+  I('siraegi', '시래기', 'Siraegi (radish greens)', 'veg', 'ea', 400, 70, 420, 205),
+  I('ugeoji', '우거지', 'Ugeoji (outer cabbage)', 'veg', 'ea', 300, 70, 360, 205),
+  I('sweetpotato_stem', '고구마줄기', 'Sweet potato stems', 'veg', 'ea', 300, 70, 300, 205),
+  I('taro_stem', '토란대', 'Taro stems', 'veg', 'ea', 300, 75, 540, 205),
+  I('namul', '나물', 'Greens (namul)', 'veg', 'ea', 200, 70, 240, 205),
   // ── 양념 (spoon = 1큰술 = 정량 1) ──
   I('salt', '소금', 'Salt', 'season', 'spoon', 15, 0, 1, 999, { saltGPerUnit: 15 }),
   I('soy', '국간장', 'Soup soy sauce', 'season', 'spoon', 15, 0, 1, 999, { saltGPerUnit: 2.4 }),
@@ -56,6 +63,10 @@ export const COOK_INGREDIENTS: CookIngredientDef[] = [
   I('pepper', '후추', 'Black pepper', 'season', 'spoon', 2, 0, 1, 999),
   I('sesame_oil', '참기름', 'Sesame oil', 'oil', 'spoon', 12, 0, 1, 999),
   I('cooking_oil', '식용유', 'Cooking oil', 'oil', 'spoon', 12, 0, 1, 999),
+  // 284차 — 방앗간에서 짜고 · 갈고 · 볶은 것(나물 볶음의 기름 · 고소한 맛). 익지 않는 재료(cookSec 1)
+  I('perilla_oil', '들기름', 'Perilla oil', 'oil', 'spoon', 12, 0, 1, 999),
+  I('perilla_powder', '들깨가루', 'Perilla powder', 'season', 'spoon', 7, 0, 1, 999),
+  I('sesame_salt', '깨소금', 'Sesame salt', 'season', 'spoon', 8, 0, 1, 999, { saltGPerUnit: 0.4 }),
   // ── 물 · 곡물 ──
   I('water', '물', 'Water', 'liquid', 'cup', 200, 0, 1, 999, { waterMlPerUnit: 200 }),
   I('rice', '쌀', 'Rice', 'grain', 'cup', 160, 80, 1200, 215),

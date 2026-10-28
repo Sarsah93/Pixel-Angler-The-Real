@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-27 283차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-28 284차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-27 283차) — 일지 초상을 그림 얼굴로 · 목표 옆 진행 레일 · main 반영 · 92차 배포**
+**최근 변경 (2026-10-28 284차) — 작물 부산물 전수 · 낱알 무게(g) · 봉지 · 방앗간(180 · 350ml) · 나물 볶음**
+
+- 사용자 「방앗간 가게로 하고 병은 180ml · 350ml … 현재 구현된 모든 작물들 기준으로 쓰임새가 있는 부산물들 전체적으로 다 찾고 … 반영하자」 →
+  86종 조사 · 부산물 16줄(먹는 것 무청 · 겉잎 · 토란대 · 깻순 + 중간 수확 나물을 요리 재료로 · 밭 부산물 7은 퇴비 대신 밭에).
+- 깨 · 콩 · 보리는 g(`InvItem.unitG` · `ui/QtyLabel`) · 가게는 봉지 7종만 산다 · 옛 묶음 → g.
+- 속초 「설악기름방앗간」(core `rules/OilMill.ts` · `MillPanel`): 180 · 350ml · 공임 4,000원/kg · 60분 · 들깨 갈기 · 깻묵 · 나물 볶음(레시피 10).
+- 검증: core 시험 378 · 하네스 17 · 11 · 4 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. main · 배포는 사용자 지시 뒤.
+  상세: [284차 워크로그](../docs/wiki/03-WORKLOG/2026-10-28-284-byproducts-grain-weight-oil-mill.md).
+
+**이전 변경 (2026-10-27 283차) — 일지 초상을 그림 얼굴로 · 목표 옆 진행 레일 · main 반영 · 92차 배포**
 
 - 사용자 실검증 「일지에서는 … 일러스트 변경이 적용되지 않았네」 → 스스로 정한 할 일(「막차」)은 의뢰인이 `''`라
   `q.giver ?? 'player'`가 빈 글자를 넘겨 그림 얼굴을 건너뛰었다 → `q.giver || 'player'`(일지 두 곳 · 혼잣말 · 대화창은 원래 정상).
@@ -337,14 +346,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - main 빨리 감기(`b5e6086`) · **91차 배포**(실행 20 · gh-pages `eadbeaf` · 기동 9.4초 · pageerror 0).
 - (2) 위키 채소 그림 복구 — 272차부터 그림 목록에서 작물 키 100개 누락(게임 무관) → 위키 Version 78 · 생성기 보호 · 그림 없는 아이템 경고.
 - 검증: 하네스 21/21 · 8/8 · pageerror 0 · core 시험 350 · 빌드 3/3 · typecheck 0. 상세: [282차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-282-gear-lure-instances.md).
-
-**이전 변경 (2026-10-27 281차) — 줄 세기 호수 기준 하나로 · main 반영 · 90차 배포 · 하모니 v2(제품 점검)**
-
-- 사용자 「n호수로 하고, lb까지 표시 … 너가 결정해줘」 → core `rules/LineStrength.ts` 한 표(모노 1.8kg ≈ 4lb/호 · 합사 9kg ≈ 20lb/호 · 판정 값 그대로).
-  상세 창 「인장 강도 12lb (5.4kg)」 · 줄 제원표 lb를 같은 표에서 · 아이템 `lineStrengthLb`는 읽지 않음.
-- main 빨리 감기(`f400f33`) · **90차 배포**(실행 19 · gh-pages `c31bc79` · 기동 10.3초 · pageerror 0).
-- 하모니 v2(사용자 「git 히스토리 관리 정도」 지적): 제품 갈래 6 + 기본 · 문서 · 요일 순환 · 시나리오를 실제로 돌림 · 버그 패턴 44 · 예산 4% · 결함 PR 허용(`harmony-state`).
-- 검증: 하네스(상세 창 · 하네스 본) pageerror 0 · core 시험 345 · 빌드 3/3 · typecheck 0. 상세: [281차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-281-line-strength-ho-deploy90-harmony-v2.md).
 
 ---
 

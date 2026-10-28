@@ -709,7 +709,11 @@ export function harvestCell(cell: FarmCellState, rand01: () => number, skills: H
   const offsetStart = prop?.by === 'offset' ? crop.starts.find((s) => s.kind !== 'seed') ?? crop.starts[0] : undefined;
   const offsets = offsetStart && prop
     ? { itemId: offsetStart.itemId, qty: prop.qty[0] + Math.floor(rand01() * (prop.qty[1] - prop.qty[0] + 1)) } : undefined;
+  // 284차 — 거둘 때 함께 나오는 부산물(무청 · 배추 겉잎 · 토란대 · 옥수숫대 …) — 칸이 비기 전에(섬을 쓴다).
+  //  버섯 폐배지처럼 칸이 끝날 때만 나오는 것은 이번이 마지막 수확인지 먼저 본다
   const rep = crop.harvest.repeat;
+  const ends = frosted || !(rep && cell.picks + 1 <= rep.times) && !crop.perennial;
+  const byproducts = rollByproducts(crop, cell.stand, qty, 'harvest', rand01, { ends });
   cell.picks += 1;
   let more = false;
   if (frosted) {
@@ -725,7 +729,30 @@ export function harvestCell(cell: FarmCellState, rand01: () => number, skills: H
     itemId, qty, grade, quality, ...(seedBack ? { seedBack } : {}), more, ...(bonusQty > 0 ? { bonusQty, bonusPct } : {}),
     careMult, diseaseMult, ...(turning ? { turning } : {}), ...(frosted ? { frosted } : {}),
     ...(offsets && offsets.qty > 0 ? { offsets } : {}),
+    ...(byproducts.length ? { byproducts } : {}),
   };
+}
+
+/**
+ * 284차 — 부산물 굴림(사용자 「한 줄기를 털었을 때 얼마나 나오는지를 비중으로」).
+ * 칸당 [최소, 최대] × 섬(`perCell` — 줄기 · 짚 · 깍지 무게) + 본 수확물 한 단위당(`perUnit` — 무 1개에 무청 한 묶음).
+ * 남는 몫은 그 확률로 하나 더 준다(기대값이 정확히 맞는다). 키질로 갈라낸 검불은 키질했을 때만.
+ */
+export function rollByproducts(
+  crop: CropDef, stand: number, mainQty: number, at: 'harvest' | 'process', rand01: () => number, opts: { winnowed?: boolean; ends?: boolean } = {},
+): { itemId: string; qty: number }[] {
+  const out: { itemId: string; qty: number }[] = [];
+  for (const b of crop.byproducts ?? []) {
+    if (b.at !== at) continue;
+    if (b.winnowedOnly && !opts.winnowed) continue;
+    if (b.onEnd && opts.ends === false) continue;
+    let e = 0;
+    if (b.perCell) e += (b.perCell[0] + (b.perCell[1] - b.perCell[0]) * rand01()) * Math.max(0, stand);
+    if (b.perUnit) e += Math.max(0, mainQty) * b.perUnit;
+    const q = Math.floor(e) + (rand01() < e - Math.floor(e) ? 1 : 0);
+    if (q > 0) out.push({ itemId: b.itemId, qty: q });
+  }
+  return out;
 }
 
 // ─────────────────────────────────────────────
@@ -772,8 +799,14 @@ export function finishFieldProcess(
   const shatter = over > 0 ? Math.max(T.shatterFloor, 1 - T.shatterDaily * over) : 1;
   const winnowQ = def.winnow ? (opts.winnowed ? T.winnowQuality : -T.winnowQuality) : 0;
   const rainLoss = cell.process.rainH * T.dryRainLoss;
+  const stand = cell.stand;
   const r = harvestCell(cell, rand01, { ...skills, yieldMult: (skills.yieldMult ?? 1) * shatter, qualityBonus: (skills.qualityBonus ?? 0) + winnowQ });
-  if (r) r.processNote = { ...(def.winnow ? { winnowed: opts.winnowed } : {}), rainLoss, shatterLoss: 1 - shatter };
+  if (r) {
+    r.processNote = { ...(def.winnow ? { winnowed: opts.winnowed } : {}), rainLoss, shatterLoss: 1 - shatter };
+    // 284차 — 털고 남는 것(깻대 · 콩대 · 보릿짚 · 키질한 검불) — 쏟아진 알과 상관없이 줄기는 그대로다
+    const extra = rollByproducts(crop, stand, r.qty, 'process', rand01, { winnowed: opts.winnowed && !!def.winnow });
+    if (extra.length) r.byproducts = [...(r.byproducts ?? []), ...extra];
+  }
   return r;
 }
 
@@ -894,6 +927,7 @@ export function producePrice(itemId: string, nowMs: number, grade?: CropGrade): 
   const parsed = parseProduceId(itemId);
   const pack = crop.harvest.pack;
   const id = crop.harvest.itemId === itemId || crop.harvest.ripenTo?.itemId === itemId || crop.interim?.itemId === itemId || pack?.itemId === itemId
+    || crop.harvest.bags?.some((b) => b.itemId === itemId) || crop.byproducts?.some((b) => b.itemId === itemId)
     ? itemId : parsed.baseId;
   grade = grade ?? (id === itemId ? 'good' : parsed.grade);
   const base = producePriceBase(crop, id);
@@ -909,6 +943,11 @@ export function producePrice(itemId: string, nowMs: number, grade?: CropGrade): 
 export function producePriceBase(crop: CropDef, baseId: string): number {
   const pack = crop.harvest.pack;
   if (pack && baseId === pack.itemId) return crop.price.base * pack.units;
+  // 284차 — 낱알 봉지 = g 기준가 × g(제값) · 먹는 부산물 = 그 값
+  const bag = crop.harvest.bags?.find((b) => b.itemId === baseId);
+  if (bag) return crop.price.base * (bag.grams / (crop.harvest.unitG ?? 1));
+  const bp = crop.byproducts?.find((b) => b.itemId === baseId);
+  if (bp) return bp.price;
   if (baseId === crop.harvest.itemId) return crop.price.base * (pack ? FARM_TUNING.looseSellMult : 1);
   if (baseId === crop.harvest.ripenTo?.itemId) return crop.harvest.ripenTo.price;
   return crop.interim?.price ?? crop.price.base;

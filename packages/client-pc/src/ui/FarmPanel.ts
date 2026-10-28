@@ -33,14 +33,15 @@ import { addPixelIcon } from './PixelIcon.js';
 import { createItemIcon } from './ItemIcon.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
-import { FarmStore, INDOOR_PLOT, HOMI_ID, COMPOST_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow } from '../store/FarmStore.js';
+import { FarmStore, INDOOR_PLOT, HOMI_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow } from '../store/FarmStore.js';
 import { careTaskIcon } from './FarmWorkPanel.js';
 import { openCareTask, openProcess, openTray, type FarmActionHost } from './FarmActions.js';
 import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
-import { startItemName } from '../data/CropItems.js';
+import { startItemName, cropItemTemplate } from '../data/CropItems.js';
 import { t, getLocale } from '../i18n/I18n.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { qtyWord } from './QtyLabel.js';
 
 const PANEL_W = 780;
 /** 238차 — 관리 작업 줄(단계 · 병 · 할 일)이 붙어 조금 높다 · 247차 이 칸 물 주기 줄 */
@@ -170,7 +171,7 @@ export class FarmPanel extends DraggablePanel {
     if (!r.ok) playSfx('deny');
     if (r.ok) {
       this.opts.onChanged?.();
-      for (const h of r.harvested ?? []) this.opts.log?.(`[텃밭] ${h.name} ×${h.qty}`);
+      for (const h of r.harvested ?? []) this.opts.log?.(`[텃밭] ${h.name} ${qtyWord({ unitG: cropItemTemplate(h.itemId)?.unitG }, h.qty, '×')}`);
     }
     this.render();
     restoreHandCursor(this.scene);
@@ -478,7 +479,7 @@ export class FarmPanel extends DraggablePanel {
     y += 6;
     const buttons: { key: string; label: string; on: boolean; run: () => void; why?: string }[] = [];
     if (!c.tilled) buttons.push({ key: 'till', label: '일구기', on: !!InventoryStore.find(HOMI_ID), run: () => { const r = FarmStore.till(this.opts.plotId, this.sel); if (r.ok) { this.did.till++; playSfx('farm_till'); } this.after(r); } });
-    if (c.tilled && !c.compost && !this.indoor) buttons.push({ key: 'compost', label: '퇴비 넣기', on: !!InventoryStore.find(COMPOST_ID), run: () => { const r = FarmStore.compost(this.opts.plotId, this.sel); if (r.ok) playSfx('farm_fertilize'); this.after(r); } });
+    if (c.tilled && !c.compost && !this.indoor) buttons.push({ key: 'compost', label: '퇴비 넣기', on: !!FarmStore.compostSource(), run: () => { const r = FarmStore.compost(this.opts.plotId, this.sel); if (r.ok) playSfx('farm_fertilize'); this.after(r); } });
     if (c.tilled && !c.cropId) buttons.push({ key: 'plant', label: '심기', on: true, run: () => { this.mode = 'plant'; this.scroll = 0; this.render(); } });
     // 247차 — 거두는 손에 따라 이름(따기 · 베기 · 캐기 · 뽑기 · 털기 · 모종 꺼내기)
     const hl = FarmStore.harvestLabel(this.opts.plotId, this.sel);
@@ -653,7 +654,7 @@ export class FarmPanel extends DraggablePanel {
       g.fillStyle(chk.ok ? 0x10283a : 0x141c26, 0.95); g.fillRoundedRect(PANE_X, ry, PANE_W, ROW_H - 4, 4);
       this.content.add(g);
       this.content.add(createItemIcon(scene, PANE_X + 18, ry + (ROW_H - 4) / 2, it, 24));
-      const name = scene.add.text(PANE_X + 38, ry + 3, `${it.name}  x${it.qty}`, { fontFamily: FONT, fontSize: '12px', color: chk.ok ? '#e8f2fa' : '#7f93a3', fontStyle: 'bold' });
+      const name = scene.add.text(PANE_X + 38, ry + 3, `${it.name}  ${qtyWord(it, it.qty)}`, { fontFamily: FONT, fontSize: '12px', color: chk.ok ? '#e8f2fa' : '#7f93a3', fontStyle: 'bold' });
       clampTextWidth(name, PANE_W - 46);
       this.content.add(name);
       // 247차 — 심을 수는 있어도 알려 줄 것(알맞은 철 밖 · 거름이 많거나 모자라다)

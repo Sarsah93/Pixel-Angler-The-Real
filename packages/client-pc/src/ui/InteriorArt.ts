@@ -308,6 +308,7 @@ const RISE: Record<FixtureArt, number> = {
   crate_row: 6, podium: 26, ice_pile: 10, hand_cart: 14,
   wardrobe: 50, tv: 30, sink: 26, fridge: 50, low_table: 6, cushion: 2, futon: 12, futon_open: 2,
   bed: 14, desk: 28, sofa: 18, rug: 0, suitcase: 22, bamboo: 56, tool_wall: 42, workbench: 14,
+  oil_press: 30,   // 284차 — 방앗간 압착기
 };
 
 export function fixtureRise(art: FixtureArt): number { return RISE[art]; }
@@ -820,6 +821,21 @@ function drawFixture(g: Phaser.GameObjects.Graphics, art: FixtureArt, w: number,
       for (let i = 0; i < 16; i++) dot(24 + Math.floor(hash(i, 2) * (w - 50)), 8 + Math.floor(hash(i, 4) * 10), 0xe8d8a8);   // 대팻밥
       rect(w - 30, 6, 16, 4, 0x3a2a1a);                              // 칼
       rect(4, rise + 14, 4, h - 22, 0x5a3a20); rect(w - 8, rise + 14, 4, h - 22, 0x5a3a20);
+      shadow(0, H - 4, w);
+      break;
+    }
+    case 'oil_press': {
+      // 284차 — 방앗간 압착기: 깨 자루 · 볶는 솥 · 압착 기둥 · 기름 받는 병
+      rect(2, rise + 4, 18, h - 10, 0xc8b48a); rect(4, rise + 2, 14, 4, 0xa8946a);           // 깨 자루
+      for (let i = 0; i < 8; i++) dot(6 + Math.floor(hash(i, 7) * 10), rise + 6 + Math.floor(hash(i, 9) * (h - 18)), 0x8a7a5a);
+      rect(24, rise + 6, 30, h - 12, 0x4a5a52); rect(26, rise + 8, 26, 6, 0x2a2e30);         // 볶음 솥(검은 솥)
+      rect(28, rise + 9, 22, 3, 0xb8862a);                                                     // 볶는 깨
+      rect(58, 0, w - 76, H - 8, 0x5a7a6a); rect(60, 2, w - 80, 6, 0x7a9a8a);                 // 압착기 몸통
+      rect(58 + (w - 76) / 2 - 3, 8, 6, H - 22, 0x3a4a44);                                     // 압착 기둥(나사)
+      for (let y = 10; y < H - 16; y += 4) rect(58 + (w - 76) / 2 - 3, y, 6, 1, 0x8aa89a);
+      rect(w - 20, rise + 4, 6, 3, 0x3a4a44);                                                  // 기름 나오는 꼭지
+      rect(w - 18, rise + 7, 2, 4, 0xe8b040);                                                  // 떨어지는 기름
+      rect(w - 22, rise + 12, 10, h - 18, 0xd8a040); rect(w - 20, rise + 10, 6, 3, 0xc8402a); // 받는 병 · 빨간 마개
       shadow(0, H - 4, w);
       break;
     }

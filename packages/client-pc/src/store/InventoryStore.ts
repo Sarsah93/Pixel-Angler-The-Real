@@ -30,7 +30,7 @@ import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan }
 import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra/core';
 import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
-import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER } from '@tra/core';
+import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER, bagsOfLoose, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
 import type { ForageTool, StatusCure, CatchMethod, LineForm } from '@tra/core';
 // 273차 — 원줄 · 목줄 내구도(묶인 줄 한 가닥의 마모 — 스풀을 바꾸거나 잘리면 0)
@@ -44,8 +44,9 @@ import { isGod } from '../dev/DevMode.js';
 import { refreshTackleArtKey } from '../data/TackleTextures.js';
 import { resolveFishTexture } from '../data/FishTextures.js';
 import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
-import { applyCookItemFields, COOK_CORNER } from '../data/CookItems.js';
+import { applyCookItemFields, COOK_CORNER, cookCornerTemplate } from '../data/CookItems.js';
 import { PRODUCE_SUB, cropItemTemplate, migrateLegacyPackItem } from '../data/CropItems.js';
+import { millItemTemplate } from '../data/MillItems.js';
 import { StoryStore } from './StoryStore.js';
 import { CoolerStore } from './CoolerStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
@@ -275,6 +276,11 @@ export interface InvItem {
   blueprintId?: string;
   /** 224차 — 포장 묶음: 가방에서 「포장 뜯기」를 하면 이 물건 qty개가 된다(빵가루 반죽 200g → 경단 10개) */
   unpack?: { id: string; qty: number };
+  /**
+   * 284차 — 무게로 세는 물건: 가방 수량(qty)이 이 g의 배수다(1 = 수량이 곧 g). 털어 낸 깨 · 콩 · 보리 낱알 · 밭 부산물 · 깻묵.
+   * 칸 수량 글이 「×480」이 아니라 「480g」 · 「1.2kg」으로 나온다(`ui/QtyLabel`). 없으면 낱개.
+   */
+  unitG?: number;
   /** 224차 — 장화(신발 칸). 신으면 물가 한 칸 얕은 물에 들어갈 수 있다 */
   wading?: boolean;
   /**
@@ -1686,6 +1692,9 @@ class InventoryStoreManager {
         // 229차 — 크릴 신선도 프로필 · 포장 뜯기(블록 → 미끼용 백크릴 50)
         condProfile: i.condProfile ?? sd?.condProfile,
         unpack: i.unpack ?? sd?.unpack ?? cropItemTemplate(i.id)?.unpack,   // 241차 — 구세이브 큰 수확물에 「나누기」를 붙인다
+        // 284차 — g으로 세는 낱알 · 밭 부산물(템플릿이 정본) · 중간 수확물이 새로 요리 재료가 됐다(고구마줄기 · 고춧잎 · 마늘종 · 산나물)
+        unitG: i.unitG ?? cropItemTemplate(i.id)?.unitG,
+        cookIngredient: i.cookIngredient ?? cropItemTemplate(i.id)?.cookIngredient,
         forageTool: i.forageTool ?? sd?.forageTool,
         // 224차 — 장화(신발 칸) · 포장 묶음 — 상점 구매분은 저장된 필드 그대로, 이름 규칙 폴백만
         wading: i.wading ?? sd?.wading ?? (i.subCategory === '신발' && /장화/.test(i.name) ? true : undefined),
@@ -1922,6 +1931,8 @@ class InventoryStoreManager {
       const stateMul = conditionSellMultiplier(item.condition);
       return Math.max(0, Math.round(item.basePrice * stateMul));
     }
+    // 284차 — 방앗간 기름병: 농산물과 같은 도매가 몫(0.7 — 가게가 되팔 몫). 병은 상하지 않는다
+    if (oilBottleDef(item.id)) return Math.max(10, Math.round((item.basePrice * 0.7) / 10) * 10);
     return Math.max(100, Math.floor(item.basePrice * SHOP_BUY_RATE));
   }
 
@@ -2262,7 +2273,8 @@ class InventoryStoreManager {
   seedTemplate(id: string): InvItemTemplate | null {
     const base = itemBaseId(id);   // 282차
     const seed = createSeedItems().find((x) => x.id === base);
-    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? null;   // 241차 — 농산물 조각
+    // 241차 — 농산물 조각 · 284차 낱알 봉지 → 낱알 · 기름병 → 1큰술(식자재마트 것과 같은 물건)
+    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? millItemTemplate(id) ?? cookCornerTemplate(id) ?? null;
     const { slot: _slot, qty: _qty, ...tpl } = seed;
     return tpl;
   }
@@ -2365,6 +2377,35 @@ class InventoryStoreManager {
     take(tray, n);
     this.addItem({ ...tpl, ...carry }, n, { silent: true });
     return { ok: true, name: tpl.name, qty: n, used };
+  }
+
+  /**
+   * 284차 — 봉지 담기(사용자 「상품성을 지니는 수준을 중량으로 — 몇 백 그람 단위로」).
+   * 같은 등급 낱알(g) `grams` + 곡물 봉투 1장 → 봉지 1개를 `bags`번(낱알 · 봉투가 모자라면 되는 만큼). 봉지는 낱알의 신선도 시계를 잇는다.
+   * 하루 기록에는 남기지 않는다(모양만 바뀐 같은 물건 — 243차 포장과 같다).
+   */
+  bagProduce(itemId: string, bagBaseId: string, bags: number): { ok: boolean; name?: string; qty?: number; usedG?: number; reason?: string } {
+    const it = this.find(itemId);
+    const opt = it ? bagsOfLoose(it.id).find((b) => b.bag.itemId === bagBaseId) : undefined;
+    if (!it || !opt) return { ok: false, reason: '봉지에 담을 수 있는 낱알이 아니다.' };
+    refreshCondition(it);
+    if (it.condition === 'spoiled') return { ok: false, reason: '상한 것은 담지 않는다.' };
+    const bagItem = this.find(FARM_BAG_CONTAINER);
+    if (!bagItem || bagItem.qty < 1) return { ok: false, reason: '곡물 봉투가 없다 — 생활용품점 · 방앗간에서 판다.' };
+    const per = Math.max(1, Math.round(opt.bag.grams / (it.unitG ?? 1)));
+    const n = Math.floor(Math.min(bags, it.qty / per, bagItem.qty));
+    if (n < 1) return { ok: false, reason: `${opt.bag.grams}g이 있어야 한 봉지다.` };
+    const tpl = cropItemTemplate(opt.bagItemId);
+    if (!tpl) return { ok: false, reason: '봉지에 담을 수 있는 낱알이 아니다.' };
+    const used = n * per;
+    const freesSlot = it.qty === used && it.category === tpl.category;
+    if (!this.find(tpl.id) && !freesSlot && this.freeSlotCount(tpl.category) < 1) return { ok: false, reason: '가방에 자리가 없다.' };
+    const carry = it.condition ? { condition: it.condition, conditionSinceMs: it.conditionSinceMs } : {};
+    const take = (x: InvItem, q: number): void => { x.qty -= q; if (x.qty <= 0) this.deleteInstance(x.id); };
+    take(it, used);
+    take(bagItem, n);
+    this.addItem({ ...tpl, ...carry }, n, { silent: true });
+    return { ok: true, name: tpl.name, qty: n, usedG: used * (it.unitG ?? 1) };
   }
 
   /**

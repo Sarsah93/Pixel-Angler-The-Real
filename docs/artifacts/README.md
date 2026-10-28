@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 26 — 283차 기준 · 92차 배포(「기준」 줄 · 머리 · §06 「283차 실플레이 확인」 줄) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 27 — 283차 기준(조행록(일지) 줄 — 진행 레일 · 그림 얼굴 줄 — 빈 의뢰인 `\|\|`). 26 = 282 장비 · 루어 개체 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 25 — 283차 기준 · 채비 문법은 258차(「283차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 79 — 283차(시스템 탭 「일지 초상 · 목표 진행 레일」). 78 = 282(2) 채소 그림 복구 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 27 — 284차 기준(「기준」 줄 · 머리 · 농장 E1 284 줄 · 초상 111 · 레시피 10 · §06 「284차 실플레이 확인」 줄). 26 = 283 · 92차 배포 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 28 — 284차 기준(머리 수치 · 레시피 10 · 상점 종류 10 · 새 항목 「부산물 · 밭에 넣기」 · 「낱알 무게 · 봉지」 · 「방앗간」). 27 = 283 일지 진행 레일 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 26 — 284차 기준 · 채비 문법은 258차(「284차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 80 — 284차(시스템 탭 「부산물 · 낱알 무게 · 방앗간」 · 농사 탭 「밭 부산물」 · 새 그림 20). 79 = 283 · 78 = 282(2) 채소 그림 복구 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -23,10 +23,10 @@
 
 | 아티팩트 | 고칠 것 |
 |---|---|
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 79 — 283차(시스템 탭 「일지 초상 · 목표 진행 레일」). 78 = 282(2) 채소 그림 복구 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 27 — 283차 기준(조행록(일지) 줄 — 진행 레일 · 그림 얼굴 줄 — 빈 의뢰인 `\|\|`). 26 = 282 장비 · 루어 개체 |
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 26 — 283차 기준 · 92차 배포(「기준」 줄 · 머리 · §06 「283차 실플레이 확인」 줄) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 25 — 283차 기준 · 채비 문법은 258차(「283차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 80 — 284차(시스템 탭 「부산물 · 낱알 무게 · 방앗간」 · 농사 탭 「밭 부산물」 · 새 그림 20). 79 = 283 · 78 = 282(2) 채소 그림 복구 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 28 — 284차 기준(머리 수치 · 레시피 10 · 상점 종류 10 · 새 항목 「부산물 · 밭에 넣기」 · 「낱알 무게 · 봉지」 · 「방앗간」). 27 = 283 일지 진행 레일 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 27 — 284차 기준(「기준」 줄 · 머리 · 농장 E1 284 줄 · 초상 111 · 레시피 10 · §06 「284차 실플레이 확인」 줄). 26 = 283 · 92차 배포 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 26 — 284차 기준 · 채비 문법은 258차(「284차 기준」 줄) |
 
 ### 머리 숫자 실측(구현 라이브러리)
 

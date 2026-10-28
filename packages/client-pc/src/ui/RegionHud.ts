@@ -28,6 +28,7 @@ import { applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { clampTextWidth } from './TextFit.js';
+import { gramsText } from './QtyLabel.js';
 import { addPixelIcon, ensurePixelIcon } from './PixelIcon.js';
 import { paintHudPanel, paintHudSlot } from './HudPanelStyle.js';
 import { a11ySig, cv, cvCss, drawHatch, shapeCuesOn } from './ColorAssist.js';
@@ -1540,7 +1541,10 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const head = this.scene.add.text(46, 7, t.kind === 'quest' ? '할 일 보상' : t.kind === 'coin' ? '재화' : t.bound ? '이야기가 준 물건' : '획득', {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: gold ? '#ffd257' : '#7a98ac', fontStyle: 'bold',
     });
-    const name = this.scene.add.text(46, 21, t.qty > 1 ? `${t.name}  ×${t.qty}` : t.name, {
+    // 284차 — 무게로 세는 물건(털어 낸 낱알 · 밭 부산물 · 깻묵)은 g으로(「×725」가 아니라 「725g」)
+    const unitG = (t.item as { unitG?: number } | undefined)?.unitG;
+    const qtyTxt = unitG ? gramsText(t.qty * unitG) : t.qty > 1 ? `×${t.qty}` : '';
+    const name = this.scene.add.text(46, 21, qtyTxt ? `${t.name}  ${qtyTxt}` : t.name, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold',
     });
     clampTextWidth(name, W - 46 - 24);   // ✕ 버튼 자리를 비워 둔다

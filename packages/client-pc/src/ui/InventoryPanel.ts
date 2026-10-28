@@ -32,8 +32,10 @@ import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore, isMarketFish } from '../store/MarketStore.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
-import { GEAR_FAULTS, TUNING, rawEatStatus, packOfLoose, isProducePack, biteNutrition, restoreFromNutrition, FARM_PACK_CONTAINER } from '@tra/core';
-import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB, looseCountKo } from '../data/CropItems.js';
+import { GEAR_FAULTS, TUNING, rawEatStatus, packOfLoose, isProducePack, biteNutrition, restoreFromNutrition, FARM_PACK_CONTAINER,
+  bagsOfLoose, isProduceBag, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
+import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB, looseCountKo, cropItemTemplate } from '../data/CropItems.js';
+import { gramsText } from './QtyLabel.js';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
@@ -42,6 +44,7 @@ import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { itemKeepReason } from '../store/ItemKeepGuard.js';
 import { CraftingStore } from '../store/CraftingStore.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { qtyBadge, qtyWord } from './QtyLabel.js';
 
 /** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
 const TABLE_MEAL_BONUS = 0.25;
@@ -547,8 +550,8 @@ export class InventoryPanel extends DraggablePanel {
       const icon = createItemIcon(this.scene, sx + SLOT / 2, sy + SLOT / 2 - 6, item, 30);
       this.gridContainer.add(icon);
 
-      if (item.qty > 1) {
-        const qty = this.scene.add.text(sx + SLOT - 5, sy + 3, `x${item.qty}`, {
+      if (item.qty > 1 || item.unitG) {
+        const qty = this.scene.add.text(sx + SLOT - 5, sy + 3, qtyBadge(item), {
           fontFamily: 'monospace', fontSize: '10px', color: '#ffe28a', fontStyle: 'bold',
         }).setOrigin(1, 0);
         this.gridContainer.add(qty);
@@ -829,16 +832,31 @@ export class InventoryPanel extends DraggablePanel {
         run: () => this.askPack(item),
       });
     }
+    // 284차 — 봉지 담기: 털어 낸 깨 · 콩 · 보리 낱알(g) → 봉지(곡물 봉투 1장) · 크기마다 한 줄
+    if (item.subCategory === PRODUCE_SUB && item.unitG) {
+      for (const b of bagsOfLoose(item.id)) {
+        actions.push({
+          label: `봉지 담기 (${gramsText(b.bag.grams)})`,
+          color: '#4af2a1', hoverColor: '#8dffce',
+          run: () => this.askBag(item, b.bag.itemId, b.bag.grams, b.bag.nameKo),
+        });
+      }
+    }
     // 224차 — 포장 뜯기(빵가루 반죽 200g → 경단 10개 등)
     if (item.unpack) {
-      const split = item.subCategory === PRODUCE_SUB && !isProducePack(item.id);   // 241차 — 수박 한 통 · 무 한 개처럼 큰 수확물은 「나누기」 · 243차 팩은 「포장 뜯기」
+      const bag = isProduceBag(item.id);           // 284차 — 낱알 봉지는 「봉지 뜯기」
+      const bottle = !!oilBottleDef(item.id);      // 284차 — 기름병은 「병 따기」(1큰술씩)
+      const split = item.subCategory === PRODUCE_SUB && !isProducePack(item.id) && !bag;   // 241차 — 수박 한 통 · 무 한 개처럼 큰 수확물은 「나누기」 · 243차 팩은 「포장 뜯기」
       // 267차 — 미끼 곽(곽크릴 등)은 「열기」(사용자 「열기 (unbox)하면 낱개의 미끼들이 나오도록」) · 수확물 팩은 「포장 뜯기」 그대로
+      const outG = cropItemTemplate(item.unpack.id)?.unitG;
       actions.push({
-        label: split ? '나누기' : item.subCategory === PRODUCE_SUB ? '포장 뜯기' : '열기',
+        label: bottle ? '병 따기' : bag ? '봉지 뜯기' : split ? '나누기' : item.subCategory === PRODUCE_SUB ? '포장 뜯기' : '열기',
         color: '#4af2a1', hoverColor: '#8dffce',
         run: () => {
           const r = InventoryStore.unpack(item.id);
-          this.setStatus(r.ok ? `${split ? '나눴다' : '포장을 뜯었다'} — ${r.name} ${r.qty}개` : (r.reason ?? '뜯을 수 없다'));
+          const what = outG ? gramsText((r.qty ?? 0) * outG) : `${r.qty}개`;
+          const verb = bottle ? '병을 땄다' : bag ? '봉지를 뜯었다' : split ? '나눴다' : '포장을 뜯었다';
+          this.setStatus(r.ok ? `${verb} — ${r.name} ${what}` : (r.reason ?? '뜯을 수 없다'));
           if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
         },
       });
@@ -1271,7 +1289,8 @@ export class InventoryPanel extends DraggablePanel {
       this.setStatus('쿨러 안에 내용물(어획/해수·얼음/밑밥)이 있어 버릴 수 없습니다 — 먼저 비우세요');
       return;
     }
-    const detail = all && item.qty > 1 ? ` (전체 ${item.qty}개)` : all ? '' : ' 1개';
+    const detail = item.unitG ? (all ? ` (${qtyWord(item, item.qty)})` : ` ${qtyWord(item, 1)}`)
+      : all && item.qty > 1 ? ` (전체 ${item.qty}개)` : all ? '' : ' 1개';
     // 234차 — 이야기가 준 귀속 물건(`qr_*` 장비 등)은 다시 얻을 길이 없다 — 그 사실을 적고 버튼도 행동 이름으로(198차 규칙)
     const once = !!item.bound;
     const dlg = new ConfirmDialog(
@@ -1319,6 +1338,31 @@ export class InventoryPanel extends DraggablePanel {
       actionLabel: '포장', confirmLabel: '포장하기',
       subText: `한 팩 = ${perPack} + 용기 1개 · 최대 ${max}팩`,
       totalFor: (q) => `${looseCountKo(item.id, q * p.pack.units)} · 용기 ${q}개를 씁니다`,
+      onConfirm: (q) => { dlg.destroy(); done(q); },
+      onCancel: () => dlg.destroy(),
+    });
+    this.scene.add.existing(dlg);
+  }
+
+  /** 284차 — 봉지 담기: 크기 하나를 골랐다 → 몇 봉지(낱알 · 곡물 봉투가 되는 만큼) */
+  private askBag(item: InvItem, bagBaseId: string, grams: number, bagName: string): void {
+    const bags = InventoryStore.find(FARM_BAG_CONTAINER)?.qty ?? 0;
+    const per = Math.max(1, Math.round(grams / (item.unitG ?? 1)));
+    const max = Math.floor(Math.min(item.qty / per, bags));
+    if (bags < 1) { playSfx('deny'); this.setStatus(`곡물 봉투가 없습니다 — 생활용품점 · 방앗간에서 팝니다 (한 봉지에 ${gramsText(grams)} + 봉투 1장)`); return; }
+    if (max < 1) { playSfx('deny'); this.setStatus(`한 봉지를 채우려면 ${gramsText(grams)}이 필요합니다 (지금 ${gramsText(item.qty * (item.unitG ?? 1))})`); return; }
+    const done = (n: number): void => {
+      const r = InventoryStore.bagProduce(item.id, bagBaseId, n);
+      playSfx(r.ok ? 'pack' : 'deny');
+      this.setStatus(r.ok ? `봉지에 담았습니다 — ${r.name} ${r.qty}개 (${gramsText(r.usedG ?? 0)} · 봉투 ${r.qty}장)` : (r.reason ?? '담을 수 없습니다'));
+      if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+    };
+    if (max === 1) { done(1); return; }
+    const dlg = new QuantityDialog(this.scene, {
+      itemName: bagName, unitPrice: 0, maxQty: max, initialQty: max,
+      actionLabel: '봉지 담기', confirmLabel: '담기',
+      subText: `한 봉지 = ${gramsText(grams)} + 곡물 봉투 1장 · 최대 ${max}봉지`,
+      totalFor: (q) => `${gramsText(q * grams)} · 봉투 ${q}장을 씁니다`,
       onConfirm: (q) => { dlg.destroy(); done(q); },
       onCancel: () => dlg.destroy(),
     });

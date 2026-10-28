@@ -10,7 +10,7 @@ const SRC = 'packages/client-pc/public/crops', DST = 'tools/wiki_img', MAN = pat
 const manifest = fs.existsSync(MAN) ? JSON.parse(fs.readFileSync(MAN, 'utf8')) : {};
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 let n = 0;
-for (const f of fs.readdirSync(SRC).filter((x) => /^crop_[a-z_]+\.png$/.test(x) && !x.endsWith('_icon.png') && !x.endsWith('_card.png'))) {
+for (const f of fs.readdirSync(SRC).filter((x) => /^crop_[a-z0-9_]+\.png$/.test(x) && !x.endsWith('_icon.png') && !x.endsWith('_card.png'))) {
   const id = f.slice(0, -4); if (only && id !== only) continue;
   const img = decode(path.join(SRC, f)); const w = Math.round(img.w / 3), h = Math.round(img.h / 3);
   const small = areaResize(img.data, img.w, img.h, w, h); const out = `px_${id}.png`;

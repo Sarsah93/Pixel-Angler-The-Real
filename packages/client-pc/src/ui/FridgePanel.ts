@@ -25,6 +25,7 @@ import {
   FridgeStore, FridgeSection, FREEZER_SLOTS, FRIDGE_SLOTS, FRIDGE_COLS,
 } from '../store/FridgeStore.js';
 import { playSfx } from '../audio/SfxBank.js';
+import { qtyBadge } from './QtyLabel.js';
 
 const PANEL_W = 580;
 const PANEL_H = 470;
@@ -205,7 +206,7 @@ export class FridgePanel extends DraggablePanel {
       // 188차 — 글씨 축소(setScale) 대신 이름 축약 (수량 꼬리는 지킨다)
       const nameTxt = setSlotLabel(scene.add.text(x0 + 30, ry + (rowH - 3) / 2, '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#c8dceb',
-      }).setOrigin(0, 0.5), item.name, 150, item.qty > 1 ? ` x${item.qty}` : '');
+      }).setOrigin(0, 0.5), item.name, 150, qtyBadge(item) ? ` ${qtyBadge(item)}` : '');
       const hit = scene.add.rectangle(x0 + 95, ry + (rowH - 3) / 2, 190, rowH - 3, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => this.setStatus(item.name));

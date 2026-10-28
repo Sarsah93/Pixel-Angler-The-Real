@@ -332,13 +332,15 @@ export interface CareResult {
   messageKo: string;
   /** 서툴렀다(점수가 낮아 효과 절반) */
   clumsy?: boolean;
+  /** 284차 — 일을 하며 나온 것(순지른 깻순) — 호출 쪽이 가방에 넣는다 */
+  yields?: { itemId: string; qty: number };
 }
 
 /**
  * 작업을 한다 — 「할 일」일 때만. `score` 0..1은 작업 장면 점수(낮으면 효과 절반).
  * 가방에서 뺄 물건은 `needs`로 돌려준다(가방 · 도구 확인은 클라이언트 몫).
  */
-export function doCare(cell: FarmCellState, crop: CropDef, id: CareTaskId, nowMs: number, score = 1): CareResult {
+export function doCare(cell: FarmCellState, crop: CropDef, id: CareTaskId, nowMs: number, score = 1, rand01: () => number = Math.random): CareResult {
   const plan = planOfCell(cell, crop);
   const def = plan.tasks.find((t) => t.id === id);
   if (!def) return { ok: false, reasonKo: '이 작물에는 없는 일이다', needs: [], messageKo: '' };
@@ -373,8 +375,16 @@ export function doCare(cell: FarmCellState, crop: CropDef, id: CareTaskId, nowMs
   }
   const name = CARE_TASK_KO[id];
   const roundNote = def.repeat && !def.only && st.total > 1 ? ` (${st.round + 1}/${st.total})` : '';
+  // 284차 — 일에서 나오는 것(순지른 깻순) — 칸당 × 섬 · 서툴면 절반 · 남는 몫은 그 확률로 하나 더
+  let yields: CareResult['yields'];
+  if (def.yields) {
+    const [lo, hi] = def.yields.qty;
+    const e = (lo + (hi - lo) * rand01()) * Math.max(0, cell.stand) * k;
+    const q = Math.floor(e) + (rand01() < e - Math.floor(e) ? 1 : 0);
+    if (q > 0) yields = { itemId: def.yields.itemId, qty: q };
+  }
   return {
-    ok: true, needs: def.needs ?? [], clumsy,
+    ok: true, needs: def.needs ?? [], clumsy, ...(yields ? { yields } : {}),
     messageKo: clumsy ? `${name}${roundNote} — 서툴러서 효과가 절반이다` : `${name}${roundNote} — 했다`,
   };
 }

@@ -1,6 +1,6 @@
 /**
  * @file FireRecipeDatabase.ts
- * @description 불요리 레시피 9종 (154차 — 스펙 §2)
+ * @description 불요리 레시피 10종 (154차 — 스펙 §2 · 284차 나물 볶음)
  *
  * ⚖ 레시피는 **필수 요소 + 부가 고급화**로 적는다 — 창작 요리는 없다. 특정 요리명을 표방하려면
  *   (155차) `vitals`의 허기·수분은 `FoodNutrition.ts` 1인분 영양(kcal ÷ 2,400 · ml ÷ 2,000)에서 파생한 값이다.
@@ -37,6 +37,14 @@ const STIRFRY_STAGES: RecipeStageDef[] = [
   ST('오징어와 양념을 넣고 센 불에 볶는다', 'Add squid and sauce; stir-fry on high', 'boil'),
   ST('오징어가 익으면 대파·고추를 넣는다', 'When the squid is done, add green onion and chili', 'mainCooked'),
   ST('불을 끄고 참기름·후추로 마무리', 'Off heat — sesame oil and pepper', 'final'),
+];
+
+/** 284차 — 나물 볶음: 데친 나물을 기름에 달달 볶다가 들깨가루로 감친다(시래기 · 토란대 들깨볶음 · 고구마줄기볶음) */
+const NAMUL_STAGES: RecipeStageDef[] = [
+  ST('팬을 달구고 기름에 마늘을 볶는다', 'Heat the pan; fry garlic in oil', 'start'),
+  ST('데친 나물과 간장을 넣고 볶는다', 'Add the blanched greens and soy sauce; stir-fry', 'boil'),
+  ST('나물이 부드러워지면 들깨가루를 넣는다', 'When the greens soften, stir in perilla powder', 'mainCooked'),
+  ST('불을 끄고 깨소금으로 마무리', 'Off heat — finish with sesame salt', 'final'),
 ];
 
 const PORRIDGE_STAGES: RecipeStageDef[] = [
@@ -153,8 +161,10 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     optional: [
       R('onion', 'veg', 1, 2, 1), R('leek', 'finish', 1, 2, 3), R('ginger', 'season', 0.3, 1, 1),
       R(['chili_green', 'chili_red'], 'finish', 1, 2, 3),
+      // 284차 — 무 대신 · 무와 함께 바닥에 까는 묵은 나물(시래기 고등어조림 · 우거지 코다리조림 · 갈치 고구마줄기조림). 하나만
+      R(['siraegi', 'ugeoji', 'sweetpotato_stem'], 'veg', 1, 2, 0),
     ],
-    maxExtraKinds: 3, targetSaltPct: 0.8, targetSugarSpoons: 1.5,
+    maxExtraKinds: 4, targetSaltPct: 0.8, targetSugarSpoons: 1.5,
     stages: STEW_STAGES, doneWhen: 'reduced', tempBand: [85, 100], servingC: 65, coolTauMin: 30, textureDecayPerHour: 0.10,
     cookMin: 28, servings: 2, baseValueKrw: 26000,
     vitals: { hungerRestore: 23, hydrationRestore: 6, hpRestore: 30, fatigueRestore: 15 },
@@ -218,6 +228,30 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     stages: PORRIDGE_STAGES, doneWhen: 'allCooked', tempBand: [85, 100], servingC: 65, coolTauMin: 40, textureDecayPerHour: 0.08,
     flipEverySec: 180, cookMin: 30, servings: 2, baseValueKrw: 32000,
     vitals: { hungerRestore: 19, hydrationRestore: 15, hpRestore: 40, fatigueRestore: 32, drainBuffMult: 0.75, drainBuffMin: 45 },
+  },
+  {
+    // 284차 — 텃밭 부산물 · 산나물을 먹는 길. 주재료가 어종이 아니라 이름이 갈리지 않는다(전복죽처럼 고정 이름)
+    id: 'stirfry_namul', nameKo: '나물 볶음', nameEn: 'Stir-fried greens (Namul)', family: 'stirfry', photoKey: 'food_stirfry_namul',
+    descKo: '데친 나물을 들기름에 달달 볶다가 들깨가루로 감친다. 시래기 · 토란대 · 고구마줄기 무엇이든 된다.',
+    descEn: 'Blanched greens fried gently in perilla oil and finished with perilla powder — radish greens, taro stems or sweet potato stems all work.',
+    cookware: ['pan'],
+    required: [
+      R(['namul', 'siraegi', 'ugeoji', 'sweetpotato_stem', 'taro_stem'], 'main', 1, 2, 1),
+      R(['perilla_oil', 'sesame_oil', 'cooking_oil'], 'oil', 0.5, 2, 0, { ideal: 1 }),
+      R('garlic', 'season', 0.25, 1, 0, { ideal: 0.5 }),
+      R(['soy', 'salt'], 'season', 0.25, 1.5, 1, { ideal: 0.5 }),
+    ],
+    optional: [
+      R('perilla_powder', 'season', 1, 3, 2, { ideal: 2 }),
+      R('sesame_salt', 'season', 0.5, 1, 3, { ideal: 0.5 }),
+      R('onion', 'veg', 1, 1, 1),
+      R('leek', 'finish', 1, 1, 3),
+      R(['chili_green', 'chili_red'], 'finish', 1, 1, 3),
+    ],
+    maxExtraKinds: 4, targetSaltPct: 0.9, targetSugarSpoons: 0,
+    stages: NAMUL_STAGES, doneWhen: 'mainCooked', tempBand: [140, 200], servingC: 45, coolTauMin: 25, textureDecayPerHour: 0.06,
+    flipEverySec: 60, cookMin: 12, servings: 2, baseValueKrw: 8000,
+    vitals: { hungerRestore: 5, hydrationRestore: 5, hpRestore: 10, fatigueRestore: 8 },
   },
   {
     id: 'grill_eel', nameKo: '장어구이', nameEn: 'Grilled eel', family: 'grill', photoKey: 'food_grill_eel',
