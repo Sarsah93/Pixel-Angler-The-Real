@@ -13,6 +13,7 @@ import { reelArtKey, rodArtKey } from './TackleTextures.js';
 import { COOK_CORNER } from './CookItems.js';
 import { dailyFarmEntries, nurseryFarmEntries, PRODUCE_SUB } from './CropItems.js';
 import { millShopEntries } from './MillItems.js';
+import { CURE_SUB } from './CureItems.js';
 import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId, produceUnitG, oilBottleDef } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
@@ -695,6 +696,8 @@ export function shopBuysItem(
   if (i.subCategory === PRODUCE_SUB) return !!def.buysProduce && !produceUnitG(i.id);
   // 284차 — 방앗간에서 짠 기름병(따지 않은 것)도 농산물처럼 산다. 병은 가게가 팔지 않으니 되파는 길이 없다
   if (oilBottleDef(i.id)) return !!def.buysProduce;
+  // 285차 — 갈무리해 나온 것(말린 시래기 · 수염차 · 장아찌)도 농산물 가게(식자재마트 · 식당)가 산다 — 가게는 팔지 않는다
+  if (i.subCategory === CURE_SUB) return !!def.buysProduce;
   if (!def.buysCategories.includes(i.category)) return false;
   if (i.category === 'gear') return true;
   if (i.category === 'food') {

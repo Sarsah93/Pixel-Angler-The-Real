@@ -87,6 +87,7 @@ import { TitleStore } from '../store/TitleStore.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { pumpTitleBanners } from '../ui/TitleBanner.js';
 import { pumpTideFlow, tideSenseLabel, queueTideLoreNote } from '../ui/TideFlowNotifier.js';
+import { pumpMillReady } from '../ui/MillNotifier.js';
 import { TideLoreStore } from '../store/TideLoreStore.js';
 import { baitKeyOf } from '../store/RigParts.js';
 import { InventoryStore, RigStepKey, CARD_RIG_INFO, netReachFromName } from '../store/InventoryStore.js';
@@ -2029,6 +2030,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(들어뽕 · 줄 터짐 · 방생 …)
     // 204차 — 「물때 감각」: 파이팅 중엔 미뤘다가 끝나면 띄운다(패턴 경고 자리와 겹치지 않게)
     pumpTideFlow(this, { toastY: 60, hold: this.fpState === 'fighting' });
+    pumpMillReady(this, { toastY: 84, hold: this.fpState === 'fighting' });   // 285차 — 방앗간 「다 됐다」
     // 제압 후 끌어오기(dragIn)는 슬로우 — 연출이 너무 빨라 방향 대응을 못 따라간다는 피드백(116차 ①)
     if (this.dragInMode) dt *= TUNING.fightPhys.dragInTimeScale;
 

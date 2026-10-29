@@ -9,7 +9,7 @@
  */
 
 import {
-  oilQuote, grindQuote, millService, produceItemId, MILL_TUNING,
+  oilQuote, grindQuote, millService, produceItemId, millStepG,
   type MillQuote, type MillServiceId, type OilBottleMl, type CropGrade,
 } from '@tra/core';
 import { GameState } from './GameState.js';
@@ -49,9 +49,9 @@ export function millQuoteOf(serviceId: MillServiceId, req: { bottles?: Partial<R
   return s.kind === 'oil' ? oilQuote(serviceId, req.bottles ?? {}) : grindQuote(serviceId, req.grams ?? 0);
 }
 
-/** 찾을 것 → 가방 모양(기름병 · 깻묵 · 1큰술) */
+/** 찾을 것 → 가방 모양(기름병 · 깻묵 · 1큰술 · 285차 압맥은 시작 가방의 그 압맥) */
 export function millOutputTemplate(itemId: string): InvItemTemplate | null {
-  return millItemTemplate(itemId) ?? cropItemTemplate(itemId) ?? cookCornerTemplate(itemId);
+  return millItemTemplate(itemId) ?? cropItemTemplate(itemId) ?? cookCornerTemplate(itemId) ?? InventoryStore.seedTemplate(itemId);
 }
 
 /** 맡긴다 — 깨를 덜고 공임을 낸다 */
@@ -60,7 +60,7 @@ export function placeMillOrder(
 ): MillActionResult {
   const s = millService(serviceId);
   const q = millQuoteOf(serviceId, req);
-  if (!s || !q) return { ok: false, message: s?.kind === 'oil' ? '몇 병을 짤지 고른다' : `${MILL_TUNING.grindStepG}g 단위로 맡긴다` };
+  if (!s || !q) return { ok: false, message: s?.kind === 'oil' ? '몇 병을 짤지 고른다' : s ? `${gramsText(millStepG(s))} 단위로 맡긴다` : '맡길 수 없다' };
   const have = seedStockG(s.seedItemId);
   const seedName = cropItemTemplate(s.seedItemId)?.name.replace(/\s*·.*$/, '') ?? s.seedItemId;
   if (have < q.seedG) return { ok: false, message: `털어 둔 ${josa(seedName, '이', '가')} 모자란다 — ${gramsText(q.seedG)}이 든다 (가방 ${gramsText(have)} · 봉지는 뜯어서 맡긴다)` };
@@ -121,7 +121,7 @@ export function cancelMillOrder(id: string, nowMs = Date.now()): MillActionResul
   for (const p of parts) InventoryStore.addItem(p.tpl, p.qty, { silent: true });
   GameState.addCoins(o.feeWon, true, 'shop');
   GameState.markDirty();
-  return { ok: true, message: `물렀다 — 깨와 공임 ${o.feeWon.toLocaleString()}원을 돌려받았다` };
+  return { ok: true, message: `물렀다 — ${millService(o.service)?.inputKo ?? '깨'}와 공임 ${o.feeWon.toLocaleString()}원을 돌려받았다` };
 }
 
 /** 다 된 일 수(창 · 일지 · 간판 혼잣말) */

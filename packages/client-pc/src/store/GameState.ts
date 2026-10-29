@@ -41,6 +41,7 @@ import { playCoin } from '../audio/Sfx.js';
 import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
 import { ConsignQueue, type ConsignQueueSave } from './ConsignQueue.js';
 import { MillQueue, type MillQueueSave } from './MillQueue.js';
+import { CureQueue, type CureQueueSave } from './CureQueue.js';
 import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate, kstParts, getQuestItem } from '@tra/core';
 import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
@@ -250,6 +251,8 @@ interface SaveData {
   consignQueue?: ConsignQueueSave;
   /** 284차 — 방앗간에 맡겨 둔 일(기름 짜기 · 들깨 갈기 · 참깨 볶기 — 구세이브 = 없음) */
   millQueue?: MillQueueSave;
+  /** 285차 — 텃밭 걸대 · 장독에 걸어 둔 갈무리(구세이브 = 없음) */
+  cureQueue?: CureQueueSave;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
   flags?: Record<string, boolean>;
   /** 맵별 오브젝트 월드 상태 — 초기 배치 − removed + moved + placed (HOMETOWN_HOME_SPEC) */
@@ -473,6 +476,7 @@ export class GameStateManager {
     this._wakeNote = null;
     ConsignQueue.deserialize(saved.consignQueue);
     MillQueue.deserialize(saved.millQueue);   // 284차
+    CureQueue.deserialize(saved.cureQueue);   // 285차
     TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
@@ -1760,6 +1764,7 @@ export class GameStateManager {
       sleep: { awakeMs: this._awakeMs, lastSleepAtMs: this._lastSleepAtMs },
       consignQueue: ConsignQueue.serialize(),
       millQueue: MillQueue.serialize(),   // 284차
+      cureQueue: CureQueue.serialize(),   // 285차
       flags: this._flags,
       worldObjects: this._worldObjects,
       discoveries: DiscoveryStore.serialize(),
@@ -2034,6 +2039,7 @@ export class GameStateManager {
     LedgerStore.resetAll();
     ConsignQueue.resetAll();   // 213차
     MillQueue.resetAll();      // 284차
+    CureQueue.resetAll();      // 285차
     this._awakeMs = 0; this._lastSleepAtMs = 0; this._wakeNote = null;
     this.syncInventoryDiscoveries();
     LedgerStore.suspend(false);

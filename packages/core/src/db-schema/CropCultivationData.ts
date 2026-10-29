@@ -357,6 +357,8 @@ export const CROP_CULTIVATION: Readonly<Record<string, CropCultivation>> = {
   },
   strawberry: {
     water: { band: [0.35, 0.8], amount: 'normal', over: 'rot' }, feed: 'low', labor: { plant: 2, harvest: 2 }, harvestBy: 'pick',
+    // 285차 — 런너(열매를 다 딴 여름, 어미 포기가 뻗은 줄기 끝 새끼 포기를 떼어 이듬해 모종으로 — 가을 9 · 10월에 심는다)
+    propagate: { by: 'runner', months: [6, 7, 8], qty: [2, 4] },
     noteKo: '흙은 마르지 않게, 열매엔 물이 닿지 않게 — 짚을 깔아 잿빛곰팡이를 막는다.',
     noteEn: 'Keep the soil moist but the fruit dry — lay straw underneath to keep grey mould away.',
   },

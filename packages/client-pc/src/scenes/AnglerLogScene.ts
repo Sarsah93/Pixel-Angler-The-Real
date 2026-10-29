@@ -37,9 +37,11 @@ type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
 /** 255차 — 요리 도감: 변형 레시피의 주재료 갈래별 목록 부제 · 미발견 힌트 (조개탕에 「다른 어종을」은 틀린 말이다) */
 const DISH_KIND_SUB: Record<DishVariantKind, string> = {
   fish: '주재료 어종별 변형', squid: '오징어 종류별 변형', eel: '장어 종류별 변형', shellfish: '조개 종류별 변형',
+  veg: '나물 종류별 변형',   // 285차 — 나물 볶음(토란대 들깨볶음 …)
 };
 const DISH_KIND_HINT: Record<DishVariantKind, string> = {
   fish: '다른 어종을 사용해 보세요', squid: '다른 오징어를 사용해 보세요', eel: '다른 장어를 사용해 보세요', shellfish: '다른 조개를 사용해 보세요',
+  veg: '다른 나물이나 들깨가루를 넣어 보세요',
 };
 
 /** 해양생물 카테고리 라벨 (위키 카드용) — 188차: 카테고리 이모지 폐기, 생물 도트 그림으로(§8-8) */

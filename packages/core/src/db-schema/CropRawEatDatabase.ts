@@ -156,6 +156,9 @@ export const CROP_NO_RAW: Readonly<Record<string, NoRawDef>> = {
   crop_turmeric: { whyKo: '향신료다 — 쓰고 흙내가 난다', whyEn: 'A spice — bitter and earthy raw' },
   // 284차 — 먹는 부산물
   crop_radish_greens: { whyKo: '억세고 맵다 — 데쳐서 시래기로 쓴다', whyEn: 'Tough and peppery — blanch them into siraegi' },
+  // 285차 — 옥수수수염 · 단풍콩잎(말리거나 삭혀야 먹는다)
+  crop_corn_silk: { whyKo: '먹는 것이 아니다 — 말려 덖어 차로 끓인다', whyEn: 'Not for eating — dry and toast it for tea' },
+  crop_bean_leaf: { whyKo: '억세다 — 소금물에 삭혀 장아찌로 먹는다', whyEn: 'Tough — cure them in brine into pickles' },
   crop_cabbage_outer: { whyKo: '억센 겉잎이다 — 데쳐서 우거지로 쓴다', whyEn: 'Tough outer leaves — blanch them into ugeoji' },
   crop_taro_stem: { whyKo: '옥살산칼슘 바늘이 입을 찌른다 — 껍질을 벗겨 푹 삶는다', whyEn: 'Calcium-oxalate needles sting the mouth — peel and boil them well' },
   crop_perilla_shoot: { whyKo: '풋내가 세다 — 데쳐서 나물로 볶는다', whyEn: 'Strongly grassy raw — blanch and stir-fry as greens' },

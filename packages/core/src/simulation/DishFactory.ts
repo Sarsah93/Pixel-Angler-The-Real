@@ -17,6 +17,7 @@ import { fishCookingProfileOf, cookingSpeciesId } from '../db-schema/FishCooking
 import { recipeEffectOf } from '../db-schema/FoodEffects.js';
 import { dishBaseName, variantDescription, DISH_MODIFIER_KO, DISH_MODIFIER_EN } from '../db-schema/RecipeLore.js';
 import { dishDiscoveryId, isVariantRecipe, dishSpeciesName, cookSpeciesNames } from '../db-schema/DishDiscovery.js';
+import { parseNamulVariant, NAMUL_PERILLA_EFFECT_MULT } from '../db-schema/NamulDishes.js';
 
 export interface PrimaryIngredientInfo {
   /** 주재료 어종 · 채집 생물 id (투입 때 남긴 것 — 야간 엔트리여도 된다. 정본 id는 여기서 고른다) */
@@ -145,7 +146,14 @@ export function createDishInstance(recipe: FireRecipeDef, dish: DishData, primar
   const effects: FoodEffectDef[] = [];
   const eff = recipeEffectOf(recipe.id);
   if (eff && !dish.burnt && quality.overall >= t.effectMinOverall) {
-    effects.push(scaleDishEffect(eff, recipe.id, prof, primary.freshness01));
+    const scaled = scaleDishEffect(eff, recipe.id, prof, primary.freshness01);
+    // 285차 — 나물 들깨볶음은 고소함이 더해져 효과가 조금 크다
+    const nv = parseNamulVariant(spId);
+    if (nv?.perilla) {
+      const mag = Math.round(scaled.magnitude * NAMUL_PERILLA_EFFECT_MULT * 100) / 100;
+      const pct = Math.round(mag * 100);
+      effects.push({ ...scaled, magnitude: mag, descKo: scaled.descKo.replace(/\d+%$/, `${pct}%`), descEn: scaled.descEn.replace(/\d+%/, `${pct}%`) });
+    } else effects.push(scaled);
   }
 
   const base = dishBaseName(recipe.id, recipe.nameKo, recipe.nameEn, spDish?.ko ?? null, spDish?.en ?? null, variant ? spId : null);

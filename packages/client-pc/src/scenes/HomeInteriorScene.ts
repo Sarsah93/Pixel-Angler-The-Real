@@ -45,6 +45,7 @@ import { StoryStore } from '../store/StoryStore.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { pumpTitleBanners, titleTagStyle, TITLE_RARITY_COLOR } from '../ui/TitleBanner.js';
 import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
+import { pumpMillReady } from '../ui/MillNotifier.js';
 import { FridgePanel } from '../ui/FridgePanel.js';
 import { CookingPanel } from '../ui/CookingPanel.js';
 import { CookingStore } from '../store/CookingStore.js';
@@ -1216,6 +1217,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.consignAcc >= 1000) { this.consignAcc = 0; this.settleConsignments(); }
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너(고양이 집사 …)
     pumpTideFlow(this, { toastY: 60 });   // 204차 — 「물때 감각」
+    pumpMillReady(this, { toastY: 84 });   // 285차 — 방앗간 「다 됐다」
     this.updateHomeTitle();
     // 154차 — 집 주방 화구는 wall-clock으로 계속 끓는다(패널이 닫혀 있어도). 1초마다 동기화.
     this.cookSyncAcc += delta;

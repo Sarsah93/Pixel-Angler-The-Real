@@ -16,7 +16,7 @@
 import {
   CROP_DATABASE, FARM_SUPPLIES, FARM_TUNING, GRADE_KO, cropOfProduce, parseProduceId, produceItemId, cropGate, getCrop,
   CROP_RAW_EAT, pieceItemId, producePriceBase, roundWon, looseOfPack, legacyPackItemId,
-  looseOfBag, byproductOf, FARM_RESIDUES, legacyUnitGrams,
+  looseOfBag, byproductOf, FARM_RESIDUES, legacyUnitGrams, savedSeedItemId,
   type CropDef, type CropGrade, type CropRarity, type CropStart, type FarmResidueDef,
 } from '@tra/core';
 import type { InvItemTemplate } from '../store/InventoryStore.js';
@@ -90,6 +90,25 @@ function startTemplate(crop: CropDef, st: CropStart): InvItemTemplate {
     id: st.itemId, name: startItemName(crop, st), icon: '', iconTexture: `px:${st.itemId}`,
     category: 'consumable', subCategory: SEED_SUB, basePrice: st.cost, equippable: false,
   };
+}
+
+/**
+ * 285차 — 받은 씨앗(내 밭에서 씨를 받아 둔 것 · `seed_x_saved`). 심는 법은 그 작물 씨앗과 같다.
+ * 그림은 씨앗 봉투를 그대로 쓴다(`ItemIcon`이 `_saved` 꼬리를 떼고 찾는다) · 가게는 사지 않는다(값은 봉투 값의 절반 — 위키 표시용).
+ */
+export function savedSeedTemplate(crop: CropDef): InvItemTemplate | null {
+  const st = crop.starts.find((s) => s.kind === 'seed');
+  const id = savedSeedItemId(crop);
+  if (!st || !id) return null;
+  return {
+    id, name: `받은 ${crop.nameKo} 씨앗 (1칸 분)`, icon: '', iconTexture: `px:${st.itemId}`,
+    category: 'consumable', subCategory: SEED_SUB, basePrice: Math.max(10, Math.round(st.cost * 0.5)), equippable: false,
+  };
+}
+
+/** 받은 씨앗 영어 이름(i18n) */
+export function savedSeedNameEn(crop: CropDef): string {
+  return `Saved ${crop.nameEn} seeds (1 cell)`;
 }
 
 // ─────────────────────────────────────────────
@@ -269,6 +288,8 @@ export const CROP_ITEM_TEMPLATES: InvItemTemplate[] = (() => {
   const push = (t: InvItemTemplate | null): void => { if (t && !seen.has(t.id)) { seen.add(t.id); out.push(t); } };
   for (const crop of CROP_DATABASE) {
     for (const st of crop.starts) if (!st.itemId.startsWith('crop_')) push(startTemplate(crop, st));
+    // 285차 — 받은 씨앗
+    if (crop.seedSave) push(savedSeedTemplate(crop));
   }
   for (const crop of CROP_DATABASE) {
     for (const base of produceBaseIds(crop)) for (const g of GRADES) push(produceTemplate(produceItemId(base, g)));

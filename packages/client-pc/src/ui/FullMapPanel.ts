@@ -148,7 +148,7 @@ export class FullMapPanel extends Phaser.GameObjects.Container {
       { icon: 'mm_market', label: '직판장' }, { icon: 'mm_mart', label: '식자재마트' }, { icon: 'mm_daily', label: '생활용품점' }, { icon: 'mm_nursery', label: '종묘사' }, { icon: 'mm_mill', label: '방앗간' },
       { icon: 'mm_conv', label: '편의점' }, { icon: 'mm_pharm', label: '약국' }, { icon: 'mm_food', label: '음식점' },
       { icon: 'mm_cafe', label: '카페' }, { icon: 'mm_pub', label: '주점' }, { icon: 'mm_poi', label: '장소' },
-      { icon: 'mm_npc', label: '인물' }, { icon: 'mm_quest', label: '새 의뢰' }, { icon: 'mm_ready', label: '해결 가능' },
+      { icon: 'mm_npc', label: '인물' }, { icon: 'mm_quest', label: '새 의뢰' }, { icon: 'mm_ready', label: '해결 가능' }, { icon: 'mm_pickup', label: '찾을 것' },
       { dot: 0xff4040, label: '나' }, { dot: 0x5c9cff, label: '다른 사람' }, { ring: 0xffd257, label: '지금 할 일' }, { pin: true, label: '핀' },
     ];
     let lx = PAD + 10, ly = legendY + 12;

@@ -101,6 +101,8 @@ export const SFX_RECIPES = {
   /** 확인 · 결정 — 올라가는 두 음 */
   confirm: { layers: [tone(784, 0.07, 0.07, { wave: 'triangle' }), tone(1175, 0.14, 0.07, { wave: 'triangle', at: 0.06 })] },
   /** 알림 — 맑은 두 음(필드 로그의 경고 · 안전 · 주의 줄은 낮춰서 낸다 — RegionHud.pushLog) */
+  // 285차 — 손목시계 알람 「삐빅 · 삐빅 · 삐빅」(맡긴 일이 다 됐을 때 — 시계를 찼을 때만). 압전 소자처럼 높고 짧은 네모파 두 번씩
+  watch_alarm: { layers: [tone(4186, 0.045, 0.03, { wave: 'square', attack: 0.001 }), tone(4186, 0.045, 0.03, { wave: 'square', at: 0.085, attack: 0.001 })], repeat: { n: 3, every: 0.42 }, minGapMs: 1500 },
   notice: { layers: [tone(1047, 0.06, 0.05, { wave: 'sine' }), tone(1568, 0.12, 0.04, { wave: 'sine', at: 0.05 })], minGapMs: 120 },
   /** 말 걸기(대화창 열림) — 퐁 */
   talk: { layers: [tone(440, 0.07, 0.05, { wave: 'sine', f1: 660 }), noise('bandpass', 3000, 0.04, 0.015, { q: 2 })] },

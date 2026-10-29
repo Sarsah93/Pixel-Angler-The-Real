@@ -3,14 +3,15 @@
  * @description 284차 — 방앗간 압착기 창: 참기름 · 들기름 짜기(180ml · 350ml 병) · 들깨 갈기 · 참깨 볶기를 맡기고, 다 되면 찾는다.
  *
  * 사용자 결정(2026-10-28): 「방앗간 가게로 하고 병은 180ml · 350ml 두 가지로」.
- * - 왼쪽 = 일 넷(가방에 든 깨 g). 오른쪽 = 병 수(기름) 또는 g(갈기 · 볶기) · 견적(드는 깨 · 나오는 것 · 공임 · 찾는 때) · 「맡기기」.
+ * - 왼쪽 = 일 일곱(285차 — 생기름 둘 · 보리 누르기 추가 · 가방에 든 깨 · 보리 g). 오른쪽 = 병 수(기름) 또는 g(갈기 · 볶기 · 누르기) ·
+ *   견적(드는 깨 · 나오는 것 · 공임 · 찾는 때) · 「맡기기」.
  * - 아래 = 맡겨 둔 것(남은 분 · 「찾기」 · 다 되기 전 「무르기」).
  * - 조작 안내 문구를 창에 쓰지 않는다(R11) — 처음 열 때 가이드(`tour.mill`)가 짚는다. 계산은 core `rules/OilMill.ts`.
  * 규칙: DraggablePanel · 일반 팝업 밴드(800) · 목록이 짧아 윈도우드 렌더 대신 상한(맡긴 것 4줄 + 「n건 더」).
  */
 
 import Phaser from 'phaser';
-import { MILL_SERVICES, MILL_TUNING, OIL_BOTTLE_SIZES, maxBottles, type MillServiceId, type OilBottleMl } from '@tra/core';
+import { MILL_SERVICES, OIL_BOTTLE_SIZES, maxBottles, millStepG, type MillServiceId, type OilBottleMl } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -23,9 +24,9 @@ import {
 import { gramsText } from './QtyLabel.js';
 
 const PANEL_W = 600;
-const PANEL_H = 470;
+const PANEL_H = 520;
 const LIST_W = 196;
-const ROW_H = 44;
+const ROW_H = 32;
 const RIGHT_X = 14 + LIST_W + 14;
 const RIGHT_W = PANEL_W - RIGHT_X - 14;
 const FONT = '"Noto Sans KR", sans-serif';
@@ -87,9 +88,9 @@ export class MillPanel extends DraggablePanel {
         else if (maxBottles(this.sel, 180, have) > 0) this.bottles[180] = 1;
       }
     } else {
-      const step = MILL_TUNING.grindStepG;
+      const step = millStepG(s);
       const cap = Math.floor(have / step) * step;
-      this.grams = Math.max(step, Math.min(this.grams, cap || step));
+      this.grams = Math.max(step, Math.min(Math.round(this.grams / step) * step, cap || step));
     }
   }
 
@@ -140,14 +141,14 @@ export class MillPanel extends DraggablePanel {
     MILL_SERVICES.forEach((s) => {
       const have = seedStockG(s.seedItemId);
       const isSel = s.id === this.sel;
-      const bg = sc.add.rectangle(14, y, LIST_W, ROW_H - 4, isSel ? 0x1f4a6a : 0x122236, 0.95).setOrigin(0, 0).setStrokeStyle(1, isSel ? 0x5cd0ff : 0x2a3a4a, 1);
+      const bg = sc.add.rectangle(14, y, LIST_W, ROW_H - 2, isSel ? 0x1f4a6a : 0x122236, 0.95).setOrigin(0, 0).setStrokeStyle(1, isSel ? 0x5cd0ff : 0x2a3a4a, 1);
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerdown', () => { this.sel = s.id; this.status = ''; this.fitAmounts(); this.render(); restoreHandCursor(sc); });
       this.content.add(bg);
-      const name = txt(22, y + 4, s.nameKo, 13, '#e8f4fd', true);
+      const name = txt(22, y + 2, s.nameKo, 12, '#e8f4fd', true);
       clampTextWidth(name, LIST_W - 16);
       const seed = millOutputTemplate(s.seedItemId)?.name.replace(/\s*·.*$/, '') ?? '';
-      const sub = txt(22, y + 22, `가방 ${seed} ${gramsText(have)}`, 11, have > 0 ? '#9fd5ff' : '#6a7a8a');
+      const sub = txt(22, y + 16, `가방 ${seed} ${gramsText(have)}`, 10, have > 0 ? '#9fd5ff' : '#6a7a8a');
       clampTextWidth(sub, LIST_W - 16);
       y += ROW_H;
     });
@@ -176,7 +177,7 @@ export class MillPanel extends DraggablePanel {
         ry += 34;
       }
     } else {
-      const step = MILL_TUNING.grindStepG;
+      const step = millStepG(s);
       const cap = Math.floor(have / step) * step;
       txt(RIGHT_X, ry + 6, '맡길 양', 13, '#ffe28a', true);
       this.btn(RIGHT_X + 140, ry + 2, 30, 26, '−', this.grams > step, () => { this.grams = Math.max(step, this.grams - step); this.status = ''; });
@@ -193,7 +194,7 @@ export class MillPanel extends DraggablePanel {
     const q = millQuoteOf(this.sel, s.kind === 'oil' ? { bottles: this.bottles } : { grams: this.grams });
     const lines: { label: string; value: string; color?: string }[] = [];
     if (q) {
-      lines.push({ label: '드는 깨', value: `${gramsText(q.seedG)} (가방 ${gramsText(have)})`, color: q.seedG > have ? '#ff9a7a' : undefined });
+      lines.push({ label: `드는 ${s.inputKo ?? '깨'}`, value: `${gramsText(q.seedG)} (가방 ${gramsText(have)})`, color: q.seedG > have ? '#ff9a7a' : undefined });
       const outs = q.outputs.map((o) => {
         const tpl = millOutputTemplate(o.itemId);
         if (!tpl) return o.itemId;
@@ -203,7 +204,7 @@ export class MillPanel extends DraggablePanel {
       lines.push({ label: '공임', value: `${q.feeWon.toLocaleString()}원${s.kind === 'oil' ? ' (병값 포함)' : ''}`, color: q.feeWon > GameState.player.inventory.coins ? '#ff9a7a' : undefined });
       lines.push({ label: '찾는 때', value: `${q.waitMin}분 뒤` });
     } else {
-      lines.push({ label: '드는 깨', value: s.kind === 'oil' ? '병을 고른다' : `${MILL_TUNING.grindStepG}g 단위` });
+      lines.push({ label: `드는 ${s.inputKo ?? '깨'}`, value: s.kind === 'oil' ? '병을 고른다' : `${gramsText(millStepG(s))} 단위` });
     }
     for (const l of lines) {
       txt(RIGHT_X, ry, l.label, 11, '#8fa8bf');
@@ -288,7 +289,7 @@ export class MillPanel extends DraggablePanel {
       alive: () => this.active,
       steps: [
         {
-          text: '방앗간 압착기다. 털어 둔 깨를 맡기면 볶아서 기름을 짜 병에 담아 준다. 들깨는 곱게 갈고, 참깨는 볶아 깨소금으로 만들어 준다.',
+          text: '방앗간 압착기다. 털어 둔 깨를 맡기면 볶아서 기름을 짜 병에 담아 준다 — 볶지 않고 짜는 생기름도 있다. 들깨는 곱게 갈고, 참깨는 볶아 깨소금으로, 보리는 눌러 압맥으로 만들어 준다.',
           target: () => this.screen(new Phaser.Geom.Rectangle(0, 0, PANEL_W, PANEL_H)),
         },
         {
@@ -296,7 +297,7 @@ export class MillPanel extends DraggablePanel {
           target: () => this.screen(this.rectList),
         },
         {
-          text: '기름은 180ml · 350ml 병을 몇 병 짤지 고른다. 갈기 · 볶기는 100g 단위로 맡길 양을 고른다.',
+          text: '기름은 180ml · 350ml 병을 몇 병 짤지 고른다. 갈기 · 볶기는 100g, 보리 누르기는 1kg 단위로 맡길 양을 고른다.',
           target: () => this.screen(this.rectAmount),
         },
         {

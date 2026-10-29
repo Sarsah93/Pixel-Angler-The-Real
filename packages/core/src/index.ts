@@ -896,6 +896,7 @@ export type {
 } from './types/Farming.js';
 export {
   CROP_DATABASE, CROP_DIFFICULTY, getCrop, cropStartOfItem, cropOfProduce, isFarmProduce,
+  SAVED_SEED_TAIL, savedSeedItemId, isSavedSeedId,
   PRODUCE_GRADE_SUFFIX, produceItemId, parseProduceId,
   FARM_SUPPLIES, getFarmSupply, supplyOfFacility,
   // 243차 — 포장(낱개 → 팩)
@@ -907,9 +908,18 @@ export {
 export { FARM_RESIDUES, farmResidueDef, mulchResidues } from './db-schema/FarmResidues.js';
 export type { FarmResidueDef } from './db-schema/FarmResidues.js';
 export {
-  OIL_BOTTLE_SIZES, MILL_TUNING, SPOON_ML, OIL_BOTTLES, oilBottleDef, OILCAKE_ID, MILL_SERVICES, millService, oilQuote, grindQuote, maxBottles,
+  OIL_BOTTLE_SIZES, MILL_TUNING, SPOON_ML, OIL_BOTTLES, oilBottleDef, OILCAKE_ID, MILL_SERVICES, millService, oilQuote, grindQuote, maxBottles, millStepG,
 } from './rules/OilMill.js';
 export type { OilBottleMl, MillServiceId, OilBottleDef, MillServiceDef, MillQuote } from './rules/OilMill.js';
+// 285차 — 나물 볶음 주재료별 이름
+export { NAMUL_VEG, NAMUL_PERILLA_TAIL, NAMUL_PERILLA_EFFECT_MULT, namulVariantIds, parseNamulVariant, namulVariantOf } from './db-schema/NamulDishes.js';
+export type { NamulVegDef } from './db-schema/NamulDishes.js';
+// 285차 — 갈무리(건조 걸대 · 장독)
+export {
+  CURE_RECIPES, CURE_TUNING, CURE_STATION_FACILITY, CURE_STATION_LABEL, cureRecipe, cureRecipesAt, cureReadyAt, cureLeftKo, cureLeftEn,
+  CURE_ITEMS, cureItem,
+} from './rules/HomeCure.js';
+export type { CureStation, CureInputDef, CureRecipeDef, CureItemDef } from './rules/HomeCure.js';
 export type { FarmSupplyDef } from './db-schema/CropDatabase.js';
 export { variantsOf, baseCropOf, variantUnlockKo } from './db-schema/CropDatabase.js';
 // 241차 — 날로 먹기(수확물 · 조각 · 영양)
@@ -930,6 +940,7 @@ export { harvestPreview } from './simulation/FarmSim.js';
 // 247차 — 재배 요소: 저절로 난 싹 · 모종 꺼내기 · 밭 손질 · 포기 나누기 · 산채 모종 들어오는 날
 export {
   wildUnknown, pullSeedlings, processStageOf, processHoursLeft, startFieldProcess, finishFieldProcess, divideBlockKo, divideCell, rareArrivalInDays,
+  seedSaveBlockKo, saveSeedsCell, seedPacketsFromGrain, applySavedSeed, SAVED_SEED_TUNING,
   rollByproducts,
 } from './simulation/FarmSim.js';
 export {

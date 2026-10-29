@@ -51,7 +51,9 @@ export type FarmFacility =
   | 'shade'        // 차광막(텃밭 — 산채 재배 자격)
   | 'hydroRack'    // 실내 수경 랙(잎채소 ×1.8)
   | 'coldWater'    // 냉수 순환 수조(고추냉이 자격)
-  | 'sproutJar';   // 콩나물 시루(실내 — 시루 · 새싹 자격)
+  | 'sproutJar'    // 콩나물 시루(실내 — 시루 · 새싹 자격)
+  | 'dryingRack'   // 285차 — 건조 걸대(텃밭 — 시래기 · 옥수수수염을 걸어 말린다 · `rules/HomeCure.ts`)
+  | 'crock';       // 285차 — 장독(텃밭 — 깻잎 · 콩잎 장아찌를 담근다)
 
 /** 심는 방법 하나 */
 export interface CropStart {
@@ -451,8 +453,11 @@ export type OffTimingKind = 'bolt' | 'cold' | 'heat' | 'short';
 
 /** 247차 — 늘리는 법(아주 까다로운 작물 — 「씨앗을 구하기 어렵다」의 실제 대안) */
 export interface CropPropagation {
-  /** 포기 나누기 · 뿌리 꺾꽂이(두릅 · 엄나무) · 곁눈(고추냉이 — 거둘 때) */
-  by: 'division' | 'cutting' | 'offset';
+  /**
+   * 포기 나누기 · 뿌리 꺾꽂이(두릅 · 엄나무) · 곁눈(고추냉이 — 거둘 때) ·
+   * 285차 런너(딸기 — 열매를 다 딴 여름, 어미 포기가 뻗은 줄기 끝에 새끼 포기가 뿌리를 내린다 · 한 해를 넘기지 않아도 된다)
+   */
+  by: 'division' | 'cutting' | 'offset' | 'runner';
   /** 나누는 달(곁눈은 거둘 때라 비운다) */
   months: number[];
   /** 한 번에 얻는 수 [최소, 최대] — 심는 물건(`starts`의 첫 모종 · 종구) */
@@ -589,6 +594,14 @@ export interface CropDef {
   cookIngredient?: string;
   /** 284차 — 부산물(무청 · 토란대 · 깻대 · 콩대 · 보릿짚 · 옥수숫대 …) */
   byproducts?: CropByproduct[];
+  /**
+   * 285차 — 씨 받기(받은 씨앗을 다시 심는다 · 사용자 「받은 씨앗 다시 심기」).
+   *  - `qty` = 다 익은 칸 하나를 씨로 거두면 나오는 「1칸 분」 봉 수(칸은 끝난다 — 씨를 받으려면 그 작기 수확을 포기한다).
+   *  - `fromGrainG` = 털어 낸 낱알(g)을 「1칸 분」으로 덜 수 있는 작물(콩 · 깨 · 보리 — 가방에서 「씨앗으로 덜기」).
+   *  - `hybrid` = 시판 씨가 대개 교잡종(F1)이라 받은 씨는 고르지 않다 — 심으면 수확 ×0.85.
+   * 받은 씨앗 아이템 = 그 작물 씨앗 id + `_saved`(심는 법은 같다 — `cropStartOfItem`이 꼬리를 떼고 찾는다).
+   */
+  seedSave?: { qty?: [number, number]; fromGrainG?: number; hybrid?: boolean };
   /** 출처 · 근거 메모(위키 · 상세 보기 꼬리) */
   noteKo: string;
   /** 같은 메모의 영어(i18n 사전이 데이터를 그대로 읽는다) */
@@ -669,6 +682,8 @@ export interface FarmCellState {
   fedAtPlant?: boolean;
   /** 육묘 트레이: 꺼내기 시작한 뒤 트레이에 남은 모종 수(다 꺼내면 칸이 빈다) */
   trayLeft?: number;
+  /** 285차 — 받은 씨앗으로 심었다(교잡종이면 수확 ×0.85 — 심을 때 `careYield`에 곱해 둔다) */
+  savedSeed?: boolean;
 }
 
 /** 텃밭 하나(설치물 하나 — 4×3칸) */

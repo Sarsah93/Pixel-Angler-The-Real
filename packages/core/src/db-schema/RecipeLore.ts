@@ -9,6 +9,7 @@
  */
 
 import type { DishNameModifier } from '../types/Cooking.js';
+import { NAMUL_VEG, NAMUL_PERILLA_TAIL } from './NamulDishes.js';
 
 export interface RecipeLore {
   shortDescriptionKo: string;
@@ -161,6 +162,11 @@ export const RECIPE_VARIANT_DESC: Record<string, { ko: (sp: string) => string; e
     ko: (sp) => `간장 · 설탕 · 마늘 양념을 발라 구운 ${sp}.`,
     en: (sp) => `${sp} brushed with soy, sugar and garlic, then grilled.`,
   },
+  // 285차 — 나물 볶음(주재료 = 나물 · `NamulDishes.ts`)
+  stirfry_namul: {
+    ko: (sp) => `데친 ${sp}${particleEulReul(sp)} 들기름에 달달 볶았다. 오래 볶을수록 부드러워진다.`,
+    en: (sp) => `Blanched ${sp} fried gently in perilla oil — the longer it cooks, the softer it gets.`,
+  },
 };
 
 /**
@@ -176,6 +182,7 @@ export const DISH_SPECIES_NAME: Record<string, { ko: string; en: string }> = {
 /** 틀로 만든 이름이 어색한 조합만 통째로 (255차) — 굴은 「굴탕」보다 「굴국」이다 */
 export const DISH_VARIANT_NAME: Record<string, Record<string, { ko: string; en: string }>> = {
   soup_clam: { oyster_gigas: { ko: '굴국', en: 'Oyster Soup' } },
+  stirfry_namul: {},
 };
 
 /**
@@ -191,7 +198,27 @@ export const RECIPE_BASE_NAME: Record<string, { ko: (sp: string) => string; en: 
   stirfry_squid: { ko: (sp) => `${sp}볶음`, en: (sp) => `Stir-fried ${sp}` },
   soup_clam: { ko: (sp) => `${sp}탕`, en: (sp) => `${sp} Soup` },
   grill_eel: { ko: (sp) => `${sp}구이`, en: (sp) => `Grilled ${sp}` },
+  stirfry_namul: { ko: (sp) => `${sp} 볶음`, en: (sp) => `Stir-fried ${sp}` },
 };
+
+/** 받침에 따라 `을`/`를` */
+function particleEulReul(word: string): string {
+  const ch = word.charCodeAt(word.length - 1);
+  if (ch < 0xac00 || ch > 0xd7a3) return '를';
+  return (ch - 0xac00) % 28 === 0 ? '를' : '을';
+}
+
+// 285차 — 나물 볶음 변형 이름 · 설명(들깨볶음은 통째 이름 — 「토란대 들깨볶음」)
+for (const v of NAMUL_VEG) {
+  const plain = `veg_${v.key}`, per = `${plain}${NAMUL_PERILLA_TAIL}`;
+  DISH_SPECIES_NAME[plain] = { ko: v.ko, en: v.en };
+  DISH_SPECIES_NAME[per] = { ko: v.ko, en: v.en };
+  DISH_VARIANT_NAME.stirfry_namul![per] = { ko: `${v.ko} 들깨볶음`, en: `${v.en.charAt(0).toUpperCase()}${v.en.slice(1)} with perilla seed` };
+  (DISH_VARIANT_LORE.stirfry_namul ??= {})[per] = {
+    descKo: `데친 ${v.ko}${particleEulReul(v.ko)} 들기름에 볶다가 들깨가루로 감쳤다. 자작한 국물이 배어 고소하다.`,
+    descEn: `Blanched ${v.en} fried in perilla oil and finished with perilla powder — the broth thickens and turns nutty.`,
+  };
+}
 
 export const DISH_MODIFIER_KO: Record<DishNameModifier, string> = { burnt: '탄', prime: '일품', fresh: '싱싱한', fatty: '기름진' };
 export const DISH_MODIFIER_EN: Record<DishNameModifier, string> = { burnt: 'Burnt', prime: 'Prime', fresh: 'Fresh', fatty: 'Fatty' };

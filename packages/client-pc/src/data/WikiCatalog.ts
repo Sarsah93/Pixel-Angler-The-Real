@@ -14,6 +14,7 @@ import { QUEST_REWARD_ITEMS } from './QuestRewardItems.js';
 import { CROP_ITEM_TEMPLATES, PRODUCE_SUB, EARTHWORM_TEMPLATE, EARTHWORM_DESC } from './CropItems.js';
 import { cropOfProduce, byproductOf, farmResidueDef, parseProduceId, oilBottleDef } from '@tra/core';
 import { MILL_ITEM_TEMPLATES } from './MillItems.js';
+import { CURE_ITEM_TEMPLATES, cureItemDesc } from './CureItems.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { SHOP_CATALOG, BUILDING_LABEL, NPC_SHOP_EXTRAS, NPC_SHOP_LABEL } from './ShopCatalog.js';
 
@@ -129,8 +130,18 @@ export function buildItemWikiCatalog(): WikiItemEntry[] {
     map.set(t.id, {
       id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
       category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
-      desc: def ? `방앗간에 깨를 맡겨 짜 온다 — 「병 따기」로 1큰술 ${def.spoons}개가 된다. 따지 않은 병은 식자재마트 · 식당이 산다.` : '',
+      desc: def ? `${def.raw ? '볶지 않은 깨를 맡겨 짠 생기름 — 향이 순하고 빛이 맑다. ' : '방앗간에 깨를 맡겨 짜 온다 — '}「병 따기」로 1큰술 ${def.spoons}개가 된다. 따지 않은 병은 식자재마트 · 식당이 산다.` : '',
       soldAt: [], isSeed: false, tpl: { ...t },
+    });
+  }
+
+  // 4b-3) 285차 — 갈무리(건조 걸대 · 장독에서 말리고 삭힌 것 — 가게가 팔지 않는다)
+  for (const t of CURE_ITEM_TEMPLATES) {
+    if (map.has(t.id)) continue;
+    map.set(t.id, {
+      id: t.id, name: t.name, icon: t.icon, iconTexture: t.iconTexture,
+      category: t.category, subCategory: t.subCategory, basePrice: t.basePrice,
+      desc: cureItemDesc(t.id) ?? '', soldAt: [], isSeed: false, tpl: { ...t },
     });
   }
 

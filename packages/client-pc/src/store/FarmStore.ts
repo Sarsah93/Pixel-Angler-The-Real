@@ -40,12 +40,16 @@ import {
   rollEarthworms, EARTHWORM_TUNING, type EarthwormAct,
   // 284차 — 밭 부산물(퇴비 대신 넣기) · 관리 자재 대체
   FARM_RESIDUES, type CareTaskDef,
+  // 285차 — 씨 받기 · 받은 씨앗 · 갈무리 설비
+  isSavedSeedId, applySavedSeed, seedSaveBlockKo, saveSeedsCell, seedPacketsFromGrain, savedSeedItemId, parseProduceId, cropOfProduce,
+  CURE_STATION_FACILITY,
   type CropDef, type FarmEnv, type FarmFacility, type FarmHarvestResult, type FarmPlantCtx, type FarmPlotState, type LicenseType,
   type CareStatus, type CareTaskId, type CropDisease, type FarmCellState, type WaterAmount, type CropCultivation, type MoistureState,
 } from '@tra/core';
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvCategory } from './InventoryStore.js';
 import { StoryStore } from './StoryStore.js';
+import { CureQueue } from './CureQueue.js';
 import { ExternalDataStore } from './ExternalDataStore.js';
 import { cropItemTemplate, variantNoticeKo, looseCountKo, EARTHWORM_ID, EARTHWORM_TEMPLATE } from '../data/CropItems.js';
 import { gramsText } from '../ui/QtyLabel.js';
@@ -172,6 +176,7 @@ class FarmStoreImpl {
     const p = this.plots.get(id);
     if (!p) return { ok: true };
     if (p.cells.some((c) => !!c.cropId)) return { ok: false, message: '심어 둔 것을 다 거둔 뒤에 걷을 수 있다' };
+    if (CureQueue.at(id).length) return { ok: false, message: '걸대 · 장독에 걸어 둔 것을 먼저 거둔다' };   // 285차
     const back = p.facilities.map((f) => supplyOfFacility(f)).filter((s): s is NonNullable<typeof s> => !!s);
     const parts = back.map((s) => ({ tpl: cropItemTemplate(s.itemId)!, qty: 1 })).filter((x) => !!x.tpl);
     if (Object.keys(InventoryStore.slotShortfall(parts)).length) return { ok: false, message: '설비를 돌려받을 가방 자리가 없다' };
@@ -690,6 +695,8 @@ class FarmStoreImpl {
     const tool = plantToolEval(found.start.kind, this.hasItem);
     plantCell(cell, found.crop, found.start, Date.now(), Math.random, this.plantCtx(),
       { greenhouse: p.facilities.includes('greenhouse'), trowel: tool.helpers.includes(TROWEL_ID) });
+    // 285차 — 받은 씨앗은 덜 고르다(섬 ×0.92 · 교잡종이면 수확 ×0.85)
+    if (isSavedSeedId(startItemId)) applySavedSeed(cell, found.crop);
     InventoryStore.removeQty(startItemId, chk.need ?? 1);
     if (p.site === 'plot') this.spend(laborOf('plant', found.crop, { tool }).fatigue);
     GameState.markDirty();
@@ -885,8 +892,81 @@ class FarmStoreImpl {
     InventoryStore.addItem(tpl, r.qty);
     this.spend(laborOf('divide').fatigue);
     GameState.markDirty();
-    const how = cultivationOf(crop).propagate?.by === 'cutting' ? '뿌리를 잘라 꺾꽂이 감을 얻었다' : '포기를 나눴다';
+    const by = cultivationOf(crop).propagate?.by;
+    const how = by === 'cutting' ? '뿌리를 잘라 꺾꽂이 감을 얻었다' : by === 'runner' ? '뿌리내린 런너 모종을 떼어 냈다' : '포기를 나눴다';
     return { ok: true, message: `${crop.nameKo} ${how} — ${tpl.name} ${r.qty}개`, harvested: [{ itemId: tpl.id, qty: r.qty, name: tpl.name }] };
+  }
+
+  /** 285차 — 이 칸에서 씨를 못 받는 까닭(되면 null · 씨를 받는 작물이 아니면 단추를 안 띄우게 `undefined`) */
+  seedSaveBlock(plotId: string, idx: number): string | null | undefined {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop?.seedSave?.qty || cell.wild) return undefined;
+    return seedSaveBlockKo(cell, crop);
+  }
+
+  /** 285차 — 다 익은 칸을 씨로 거둔다(그 작기 수확 대신 · 칸은 빈다) */
+  saveSeeds(plotId: string, idx: number): FarmActionResult {
+    const cell = this.plot(plotId).cells[idx];
+    const crop = cell?.cropId ? getCrop(cell.cropId) : undefined;
+    if (!cell || !crop) return fail('씨를 받을 포기가 없다');
+    const why = seedSaveBlockKo(cell, crop);
+    if (why) return fail(why);
+    const id = savedSeedItemId(crop);
+    const tpl = id ? cropItemTemplate(id) : null;
+    if (!tpl || !this.roomFor(tpl.id, null, true)) return fail('가방에 자리가 없다 — 한 칸 비우고 씨를 받는다');
+    const tired = this.tiredBlock();
+    if (tired) return fail(tired);
+    const r = saveSeedsCell(cell, crop, Math.random);
+    if (!r) return fail('씨를 받을 수 없다');
+    InventoryStore.addItem(tpl, r.qty);
+    this.spend(laborOf('harvest', crop).fatigue);
+    GameState.markDirty();
+    const hybrid = crop.seedSave?.hybrid ? ' — 사 온 씨가 교잡종이면 받은 씨는 고르지 않다' : '';
+    return { ok: true, message: `${crop.nameKo} 씨를 받았다 — ${tpl.name} ${r.qty}봉${hybrid}`, harvested: [{ itemId: tpl.id, qty: r.qty, name: tpl.name }] };
+  }
+
+  /**
+   * 285차 — 털어 낸 낱알(콩 · 깨 · 보리 g)에서 「1칸 분」 씨앗을 던다. 낮은 등급부터 쓴다.
+   * @returns 덜 수 있는 봉 수(가방 기준) — `n`을 주면 그만큼 덜어 낸다
+   */
+  grainSeedInfo(itemId: string): { crop: CropDef; perG: number; packets: number; seedId: string } | null {
+    const crop = cropOfProduce(itemId);
+    const perG = crop?.seedSave?.fromGrainG;
+    const seedId = crop ? savedSeedItemId(crop) : null;
+    if (!crop || !perG || !seedId) return null;
+    const base = parseProduceId(itemId).baseId;
+    let g = 0;
+    for (const gr of ['normal', 'good', 'special'] as const) {
+      const it = InventoryStore.find(produceItemId(base, gr));
+      if (it) g += it.qty * (it.unitG ?? 1);
+    }
+    return { crop, perG, packets: seedPacketsFromGrain(crop, g), seedId };
+  }
+
+  grainToSeeds(itemId: string, n: number): FarmActionResult {
+    const info = this.grainSeedInfo(itemId);
+    if (!info) return fail('씨앗으로 덜 수 있는 낱알이 아니다');
+    const k = Math.min(Math.max(1, Math.floor(n)), info.packets);
+    if (k <= 0) return fail(`${gramsText(info.perG)}이 있어야 한 칸 분을 던다`);
+    const tpl = cropItemTemplate(info.seedId);
+    if (!tpl || !this.roomFor(tpl.id, null, true)) return fail('가방에 자리가 없다');
+    const base = parseProduceId(itemId).baseId;
+    let left = k * info.perG;
+    for (const gr of ['normal', 'good', 'special'] as const) {
+      if (left <= 0) break;
+      const id = produceItemId(base, gr);
+      const it = InventoryStore.find(id);
+      if (!it) continue;
+      const per = it.unitG ?? 1;
+      const take = Math.min(it.qty, Math.ceil(left / per));
+      if (take <= 0) continue;
+      InventoryStore.removeQty(id, take);
+      left -= take * per;
+    }
+    InventoryStore.addItem(tpl, k);
+    GameState.markDirty();
+    return { ok: true, message: `${gramsText(k * info.perG)}을 덜어 ${tpl.name} ${k}봉으로 나눠 담았다` };
   }
 
   /** 247차 — 이 칸 거두기 단추 이름(따기 · 베기 · 캐기 · 뽑기 · 털기 · 꼬투리 따기 · 묶어 거두기 · 모종 꺼내기) — 거둘 때가 아니면 null */
@@ -1005,6 +1085,9 @@ class FarmStoreImpl {
   uninstall(plotId: string, f: FarmFacility): FarmActionResult {
     const p = this.plot(plotId);
     if (!p.facilities.includes(f)) return fail('놓인 설비가 아니다');
+    // 285차 — 걸대 · 장독에 걸어 둔 것이 있으면 걷지 못한다(먼저 거두거나 버린다)
+    const station = (Object.keys(CURE_STATION_FACILITY) as (keyof typeof CURE_STATION_FACILITY)[]).find((k) => CURE_STATION_FACILITY[k] === f);
+    if (station && CureQueue.at(plotId, station).length) return fail('걸어 둔 것을 먼저 거둔다 — 갈무리 창에서');
     const s = supplyOfFacility(f);
     const tpl = s ? cropItemTemplate(s.itemId) : null;
     if (!tpl) return fail('돌려받을 수 없다');

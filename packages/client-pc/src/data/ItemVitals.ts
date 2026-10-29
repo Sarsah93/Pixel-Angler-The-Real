@@ -18,7 +18,7 @@
  *  - **카페인은 즉시 회복 + 리바운드 부채**(`fatigueRebound` 만큼 `fatigueReboundMin` 활동 분 뒤 복귀).
  */
 
-import { restoreFromNutrition, FOOD_NUTRITION, RAW_EAT_ITEM_IDS, type StatusCure } from '@tra/core';
+import { restoreFromNutrition, FOOD_NUTRITION, RAW_EAT_ITEM_IDS, CURE_ITEMS, type StatusCure } from '@tra/core';
 
 /** 155차 — 허기·수분은 영양표(질량·kcal·ml)에서 파생한다. 손으로 적은 숫자를 남기지 않는다 */
 const nut = (id: string): { hungerRestore: number; hydrationRestore: number } => restoreFromNutrition(FOOD_NUTRITION[id]);
@@ -107,6 +107,10 @@ export const ITEM_VITALS: Record<string, ItemVitalsDef> = {
 // 241차 — 날로 먹는 수확물(등급 꼬리 3 + 조각) — 영양은 core `CropRawEatDatabase`가 FOOD_NUTRITION에 올린 값에서 파생.
 //   일반 음식처럼 피로 회복은 0(허기 · 수분 전담). 구세이브 아이템은 로드 백필(`refreshNutritionVitals`)이 채운다.
 for (const id of RAW_EAT_ITEM_IDS) if (!ITEM_VITALS[id] && FOOD_NUTRITION[id]) ITEM_VITALS[id] = { ...nut(id) };
+// 285차 — 갈무리해 나온 것(옥수수수염차 · 장아찌) — 영양표에서 · 따뜻한 차는 피로도 조금
+for (const c of CURE_ITEMS) {
+  if (c.eat && !ITEM_VITALS[c.id]) ITEM_VITALS[c.id] = { ...nut(c.id), ...(c.fatigueRestore ? { fatigueRestore: c.fatigueRestore } : {}) };
+}
 
 /** id의 효과 정의 (없으면 undefined) */
 export function itemVitalsOf(id: string): ItemVitalsDef | undefined {

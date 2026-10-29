@@ -11,7 +11,11 @@
  *    → 350ml 한 병 ≈ **볶은 들깨 950g**.
  *  - 기름 비중 0.92(350ml ≈ 322g). 깻묵 = 깨 − 볶을 때 날아간 물기(6%) − 기름.
  *  - 공임: 6kg에 2~3만 원 → kg당 4,000원 · 병값 따로(180ml 400원 · 350ml 600원).
- *  - 볶지 않고 짜는 생기름은 다루지 않는다(볶은 것의 절반 남짓 — 백로그).
+ *  - 285차 — **생기름**(볶지 않고 저온으로 짠다): 볶으면 착유가 잘 된다(아마씨 볶음 · 저온압착 연구 — 볶은 쪽 수율이 높다).
+ *    생으로 짜면 덜 나와 350ml 한 병에 참깨 1kg · 들깨 1.1kg 남짓(추정 — 볶은 것보다 15% 더) · 공임 kg당 5,000원 · 90분.
+ *    값은 방앗간 목록 「냉압착 생들기름 350ml」이 볶은 것보다 조금 비싼 데서(국산 28,000원) — 냉장 보관이라 오래 못 둔다.
+ *  - 285차 — **압맥**(보리 누르기): 보리를 김에 쪄 롤러로 누른다(압맥은 물을 빨리 먹고 빨리 익는다 — 한국식품과학회지 1987).
+ *    1kg에 밑밥용 압맥 한 봉(가방의 「압맥 (눌린 보리)」 — 낚시점 · 마트가 파는 그것) · 공임 kg당 1,500원 · 30분.
  *
  * 순수 계산만 한다 — 맡기기 · 찾기 대기열과 아이템 템플릿은 클라이언트(`MillQueue` · `MillItems`).
  */
@@ -21,7 +25,9 @@ export type OilBottleMl = 180 | 350;
 export const OIL_BOTTLE_SIZES: readonly OilBottleMl[] = [180, 350];
 
 /** 방앗간 일 — 기름 짜기 · 들깨 갈기 · 참깨 볶기 */
-export type MillServiceId = 'sesame_oil' | 'perilla_oil' | 'perilla_powder' | 'sesame_salt';
+export type MillServiceId =
+  | 'sesame_oil' | 'perilla_oil' | 'perilla_powder' | 'sesame_salt'
+  | 'sesame_oil_raw' | 'perilla_oil_raw' | 'barley_press';
 
 export const MILL_TUNING = {
   /** 기름 비중(g/ml) */
@@ -58,16 +64,20 @@ export interface OilBottleDef {
   spoonItemId: string;
   /** 기준 값(원) — 식자재마트 · 식당이 이 값 × 신선도 × 0.7에 산다 */
   value: number;
+  /** 285차 — 볶지 않고 짠 생기름(냉장 · 빨리 상한다) */
+  raw?: boolean;
 }
 
-const bottle = (oil: 'sesame' | 'perilla', ml: OilBottleMl, value: number): OilBottleDef => ({
-  itemId: `oil_${oil}_${ml}`,
-  nameKo: `${oil === 'sesame' ? '참기름' : '들기름'} (${ml}ml 병)`,
-  nameEn: `${oil === 'sesame' ? 'Sesame oil' : 'Perilla oil'} (${ml}ml bottle)`,
+const bottle = (oil: 'sesame' | 'perilla', ml: OilBottleMl, value: number, raw = false): OilBottleDef => ({
+  itemId: `oil_${oil}${raw ? '_raw' : ''}_${ml}`,
+  nameKo: `${raw ? '생' : ''}${oil === 'sesame' ? '참기름' : '들기름'} (${ml}ml 병)`,
+  nameEn: `${raw ? 'Cold-pressed ' : ''}${oil === 'sesame' ? (raw ? 'sesame oil' : 'Sesame oil') : (raw ? 'perilla oil' : 'Perilla oil')} (${ml}ml bottle)`,
   ml,
   spoons: Math.floor(ml / SPOON_ML),
+  // 생기름도 따면 같은 1큰술 재료(요리에서는 같은 기름으로 친다 — 향만 순하다)
   spoonItemId: oil === 'sesame' ? 'cook_sesame_oil' : 'cook_perilla_oil',
   value,
+  ...(raw ? { raw: true } : {}),
 });
 
 /**
@@ -77,6 +87,9 @@ const bottle = (oil: 'sesame' | 'perilla', ml: OilBottleMl, value: number): OilB
 export const OIL_BOTTLES: readonly OilBottleDef[] = [
   bottle('sesame', 180, 18000), bottle('sesame', 350, 35000),
   bottle('perilla', 180, 11500), bottle('perilla', 350, 22000),
+  // 285차 — 생기름(냉압착) — 깨가 더 들고 공임이 비싸 값도 높다
+  bottle('sesame', 180, 22000, true), bottle('sesame', 350, 42000, true),
+  bottle('perilla', 180, 15000, true), bottle('perilla', 350, 28000, true),
 ];
 
 export function oilBottleDef(itemId: string): OilBottleDef | undefined {
@@ -98,8 +111,17 @@ export interface MillServiceDef {
   seedPerBottle?: Record<OilBottleMl, number>;
   /** oil — 병 아이템 접두(`oil_sesame`) */
   bottlePrefix?: string;
-  /** grind — 나오는 1큰술 아이템 · 1큰술 무게(g) · 남는 비율 */
+  /** grind — 나오는 1큰술 아이템 · 1큰술 무게(g) · 남는 비율(압맥은 한 봉 = 1kg) */
   out?: { itemId: string; spoonG: number; keep: number };
+  /** 285차 — 볶지 않는다(생기름 — 볶을 때 날아가는 물기가 없다) */
+  raw?: boolean;
+  /** 285차 — 맡는 단위(g) · 공임(원/kg) · 기다림(분)이 기본과 다를 때 */
+  stepG?: number;
+  feePerKg?: number;
+  waitMin?: number;
+  /** 285차 — 맡기는 낱알을 부르는 말(창 「드는 깨」 · 「드는 보리」) */
+  inputKo?: string;
+  inputEn?: string;
   /** 한 줄(가게 창 · 위키) */
   howKo: string;
   howEn: string;
@@ -123,6 +145,19 @@ export const MILL_SERVICES: readonly MillServiceDef[] = [
     howKo: '들깨를 살짝 볶아 짠다 — 350ml 한 병에 950g 남짓이 든다. 짜고 남은 깻묵도 돌려준다.',
     howEn: 'The perilla seed is lightly roasted and pressed — a 350ml bottle takes about 950g. The leftover oil cake comes back too.',
   },
+  // ── 285차 — 생기름(볶지 않고 저온 압착) ──
+  {
+    id: 'sesame_oil_raw', nameKo: '생참기름 짜기', nameEn: 'Cold-press sesame oil', seedItemId: 'crop_chamkkae', kind: 'oil',
+    seedPerBottle: perBottle(1000), bottlePrefix: 'oil_sesame_raw', raw: true, feePerKg: 5000, waitMin: 90,
+    howKo: '참깨를 볶지 않고 낮은 온도로 천천히 짠다 — 덜 나와 350ml 한 병에 1kg 남짓이 든다. 향이 순하고 냉장해 두고 빨리 먹는다.',
+    howEn: 'The sesame is pressed slowly at low heat without roasting — less comes out, about 1kg per 350ml bottle. Milder; keep it cold and use it soon.',
+  },
+  {
+    id: 'perilla_oil_raw', nameKo: '생들기름 짜기', nameEn: 'Cold-press perilla oil', seedItemId: 'crop_deulkkae', kind: 'oil',
+    seedPerBottle: perBottle(1100), bottlePrefix: 'oil_perilla_raw', raw: true, feePerKg: 5000, waitMin: 90,
+    howKo: '들깨를 볶지 않고 저온 압착한다 — 350ml 한 병에 1.1kg 남짓. 나물에 날로 끼얹는 기름. 냉장해도 빨리 산패한다.',
+    howEn: 'Perilla seed cold-pressed without roasting — about 1.1kg per 350ml bottle. Drizzled raw over greens. Goes rancid quickly even in the fridge.',
+  },
   {
     id: 'perilla_powder', nameKo: '들깨 갈기', nameEn: 'Grind perilla seed', seedItemId: 'crop_deulkkae', kind: 'grind',
     out: { itemId: 'cook_perilla_powder', spoonG: 7, keep: 0.95 },
@@ -135,7 +170,19 @@ export const MILL_SERVICES: readonly MillServiceDef[] = [
     howKo: '참깨를 고소하게 볶아 소금을 조금 넣고 반쯤 빻는다 — 깨소금은 나물 마무리에 뿌린다.',
     howEn: 'Sesame is roasted until nutty, then half-crushed with a pinch of salt — sesame salt finishes seasoned greens.',
   },
+  // ── 285차 — 압맥(보리를 쪄서 눌러 납작하게) — 밑밥 재료 ──
+  {
+    id: 'barley_press', nameKo: '보리 누르기 (압맥)', nameEn: 'Roll barley (apmaek)', seedItemId: 'crop_barley', kind: 'grind',
+    out: { itemId: 'inv_chum_apmac', spoonG: 1000, keep: 1 }, stepG: 1000, feePerKg: 1500, waitMin: 30, inputKo: '보리', inputEn: 'barley',
+    howKo: '보리를 김에 쪄 롤러로 납작하게 누른다 — 1kg에 압맥 한 봉. 밑밥에 섞으면 천천히 가라앉으며 넓게 흩어진다.',
+    howEn: 'Barley is steamed and pressed flat between rollers — one bag of rolled barley per kilo. Mixed into groundbait it sinks slowly and spreads wide.',
+  },
 ];
+
+/** 285차 — 갈기 · 볶기 · 누르기를 맡는 단위(g) */
+export function millStepG(s: Pick<MillServiceDef, 'stepG'>): number {
+  return s.stepG ?? MILL_TUNING.grindStepG;
+}
 
 export function millService(id: MillServiceId): MillServiceDef | undefined {
   return MILL_SERVICES.find((s) => s.id === id);
@@ -174,22 +221,22 @@ export function oilQuote(serviceId: MillServiceId, bottles: Partial<Record<OilBo
     outputs.push({ itemId: `${s.bottlePrefix}_${ml}`, qty: n });
   }
   if (seedG <= 0) return null;
-  const cakeG = Math.max(0, Math.round(seedG * (1 - MILL_TUNING.roastLoss) - oilMl * MILL_TUNING.oilDensity));
+  const cakeG = Math.max(0, Math.round(seedG * (1 - (s.raw ? 0 : MILL_TUNING.roastLoss)) - oilMl * MILL_TUNING.oilDensity));
   if (cakeG > 0) outputs.push({ itemId: OILCAKE_ID, qty: cakeG });
-  const fee = Math.max(MILL_TUNING.minFee, Math.round((seedG / 1000) * MILL_TUNING.oilFeePerKg / 100) * 100) + bottleFee;
-  return { service: serviceId, seedG, outputs, oilMl, feeWon: fee, waitMin: MILL_TUNING.oilWaitMin };
+  const fee = Math.max(MILL_TUNING.minFee, Math.round((seedG / 1000) * (s.feePerKg ?? MILL_TUNING.oilFeePerKg) / 100) * 100) + bottleFee;
+  return { service: serviceId, seedG, outputs, oilMl, feeWon: fee, waitMin: s.waitMin ?? MILL_TUNING.oilWaitMin };
 }
 
 /** 갈기 · 볶기 견적 — 맡기는 g(100g 단위로 내림). 한 큰술도 안 나오면 null */
 export function grindQuote(serviceId: MillServiceId, grams: number): MillQuote | null {
   const s = millService(serviceId);
   if (!s || s.kind !== 'grind' || !s.out) return null;
-  const step = MILL_TUNING.grindStepG;
+  const step = millStepG(s);
   const seedG = Math.floor(Math.max(0, grams) / step) * step;
   const spoons = Math.floor((seedG * s.out.keep) / s.out.spoonG);
   if (seedG <= 0 || spoons <= 0) return null;
-  const fee = Math.max(MILL_TUNING.minFee, Math.round((seedG / 1000) * MILL_TUNING.grindFeePerKg / 100) * 100);
-  return { service: serviceId, seedG, outputs: [{ itemId: s.out.itemId, qty: spoons }], oilMl: 0, feeWon: fee, waitMin: MILL_TUNING.grindWaitMin };
+  const fee = Math.max(MILL_TUNING.minFee, Math.round((seedG / 1000) * (s.feePerKg ?? MILL_TUNING.grindFeePerKg) / 100) * 100);
+  return { service: serviceId, seedG, outputs: [{ itemId: s.out.itemId, qty: spoons }], oilMl: 0, feeWon: fee, waitMin: s.waitMin ?? MILL_TUNING.grindWaitMin };
 }
 
 /** 가진 낱알(g)로 짤 수 있는 가장 많은 병 수(한 가지 크기만) */

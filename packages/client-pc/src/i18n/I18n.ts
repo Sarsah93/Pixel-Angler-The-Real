@@ -28,9 +28,9 @@ import {
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
   CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW, carePlanSummaryKo, carePlanSummaryEn,
-  FARM_RESIDUES, OIL_BOTTLES, MILL_SERVICES,
+  FARM_RESIDUES, OIL_BOTTLES, MILL_SERVICES, CURE_RECIPES, CURE_ITEMS, CURE_STATION_LABEL,
 } from '@tra/core';
-import { startItemName, startItemNameEn, looseShortNamePairs } from '../data/CropItems.js';
+import { startItemName, startItemNameEn, looseShortNamePairs, savedSeedTemplate, savedSeedNameEn } from '../data/CropItems.js';
 import { EN_PLACES } from './places.js';
 import { EN_POIS } from './en_pois.js';
 import { EN_DICT, EN_RULES } from './en.js';
@@ -112,13 +112,18 @@ function buildRuntimeDict(): void {
     for (const b of c.harvest.bags ?? []) put(b.nameKo, b.nameEn);   // 284차 — 봉지(참깨 300g …)
     for (const b of c.byproducts ?? []) { put(b.nameKo, b.nameEn); put(b.noteKo, b.noteEn); }   // 284차 — 부산물
     for (const st of c.starts) put(startItemName(c, st), startItemNameEn(c, st));
+    if (c.seedSave) { const t = savedSeedTemplate(c); if (t) put(t.name, savedSeedNameEn(c)); }   // 285차 — 받은 씨앗
   }
   for (const [ko, en] of looseShortNamePairs()) put(ko, en);   // 243차 — 「딸기 25개」의 앞부분
   for (const sp of FARM_SUPPLIES) { put(sp.nameKo, sp.nameEn); put(sp.descKo, sp.descEn); }
   // 284차 — 밭 부산물(깻대 · 콩대 · 보릿짚 …) · 기름병 · 방앗간 일(데이터 Ko/En 쌍이 정본)
   for (const r of FARM_RESIDUES) { put(r.nameKo, r.nameEn); put(r.noteKo, r.noteEn); }
   for (const b of OIL_BOTTLES) put(b.nameKo, b.nameEn);
-  for (const m of MILL_SERVICES) { put(m.nameKo, m.nameEn); put(m.howKo, m.howEn); }
+  for (const m of MILL_SERVICES) { put(m.nameKo, m.nameEn); put(m.howKo, m.howEn); if (m.inputKo && m.inputEn) put(m.inputKo, m.inputEn); }
+  // 285차 — 갈무리(걸대 · 장독 · 할 일 · 드는 것 · 나온 것)
+  for (const st of Object.values(CURE_STATION_LABEL)) put(st.ko, st.en);
+  for (const r of CURE_RECIPES) { put(r.nameKo, r.nameEn); put(r.howKo, r.howEn); for (const i of r.inputs) put(i.nameKo, i.nameEn); }
+  for (const c of CURE_ITEMS) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); }
   // 241차 — 날로 먹기 메모 · 못 먹는 이유 · 조각 이름 · 개량종 다른 점
   for (const d of Object.values(CROP_RAW_EAT)) { put(d.noteKo, d.noteEn); if (d.pieces) put(d.pieces.labelKo, d.pieces.labelEn); if (d.bite) put(d.bite.labelKo, d.bite.labelEn); }
   for (const d of Object.values(CROP_NO_RAW)) put(d.whyKo, d.whyEn);

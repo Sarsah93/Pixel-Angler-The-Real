@@ -514,12 +514,12 @@ export function laborLineEn(crop: Pick<CropDef, 'id' | 'category'>): string {
 export function propagateLineKo(crop: Pick<CropDef, 'id' | 'category'>): string {
   const p = cultivationOf(crop).propagate;
   if (!p) return '';
-  const how = p.by === 'division' ? '포기 나누기' : p.by === 'cutting' ? '뿌리 꺾꽂이' : '거둘 때 곁눈';
+  const how = p.by === 'division' ? '포기 나누기' : p.by === 'cutting' ? '뿌리 꺾꽂이' : p.by === 'runner' ? '런너 받기' : '거둘 때 곁눈';
   return p.months.length ? `${how} — ${monthsList(p.months)}에 한 포기에서 ${p.qty[0]}~${p.qty[1]}개` : `${how} ${p.qty[0]}~${p.qty[1]}개`;
 }
 export function propagateLineEn(crop: Pick<CropDef, 'id' | 'category'>): string {
   const p = cultivationOf(crop).propagate;
   if (!p) return '';
-  const how = p.by === 'division' ? 'Division' : p.by === 'cutting' ? 'Root cuttings' : 'Offsets at harvest';
+  const how = p.by === 'division' ? 'Division' : p.by === 'cutting' ? 'Root cuttings' : p.by === 'runner' ? 'Runners' : 'Offsets at harvest';
   return p.months.length ? `${how} — ${p.qty[0]}–${p.qty[1]} per plant in ${monthsListEn(p.months)}` : `${how}: ${p.qty[0]}–${p.qty[1]}`;
 }

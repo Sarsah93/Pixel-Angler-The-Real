@@ -16,10 +16,12 @@ import { speciesMainIngredient, forageMainIngredient } from './CookIngredientDat
 import { cookingSpeciesId, COOKING_SPECIES_ALIAS } from './FishCookingProfiles.js';
 import { dishBaseName, variantDescription, DISH_SPECIES_NAME, DISH_MODIFIER_KO, DISH_MODIFIER_EN } from './RecipeLore.js';
 import type { DishNameModifier } from '../types/Cooking.js';
+import { namulVariantIds } from './NamulDishes.js';
 
 /** 주재료에 따라 결과(이름 · 효과 · 도감 항목)가 갈라지는 레시피 — 전복죽만 고정 이름이다 */
 export const VARIANT_RECIPES: ReadonlySet<string> = new Set([
   'stew_red', 'stew_red_whole', 'stew_clear', 'grill_fish', 'braise_fish', 'stirfry_squid', 'soup_clam', 'grill_eel',
+  'stirfry_namul',   // 285차 — 나물 볶음(주재료 = 나물 — 「시래기 볶음」 · 「토란대 들깨볶음」)
 ]);
 
 export function isVariantRecipe(recipeId: string): boolean {
@@ -84,7 +86,7 @@ export function dishDiscoveryName(id: string, en = false): string {
 }
 
 /** 변형 레시피의 주재료 갈래 — 도감 힌트 문구(「다른 어종을 …」 · 「다른 조개를 …」)용 */
-export type DishVariantKind = 'fish' | 'squid' | 'eel' | 'shellfish';
+export type DishVariantKind = 'fish' | 'squid' | 'eel' | 'shellfish' | 'veg';
 
 /** 레시피의 주재료 재료 id 목록 (`required`의 main) */
 function mainIngredientsOf(recipeId: string): string[] {
@@ -106,6 +108,7 @@ export function dishVariantKind(recipeId: string): DishVariantKind | null {
   if (mains.includes('squid')) return 'squid';
   if (mains.includes('eel')) return 'eel';
   if (mains.some((m) => m === 'clam' || m === 'mussel' || m === 'oyster')) return 'shellfish';
+  if (mains.includes('namul')) return 'veg';
   return null;
 }
 
@@ -116,6 +119,7 @@ export function dishVariantKind(recipeId: string): DishVariantKind | null {
 export function dishVariantCandidates(recipeId: string): string[] {
   if (!isVariantRecipe(recipeId)) return [];
   const mains = mainIngredientsOf(recipeId);
+  if (mains.includes('namul')) return namulVariantIds();   // 285차 — 나물 볶음은 나물 13 × (그냥 · 들깨)
   const seen = new Set<string>();
   const out: string[] = [];
   for (const f of FISH_DATABASE) {

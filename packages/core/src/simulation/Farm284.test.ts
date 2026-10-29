@@ -126,18 +126,20 @@ describe('284차 — 무게(g)로 세는 낱알 · 봉지', () => {
 });
 
 describe('284차 — 부산물 표', () => {
-  it('부산물이 있는 작물 — 먹는 것 넷 · 밭에 넣는 것 일곱', () => {
+  it('부산물이 있는 작물 — 먹는 것 여섯(285 옥수수수염 · 단풍콩잎) · 밭에 넣는 것 일곱', () => {
     const food = new Set<string>(); const res = new Set<string>();
     for (const c of CROP_DATABASE) for (const b of c.byproducts ?? []) (b.kind === 'food' ? food : res).add(b.itemId);
-    expect([...food].sort()).toEqual(['crop_cabbage_outer', 'crop_perilla_shoot', 'crop_radish_greens', 'crop_taro_stem']);
+    expect([...food].sort()).toEqual(['crop_bean_leaf', 'crop_cabbage_outer', 'crop_corn_silk', 'crop_perilla_shoot', 'crop_radish_greens', 'crop_taro_stem']);
     expect([...res].sort()).toEqual(['res_barley_straw', 'res_bean_stalk', 'res_chaff', 'res_corn_stalk', 'res_sesame_stalk', 'res_spent_substrate'].sort());
   });
 
   it('먹는 부산물은 요리 재료 · 값 · 날로 안 먹는 까닭이 있다', () => {
     for (const c of CROP_DATABASE) for (const b of c.byproducts ?? []) {
       if (b.kind !== 'food') continue;
-      expect(getCookIngredient(b.cookIngredient!), b.itemId).toBeDefined();
-      expect(b.price, b.itemId).toBeGreaterThan(0);
+      // 285차 — 옥수수수염(차로만 — 생으로는 안 판다) · 단풍콩잎(장아찌로만)은 요리 재료 id가 없다
+      if (b.cookIngredient) expect(getCookIngredient(b.cookIngredient), b.itemId).toBeDefined();
+      else expect(b.uses.some((u) => u === 'tea' || u === 'sell'), b.itemId).toBe(true);
+      if (b.itemId !== 'crop_corn_silk') expect(b.price, b.itemId).toBeGreaterThan(0);
       expect(producePriceBase(c, b.itemId), b.itemId).toBe(b.price);
       expect(CROP_NO_RAW[b.itemId] ?? CROP_RAW_EAT[b.itemId], b.itemId).toBeDefined();
       expect(byproductOf(b.itemId)?.def.itemId).toBe(b.itemId);
@@ -240,7 +242,10 @@ describe('284차 — 부산물 표', () => {
 describe('284차 — 방앗간', () => {
   it('병은 180 · 350ml 두 가지 · 따면 1큰술(15ml)씩', () => {
     expect([...OIL_BOTTLE_SIZES]).toEqual([180, 350]);
-    expect(OIL_BOTTLES.map((b) => b.itemId).sort()).toEqual(['oil_perilla_180', 'oil_perilla_350', 'oil_sesame_180', 'oil_sesame_350']);
+    expect(OIL_BOTTLES.map((b) => b.itemId).sort()).toEqual([
+      'oil_perilla_180', 'oil_perilla_350', 'oil_perilla_raw_180', 'oil_perilla_raw_350',   // 285차 — 생기름 넷
+      'oil_sesame_180', 'oil_sesame_350', 'oil_sesame_raw_180', 'oil_sesame_raw_350',
+    ]);
     expect(oilBottleDef('oil_sesame_350')?.spoons).toBe(23);
     expect(oilBottleDef('oil_perilla_180')?.spoons).toBe(12);
     for (const b of OIL_BOTTLES) expect(getCookIngredient(b.spoonItemId.replace(/^cook_/, ''))).toBeDefined();
@@ -302,10 +307,10 @@ describe('284차 — 나물 볶음 · 생선조림 묵은 나물', () => {
   const pan = getCookware('pan')!;
   const pot = getCookware('pot_home')!;
 
-  it('나물 볶음은 팬 요리 · 이름이 갈리지 않는다 · 영양 · 효과 · 설명이 있다', () => {
+  it('나물 볶음은 팬 요리 · 285차부터 주재료로 이름이 갈린다 · 영양 · 효과 · 설명이 있다', () => {
     const r = getFireRecipe('stirfry_namul')!;
     expect(r.cookware).toEqual(['pan']);
-    expect(isVariantRecipe('stirfry_namul')).toBe(false);
+    expect(isVariantRecipe('stirfry_namul')).toBe(true);
     const n = FOOD_NUTRITION.stirfry_namul;
     expect(restoreFromNutrition(n)).toEqual({ hungerRestore: r.vitals.hungerRestore, hydrationRestore: r.vitals.hydrationRestore });
     expect(recipeEffectOf('stirfry_namul')).toBeDefined();

@@ -43,6 +43,7 @@ import { inventorySortCompare } from '../store/InventorySort.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { itemKeepReason } from '../store/ItemKeepGuard.js';
 import { CraftingStore } from '../store/CraftingStore.js';
+import { FarmStore } from '../store/FarmStore.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { qtyBadge, qtyWord } from './QtyLabel.js';
 
@@ -839,6 +840,21 @@ export class InventoryPanel extends DraggablePanel {
           label: `봉지 담기 (${gramsText(b.bag.grams)})`,
           color: '#4af2a1', hoverColor: '#8dffce',
           run: () => this.askBag(item, b.bag.itemId, b.bag.grams, b.bag.nameKo),
+        });
+      }
+    }
+    // 285차 — 씨앗으로 덜기: 털어 낸 콩 · 깨 · 보리(g)에서 「1칸 분」 받은 씨앗을 던다(다시 심는다)
+    const seedInfo = item.subCategory === PRODUCE_SUB && item.unitG ? FarmStore.grainSeedInfo(item.id) : null;
+    if (seedInfo && seedInfo.packets > 0) {
+      for (const n of seedInfo.packets >= 5 ? [1, 5] : [1]) {
+        actions.push({
+          label: `씨앗으로 덜기 (${n}칸 분)`,
+          color: '#4af2a1', hoverColor: '#8dffce',
+          run: () => {
+            const r = FarmStore.grainToSeeds(item.id, n);
+            this.setStatus(r.message);
+            if (r.ok) { this.renderGrid(); this.scene.events.emit('inventory-changed'); }
+          },
         });
       }
     }

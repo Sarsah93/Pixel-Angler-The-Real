@@ -47,6 +47,7 @@ import { applyItemVitals, refreshNutritionVitals } from '../data/ItemVitals.js';
 import { applyCookItemFields, COOK_CORNER, cookCornerTemplate } from '../data/CookItems.js';
 import { PRODUCE_SUB, cropItemTemplate, migrateLegacyPackItem } from '../data/CropItems.js';
 import { millItemTemplate } from '../data/MillItems.js';
+import { cureItemTemplate } from '../data/CureItems.js';
 import { StoryStore } from './StoryStore.js';
 import { CoolerStore } from './CoolerStore.js';
 import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
@@ -1694,7 +1695,7 @@ class InventoryStoreManager {
         unpack: i.unpack ?? sd?.unpack ?? cropItemTemplate(i.id)?.unpack,   // 241차 — 구세이브 큰 수확물에 「나누기」를 붙인다
         // 284차 — g으로 세는 낱알 · 밭 부산물(템플릿이 정본) · 중간 수확물이 새로 요리 재료가 됐다(고구마줄기 · 고춧잎 · 마늘종 · 산나물)
         unitG: i.unitG ?? cropItemTemplate(i.id)?.unitG,
-        cookIngredient: i.cookIngredient ?? cropItemTemplate(i.id)?.cookIngredient,
+        cookIngredient: i.cookIngredient ?? cropItemTemplate(i.id)?.cookIngredient ?? cureItemTemplate(i.id)?.cookIngredient,
         forageTool: i.forageTool ?? sd?.forageTool,
         // 224차 — 장화(신발 칸) · 포장 묶음 — 상점 구매분은 저장된 필드 그대로, 이름 규칙 폴백만
         wading: i.wading ?? sd?.wading ?? (i.subCategory === '신발' && /장화/.test(i.name) ? true : undefined),
@@ -2274,7 +2275,7 @@ class InventoryStoreManager {
     const base = itemBaseId(id);   // 282차
     const seed = createSeedItems().find((x) => x.id === base);
     // 241차 — 농산물 조각 · 284차 낱알 봉지 → 낱알 · 기름병 → 1큰술(식자재마트 것과 같은 물건)
-    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? millItemTemplate(id) ?? cookCornerTemplate(id) ?? null;
+    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? millItemTemplate(id) ?? cookCornerTemplate(id) ?? cureItemTemplate(id) ?? null;
     const { slot: _slot, qty: _qty, ...tpl } = seed;
     return tpl;
   }

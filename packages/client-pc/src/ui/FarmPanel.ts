@@ -25,6 +25,7 @@ import {
   // 247차 — 재배 요소
   cultivationOf, waterLineKo, toolLineKo, processLineKo, timingLineKo, laborLineKo, propagateLineKo, OFF_TIMING_KO, MOISTURE_STATE_KO,
   processHoursLeft, wildUnknown, WATER_AMOUNT_KO, WATER_AMOUNT_EN,
+  CURE_STATION_FACILITY,
   type FarmCellState, type FarmFacility, type FarmPlotState, type LicenseType, type WaterAmount,
 } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
@@ -42,6 +43,8 @@ import { startItemName, cropItemTemplate } from '../data/CropItems.js';
 import { t, getLocale } from '../i18n/I18n.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { qtyWord } from './QtyLabel.js';
+import { CurePanel } from './CurePanel.js';
+import { CureQueue } from '../store/CureQueue.js';
 
 const PANEL_W = 780;
 /** 238차 — 관리 작업 줄(단계 · 병 · 할 일)이 붙어 조금 높다 · 247차 이 칸 물 주기 줄 */
@@ -70,7 +73,11 @@ const PROCESS_LABEL: Record<'thresh' | 'pick' | 'gather', string> = { thresh: '�
 const FACILITY_ICON: Record<FarmFacility, string> = {
   compost: 'it_compost', rainBarrel: 'it_rain_barrel', greenhouse: 'it_tunnel', shade: 'it_shade_net',
   hydroRack: 'it_hydro_rack', coldWater: 'it_cold_tank', sproutJar: 'it_sprout_jar',
+  dryingRack: 'it_drying_rack', crock: 'it_crock',
 };
+
+/** 285차 — 갈무리 설비(누르면 갈무리 창) */
+const CURE_FACILITY = new Set<FarmFacility>(['dryingRack', 'crock']);
 
 /** 247차 — guide = 고른 칸 작물의 기르는 법 */
 type Mode = 'cell' | 'plant' | 'facility' | 'almanac' | 'guide';
@@ -165,6 +172,19 @@ export class FarmPanel extends DraggablePanel {
     this.statusText.setColor(ok ? '#9fd0e4' : '#ff9a7a').setText(t(msg));
   }
 
+  /** 285차 — 갈무리 창(걸대 · 장독) */
+  private openCure(): void {
+    const build = (close: () => void): DraggablePanel => new CurePanel(this.scene, this.x + 60, this.y + 30, this.opts.plotId, {
+      onClose: () => { close(); if (this.active) this.render(); },
+      onChanged: () => { this.opts.onChanged?.(); },
+      log: this.opts.log,
+      confirm: this.opts.confirm,
+    });
+    if (this.opts.openPopup) this.opts.openPopup(build);
+    else this.scene.add.existing(build(() => undefined));
+    restoreHandCursor(this.scene);
+  }
+
   /** 행동 결과 → 상태 줄 · 로그 · 필드 갱신 */
   private after(r: FarmActionResult): void {
     this.setStatus(r.message, r.ok);
@@ -208,9 +228,16 @@ export class FarmPanel extends DraggablePanel {
       this.content.add(chip);
       const ic = addPixelIcon(scene, FACILITY_ICON[f], x + 13, y + 13, 16);
       if (ic) { if (off) ic.setAlpha(0.35); this.content.add(ic); }
-      const hit = scene.add.rectangle(x + 13, y + 13, 26, 26, 0xffffff, 0.001).setInteractive();
+      const cure = CURE_FACILITY.has(f);
+      const hit = scene.add.rectangle(x + 13, y + 13, 26, 26, 0xffffff, 0.001).setInteractive(cure ? { useHandCursor: true } : undefined);
       const name = off ? `${supplyOfFacility(f)?.nameKo ?? ''} — 전기가 끊겨 멈췄다` : (supplyOfFacility(f)?.nameKo ?? '');
       hit.on('pointerover', () => this.setStatus(name));
+      // 285차 — 걸대 · 장독 칩을 누르면 갈무리 창(다 된 것이 있으면 칩에 초록 점)
+      if (cure) {
+        hit.on('pointerdown', () => this.openCure());
+        const ready = CureQueue.at(this.opts.plotId).some((b) => b.readyAtMs <= Date.now() && CURE_STATION_FACILITY[b.station] === f);
+        if (ready) { const dot = scene.add.circle(x + 22, y + 4, 4, 0x4af2a1, 1).setStrokeStyle(1, 0x0b1a10, 1); this.content.add(dot); }
+      }
       this.content.add(hit);
       x += 30;
     }
@@ -489,7 +516,13 @@ export class FarmPanel extends DraggablePanel {
     const prop = crop ? cultivationOf(crop).propagate : undefined;
     if (crop && prop && prop.by !== 'offset' && c.established) {
       const why = FarmStore.divideBlock(this.opts.plotId, this.sel);
-      buttons.push({ key: 'divide', label: prop.by === 'cutting' ? '뿌리 꺾꽂이' : '포기 나누기', on: !why, run: () => { const r = FarmStore.divide(this.opts.plotId, this.sel); if (r.ok) playSfx('farm_dig'); this.after(r); }, why: why ?? undefined });
+      const label = prop.by === 'cutting' ? '뿌리 꺾꽂이' : prop.by === 'runner' ? '런너 모종 떼기' : '포기 나누기';
+      buttons.push({ key: 'divide', label, on: !why, run: () => { const r = FarmStore.divide(this.opts.plotId, this.sel); if (r.ok) playSfx('farm_dig'); this.after(r); }, why: why ?? undefined });
+    }
+    // 285차 — 씨 받기(다 익은 칸을 씨로 거둔다 — 그 작기 수확 대신 · 되돌릴 수 없어 한 번 더 묻는다)
+    const seedWhy = FarmStore.seedSaveBlock(this.opts.plotId, this.sel);
+    if (crop && seedWhy !== undefined && cellReady(c) && !c.process) {
+      buttons.push({ key: 'seedsave', label: '씨 받기', on: seedWhy === null, run: () => this.confirmSeedSave(crop.nameKo), why: seedWhy ?? undefined });
     }
     if (crop?.interim && interimOpen(c, crop)) buttons.push({ key: 'interim', label: crop.interim.seedOnly ? '솎아 내기' : '따기', on: true, run: () => { const r = FarmStore.interim(this.opts.plotId, this.sel); if (r.ok) playSfx('farm_harvest'); this.after(r); } });
     if (crop) buttons.push({ key: 'clear', label: '걷어 내기', on: true, run: () => this.confirmClear(crop.nameKo) });
@@ -621,6 +654,13 @@ export class FarmPanel extends DraggablePanel {
     if (why) this.setStatus(why, false);
   }
 
+  /** 285차 — 씨 받기(칸이 끝난다) */
+  private confirmSeedSave(name: string): void {
+    const run = (): void => { const r = FarmStore.saveSeeds(this.opts.plotId, this.sel); if (r.ok) playSfx('farm_harvest'); this.after(r); };
+    if (this.opts.confirm) this.opts.confirm(`${name}\n이번에는 거두지 않고 씨를 받는다. 칸은 비워진다.`, run, { yes: '씨 받기', no: '취소' });
+    else run();
+  }
+
   private confirmClear(name: string): void {
     const run = (): void => this.after(FarmStore.clear(this.opts.plotId, this.sel));
     if (this.opts.confirm) this.opts.confirm(`${name}\n자라던 것을 걷어 낸다. 되돌릴 수 없다.`, run, { yes: '걷어 내기', no: '취소', danger: true });
@@ -720,11 +760,17 @@ export class FarmPanel extends DraggablePanel {
     this.content.add(scene.add.text(PANE_X, y, t('설비'), { fontFamily: FONT, fontSize: '15px', color: '#ffe28a', fontStyle: 'bold' }));
     y += 32;
     const p = this.plot();
-    const rows: { icon: string; name: string; desc: string; act: string; on: boolean; run: () => void }[] = [];
+    const rows: { icon: string; name: string; desc: string; act: string; on: boolean; run: () => void; act2?: string; run2?: () => void }[] = [];
     for (const f of p.facilities) {
       const s = FARM_SUPPLIES.find((x) => x.facility === f);
       if (!s) continue;
-      rows.push({ icon: FACILITY_ICON[f], name: s.nameKo, desc: s.descKo, act: '설비 걷기', on: true, run: () => this.after(FarmStore.uninstall(this.opts.plotId, f)) });
+      // 285차 — 걸대 · 장독은 「갈무리」 단추가 하나 더(걸어 둔 것이 있으면 걷지 못한다 — FarmStore가 막는다)
+      if (CURE_FACILITY.has(f)) {
+        rows.push({
+          icon: FACILITY_ICON[f], name: s.nameKo, desc: s.descKo, act: '설비 걷기', on: true, run: () => this.after(FarmStore.uninstall(this.opts.plotId, f)),
+          act2: '갈무리', run2: () => this.openCure(),
+        });
+      } else rows.push({ icon: FACILITY_ICON[f], name: s.nameKo, desc: s.descKo, act: '설비 걷기', on: true, run: () => this.after(FarmStore.uninstall(this.opts.plotId, f)) });
     }
     for (const s of FARM_SUPPLIES) {
       if (!s.facility || s.site !== 'plot' || p.facilities.includes(s.facility)) continue;
@@ -740,18 +786,20 @@ export class FarmPanel extends DraggablePanel {
       return;
     }
     for (const r of rows) {
+      // 285차 — 설명 줄 수로 칸 높이를 잰다(단추 둘이면 설명 폭이 좁아 줄이 는다 — 흐름 배치)
+      const d = scene.add.text(PANE_X + 44, y + 22, r.desc, { fontFamily: FONT, fontSize: '11px', color: '#9fb8c8', wordWrap: { width: PANE_W - 44 - (r.act2 ? 156 : 84) } });
+      const h = Math.max(58, Math.ceil(d.height) + 28);
+      if (y + h > this.ph - 40) { d.destroy(); break; }
       const g = scene.add.graphics();
-      const h = 58;
       g.fillStyle(0x10283a, 0.95); g.fillRoundedRect(PANE_X, y, PANE_W, h, 4);
       this.content.add(g);
       const ic = addPixelIcon(scene, r.icon, PANE_X + 20, y + h / 2, 32);
       if (ic) this.content.add(ic);
       this.content.add(scene.add.text(PANE_X + 44, y + 5, r.name, { fontFamily: FONT, fontSize: '12px', color: '#e8f2fa', fontStyle: 'bold' }));
-      const d = scene.add.text(PANE_X + 44, y + 22, r.desc, { fontFamily: FONT, fontSize: '11px', color: '#9fb8c8', wordWrap: { width: PANE_W - 44 - 84 } });
       this.content.add(d);
       this.button(`fac_${r.name}`, PANE_X + PANE_W - 74, y + h / 2 - 13, 66, 26, r.act, r.run, r.on);
+      if (r.act2 && r.run2) this.button(`fac2_${r.name}`, PANE_X + PANE_W - 146, y + h / 2 - 13, 66, 26, r.act2, r.run2, true);
       y += h + 6;
-      if (y > this.ph - 70) break;
     }
   }
 

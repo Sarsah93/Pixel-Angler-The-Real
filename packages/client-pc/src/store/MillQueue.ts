@@ -26,6 +26,8 @@ export interface MillOrder {
   readyAtMs: number;
   /** 맡긴 방앗간 이름(창 · 일지에 쓴다) */
   shopName: string;
+  /** 285차 — 「다 됐다」 알림을 이미 보냈는가(불러온 뒤 같은 알림을 두 번 내지 않는다) */
+  notified?: boolean;
 }
 
 export interface MillQueueSave { orders: MillOrder[]; counter: number }
@@ -53,6 +55,12 @@ class MillQueueImpl {
     this.orders = this.orders.filter((x) => x !== o);
     return o;
   }
+
+  /** 285차 — 다 됐는데 아직 알리지 않은 일 */
+  unnotified(nowMs: number): MillOrder[] { return this.orders.filter((o) => o.readyAtMs <= nowMs && !o.notified); }
+
+  /** 285차 — 알렸다고 적는다 */
+  markNotified(id: string): void { const o = this.orders.find((x) => x.id === id); if (o) o.notified = true; }
 
   /** 꺼냈는데 줄 수 없었으면(가방이 가득) 다시 넣는다 */
   restore(o: MillOrder): void { this.orders.push(o); this.orders.sort((a, b) => a.leftAtMs - b.leftAtMs); }

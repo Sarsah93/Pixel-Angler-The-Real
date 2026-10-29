@@ -498,7 +498,14 @@ export const CROP_DATABASE: CropDef[] = [
     starts: [seed('corn', [4, 5, 6], 0.75, 90, 400), seedling('corn', [5], 4, 70, 300)],
     harvest: { itemId: 'crop_corn', nameKo: '찰옥수수 (1자루)', nameEn: 'Waxy corn (one ear)', qtyPerCell: [2, 4], holdDays: 7 },
     price: { base: 1000, season: P_CORN, volatility: 0.2 },
-    byproducts: [residue('res_corn_stalk', 'harvest', [1200, 2400])],   // 284차 — 옥수숫대(포기당 0.5~1kg 생체 · 추정)
+    byproducts: [
+      residue('res_corn_stalk', 'harvest', [1200, 2400]),   // 284차 — 옥수숫대(포기당 0.5~1kg 생체 · 추정)
+      // 285차 — 옥수수수염(자루마다 생수염 15g 남짓 — 씻어 바람에 이틀 말린 뒤 덖으면 수염차 · 걸대에서 `rules/HomeCure.ts`)
+      { itemId: 'crop_corn_silk', nameKo: '옥수수수염', nameEn: 'Corn silk', kind: 'food', at: 'harvest', perUnit: 15, unitG: 1,
+        price: 0, holdDays: 3, uses: ['tea'],
+        noteKo: '옥수수 자루마다 붙은 수염. 씻어 바람에 이틀 말린 뒤 팬에 약불로 덖으면 옥수수수염차가 된다 — 생으로는 팔지도 먹지도 않는다.',
+        noteEn: 'The silk from each ear. Washed, air-dried for two days and pan-toasted on low heat it becomes corn silk tea — fresh, it is neither sold nor eaten.' },
+    ],
     noteKo: '수염이 갈색으로 마르면 거둔다. 삶은 알갱이는 감성돔 미끼가 된다.',
     noteEn: 'Harvest when the silk dries brown. Boiled kernels make bait for black sea bream.',
   },
@@ -712,7 +719,14 @@ export const CROP_DATABASE: CropDef[] = [
         { itemId: 'crop_soybean_b1000', nameKo: '콩 한 봉지 (1kg)', nameEn: 'Soybeans, a bag (1kg)', grams: 1000 },
       ] },
     price: { base: 8, season: P_PULSE, volatility: 0.1 },
-    byproducts: [residue('res_bean_stalk', 'process', [160, 330]), chaff(0.2)],   // 284차 — 콩대 · 깍지(수확지수 0.38~0.56)
+    byproducts: [
+      residue('res_bean_stalk', 'process', [160, 330]), chaff(0.2),   // 284차 — 콩대 · 깍지(수확지수 0.38~0.56)
+      // 285차 — 단풍콩잎(베기 전 누렇게 든 잎 — 경상도 콩잎 장아찌 · 장독에서 `rules/HomeCure.ts`)
+      { itemId: 'crop_bean_leaf', nameKo: '단풍콩잎 한 묶음', nameEn: 'Yellowed soybean leaves, a bundle', kind: 'food', at: 'harvest', perCell: [1, 2],
+        price: 1500, holdDays: 3, uses: ['cook', 'sell'],
+        noteKo: '콩을 베기 전 누렇게 단풍 든 잎. 진한 소금물에 삭혀 우려낸 뒤 양념에 재우면 경상도 콩잎 장아찌 — 장독에서 담근다.',
+        noteEn: 'Soybean leaves gone yellow before the cut. Cured in strong brine, soaked out and dressed, they become Gyeongsang-style pickled bean leaves — made in a crock.' },
+    ],
     noteKo: '꼬투리가 누렇게 마르면 거둔다. 콩나물 시루에도 앉힌다.',
     noteEn: 'Harvest when the pods dry yellow. They also go into the sprouting jar.',
   },
@@ -1177,7 +1191,48 @@ export function getCrop(id: string): CropDef | undefined {
  * 씨앗 · 모종 · 종구 아이템 → (작물, 심는 방법). 직접 키운 콩(`crop_soybean` — 등급 꼬리 포함)으로
  * 콩나물을 앉히는 것처럼 수확물이 씨앗이 되는 경우도 찾는다.
  */
+// ─────────────────────────────────────────────
+// 285차 — 씨 받기(받은 씨앗 다시 심기)
+// ─────────────────────────────────────────────
+
+/** 받은 씨앗 꼬리 — `seed_lettuce` → `seed_lettuce_saved` */
+export const SAVED_SEED_TAIL = '_saved';
+
+/** 받은 씨앗 아이템 id(그 작물의 씨앗 심는 법이 없으면 null) */
+export function savedSeedItemId(crop: CropDef): string | null {
+  const st = crop.starts.find((x) => x.kind === 'seed');
+  return st ? `${st.itemId}${SAVED_SEED_TAIL}` : null;
+}
+
+/** 받은 씨앗인가 */
+export function isSavedSeedId(itemId: string): boolean {
+  return itemId.endsWith(SAVED_SEED_TAIL) && itemId.startsWith('seed_');
+}
+
+/**
+ * 씨 받기 표 — 집에서 흔히 씨를 받는 작물만(고정종 · 토종이 많은 잎채소 · 열매 · 깨 · 콩 · 보리).
+ * 칸에서 받는 것(`qty` — 다 익은 칸을 씨로 거둔다 · 그 작기 수확은 포기)과 털어 낸 낱알에서 덜어 두는 것(`fromGrainG`)이 있다.
+ * 1칸 분 낱알 무게 = 10a 파종량 ÷ 1,000㎡(콩 5~6kg → 6g · 들깨 0.5~1kg → 1g · 참깨 0.5kg → 1g · 보리 15~18kg → 16g).
+ * 고추 · 토마토 · 오이 · 박과는 시판 씨가 대개 교잡종이라 받은 씨는 고르지 않다(`hybrid` — 수확 ×0.85).
+ */
+const SEED_SAVE: Record<string, NonNullable<CropDef['seedSave']>> = {
+  lettuce: { qty: [2, 3] }, jeokchima: { qty: [2, 3] }, kkot_lettuce: { qty: [2, 3] }, cheongchukmyeon: { qty: [2, 3] },
+  jeokchukmyeon: { qty: [2, 3] }, saengchae: { qty: [2, 3] }, cheongromaine: { qty: [2, 3] }, jeokromaine: { qty: [2, 3] },
+  butterhead: { qty: [2, 3] }, perilla: { qty: [2, 4] }, crown_daisy: { qty: [2, 3] }, mallow: { qty: [2, 3] }, chard: { qty: [2, 3] },
+  shiso: { qty: [2, 3] }, amaranth: { qty: [3, 4] }, dill: { qty: [2, 3] }, basil: { qty: [2, 3] }, okra: { qty: [2, 3] }, cowpea: { qty: [3, 4] },
+  chili: { qty: [2, 3], hybrid: true }, cherry_tomato: { qty: [2, 3], hybrid: true }, tomato: { qty: [2, 3], hybrid: true },
+  cucumber: { qty: [2, 3], hybrid: true }, zucchini: { qty: [2, 3], hybrid: true }, eggplant: { qty: [2, 3], hybrid: true },
+  korean_melon: { qty: [2, 3], hybrid: true }, watermelon: { qty: [2, 3], hybrid: true },
+  soybean: { fromGrainG: 6 }, deulkkae: { fromGrainG: 1 }, chamkkae: { fromGrainG: 1 }, barley: { fromGrainG: 16 },
+};
+for (const c of CROP_DATABASE) {
+  const ss = SEED_SAVE[c.id];
+  if (ss && c.starts.some((x) => x.kind === 'seed')) c.seedSave = ss;
+}
+
 export function cropStartOfItem(itemId: string): { crop: CropDef; start: CropStart } | null {
+  // 285차 — 받은 씨앗(`seed_x_saved`)은 그 작물 씨앗과 심는 법이 같다
+  if (itemId.endsWith(SAVED_SEED_TAIL)) itemId = itemId.slice(0, -SAVED_SEED_TAIL.length);
   const ids = [itemId];
   const base = parseProduceId(itemId).baseId;
   if (base !== itemId) ids.push(base);
@@ -1377,6 +1432,13 @@ export const FARM_SUPPLIES: FarmSupplyDef[] = [
     descKo: '찬물을 자갈 사이로 계속 흘려보낸다. 고추냉이를 기를 수 있는 유일한 자리.', descEn: 'Keeps cold water flowing through gravel. The only place wasabi will grow.' },
   { itemId: 'farm_sprout_jar', nameKo: '콩나물 시루', nameEn: 'Sprouting jar', price: 9000, kind: 'facility', facility: 'sproutJar', site: 'indoor',
     descKo: '구멍 뚫린 옹기 시루. 집 안에 두고 콩나물 · 숙주 · 새싹을 기른다.', descEn: 'A clay jar with holes in the bottom. Keep it indoors to grow bean sprouts, mung sprouts and microgreens.' },
+  // 285차 — 갈무리 설비(텃밭에 놓는다 · `rules/HomeCure.ts`). 값은 소매 시세(나무 건조 걸대 2~3만 · 옹기 장독 20L 3~4만)
+  { itemId: 'farm_drying_rack', nameKo: '건조 걸대', nameEn: 'Drying rack', price: 25000, kind: 'facility', facility: 'dryingRack', site: 'plot', shop: 'daily', icon: 'it_drying_rack',
+    descKo: '처마 밑에 세우는 나무 걸대. 무청을 엮어 걸어 시래기로 말리고, 옥수수수염을 펼쳐 말린다 — 볕은 가리고 바람은 통하게.',
+    descEn: 'A wooden rack set under the eaves. Radish greens are strung up to dry into siraegi and corn silk is spread to dry — out of the sun, in the breeze.' },
+  { itemId: 'farm_crock', nameKo: '장독 (옹기 20L)', nameEn: 'Crock (20L onggi)', price: 35000, kind: 'facility', facility: 'crock', site: 'plot', shop: 'daily', icon: 'it_crock',
+    descKo: '숨 쉬는 옹기 항아리. 깻잎 · 콩잎을 간장 · 소금물에 담가 장아찌로 삭힌다.',
+    descEn: 'A breathing earthenware jar. Perilla and bean leaves are steeped in soy or brine and left to cure into pickles.' },
   { itemId: 'farm_hydro_rack', nameKo: '수경 재배기', nameEn: 'Hydroponic rack', price: 89000, kind: 'facility', facility: 'hydroRack', site: 'indoor', rarity: 'uncommon',
     descKo: '불빛과 물이 도는 두 칸 선반. 잎채소를 철과 상관없이 집 안에서 기른다.', descEn: 'A two-shelf rack with grow lights and circulating water. Grows leafy greens indoors in any season.' },
   // ── 238차 — 종묘사 자재(관리 작업에 쓴다). 값은 소매 시세를 칸 한 번 분으로 나눈 게임 값

@@ -16,7 +16,7 @@ import {
   TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem, reqFor,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
-  isVariantRecipe, createDishInstance, cookSpeciesNames, recipeEffectOf, dishDiscoveryId, isFarmProduce,
+  isVariantRecipe, createDishInstance, cookSpeciesNames, recipeEffectOf, dishDiscoveryId, isFarmProduce, namulVariantOf,
   type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo,
 } from '@tra/core';
 import { GameState } from './GameState.js';
@@ -308,6 +308,13 @@ class CookingStoreClass {
    *  정본 id(밤 참돔 = 참돔) · 요리 이름(조피볼락 → 우럭)은 core `createDishInstance`가 고른다.
    */
   private primaryIngredientOf(contents: CookContent[], r: FireRecipeDef): PrimaryIngredientInfo {
+    // 285차 — 나물 볶음은 넣은 나물 · 들깨가루로 이름이 정해진다(「토란대 들깨볶음」 · 「곰취나물 볶음」)
+    if (r.id === 'stirfry_namul') {
+      const v = namulVariantOf(contents);
+      const veg = contents.filter((c) => c.ing !== 'perilla_powder' && c.ing !== 'perilla_oil' && c.ing !== 'sesame_oil' && c.ing !== 'sesame_salt');
+      const fresh = veg.length ? veg.reduce((a, c) => a + c.freshness01, 0) / veg.length : 0.9;
+      return { speciesId: v, nameKo: null, nameEn: null, weightG: contents.reduce((a, c) => a + (c.weightG ?? 0), 0), freshness01: fresh };
+    }
     const mainIngs = new Set<string>();
     for (const q of r.required) if (q.role === 'main') { if (Array.isArray(q.ing)) q.ing.forEach((i) => mainIngs.add(i)); else mainIngs.add(q.ing); }
     const mains = contents.filter((c) => mainIngs.has(c.ing));

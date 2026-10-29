@@ -142,6 +142,8 @@ import { MapPinStore } from '../store/MapPinStore.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { pumpTitleBanners, TITLE_RARITY_COLOR, titleTagStyle } from '../ui/TitleBanner.js';
 import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
+import { pumpMillReady } from '../ui/MillNotifier.js';
+import { MillQueue } from '../store/MillQueue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
@@ -687,6 +689,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.utilPanel = null;
     this.shopPanel = null;
     this.millPanel = null;   // 284차
+    this.millMarks = new Map();   // 285차 — 방앗간 「다 됐다」 표시(씬 재사용 — 옛 그림은 씬과 함께 파괴됐다)
     this.buildings = [];
     this.nearBuilding = null;
     this.interior = null;
@@ -4983,6 +4986,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.craftTickT <= 0) { this.craftTickT = 250; this.pumpCrafting(); }
     pumpTitleBanners(this);   // 203차 — 숨은 업적 달성 배너
     pumpTideFlow(this);       // 204차 — 패시브 「물때 감각」: 물때가 바뀌면 지역 채널 알림
+    pumpMillReady(this, { hold: this.cinematicActive });   // 285차 — 방앗간 「다 됐다」(채널 · 시계 알람 · 문 위 느낌표)
     this.updateStoryProximity(delta);
     this.updateFieldNpcs(delta);
     this.nuisance?.update(delta);
@@ -6494,8 +6498,43 @@ export class RegionFieldScene extends Phaser.Scene {
     // 155차 — 전체 지도에서 찍은 핀은 미니맵에도 (청록 다이아)
     const pin = MapPinStore.get(this.region);
     if (pin) markers.push({ wx: pin.x, wy: pin.y, icon: 'mm_pin', priority: 4, shape: 'pin', label: '핀', sub: '내가 꽂은 곳' });
+    this.refreshMillMarks(markers);   // 285차 — 맡긴 일이 다 된 방앗간(문 위 초록 느낌표 · 미니맵 · 전체 지도)
     this.lastMiniMarkers = markers;
     this.hud?.setMiniMarkers(markers);
+  }
+
+  /** 285차 — 방앗간 문 위 「다 됐다」 표시(가게 key → 그림) */
+  private millMarks = new Map<string, Phaser.GameObjects.Image>();
+
+  /**
+   * 285차 — 맡긴 일이 다 된 방앗간에 초록 느낌표(사용자 「가게 근처나 표지판 쪽에 느낌표 아이콘으로 알림(맵에도 표시)」).
+   * 맡긴 방앗간 이름(`MillOrder.shopName`)과 같은 가게에만 — 다른 지역 같은 이름이면 그 지역에서도 뜬다(대기열은 하나다).
+   * 다 된 일을 찾아 가면(대기열에서 빠지면) 다음 갱신(600ms)에 걷힌다.
+   */
+  private refreshMillMarks(markers: MiniMarker[]): void {
+    const ready = new Set(MillQueue.ready(Date.now()).map((o) => o.shopName));
+    const want = new Set<string>();
+    for (const b of this.buildings) {
+      if (b.kind !== 'mill' || !ready.has(b.branch.name)) continue;
+      want.add(b.branch.key);
+      let img = this.millMarks.get(b.branch.key);
+      if (!img || !img.active) {
+        const made = addPixelIcon(this, 'mk_pickup', b.x, b.y - 44, 16);
+        if (!made) continue;
+        img = made;
+        img.setDepth(20 + b.y * 0.001 + 0.0009);
+        // 둥실 — 눈에 띄게(필드 위 느낌표는 멈춰 있으면 간판에 묻힌다)
+        this.tweens.add({ targets: img, y: b.y - 49, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.millMarks.set(b.branch.key, img);
+      }
+      markers.push({ wx: b.x, wy: b.y, icon: 'mm_pickup', priority: 4, label: b.branch.name, sub: '맡긴 것이 다 됐다' });
+    }
+    for (const [k, img] of this.millMarks) {
+      if (want.has(k)) continue;
+      this.tweens.killTweensOf(img);
+      img.destroy();
+      this.millMarks.delete(k);
+    }
   }
 
   // ── 143차 멀티플레이 — 같은 지역의 다른 사람 그리기 ──

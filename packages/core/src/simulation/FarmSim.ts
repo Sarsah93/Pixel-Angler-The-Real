@@ -611,6 +611,7 @@ export function plantCell(
   // 247차 — 재배 요소: 철(알맞은 달 밖 — 냉해 · 더위는 섬이 준다) · 밑거름(퇴비 칸) · 모종삽 · 저절로 난 싹 표시
   cell.soggyH = 0; cell.process = undefined; cell.wild = false; cell.dividedYear = undefined; cell.fallowSince = undefined;
   cell.fedAtPlant = !!cell.compost;
+  cell.savedSeed = undefined;   // 285차 — 받은 씨앗이면 심은 뒤 `applySavedSeed`가 다시 적는다
   const off = start.nursery ? null : offTimingOf(crop, kstMonthOf(nowMs), start.months);
   cell.offTiming = off === 'cold' && opts.greenhouse ? undefined : off ?? undefined;
   const T = CULTIVATION_TUNING;
@@ -631,7 +632,17 @@ export function clearCell(cell: FarmCellState): void {
   cell.careYield = undefined; cell.nursery = false; cell.establishDryH = 0; cell.wetH = 0; cell.cycleAt = undefined;
   // 247차 — 재배 요소(묵힌 날은 다음 굴림에서 지금부터 센다)
   cell.soggyH = 0; cell.offTiming = undefined; cell.process = undefined; cell.wild = false; cell.dividedYear = undefined;
-  cell.fedAtPlant = undefined; cell.fallowSince = undefined; cell.trayLeft = undefined;
+  cell.fedAtPlant = undefined; cell.fallowSince = undefined; cell.trayLeft = undefined; cell.savedSeed = undefined;
+}
+
+/** 285차 — 받은 씨앗 덤 · 벌 — 받은 씨는 덜 고르다(섬 ×0.92) · 교잡종이면 수확 ×0.85 */
+export const SAVED_SEED_TUNING = { standMult: 0.92, hybridYield: 0.85 };
+
+/** 285차 — 받은 씨앗으로 막 심은 칸에 적는다(`plantCell` 바로 뒤) */
+export function applySavedSeed(cell: FarmCellState, crop: CropDef): void {
+  cell.savedSeed = true;
+  cell.stand = Math.max(0.2, cell.stand * SAVED_SEED_TUNING.standMult);
+  if (crop.seedSave?.hybrid) cell.careYield = (cell.careYield ?? 1) * SAVED_SEED_TUNING.hybridYield;
 }
 
 export interface HarvestSkills {
@@ -821,10 +832,47 @@ export function divideBlockKo(cell: FarmCellState, crop: CropDef, nowMs: number)
   const p = cultivationOf(crop).propagate;
   if (!p || p.by === 'offset') return '나누어 늘리는 작물이 아니다';
   if (cell.process || cell.nursery) return '지금은 나눌 수 없다';
-  if (!cell.established) return '한 해를 넘겨 뿌리가 자리 잡은 포기라야 나눈다';
+  // 285차 — 런너(딸기)는 한 해를 넘기지 않아도 된다 — 열매를 한 번이라도 딴 어미 포기면 여름에 줄기를 뻗는다
+  if (p.by === 'runner') {
+    if (cell.picks < 1 && !cell.established) return '열매를 한 번 딴 어미 포기라야 런너를 뻗는다';
+  } else if (!cell.established) return '한 해를 넘겨 뿌리가 자리 잡은 포기라야 나눈다';
   if (!p.months.includes(kstMonthOf(nowMs))) return `${monthRangeKo(p.months)}에 나눈다`;
   if (cell.dividedYear === kstYearOf(nowMs)) return '올해는 이미 나눴다 — 포기가 힘을 되찾게 둔다';
   return null;
+}
+
+// ─────────────────────────────────────────────
+// 285차 — 씨 받기
+// ─────────────────────────────────────────────
+
+/** 이 칸에서 씨를 받을 수 없는 까닭(되면 null) — 다 익은 칸만 · 털어서 씨를 받는 작물(콩 · 깨 · 보리)은 낱알에서 던다 */
+export function seedSaveBlockKo(cell: FarmCellState, crop: CropDef): string | null {
+  const ss = crop.seedSave;
+  if (!ss?.qty) return ss?.fromGrainG ? '털어 낸 낱알에서 씨앗을 던다 — 가방에서 「씨앗으로 덜기」' : '씨를 받아 심는 작물이 아니다';
+  if (cell.nursery || cell.process) return '지금은 씨를 받을 수 없다';
+  if (!cellReady(cell)) return '다 익어야 씨가 여문다';
+  return null;
+}
+
+/**
+ * 씨를 받는다 — 칸은 끝난다(그 작기 수확을 씨로 바꾼다). 받는 수 = `qty` × 섬(바닥 1).
+ * 받은 씨앗 id = 그 작물 씨앗 + `_saved`.
+ */
+export function saveSeedsCell(cell: FarmCellState, crop: CropDef, rand01: () => number): { itemId: string; qty: number } | null {
+  if (seedSaveBlockKo(cell, crop)) return null;
+  const st = crop.starts.find((x) => x.kind === 'seed');
+  const q = crop.seedSave!.qty!;
+  if (!st) return null;
+  const raw = (q[0] + rand01() * (q[1] - q[0])) * Math.max(0.5, cell.stand);
+  const qty = Math.max(1, Math.floor(raw) + (rand01() < raw - Math.floor(raw) ? 1 : 0));
+  clearCell(cell);
+  return { itemId: `${st.itemId}_saved`, qty };
+}
+
+/** 털어 낸 낱알(g)로 「1칸 분」 씨앗 몇 봉을 덜 수 있나 */
+export function seedPacketsFromGrain(crop: CropDef, grams: number): number {
+  const per = crop.seedSave?.fromGrainG;
+  return per ? Math.floor(Math.max(0, grams) / per) : 0;
 }
 
 /** 나눈다 — 심는 물건(모종 · 종구)을 돌려준다. 포기는 조금 성겨진다(섬 −0.15 · 바닥 0.5) */

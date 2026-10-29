@@ -40,6 +40,10 @@ function tailEn(seg: string, tr: Tr): string {
 const tails = (s: string | undefined, tr: Tr): string => (s ? s.slice(3).split(' — ').map((seg) => ` — ${tailEn(seg, tr)}`).join('') : '');
 
 export const EN_MILL: Record<string, string> = {
+  // 285차 — 다 됐을 때 알림
+  '시계 알람': 'Watch alarm',
+  '찾을 것': 'Ready to collect',
+  '맡긴 것이 다 됐다': 'Your order is ready',
   // ── 가게 · 실내 ──
   '방앗간': 'Oil mill',
   '설악기름방앗간': 'Seorak Oil Mill',   // 게임 상호(캡처 POI `nameEn`과 같다 — 다른 지역 맵에서 창 제목으로 쓸 때)
@@ -65,12 +69,12 @@ export const EN_MILL: Record<string, string> = {
   '이미 다 됐다 — 찾아 간다': 'Already done — collect it',
   '가방에 자리가 없다 — 한 칸 비우고 무른다': 'No room in the bag — free a slot, then cancel',
   // 체험 가이드
-  '방앗간 압착기다. 털어 둔 깨를 맡기면 볶아서 기름을 짜 병에 담아 준다. 들깨는 곱게 갈고, 참깨는 볶아 깨소금으로 만들어 준다.':
-    'This is the mill’s oil press. Leave your threshed seeds and they get roasted, pressed and bottled. Perilla can be ground fine, and sesame roasted into sesame salt.',
+  '방앗간 압착기다. 털어 둔 깨를 맡기면 볶아서 기름을 짜 병에 담아 준다 — 볶지 않고 짜는 생기름도 있다. 들깨는 곱게 갈고, 참깨는 볶아 깨소금으로, 보리는 눌러 압맥으로 만들어 준다.':
+    'This is the mill’s oil press. Leave your threshed seeds and they get roasted, pressed and bottled — or cold-pressed raw, unroasted. Perilla can be ground fine, sesame roasted into sesame salt, and barley rolled flat into apmaek.',
   '왼쪽에서 할 일을 고른다. 아래 숫자는 가방에 털어 둔 깨의 무게다 — 봉지에 담은 깨는 가방에서 뜯어야 여기에 잡힌다.':
     'Pick a job on the left. The number below is the weight of threshed seed in your bag — bagged seed only counts once you open the bag.',
-  '기름은 180ml · 350ml 병을 몇 병 짤지 고른다. 갈기 · 볶기는 100g 단위로 맡길 양을 고른다.':
-    'For oil, choose how many 180ml and 350ml bottles to press. For grinding and roasting, choose the amount in 100g steps.',
+  '기름은 180ml · 350ml 병을 몇 병 짤지 고른다. 갈기 · 볶기는 100g, 보리 누르기는 1kg 단위로 맡길 양을 고른다.':
+    'For oil, choose how many 180ml and 350ml bottles to press. Grinding and roasting go in 100g steps, rolling barley in 1kg steps.',
   '여기서 드는 깨 · 나오는 것 · 공임 · 찾는 때를 미리 본다. 기름을 짜면 깻묵도 함께 돌려준다 — 밭에 넣으면 거름이다.':
     'Here you see the seed it takes, what you get, the fee and when it is ready. Pressing oil also gives back the oil cake — it feeds the soil.',
   '「맡기기」를 누르면 깨와 공임이 나간다. 시간이 지나면 이 압착기에서 찾는다.':
@@ -149,6 +153,9 @@ export const EN_MILL: Record<string, string> = {
 
 /** 문장이 정해진 규칙 — `EN_FARM_RULES` 앞 */
 export const EN_MILL_RULES: MillRule[] = [
+  // 285차 — 「[방앗간] 설악기름방앗간에 맡긴 「참기름 짜기」가 다 됐습니다 — 찾으러 가세요.」(채널 줄 · 알람 창 · 줄 여럿이면 줄마다)
+  [/^(\[방앗간\] )?(.+)에 맡긴 「(.+)」(?:이|가) 다 됐습니다 — 찾으러 가세요\.$/, (m, tr) =>
+    `${m[1] ? '[Mill] ' : ''}${tr(m[3])} at ${tr(m[2])} is ready — go and collect it.`],
   // 등급 꼬리 — 「무 (1개 · 약 1.2kg) · 보통」의 괄호 안 「·」에서 가르지 않게(구분자 분해보다 먼저)
   [/^(.+) · (특|상|보통)$/, (m, tr) => `${tr(m[1])} · ${tr(m[2])}`],
   // ── 방앗간 창 ──
@@ -158,10 +165,11 @@ export const EN_MILL_RULES: MillRule[] = [
   [new RegExp(`^${G} \\(가방 ${G}\\)$`), (m) => `${m[1]} (in bag: ${m[2]})`],
   [/^([\d,]+)원 \(병값 포함\)$/, (m) => `₩${m[1]} (bottles included)`],
   [/^(\d+)분 뒤$/, (m) => `in ${m[1]} min`],
-  [/^(\d+)g 단위$/, (m) => `in ${m[1]}g steps`],
+  [new RegExp(`^${G} 단위$`), (m) => `in ${m[1]} steps`],
+  [/^드는 (.+)$/, (m, tr) => `${tr(m[1])} needed`],
   [/^외 (\d+)건$/, (m) => `+${m[1]} more`],
   [/^(\d+)분 남음$/, (m) => `${m[1]} min left`],
-  [/^(\d+)g 단위로 맡긴다$/, (m) => `Leave it in ${m[1]}g steps`],
+  [new RegExp(`^${G} 단위로 맡긴다$`), (m) => `Leave it in ${m[1]} steps`],
   [new RegExp(`^털어 둔 (.+)(?:이|가) 모자란다 — ${G}이 든다 \\(가방 ${G} · 봉지는 뜯어서 맡긴다\\)$`),
     (m, tr) => `Not enough threshed ${tr(m[1]).toLowerCase()} — it takes ${m[2]} (in bag: ${m[3]} · open bags before leaving them)`],
   [/^공임 ([\d,]+)원이 모자란다$/, (m) => `Not enough money for the ₩${m[1]} fee`],
@@ -169,7 +177,7 @@ export const EN_MILL_RULES: MillRule[] = [
     (m, tr) => `${tr(m[1])} — left ${m[2]} · collect in ${m[3]} min (fee ₩${m[4]})`],
   [/^아직 하는 중이다 — (\d+)분 남았다$/, (m) => `Still working on it — ${m[1]} min left`],
   [/^찾았다 — (.+)$/, (m, tr) => `Collected — ${list(m[1], tr)}`],
-  [/^물렀다 — 깨와 공임 ([\d,]+)원을 돌려받았다$/, (m) => `Cancelled — your seeds and the ₩${m[1]} fee came back`],
+  [/^물렀다 — (.+)와 공임 ([\d,]+)원을 돌려받았다$/, (m, tr) => `Cancelled — your ${m[1] === '깨' ? 'seeds' : tr(m[1]).toLowerCase()} and the ₩${m[2]} fee came back`],
   // ── 가방 · 봉지 ──
   [new RegExp(`^봉지 담기 \\(${G}\\)$`), (m) => `Bag it (${m[1]})`],
   [new RegExp(`^(병을 땄다|봉지를 뜯었다) — (.+) (${G.slice(1, -1)}|\\d+개)$`), (m, tr) => {
