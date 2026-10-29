@@ -202,16 +202,16 @@ export const CHOICE_DEPTH_4: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       lesson: [
-        '해녀 숨이야. 못 배워. 그래도 보는 건 돼. (물속에서 버티는 시간이 조금 는다.)\n\n물 밖으로 나올 때 휘파람 같은 소리 들었지. 숨비소리라고 해. 참았던 숨을 한 번에 내보내는 거야. 그 소리 들으면 얼마나 깊이 갔다 왔는지 알아.',
-        "That's a haenyeo's breath. You can't learn it. You can watch it, though. (My time underwater lengthens a little.)\n\nYou heard that whistle when she came up. It's called sumbisori. All the held breath let out at once. Hear it and you know how deep she went.",
+        '해녀 숨은 못 배워. 그래도 들은 건 남지. (물가에서 숨 고르는 법이 조금 몸에 붙는다.)\n\n물 밖으로 나올 때 휘파람 같은 소리 들었지. 숨비소리라고 해. 참았던 숨을 한 번에 내보내는 거야. 그 소리 들으면 얼마나 깊이 갔다 왔는지 알아.',
+        "You can't learn a haenyeo's breath. But what you hear stays with you. (A little of how to steady my breath at the edge stays with me.)\n\nYou heard that whistle when she came up. It's called sumbisori. All the held breath let out at once. Hear it and you know how deep she went.",
       ],
       pay: [
-        '리어카. (제주 리어카는 배를 타고 왔다.)\n\n뱃삯도 들었으니 받아. 바다 건너는 데는 다리가 소용없거든. (서랍을 연다. 섬 바람에 지폐 귀퉁이가 눅눅하다.)',
-        "The cart. (The Jeju cart came over by ferry.)\n\nThe ferry cost too, so take it. Legs are no use crossing the sea. (He opens the drawer. The corners of the notes are damp from the island wind.)",
+        '그렇지. 리어카 손잡이 밑에 넣어 둔 봉투야. 많진 않아.\n\n뱃삯도 들었으니 받아. 바다 건너는 데는 다리가 소용없거든. (서랍을 연다. 섬 바람에 지폐 귀퉁이가 눅눅하다.)',
+        "Fair enough. There's an envelope under the cart handle. It isn't much.\n\nThe ferry cost too, so take it. Legs are no use crossing the sea. (He opens the drawer. The corners of the notes are damp from the island wind.)",
       ],
       decline: [
-        '…바람이 좋은 쪽으로. (제주 해녀들이 나를 안다. 물가 사람으로.)\n\n물가 사람이라는 말, 여기선 칭찬이야. 경계를 지키는 사람이라는 뜻이니까. 그 이름 잃지 마. 여기선 한번 잃으면 다시 얻기 어려워.',
-        "…The wind, the right way. (The haenyeo of Jeju know me. As one of the water people.)\n\nOut here, being called that is praise. It means someone who keeps to the edge. Don't lose it. Here, once it's lost, it's hard to get back.",
+        '…자네는 바람이 좋은 쪽으로 부는군. (서귀포 해녀들이 나를 안다. 물가 사람으로.)\n\n물가 사람이라는 말, 여기선 칭찬이야. 경계를 지키는 사람이라는 뜻이니까. 그 이름 잃지 마. 여기선 한번 잃으면 다시 얻기 어려워.',
+        "…The wind blows the right way with you. (The haenyeo of Seogwipo know me now. As one of the shore people.)\n\nOut here, being called that is praise. It means someone who keeps to the edge. Don't lose it. Here, once it's lost, it's hard to get back.",
       ],
     },
   },

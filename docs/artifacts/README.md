@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 28 — 285차 기준(「기준」 줄 · E1 285 줄 · 초상 113 · 변형 9 · §06 「285차 실플레이 확인」 · §07 추천 순서 1 = 286 ~ 288). 27 = 284 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 29 — 285차 기준(머리 수치 285 · 창 48 · 아이템 943 · 새 항목 「갈무리 · 씨 받기」 · 방앗간 일 7 · 기름병 8 · 알림 · 나물 이름 · 초상 113). 28 = 284 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 27 — 285차 기준 · 채비 문법은 258차(「285차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 82 — 285차(시스템 탭 「갈무리 · 씨 받기 · 생기름 · 압맥」 · 농사 탭 「갈무리」 · 새 그림 파일 7 · HTML 안 5). 81 = 285 첫 발행 · 80 = 284 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 29 — 286차 기준(「기준」 줄 · §06 「286차 시범 확인」 · §07 추천 순서 1 = 286 ✅ → 시범 확인 → 190편). 28 = 285 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 30 — 286차 기준(아이템 944 · 대화 40 · 새 항목 「대본 장면 · 몸짓」 · 픽셀 아이콘 391 · 비정수 크기 · 보상 그림). 29 = 285 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 28 — 286차 기준 · 채비 문법은 258차(「286차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 83 — 286차(시스템 탭 「주고받는 대화 · 몸짓」 · 아이템 944 · 새 얼굴 2(HTML 안) · 지도 인물 자리 39/43 · 새 그림 파일 0). 82 = 285 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -23,10 +23,10 @@
 
 | 아티팩트 | 고칠 것 |
 |---|---|
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 82 — 285차(시스템 탭 「갈무리 · 씨 받기 · 생기름 · 압맥」 · 농사 탭 「갈무리」 · 새 그림 파일 7 · HTML 안 5). 81 = 285 첫 발행 · 80 = 284 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 29 — 285차 기준(머리 수치 285 · 창 48 · 아이템 943 · 새 항목 「갈무리 · 씨 받기」 · 방앗간 일 7 · 기름병 8 · 알림 · 나물 이름 · 초상 113). 28 = 284 |
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 28 — 285차 기준(「기준」 줄 · E1 285 줄 · 초상 113 · 변형 9 · §06 「285차 실플레이 확인」 · §07 추천 순서 1 = 286 ~ 288). 27 = 284 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 27 — 285차 기준 · 채비 문법은 258차(「285차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 83 — 286차(시스템 탭 「주고받는 대화 · 몸짓」 · 아이템 944 · 새 얼굴 2(HTML 안) · 지도 인물 자리 39/43 · 새 그림 파일 0). 82 = 285 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 30 — 286차 기준(아이템 944 · 대화 40 · 새 항목 「대본 장면 · 몸짓」 · 픽셀 아이콘 391 · 비정수 크기 · 보상 그림). 29 = 285 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 29 — 286차 기준(「기준」 줄 · §06 「286차 시범 확인」 · §07 추천 순서 1 = 286 ✅ → 시범 확인 → 190편). 28 = 285 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 28 — 286차 기준 · 채비 문법은 258차(「286차 기준」 줄) |
 
 ### 머리 숫자 실측(구현 라이브러리)
 

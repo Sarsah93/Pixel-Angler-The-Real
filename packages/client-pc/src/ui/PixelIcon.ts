@@ -13,6 +13,8 @@
 import Phaser from 'phaser';
 import { PIXEL_ICON_ART } from '../data/PixelIconArt.js';
 import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture } from './CanvasTextureGuard.js';
+import { ITEM_IMAGE_BY_PX, ITEM_TEXTURE_ALIAS } from '../data/ItemImages.js';
+import { fitFishTexture } from '../data/FishTextures.js';
 
 /** 아이콘 텍스처를 (없으면) 굽고 키를 돌려준다. 알 수 없는 키면 null. */
 export function ensurePixelIcon(
@@ -48,9 +50,16 @@ export function ensurePixelIcon(
   return texKey;
 }
 
+/** 286차 — 16px 손그림 대신 그린 그림(Gemini — `ITEM_IMAGE_BY_PX`)을 쓰는 최소 표시 크기. 그보다 작으면 도트가 더 또렷하다 */
+const PAINTED_MIN_PX = 24;
+
 /**
- * 아이콘 이미지를 만든다(원점 중앙). 표시 크기 `size`px에 맞춰
- * **정수 배율로 구운 뒤** 스케일 없이 배치 — 도트가 뭉개지지 않는다.
+ * 아이콘 이미지를 만든다(원점 중앙).
+ *  - 16의 배수 크기 = **정수 배율로 구워** 스케일 없이 배치 — 도트가 뭉개지지 않는다.
+ *  - 286차 — 24px 이상이고 그 키에 그린 그림(`ITEM_IMAGE_BY_PX['px:<키>']`)이 있으면 그 그림(일지 보상 카드 등).
+ *  - 286차 — 16의 배수가 아닌 크기(10 · 12 · 14 · 18 · 24px …)는 옛 방식(정수 굽기 → `setDisplaySize`)이 최근접 샘플링으로
+ *    도트 줄을 들쭉날쭉 버리거나 겹쳐 그렸다(사용자 「픽셀레이트가 낮은」). 이제 한 단계 큰 정수 배율로 구운 것을
+ *    **그 크기 그대로 매끈하게 줄인 캔버스**(`pxi_<키>_@<크기>`)를 따로 구워 1:1로 놓는다.
  */
 export function addPixelIcon(
   scene: Phaser.Scene,
@@ -59,15 +68,51 @@ export function addPixelIcon(
   y: number,
   size = 16,
 ): Phaser.GameObjects.Image | null {
+  if (size >= PAINTED_MIN_PX) {
+    const painted = ITEM_IMAGE_BY_PX[`px:${key}`] ?? ITEM_TEXTURE_ALIAS[`px:${key}`];   // 요리 계열 16px 키 = 요리 사진
+    if (painted && scene.textures.exists(painted)) {
+      const fit = fitFishTexture(scene.textures, painted, size, size);
+      return scene.add.image(x, y, fit.key).setOrigin(0.5).setDisplaySize(fit.w, fit.h);
+    }
+  }
   const art = PIXEL_ICON_ART[key];
   if (!art) return null;
+  if (size % art.w === 0) {
+    const texKey = ensurePixelIcon(scene, key, size / art.w);
+    return texKey ? scene.add.image(x, y, texKey).setOrigin(0.5) : null;
+  }
+  const exact = ensureExactPixelIcon(scene, key, Math.round(size));
+  if (exact) return scene.add.image(x, y, exact).setOrigin(0.5);
+  // 캔버스를 못 만들면 옛 방식
   const s = Math.max(1, Math.round(size / art.w));
   const texKey = ensurePixelIcon(scene, key, s);
   if (!texKey) return null;
-  const img = scene.add.image(x, y, texKey).setOrigin(0.5);
-  const drawn = art.w * s;
-  if (drawn !== size) img.setDisplaySize(size, size);
-  return img;
+  return scene.add.image(x, y, texKey).setOrigin(0.5).setDisplaySize(size, size);
+}
+
+/** 286차 — 정확히 `size`px로 매끈하게 줄인 아이콘 텍스처(16의 배수가 아닌 크기 전용) */
+function ensureExactPixelIcon(scene: Phaser.Scene, key: string, size: number): string | null {
+  const art = PIXEL_ICON_ART[key];
+  if (!art || size < 4) return null;
+  const texKey = `pxi_${key}_@${size}`;
+  if (scene.textures.exists(texKey)) return texKey;
+  const up = Math.max(1, Math.ceil(size / art.w));
+  const srcKey = ensurePixelIcon(scene, key, up);
+  const src = srcKey ? scene.textures.get(srcKey).getSourceImage() as HTMLCanvasElement | HTMLImageElement : null;
+  if (!src) return null;
+  const canvas = scene.textures.createCanvas(texKey, size, Math.round(size * art.h / art.w));
+  if (!canvas) return null;
+  const ctx = canvasContextOf(canvas);
+  if (!ctx) { destroyCanvasTexture(canvas); return null; }
+  try {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, src.width, src.height, 0, 0, canvas.width, canvas.height);
+  } catch { destroyCanvasTexture(canvas); return null; }
+  if (!refreshCanvasTexture(canvas, `픽셀 아이콘 ${texKey}`)) { destroyCanvasTexture(canvas); return null; }
+  canvas.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return texKey;
 }
 
 /** 아트가 등록된 아이콘인지 */

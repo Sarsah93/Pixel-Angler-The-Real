@@ -188,6 +188,13 @@ node tools/check_art_quality.cjs packages/client-pc/public/crops     # 5기준 �
   팩 초상은 `crop_<x>_pack.png`로 넣는다(목록 정규식이 잡고, 팩 아이콘 키 `px:crop_<x>_pack`이 그 초상을 찾는다). 없으면 16px 손그림(투명 용기).
   남은 파일 이름 전부는 `docs/wiki/02-SYSTEMS/photo-pixel-art.md` §5.1.
 
+## ⑤-b 16px UI 아이콘을 그림으로 (286차)
+
+- 화면 아이콘(`addPixelIcon(scene, '<키>', x, y, size)` — 보상 카드 `rw_*` 등)은 `tools/item_looks/<묶음>.cjs` 항목에 `px: ['px:<키>']`를 달아
+  Gemini로 그리고 `--install` → `node tools/item_cards.cjs`하면 `ITEM_IMAGE_BY_PX`에 이어져 **24px 이상에서 그림**이 나온다(작으면 16px 도트 그대로).
+- 카탈로그 밖 아이템(개인 퀘스트 물건 `QUEST_ITEMS`)은 `ids: ['<아이템 id>']`로 잇는다 — 같은 16px 키를 쓰는 다른 물건은 그대로 둔다.
+- 16의 배수가 아닌 크기는 `addPixelIcon`이 그 크기로 매끈하게 구운 판(`pxi_<키>_@<크기>`)을 쓴다 — 도트가 또렷해야 하는 자리는 16 · 32로 맞춘다.
+
 ## ⑥ 작물 초상 — 사진 없이 Gemini로 그리기 (244차)
 
 사진이 없는 작물은 Gemini 그림 모델(기본 `gemini-nano-banana-2.1`)에 「생김새 설명 + 화풍 참고 그림 3장(딸기 · 청치마 · 감자 변환본)」을 보내 그린다.

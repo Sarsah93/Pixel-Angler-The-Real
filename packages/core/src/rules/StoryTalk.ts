@@ -14,8 +14,9 @@
  */
 
 import type {
-  NpcShopTerms, StoryEndingDef, StoryTalkDef, TalkChoiceDef, TalkGate, TalkNodeDef, TalkStance,
+  NpcShopTerms, StoryEndingDef, StoryTalkDef, TalkBeat, TalkChoiceDef, TalkGate, TalkNodeDef, TalkStance,
 } from '../types/Story.js';
+import { TALK_ACTS, talkActDef, talkActStep } from './TalkActs.js';
 import { STORY_QUESTS } from '../db-schema/StoryQuestDatabase.js';
 import { STORY_ARCS, getStoryNpc } from '../db-schema/StoryArcs.js';
 import { choicesFor } from '../db-schema/StoryChoices.js';
@@ -115,9 +116,16 @@ export function allTalkLines(): [string, string][] {
   for (const t of STORY_TALKS) {
     for (const n of Object.values(t.nodes)) {
       pair(n.lineKo, n.lineEn);
-      for (const c of n.choices) { pair(c.labelKo, c.labelEn); pair(c.end?.lineKo, c.end?.lineEn); }
+      pair(n.noteKo, n.noteEn);   // 286차 — 일지 한 문장
+      pair(n.end?.lineKo, n.end?.lineEn);
+      for (const b of n.beats ?? []) if (b.kind === 'line') { pair(b.ko, b.en); pair(b.koF, b.enF); }
+      for (const c of n.choices) {
+        pair(c.labelKo, c.labelEn); pair(c.end?.lineKo, c.end?.lineEn);
+        pair(c.sayKo, c.sayEn); pair(c.sayKoF, c.sayEnF); pair(c.noteKo, c.noteEn);   // 286차
+      }
     }
   }
+  for (const a of TALK_ACTS) pair(a.captionKo, a.captionEn);   // 286차 — 몸짓 지문(필드 인물이 없을 때 · 일지)
   for (const e of STORY_ENDINGS) {
     pair(e.titleKo, e.titleEn); pair(e.summaryKo, e.summaryEn);
     for (const r of Object.values(e.effects?.role ?? {})) pair(r.ko, r.en);   // 결말이 바꾼 나이 · 직업 한 줄(대화창 제목 · 정보 카드)
@@ -132,6 +140,63 @@ const STANCES: readonly TalkStance[] = ['giver', 'other', 'mid', 'self'];
 const DEV = /(자격 사다리|서브 아크|메인 스파인|메인 퀘스트|서브 퀘스트|퀘스트|우호도|플래그|경험치|숙련도|아크|게이트)/;
 /** 한 번 고른 말이 움직이는 우호도 폭 */
 export const TALK_AFFINITY_MAX = 0.15;
+/** 286차 — 장면 안에서 받는 마음의 폭(「우호도 +0.25」처럼 큰 신뢰의 몸짓 — 사용자 지정) */
+export const TALK_GIVE_AFFINITY_MAX = 0.3;
+
+/** 286차 — 대본 박자 검사(누가 · 몸짓 · 받기 · 글) */
+function checkBeats(beats: readonly TalkBeat[], where: string, issues: string[], text: (ko: string | undefined, en: string | undefined, w: string) => void): void {
+  const who = (id: string, w: string): void => {
+    if (id !== '' && id !== 'player' && !getStoryNpc(id)) issues.push(`${w}: 없는 사람 ${id}`);
+  };
+  beats.forEach((b, i) => {
+    const w = `${where}#${i}`;
+    if (b.kind === 'line') {
+      who(b.who, w);
+      text(b.ko, b.en, `${w} 대사`);
+      if (b.koF !== undefined || b.enF !== undefined) text(b.koF, b.enF, `${w} 여자 주인공 대사`);
+      if (b.act) {
+        const d = talkActDef(b.act);
+        if (!d) issues.push(`${w}: 없는 몸짓 ${b.act}`);
+        else if (d.speech !== 'overlap') issues.push(`${w}: 말과 함께 할 수 없는 몸짓 ${b.act} — 따로 박자로(말이 멈춘다)`);
+      }
+    } else if (b.kind === 'act') {
+      who(b.who, w);
+      if (b.who === '') issues.push(`${w}: 몸짓은 사람이 한다`);
+      if (!talkActDef(b.act)) issues.push(`${w}: 없는 몸짓 ${b.act}`);
+      if ((b.act === 'give' || b.act === 'receive') && b.to !== undefined) who(b.to, w);
+    } else {
+      who(b.from, w);
+      for (const [npc, d] of Object.entries(b.affinity ?? {})) {
+        if (!getStoryNpc(npc)) issues.push(`${w}: 우호도 대상 없음 ${npc}`);
+        if (Math.abs(d) > TALK_GIVE_AFFINITY_MAX) issues.push(`${w}: 우호도 ±${TALK_GIVE_AFFINITY_MAX} 초과`);
+      }
+      for (const f of b.flags ?? []) if (!/^choice\.[a-z0-9_]+$/.test(f)) issues.push(`${w}: 표시는 choice.소문자`);
+      for (const it of b.items ?? []) if (!it.id || !(it.qty > 0)) issues.push(`${w}: 물건 id · 수`);
+    }
+  });
+}
+
+/** 286차 — 몸짓의 든 것(담배)을 길마다 따라가며 앞뒤가 맞는지 본다 */
+function checkHeld(t: StoryTalkDef, issues: string[]): void {
+  const seen = new Set<string>();
+  const walk = (nodeId: string, held: Set<string>): void => {
+    const key = `${nodeId}|${[...held].sort().join(',')}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const n = t.nodes[nodeId];
+    if (!n) return;
+    let h = held;
+    for (const b of n.beats ?? []) {
+      if (b.kind !== 'act' || b.who === 'player') continue;
+      const r = talkActStep(h, b.act);
+      if (r.issue) issues.push(`대화 ${t.id}/${nodeId}: ${r.issue}`);
+      h = r.held;
+    }
+    if (n.next) walk(n.next, h);
+    for (const c of n.choices) if (c.next) walk(c.next, h);
+  };
+  walk(t.start, new Set());
+}
 
 /**
  * 무결성 — 참조(편 · 사람 · 목표 · 단계 · 결말 · 보상 답) · 자리별 끝 규칙 · 막다른 길 · 글 규칙.
@@ -186,9 +251,27 @@ export function validateTalks(talks: readonly StoryTalkDef[] = STORY_TALKS): str
     for (const [nid, n] of Object.entries(t.nodes)) {
       const wn = `${w}/${nid}`;
       if (n.speaker && !getStoryNpc(n.speaker)) issues.push(`${wn}: 없는 말하는 사람 ${n.speaker}`);
-      text(n.lineKo, n.lineEn, `${wn} 대사`);
-      if (n.choices.length < 1 || n.choices.length > 4) issues.push(`${wn}: 고를 말 ${n.choices.length}개 — 1~4`);
-      if (!n.choices.some((c) => !c.requires)) issues.push(`${wn}: 조건 없는 말이 하나는 있어야 한다(막힘)`);
+      // 286차 — 대본이 있으면 대사 대신 박자를 본다
+      if (n.beats) {
+        if (n.beats.length === 0) issues.push(`${wn}: 빈 대본`);
+        if (n.lineKo || n.lineEn) issues.push(`${wn}: 대본과 대사를 함께 쓰지 않는다`);
+        checkBeats(n.beats, wn, issues, text);
+      } else text(n.lineKo, n.lineEn, `${wn} 대사`);
+      if (n.noteKo !== undefined || n.noteEn !== undefined) text(n.noteKo, n.noteEn, `${wn} 일지`);
+      const flows = (n.next ? 1 : 0) + (n.end ? 1 : 0);
+      if (flows > 1) issues.push(`${wn}: next와 end 중 하나만`);
+      if (flows === 1) {
+        if (n.choices.length) issues.push(`${wn}: 이어짐 · 끝이 있는 장면에는 고를 말을 두지 않는다`);
+        if (!n.beats) issues.push(`${wn}: 이어짐 · 끝은 대본 장면만`);
+        if (n.next && !t.nodes[n.next]) issues.push(`${wn}: 없는 다음 단계 ${n.next}`);
+        if (n.end) {
+          ends.push({ end: n.end, where: `${wn}/끝` });
+          if (n.end.lineKo || n.end.lineEn) text(n.end.lineKo, n.end.lineEn, `${wn} 끝말`);
+        }
+      } else {
+        if (n.choices.length < 1 || n.choices.length > 4) issues.push(`${wn}: 고를 말 ${n.choices.length}개 — 1~4`);
+        if (!n.choices.some((c) => !c.requires)) issues.push(`${wn}: 조건 없는 말이 하나는 있어야 한다(막힘)`);
+      }
       const cids = new Set<string>();
       for (const c of n.choices) {
         const wc = `${wn}/${c.id}`;
@@ -196,6 +279,9 @@ export function validateTalks(talks: readonly StoryTalkDef[] = STORY_TALKS): str
         cids.add(c.id);
         if (!/^[a-z][a-z0-9_]*$/.test(c.id)) issues.push(`${wc}: id 형식`);
         text(c.labelKo, c.labelEn, `${wc} 말`);
+        if (c.sayKo !== undefined || c.sayEn !== undefined) text(c.sayKo, c.sayEn, `${wc} 하는 말`);
+        if (c.sayKoF !== undefined || c.sayEnF !== undefined) text(c.sayKoF, c.sayEnF, `${wc} 여자 주인공 말`);
+        if (c.noteKo !== undefined || c.noteEn !== undefined) text(c.noteKo, c.noteEn, `${wc} 일지`);
         if (c.stance && !STANCES.includes(c.stance)) issues.push(`${wc}: 입장 ${c.stance}`);
         if (!!c.next === !!c.end) issues.push(`${wc}: next와 end 중 하나만`);
         if (c.next && !t.nodes[c.next]) issues.push(`${wc}: 없는 다음 단계 ${c.next}`);
@@ -218,7 +304,8 @@ export function validateTalks(talks: readonly StoryTalkDef[] = STORY_TALKS): str
     const stack = [t.start];
     while (stack.length) {
       const n = t.nodes[stack.pop()!];
-      for (const c of n?.choices ?? []) if (c.next && !reach.has(c.next)) { reach.add(c.next); stack.push(c.next); }
+      const nexts = [...(n?.choices ?? []).map((c) => c.next), n?.next];   // 286차 — 고르지 않고 이어지는 장면
+      for (const nx of nexts) if (nx && !reach.has(nx)) { reach.add(nx); stack.push(nx); }
     }
     for (const id of ids) if (!reach.has(id)) issues.push(`${w}/${id}: 첫 단계에서 닿지 않는다`);
     const canEnd = new Set<string>();
@@ -227,7 +314,8 @@ export function validateTalks(talks: readonly StoryTalkDef[] = STORY_TALKS): str
       grew = false;
       for (const [nid, n] of Object.entries(t.nodes)) {
         if (canEnd.has(nid)) continue;
-        if (n.choices.some((c) => !c.requires && (c.end || (c.next && canEnd.has(c.next))))) { canEnd.add(nid); grew = true; }
+        if (n.end || (n.next && canEnd.has(n.next))
+          || n.choices.some((c) => !c.requires && (c.end || (c.next && canEnd.has(c.next))))) { canEnd.add(nid); grew = true; }
       }
     }
     for (const id of ids) if (!canEnd.has(id)) issues.push(`${w}/${id}: 조건 없이 끝에 닿는 길이 없다(갇힘)`);
@@ -236,8 +324,9 @@ export function validateTalks(talks: readonly StoryTalkDef[] = STORY_TALKS): str
     const completeIds = new Set(choicesFor(q).complete.map((c) => c.id));
     for (const { end, where } of ends) {
       if (t.at === 'offer') {
-        if (!end.accept && !end.decline) issues.push(`${where}: 받는 자리 끝은 받기 · 미루기`);
-        if (end.decline && q.kind === 'main') issues.push(`${where}: 메인은 미루지 않는다`);
+        if (!end.accept && !end.decline && !end.fail) issues.push(`${where}: 받는 자리 끝은 받기 · 미루기 · 거절(실패)`);
+        if ((end.decline || end.fail) && q.kind === 'main') issues.push(`${where}: 메인은 미루지 · 거절하지 않는다`);
+        if ([end.accept, end.decline, end.fail].filter(Boolean).length > 1) issues.push(`${where}: 받기 · 미루기 · 거절 중 하나만`);
         if (end.complete || end.ending) issues.push(`${where}: 받는 자리에 마침 · 결말`);
       } else if (t.at === 'complete') {
         if (end.accept || end.decline) issues.push(`${where}: 끝내는 자리에 받기 · 미루기`);
@@ -247,8 +336,10 @@ export function validateTalks(talks: readonly StoryTalkDef[] = STORY_TALKS): str
           if (!e) issues.push(`${where}: 없는 결말 ${end.ending}`);
           else if (e.questId !== t.questId) issues.push(`${where}: 결말 ${end.ending}은 ${e.questId}에서 정한다`);
         } else if (endArc && endingsOfArc(endArc).length > 1) issues.push(`${where}: 결말이 여럿인 이야기 — 끝마다 결말을 정한다`);
-      } else if (end.accept || end.decline || end.complete || end.ending) issues.push(`${where}: 진행 중 대화 끝에 받기 · 마침 · 결말`);
+      } else if (end.accept || end.decline || end.fail || end.complete || end.ending) issues.push(`${where}: 진행 중 대화 끝에 받기 · 마침 · 결말`);
+      if (end.fail && t.at !== 'offer') issues.push(`${where}: 거절(실패)은 받는 자리에서만`);
     }
+    checkHeld(t, issues);   // 286차 — 담배를 물지 않고 내뿜는 장면 등
     if (t.at === 'offer' && !ends.some((e) => e.end.accept)) issues.push(`${w}: 받는 길이 없다`);
   }
   return issues;

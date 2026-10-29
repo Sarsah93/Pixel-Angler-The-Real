@@ -21,7 +21,7 @@ import {
   spotKindSatisfies, SPOT_KIND_LABEL, QUEST_ITEM_DROPS, getQuestItem,
   dayJobsOfNpc, getDayJob,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
-  getLicenseByType, getSkillById, getStoryNpc, getRegionById, okseonSpareGift,
+  getLicenseByType, getSkillById, getStoryNpc, getRegionById, okseonSpareGift, particle,
   type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
   type DayJobDef, type AffinityState, type QuestChoiceDef, type ChoiceOutcome, type ChoiceCtx, type SkillCategoryId,
   type OkseonSpareGift,
@@ -73,6 +73,8 @@ export interface StorySaveState {
   everDone?: string[];
   /** 거절해 영영 사라진 once 퀘스트 (141차) */
   declined?: string[];
+  /** 286차 — 받는 자리 대화에서 끝내 거절해 실패로 닫힌 곁가지(다시 오지 않는다 · 뒤 편은 열린다) */
+  failed?: string[];
   /** 거절·미수락 뒤 재발주 가능 일차 (141차 — event 정책) — questId → 스토리 일차 */
   offerCooldown?: Record<string, number>;
   /** 253차 — 물어보기: 누군가의 답에서 알게 된 화제 · 들은 물음(구세이브는 없다 — 빈 채로 시작) */
@@ -146,7 +148,7 @@ const N22_7_SEEDS: { id: string; qty: number }[] = [{ id: 'seed_mallow', qty: 2 
 export type StoryEvent =
   | { kind: 'catch'; speciesId: string; lengthCm: number; method: CatchMethod; selfCaught: boolean; regionId: string; month: number; spotKind?: StorySpotKind }
   | { kind: 'release'; speciesId: string; lengthCm: number }
-  | { kind: 'activity'; activity: 'butcher' | 'sashimi' | 'forage' | 'craft' | 'cook'; itemId?: string; traded?: boolean }
+  | { kind: 'activity'; activity: 'butcher' | 'sashimi' | 'forage' | 'craft' | 'cook'; itemId?: string; traded?: boolean; regionId?: string }
   | { kind: 'license'; licenseId: string }
   | { kind: 'trap' }
   | { kind: 'sell'; traded?: boolean }
@@ -168,7 +170,7 @@ export type StoryEvent =
   /** 138차 — 과증식 생물 수거 (해파리·불가사리) */
   | { kind: 'cull'; speciesId: string };
 
-export type QuestStatus = 'done' | 'active' | 'available' | 'locked' | 'declined';
+export type QuestStatus = 'done' | 'active' | 'available' | 'locked' | 'declined' | 'failed';
 
 /** 어획물 아이템의 판매 판정에 필요한 최소 형태 */
 interface SellableLike { id?: string; speciesId?: string; subCategory?: string; catchMethod?: CatchMethod; lengthCm?: number }
@@ -199,6 +201,8 @@ class StoryStoreManager {
   private jobs: Record<string, { day: number; count: number }> = {};
   /** 141차 — 거절로 사라진 once 퀘 · event 재발주 쿨다운 */
   private declined = new Set<string>();
+  /** 286차 — 거절 = 실패로 닫힌 곁가지 */
+  private failed = new Set<string>();
   private offerCooldown: Record<string, number> = {};
   private affinity: AffinityState = {};
   private choices: Record<string, { offer?: string; complete?: string }> = {};
@@ -232,7 +236,7 @@ class StoryStoreManager {
     return {
       quests: this.quests, rep: this.rep, pageCatch: this.pageCatch, day: this.day, traineeDay: this.traineeDay, jobs: this.jobs,
       affinity: this.affinity, choices: this.choices, tracked: this.pinned.main, pinned: { ...this.pinned },
-      declined: [...this.declined], offerCooldown: this.offerCooldown, everDone: [...this.everDone],
+      declined: [...this.declined], failed: [...this.failed], offerCooldown: this.offerCooldown, everDone: [...this.everDone],
       inquiry: { learned: [...this.inqLearned], asked: [...this.inqAsked] },
       talk: { seen: [...this.talkSeen], at: { ...this.talkAt }, path: { ...this.talkPath } },
       endings: { ...this.endings },
@@ -256,6 +260,7 @@ class StoryStoreManager {
       if (k === 'sub') this.pinned.sub = s.tracked; else this.pinned.main = s.tracked;
     }
     this.declined = new Set(s?.declined ?? []);
+    this.failed = new Set(s?.failed ?? []);   // 286차 — 구세이브는 없다(빈 채로)
     this.offerCooldown = s?.offerCooldown ?? {};
     // 206차 — 구세이브는 지금 끝난 상태인 퀘스트로 채운다
     this.everDone = new Set([...(s?.everDone ?? []), ...Object.entries(this.quests).filter(([, p]) => p.status === 'done').map(([id]) => id)]);
@@ -357,6 +362,10 @@ class StoryStoreManager {
     return false;
   }
   isDone(id: string): boolean { return this.quests[id]?.status === 'done'; }
+  /** 286차 — 실패로 닫혔는가(받는 자리에서 끝내 거절) */
+  isFailed(id: string): boolean { return this.failed.has(id); }
+  /** 286차 — 닫힌 편 = 끝냈거나 실패로 닫혔다(뒤 편 · 이야기 완주는 이것으로 센다 — 이야기는 나 없이도 흘러간다) */
+  isClosed(id: string): boolean { return this.isDone(id) || this.failed.has(id); }
   isActive(id: string): boolean { return this.quests[id]?.status === 'active'; }
 
   /** 챕터 개방 = 이전 챕터 마지막 메인 완료 (Ch1은 항상) */
@@ -375,12 +384,14 @@ class StoryStoreManager {
     const p = this.quests[q.id];
     if (p?.status === 'done') return 'done';
     if (p?.status === 'active') return 'active';
+    if (this.failed.has(q.id)) return 'failed';
     if (this.declined.has(q.id)) return 'declined';
     return this.isAvailable(q) ? 'available' : 'locked';
   }
   private isAvailable(q: StoryQuestDef): boolean {
+    if (import.meta.env.DEV && this.devOffer.has(q.id)) return true;   // 286차 — dev 「받는 자리부터 다시」
     if (!this.chapterOpen(q.chapter)) return false;
-    if (!q.prereq.every((p) => this.isDone(p))) return false;
+    if (!q.prereq.every((p) => this.isClosed(p))) return false;   // 286차 — 앞 편이 실패로 닫혀도 뒤 편은 열린다
     const lv = this.host?.level() ?? 1;
     if (lv < q.minLevel) return false;
     // 141차 — 발주 정책: 거절 쿨다운 · event 시기 창
@@ -399,6 +410,7 @@ class StoryStoreManager {
   }
   /** 왜 지금 못 받는지 한 줄 (일지·대화창) — event/once/쿨다운. 해당 없으면 null */
   offerNoteKo(q: StoryQuestDef): string | null {
+    if (this.failed.has(q.id)) return '거절한 의뢰 — 그 일은 내 손을 떠났습니다.';
     if (this.declined.has(q.id)) return '거절한 의뢰 — 다시 오지 않습니다.';
     if ((this.offerCooldown[q.id] ?? -1) > this.day) return `미룬 의뢰 — ${this.offerCooldown[q.id] - this.day}일 뒤에 다시 찾아옵니다.`;
     if (q.offerPolicy === 'once') return '한 번뿐인 의뢰 — 거절하면 다시 오지 않습니다.';
@@ -483,9 +495,10 @@ class StoryStoreManager {
    * 140차: 우호도가 `subGateMin` 미만이면 **서브** 발주는 감춘다(`refusedSub`에 표시용으로 남긴다).
    * 메인은 우호도와 무관하게 항상 발주한다 — 메인 스트림 불침범.
    */
-  questsForNpc(npcId: string): { completable: StoryQuestDef[]; active: StoryQuestDef[]; offer: StoryQuestDef[]; refusedSub: StoryQuestDef[] } {
+  questsForNpc(npcId: string, regionId?: string): { completable: StoryQuestDef[]; active: StoryQuestDef[]; offer: StoryQuestDef[]; refusedSub: StoryQuestDef[] } {
     const mine = STORY_QUESTS.filter((q) => q.giver === npcId);
-    const avail = mine.filter((q) => this.status(q) === 'available');
+    // 286차 — 그 땅에서 꺼내는 이야기(`offerRegion`)는 그 지역에서 만났을 때만 받는다(떠돌이 바람 — 「해녀의 딸」은 서귀포)
+    const avail = mine.filter((q) => this.status(q) === 'available' && (!q.offerRegion || !regionId || q.offerRegion === regionId));
     const open = canOfferSubQuest(this.affinityOf(npcId));
     return {
       completable: mine.filter((q) => this.isActive(q.id) && this.allObjectivesDone(q)),
@@ -775,6 +788,95 @@ class StoryStoreManager {
     this.host?.markDirty();
     return { ok, end, moved, ending };
   }
+  /**
+   * 286차 — 고르지 않고 흐르는 장면의 다음(`next`) · 끝(`end`). 길에 `단계/>`(이어짐) · `단계/.`(끝)을 적는다.
+   * 끝의 일이 거절되면(가방 자리 등) 그 단계에 머문다.
+   */
+  talkContinue(t: StoryTalkDef, nodeId: string): TalkStepResult | null {
+    const node = talkNode(t, nodeId);
+    const q = getStoryQuest(t.questId);
+    if (!node || !q || (!node.next && !node.end)) return null;
+    const path = nodeId === t.start ? [] : [...(this.talkPath[t.id] ?? [])];
+    path.push(`${nodeId}/${node.next ? '>' : '.'}`);
+    this.talkPath[t.id] = path.slice(-24);
+    if (node.next) {
+      this.talkAt[t.id] = node.next;
+      this.host?.markDirty();
+      return { ok: true, next: node.next, moved: [] };
+    }
+    const end = node.end ?? {};
+    const ok = this.talkEnd(t, q, end);
+    if (ok) delete this.talkAt[t.id]; else this.talkAt[t.id] = nodeId;
+    const ending = ok && t.at === 'complete' ? this.endingOfQuestRun : undefined;
+    this.endingOfQuestRun = undefined;
+    this.host?.markDirty();
+    return { ok, end, moved: [], ending };
+  }
+
+  /**
+   * 286차 — 장면 속에서 건네받는다(대본의 `give` 박자): 물건 · 마음 · 표시. **대화마다 한 번만**(다시 열어 같은 장면을 지나도 또 받지 않는다).
+   * @returns 받은 물건 이름 · 실제로 움직인 마음 — 이미 받았으면 null
+   */
+  talkGive(t: StoryTalkDef, nodeId: string, beatIndex: number): { names: string[]; moved: { npcId: string; delta: number }[] } | null {
+    const node = talkNode(t, nodeId);
+    const b = node?.beats?.[beatIndex];
+    if (!b || b.kind !== 'give') return null;
+    const key = `${t.id}/${nodeId}/give#${beatIndex}`;
+    const itemKey = `${key}/items`;   // 물건은 따로 센다 — 가방이 차서 못 받았으면 다음에 이 장면을 지날 때 다시
+    const h = this.host;
+    const names: string[] = [];
+    const items = b.items ?? [];
+    if (items.length && !this.talkSeen.has(itemKey)) {
+      const lack = h?.roomFor?.(items.map((it) => ({ id: it.id, qty: it.qty })));   // 자리가 모자라면 그 까닭 글 · 넉넉하면 null
+      if (lack) {
+        this.onNotify?.(`[할 일] 가방에 자리가 없다 — 한 칸 비우고 다시 「${getStoryQuest(t.questId)?.titleKo ?? ''}」`);
+      } else {
+        for (const it of items) if (h?.giveItem(it.id, it.qty, false)) names.push(it.qty > 1 ? `${h.itemName(it.id)} ×${it.qty}` : h.itemName(it.id));
+        this.talkSeen.add(itemKey);
+      }
+    }
+    if (this.talkSeen.has(key)) {
+      if (names.length) this.host?.markDirty();
+      return names.length ? { names, moved: [] } : null;
+    }
+    this.talkSeen.add(key);
+    const moved: { npcId: string; delta: number }[] = [];
+    for (const [npc, d] of Object.entries(b.affinity ?? {})) {
+      const before = this.affinityOf(npc);
+      const after = this.addAffinity(npc, d);
+      if (Math.abs(after - before) > 1e-9) moved.push({ npcId: npc, delta: Math.round((after - before) * 100) / 100 });
+    }
+    for (const f of b.flags ?? []) h?.setFlag(f, true);
+    const giver = getStoryNpc(b.from)?.nameKo;
+    if (names.length) this.onNotify?.(`[할 일] ${giver ? `${giver}${particle(giver, '이', '가')} 건넨 것` : '받은 것'} — ${names.join(' · ')}`);
+    this.host?.markDirty();
+    return { names, moved };
+  }
+
+  /**
+   * 286차 — 일지(J)에 남는 대화 요약: 이 편의 대화(받는 자리 → 목표 → 끝내는 자리)를 실제로 지나온 길대로 따라가며
+   * 장면 · 고른 말의 한두 문장(`note`)을 잇는다. 대본에 적힌 것만 — 없으면 빈 배열.
+   */
+  talkNotes(questId: string): { ko: string; en: string }[] {
+    const out: { ko: string; en: string }[] = [];
+    const order = (x: StoryTalkDef): number => (x.at === 'offer' ? 0 : x.at === 'complete' ? 99 : 1 + (x.objectiveIndex ?? 0));
+    const talks = [offerTalkOf(questId), ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => objectiveTalkOf(questId, i)), completeTalkOf(questId)]
+      .filter((x): x is StoryTalkDef => !!x).sort((a, b) => order(a) - order(b));
+    for (const t of talks) {
+      const path = this.talkPath[t.id] ?? [];
+      const seenNodes = new Set<string>();
+      for (const step of path) {
+        const [nid, cid] = step.split('/');
+        const n = t.nodes[nid];
+        if (!n) continue;
+        if (!seenNodes.has(nid) && n.noteKo) { out.push({ ko: n.noteKo, en: n.noteEn ?? n.noteKo }); seenNodes.add(nid); }
+        const c = n.choices.find((x) => x.id === cid);
+        if (c?.noteKo) out.push({ ko: c.noteKo, en: c.noteEn ?? c.noteKo });
+      }
+    }
+    return out;
+  }
+
   /** `talkEnd`가 이번 마침에서 다다른 결말(결과에 실어 준다) */
   private endingOfQuestRun: StoryEndingDef | undefined;
 
@@ -782,6 +884,7 @@ class StoryStoreManager {
   private talkEnd(t: StoryTalkDef, q: StoryQuestDef, end: TalkEndDef): boolean {
     switch (t.at) {
       case 'offer':
+        if (end.fail && q.kind === 'sub') { this.failOffer(q); return true; }   // 286차 — 끝내 거절 = 실패
         if (end.decline && q.kind === 'sub') { this.declineOffer(q); return true; }
         return this.accept(q.id, undefined, true);
       case 'objective':
@@ -807,6 +910,16 @@ class StoryStoreManager {
       }
     }
     return false;
+  }
+
+  /** 286차 — 받는 자리 대화에서 끝내 거절했다(서브만): 실패로 닫힌다 — 다시 오지 않고, 뒤 편은 열린다 */
+  private failOffer(q: StoryQuestDef): void {
+    this.failed.add(q.id);
+    if (this.pinned.sub === q.id) this.pinned.sub = null;
+    if (this.pinned.main === q.id) this.pinned.main = null;
+    this.lastAction = 'failed';
+    this.host?.markDirty();
+    this.onNotify?.(`[할 일] ${q.titleKo} — 실패 (거절)`);
   }
 
   /** 받는 자리에서 미룬다(서브만) — 표준 미루기 답과 같은 규칙(once = 영영 · event = 쿨다운 · standard = 다음에 다시) */
@@ -1020,6 +1133,28 @@ class StoryStoreManager {
     return true;
   }
 
+  /**
+   * DEV 전용(286차): 편 하나를 **받는 자리부터 다시** — 진행 · 실패 · 거절 · 그 편 대화의 길 · 본 말 · 건네받기를 지우고,
+   * 장 · 레벨 · 앞 편 조건 없이 「받을 수 있음」으로 둔다(대본 시범을 몇 번이고 다시 보려고). 세이브의 다른 것은 그대로.
+   */
+  devOfferQuest(id: string): boolean {
+    if (!import.meta.env.DEV) return false;
+    const q = getStoryQuest(id);
+    if (!q) return false;
+    delete this.quests[id];
+    this.failed.delete(id); this.declined.delete(id); delete this.offerCooldown[id];
+    for (const t of [offerTalkOf(id), completeTalkOf(id), ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => objectiveTalkOf(id, i))]) {
+      if (!t) continue;
+      delete this.talkAt[t.id]; delete this.talkPath[t.id];
+      for (const k of [...this.talkSeen]) if (k.startsWith(`${t.id}/`)) this.talkSeen.delete(k);
+    }
+    this.devOffer.add(id);
+    this.host?.markDirty();
+    return true;
+  }
+  /** 286차 — dev 「받는 자리부터 다시」로 조건을 건너뛰는 편 */
+  private devOffer = new Set<string>();
+
   /** DEV 전용(167차): 아무 퀘스트나 활성화하고 `objIdx` 앞 목표를 채운 상태로 둔다 — 장면 검증용 */
   devActivateQuest(id: string, objIdx = 0): boolean {
     const q = getStoryQuest(id);
@@ -1175,7 +1310,7 @@ class StoryStoreManager {
   /** 직전 완료의 고정 보상 요약(141차 — 경험치·재화·면허·귀속 장비·해금). 완료 뒤에만 보인다 */
   lastRewardLines: string[] = [];
   /** 직전 accept/complete가 무엇이었나 (대화창 응답 화면 분기) */
-  lastAction: 'accepted' | 'declined' | 'completed' | null = null;
+  lastAction: 'accepted' | 'declined' | 'completed' | 'failed' | null = null;
   /** 234차 — 직전 accept/complete가 거절된 까닭(가방 자리 부족 등). 대화창이 「지금은 진행할 수 없습니다」 대신 보여 준다 */
   lastRefusal: string | null = null;
 
@@ -1410,6 +1545,7 @@ class StoryStoreManager {
         if (o.kind !== map[ev.activity]) return null;
         if (o.itemId && ev.itemId && o.itemId !== ev.itemId) return null;
         if (o.ownOnly && ev.traded) return null;   // 233차 — 까다로운 퀘스트는 직접 마련한 것만
+        if (o.regionId && ev.regionId !== o.regionId) return null;   // 286차 — 「제주 물가에서」 같은 지역 조건
         return 'inc';
       }
       case 'license': return o.kind === 'license' && (!o.licenseId || o.licenseId === ev.licenseId) ? 'set' : null;
@@ -1515,7 +1651,7 @@ class StoryStoreManager {
 
   // ── 조행록 ──
   arcDone(arcId: string): boolean {
-    const a = getStoryArc(arcId); return !!a && a.questIds.every((id) => this.isDone(id));
+    const a = getStoryArc(arcId); return !!a && a.questIds.every((id) => this.isClosed(id));   // 286차 — 실패로 닫힌 편도 닫힌 것
   }
   journalPageStates(): JournalPageState[] {
     return JOURNAL_PAGES.map((p) => ({

@@ -19,7 +19,7 @@
 
 import Phaser from 'phaser';
 import {
-  CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole,
+  CHAR_CELL, CHAR_FOOT_Y, CHAR_SCALE, characterOf, type CharRole, type CharDir,
   isFieldActive, type MpActivity, mpTimeSlot, mpWorldSeed,
   MP_TRADE_RANGE_PX, MP_TRADE_REASON_KO, type MpTradeState, type MpProfile, type MpPeer,
   // 149차 — 구멍치기(테트라포드·사석 틈)
@@ -133,7 +133,8 @@ import { ConsignListPanel } from '../ui/ConsignListPanel.js';
 import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { GroundItemStore, type GroundItem } from '../store/GroundItemStore.js';
 import { InteractChoicePanel, type InteractOption } from '../ui/InteractChoicePanel.js';
-import { createItemIcon } from '../ui/ItemIcon.js';
+import { createItemIcon, itemImageKeyOf } from '../ui/ItemIcon.js';
+import { DialogueStage } from './field/DialogueStage.js';
 import { getStoryNpc, validateStoryQuests, validateStoryChoices, validateLicenseStoryRoutes, getSkillById, profScale, gearFaultChance, GEAR_REF_PRICE, gearUsable, GEAR_FAULTS,
   STORY_QUESTS, getStoryQuest, narrativeOf, nextObjectiveIndex, objectiveTarget, objectiveHowToKo, getDayJob, getRegionById, WORLD_NODE_DATABASE,
   type StoryQuestDef, type QuestGuideTarget, type GuideNames } from '@tra/core';
@@ -416,6 +417,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private hud?: RegionHud;
   /** 개인 전용 컷씬 재생 중 — HUD/필드 입력을 숨기고 presence에는 바쁨을 보낸다. */
   private cinematicActive = false;
+  /** 286차 — 대본 장면 무대(몸짓 그림 · 카메라). create()에서 새로 만든다 */
+  private dialogueStage?: DialogueStage;
+  /** 286차 — 대본 장면 동안 카메라를 들어 올리는 양(px) — 대화창(화면 아래 452px) 위 띠에 두 사람이 서게 */
+  private static readonly TALK_CAM_LIFT = 175;
   private cinematic?: StoryCinematicPanel;
   /** 보일링/스쿨링 필드 이벤트 매니저 */
   private fieldEvents?: FieldEventManager;
@@ -682,6 +687,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.iceDropMarker = undefined;
     this.cinematic = undefined;
     this.cinematicActive = false;
+    this.dialogueStage = undefined;   // 286차 — 무대는 create()에서 새로
     if (this.chatInput) { this.chatInput.close(); this.chatInput = undefined; }
     this.invPanel = null;
     this.statusPanel = null;
@@ -775,6 +781,13 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 286차 — 대본 장면 무대(필드 인물 위 몸짓 · 대화창 위로 카메라). 지역마다 새로 만든다
+    this.dialogueStage = new DialogueStage({
+      scene: this,
+      actor: (who) => this.stageActor(who),
+      setTalkView: (on) => this.setTalkView(on),
+      itemTexture: (id) => itemImageKeyOf(this, { id }),
+    });
     // ── 재진입 가드 — Phaser 씬은 1회 생성 후 재사용된다. 직전 지역의 심리스 객체(청크·차량·POI 충돌)가
     //    shutdown 정리 도중 예외로 남으면, legacy 지역(홈타운)에서도 update()가 죽은 RenderTexture에
     //    베이킹을 시도해 "Cannot read properties of null (reading 'drawImage')"가 난다(2026-08-29 리포트).
@@ -5854,6 +5867,48 @@ export class RegionFieldScene extends Phaser.Scene {
   // 165차 — 컷씬 재생 (실제 필드 무대 · 말풍선 · 배우 이동 · 조작 봉쇄)
   // ═══════════════════════════════════════════════════════════════
 
+  /** 286차 — 대본 장면 무대의 배우(주인공 · 이 필드에 서 있는 스토리 인물) */
+  private stageActor(who: string): { obj: Phaser.GameObjects.Image; dir(): CharDir; face(d: CharDir): void } | undefined {
+    if (who === 'player') {
+      if (!this.playerSprite?.active) return undefined;
+      return { obj: this.playerSprite, dir: () => this.charSprite?.facing ?? 'down', face: (d) => this.charSprite?.setDir(d) };
+    }
+    const n = this.storyNpcs.find((s) => s.def.npcId === who && !s.atHome);
+    if (!n || !n.actor.active) return undefined;
+    return {
+      obj: n.actor,
+      dir: () => n.ai?.walker.dir ?? 'down',
+      face: (d) => {
+        if (n.ai) { n.ai.face(d); return; }
+        n.actor.setTexture(ensureCharSheet(this, characterOf(n.def.npcId), CHAR_SCALE), charFrameName(d, 0));
+      },
+    };
+  }
+
+  /** 286차 — 대본 장면 보기: HUD를 접고 카메라를 들어 두 사람이 대화창 위 띠에 서게(두 사람 가운데로) */
+  private setTalkView(on: boolean): void {
+    const cam = this.cameras.main;
+    if (!on) { cam.setFollowOffset(0, 0); this.hud?.setVisible(true); return; }
+    this.hud?.setVisible(false);
+    const me = this.playerSprite;
+    const partner = this.dialogueStage?.partnerId;
+    const n = partner ? this.storyNpcs.find((s) => s.def.npcId === partner) : undefined;
+    // 말을 거는 거리(48px) 안이면 몸이 겹쳐 선다 — 마주 보기 좋게 옆으로 한 걸음 벌린다(걸을 수 있는 칸일 때만)
+    if (n && me && this.playerBody && Math.abs(n.actor.x - me.x) < 36 && Math.abs(n.actor.y - me.y) < 30) {
+      const side = me.x >= n.actor.x ? 1 : -1;
+      for (const sx of [side, -side]) {
+        const tx = n.actor.x + sx * 40;
+        if (!this.walkableAtWorld(tx, this.playerBody.y)) continue;
+        this.playerBody.setPosition(tx, this.playerBody.y);
+        this.updateSpriteAndShadow();
+        break;
+      }
+    }
+    const dx = n && me ? (n.actor.x - me.x) / 2 : 0;
+    const dy = n && me ? Math.max(-48, Math.min(48, (n.actor.y - me.y) / 2)) : 0;
+    cam.setFollowOffset(-dx, -RegionFieldScene.TALK_CAM_LIFT - dy);
+  }
+
   /** 각본이 부르는 배우 키를 현재 필드의 실제 오브젝트에 연결한다. */
   private cineActor(who: string): CineActor | undefined {
     if (who === 'player') {
@@ -6378,8 +6433,10 @@ export class RegionFieldScene extends Phaser.Scene {
     // 214차 — 일과(집 ↔ 일터)는 5초마다 다시 본다(실시간 시계라 그보다 촘촘할 필요가 없다)
     this.routineAt += delta;
     if (this.routineAt >= 5000 && !this.cinematicActive) { this.routineAt = 0; this.refreshNpcRoutines(false); }
+ const stagePartner = this.dialogueStage?.isOpen ? this.dialogueStage.partnerId : '';
     for (const n of this.storyNpcs) {
       if (!n.ai || n.atHome) continue;
+      if (n.def.npcId === stagePartner) continue;   // 286차 — 대본 장면 중인 상대는 무대가 움직인다(돌아서기 · 끄덕이기)
       const hold = !this.cinematicActive && (this.nearNpc === n.def || (this.popupStack.length > 0 && Math.hypot(n.x - px, n.y - 12 - py) < 64));
       n.ai.update(delta, { paused: this.cinematicActive, hold, playerX: px, playerY: py });
       if (this.cinematicActive) continue;   // 컷씬이 이미지·이름표를 직접 옮긴다
@@ -6438,7 +6495,7 @@ export class RegionFieldScene extends Phaser.Scene {
    * 메인/서브는 구분하지 않는다(사용자 결정 — 둘 다 가진 NPC에서 표기가 갈라지지 않게).
    */
   private npcMarkerIcon(npcId: string, mini: boolean): string | null {
-    const q = StoryStore.questsForNpc(npcId);
+    const q = StoryStore.questsForNpc(npcId, this.region);
     const manualReady = q.active.some((x) => x.objectives.some((o, i) => o.manual && !StoryStore.objectiveDone(x, i)));
     if (q.completable.length > 0 || manualReady) return mini ? 'mm_ready' : 'mk_ready';
     if (q.offer.length > 0) return mini ? 'mm_quest' : 'mk_quest';
@@ -7021,7 +7078,9 @@ export class RegionFieldScene extends Phaser.Scene {
         if (n) return { x: n.x, y: n.y - 12, label: names.npcName(t.npcId) };
         // 178차 — 이 지역에 서 있지 않으면 어느 지역으로 가야 하는지 알려준다.
         //  지역은 **추적 중인 할 일의 지역**이 우선(같은 인물도 장마다 무대가 다르다) · 없으면 배치표.
-        const placement = STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId);
+        // 286차 — 떠돌이(바람)는 여러 지역에 선다: 추적 중인 할 일의 지역에 선 자리를 먼저 본다
+        const placement = STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId && (!t.regionId || p.regionId === t.regionId))
+          ?? STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId);
         const away = t.regionId ?? placement?.regionId;
         // 263차 — 같은 지역의 다른 데이터 지역(부산 백운포 ↔ 감천 등)이면 그 출조 구역 이름으로 안내한다
         if (away === this.region && placement?.dataRegion && placement.dataRegion !== this.seamlessDef?.dataRegion) {
@@ -7400,7 +7459,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.nearNpc) {
       const id = this.nearNpc.npcId;
       const npc = getStoryNpc(id);
-      const q = StoryStore.questsForNpc(id);
+      const q = StoryStore.questsForNpc(id, this.region);
       const note = q.completable.length ? '의뢰 완료' : q.offer.length ? '새 의뢰' : q.active.length ? '진행 중' : undefined;
       // 187차 — 받침 없는 이름은 「와」(구: 「도현수과 대화하기」). EN 규칙은 과/와 둘 다 받는다.
       const nm = npc?.nameKo ?? id;
@@ -7664,7 +7723,7 @@ export class RegionFieldScene extends Phaser.Scene {
             StoryStore.event({ kind: 'scene', questId: mq.id, objectiveIndex: idx });
           }
           // 표결이 끝나면 계장이 이름을 부른다 — 이어서 대화창
-          this.openPopup((c2) => new DialoguePanel(this, npcId, c2, this.region, undefined, this.onDialogueScene));
+          this.openPopup((c2) => new DialoguePanel(this, npcId, c2, this.region, undefined, this.onDialogueScene, undefined, this.dialogueStage));
         },
       }));
       return;
@@ -7674,7 +7733,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (shopId in BUILDING_LABEL) this.openShop(shopId as BuildingKind, { key: `${this.region}:npc:${npcId}`, name: getStoryNpc(npcId)?.nameKo ?? '' });
     };
     playSfx('talk');
-    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, onTrade, this.onDialogueScene, atDoor));
+    this.openPopup((close) => new DialoguePanel(this, npcId, close, this.region, onTrade, this.onDialogueScene, atDoor, this.dialogueStage));
   }
 
   /** 대화창 → 장면 요청. 창이 닫히고 dim이 걷힌 다음 프레임에 컷씬을 튼다 */

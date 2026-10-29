@@ -94,6 +94,7 @@ function buildPanel(): HTMLDivElement {
 
   buildGodSection(box);
   buildRegionSection(box);
+  buildScriptPilotSection(box);
   buildPlayerSection(box);
   buildItemSection(box);
   buildFishSection(box);
@@ -157,6 +158,28 @@ function buildRegionSection(box: HTMLElement): void {
   label.appendChild(cb);
   label.appendChild(txt);
   body.appendChild(label);
+}
+
+/**
+ * ①-3 대본 시범 (286차) — N01-5 「해녀의 딸」을 받는 자리부터 다시 보고, 서귀포항(바람 · 해솔 · 부순덕이 선 곳)으로 바로 간다.
+ * 그 편의 진행 · 대화 길 · 건네받기만 지운다(다른 세이브는 그대로). 장 · 레벨 · 앞 편 조건은 건너뛴다.
+ */
+function buildScriptPilotSection(box: HTMLElement): void {
+  const body = section(box, '①-3 대본 시범 — 해녀의 딸');
+  const go = document.createElement('button');
+  go.textContent = '받는 자리부터 다시 · 서귀포로';
+  styleBtn(go, true);
+  go.onclick = () => {
+    StoryStore.devOfferQuest('N01-5');
+    const game = (globalThis as { __PIXEL_ANGLER_GAME?: Phaser.Game }).__PIXEL_ANGLER_GAME;
+    const field = game?.scene.getScene('RegionFieldScene');
+    if (game && field) {
+      for (const k of ['WorldMapScene', 'HomeInteriorScene']) if (game.scene.isActive(k)) game.scene.stop(k);
+      field.scene.start('RegionFieldScene', { region: 'jeju', mapId: 'jeju_seogwipo_1' });
+    }
+    flash(go, '바람에게 말을 걸면 시작');
+  };
+  body.appendChild(go);
 }
 
 /** ② 재화·상태 */

@@ -685,10 +685,12 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "Vote's done. Do Hyeonsu was on your side. Did you see that. Ulleung and Incheon are open. And go to the hospital first.",
       obj: ["Leave a record of participation — five consigned lots before the vote", "Attend the assembly vote and raise your hand"] }),
   'N01-5': E(
-    "A daughter who wants to stop diving and a mother who wants to stop her. Baram stood me between the two of them. The border between shore gathering and diving. I gathered three specimens on the Jeju rocks. The mother underwater, me at the edge. The daughter watched both. The decision is hers. Baram only parked his cart and smoked.",
-    { offer: "The haenyeo's daughter wants to quit diving. Her mother's against it. Gather with them. At the edge. So the daughter sees.",
-      progress: "Three. At the edge. Under the water is her mother's place.",
-      done: "The daughter saw. The decision is hers. We just gathered." }),
+    "I ran into Baram again at Seogwipo harbour. A haenyeo he knows hurt her back while diving, and now that money is tight her daughter wants to dive in her place and the two of them keep fighting about it. He thinks it's his fault for asking too much of her, and asked me to go and meet the daughter.",
+    { offer: "Noonim's daughter wants to go into the water, and noonim's trying to stop her. Go and meet the girl for me. Just mention my name.",
+      progress: "Met the daughter yet? Not underwater. When the tide's out, at the edge.",
+      done: "When someone who's spent her life in the water says the edge is fine, that's permission.",
+      obj: ["Talk to Haesol, the diver's daughter", "Gather three creatures at the Jeju shore with Haesol at low tide", "Show what you gathered to Haesol's mother"],
+      epi: "On the way back I looked toward the rocks once more. Where the tide had gone out, Haesol stood alone, measuring turban shells against her finger joints the way her mother had." }),
   'N02-3': E(
     "Tak Saebyeok proposed going after the deep water monster at Seogwipo. The owner of the stone mound. Pacific cod over eighty. It tests the limit of drag control. With the rod Saebyeok cut. When the fish drives for the bottom I tighten, release, tighten. My arms felt like they would come off. What came up was eighty-four. Saebyeok felt the rod tip and laughed that it had not broken.",
     { offer: "Mister, the owner of the stone mound. Cod over eighty. With my rod. It's a drag test. If it breaks that's my fault.",

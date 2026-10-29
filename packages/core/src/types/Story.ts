@@ -262,6 +262,8 @@ export interface StoryObjective {
   farmAction?: 'plant' | 'harvest' | 'care';   // 238차 — `care` = 관리 작업(지주 · 곁순 · 웃거름 · 방제 …)
   /** visit 전용 — 지역 id 또는 장소 키(`poi:영금정`) */
   placeKey?: string;
+  /** 286차 — gather 등 활동 목표를 그 지역에서 한 것만 센다(WorldMap 지역 id). 없으면 어디서든 */
+  regionId?: string;
   /** custom 목표를 실제 행동 이벤트에 연결하는 키 */
   actionKey?: StoryActionKey;
   /**
@@ -544,6 +546,11 @@ export interface TalkEndDef {
   accept?: boolean;
   /** 받는 자리 — 미룬다(서브만 · 메인은 늘 받는 쪽으로 끝난다) */
   decline?: boolean;
+  /**
+   * 286차 — 받는 자리에서 거절로 끝난다 = 그 편은 **실패**로 닫힌다(서브만 · 사용자 「곁가지는 개시를 선택적으로 안 할 수도 있다 →
+   * 거절 = 실패」). 다시 받을 수 없고, 이야기는 다음 편으로 이어진다(실패한 편은 지나간 것으로 친다).
+   */
+  fail?: boolean;
   /** 끝내는 자리 — 이 답 id로 마친다(그 답의 보상 · 기록). 없으면 보상 답 없이 마친다 */
   complete?: string;
   /** 끝내는 자리 — 이 결말로 이야기를 맺는다(`StoryEndingDef.id`) */
@@ -568,16 +575,107 @@ export interface TalkChoiceDef {
   /** 다음 단계 id — 없으면 `end`로 끝난다(둘 중 하나만) */
   next?: string;
   end?: TalkEndDef;
+  /**
+   * 286차 — 고른 뒤 주인공이 **실제로 입에 올리는 말**(라벨은 고르는 줄에 보이는 짧은 뜻 · 이것은 대화창에 찍히는 대사).
+   * 없으면 라벨을 그대로 말한다. 여자 주인공이면 `sayKoF`가 있을 때 그것.
+   */
+  sayKo?: string;
+  sayEn?: string;
+  sayKoF?: string;
+  sayEnF?: string;
+  /** 286차 — 일지(J)에 남는 한 문장(이 말을 골랐다는 것 — 1인칭 · 무엇을 말했고 어떻게 느꼈나) */
+  noteKo?: string;
+  noteEn?: string;
 }
+
+/**
+ * 286차 — 대화 장면의 몸짓(사용자 지시 원문: 「담배를 꺼내 문 상태에서, 연기를 내뿜을 때 실제로 사람이 말을 하면서 저 동작을
+ *  동시에 할 순 없잖아? … 저런 연출이 나오고 있는데 갑자기 대화 코멘트가 열리거나 그러지 않았으면 … (물론, 말을 하면서 동시에
+ *  몸짓 연출이 들어갈 수 있는 부분들도 있겠지만)」).
+ * 몸짓마다 말과 함께 할 수 있는지(`TalkActDef.speech`)가 정해져 있다 — 입이나 두 손이 바쁜 몸짓은 끝날 때까지 다음 말이 열리지 않는다.
+ * 표는 core `rules/TalkActs.ts`.
+ */
+export type TalkActId =
+  | 'cig_light' | 'cig_puff' | 'cig_out'
+  | 'give' | 'receive'
+  | 'nod' | 'shake_head' | 'look_away' | 'look_sea' | 'look_up' | 'sigh' | 'laugh' | 'silence' | 'peer';
+
+export interface TalkActDef {
+  id: TalkActId;
+  /** block = 끝날 때까지 다음 말이 열리지 않는다 · overlap = 말과 함께 한다(그 말이 찍히는 동안 같이) */
+  speech: 'block' | 'overlap';
+  /** 몸짓 길이(ms) */
+  ms: number;
+  /** 지문(일지 · 위키 · 필드 인물이 없을 때 대화창이 대신 찍는 괄호 글) — 3인칭 현재형 */
+  captionKo: string;
+  captionEn: string;
+  /** 이 몸짓을 하려면 들고 있어야 하는 것 */
+  needs?: 'cigarette';
+  /** 이 몸짓 뒤로 들고 있는 것(대화가 끝날 때까지 — 말과 함께 연기가 가늘게 오른다) */
+  holds?: 'cigarette';
+  /** 이 몸짓으로 내려놓는 것 */
+  drops?: 'cigarette';
+  /** 효과음(`SfxBank` 키) */
+  sfx?: string;
+}
+
+/** 286차 — 대사 한 줄. who = 말하는 사람(인물 id · `'player'` 주인공 · `''` 지문). 괄호로만 된 주인공 줄은 속말 */
+export interface TalkLineBeat {
+  kind: 'line';
+  who: string;
+  ko: string;
+  en: string;
+  /** 여자 주인공일 때(「신뢰하는 남자」 → 「신뢰하는 사람」 등) */
+  koF?: string;
+  enF?: string;
+  /** 이 말과 함께 하는 몸짓 — `speech: 'overlap'`인 몸짓만 */
+  act?: TalkActId;
+}
+
+/** 286차 — 몸짓 하나(말 없이). block 몸짓이면 끝날 때까지 다음 줄이 열리지 않는다 */
+export interface TalkActBeat {
+  kind: 'act';
+  who: string;
+  act: TalkActId;
+  /** give · receive — 건네는 상대 */
+  to?: string;
+  /** give · receive — 오가는 물건(아이템 id — 그림) */
+  item?: string;
+}
+
+/** 286차 — 장면 안에서 받는 것(물건 · 마음 · 표시). 처음 한 번만(다시 열어 같은 장면을 지나도 두 번 받지 않는다) */
+export interface TalkGiveBeat {
+  kind: 'give';
+  /** 준 사람(우호도 · 기록) */
+  from: string;
+  items?: readonly { id: string; qty: number }[];
+  /** 사람마다 우호도 증감 */
+  affinity?: Readonly<Record<string, number>>;
+  flags?: readonly string[];
+}
+
+export type TalkBeat = TalkLineBeat | TalkActBeat | TalkGiveBeat;
 
 export interface TalkNodeDef {
   /** 말하는 사람 — 없으면 대화 상대 · `''` = 지문(괄호 서술) */
   speaker?: string;
-  /** 상대의 말(단락은 빈 줄 · 한 · 영 단락 수 같게) */
+  /** 상대의 말(단락은 빈 줄 · 한 · 영 단락 수 같게) — 286차 대본(`beats`)이 있으면 빈 글 */
   lineKo: string;
   lineEn: string;
-  /** 고를 말 1~4개 */
+  /**
+   * 286차 — 대본(주고받는 장면). 있으면 `lineKo` 대신 이것을 차례로 연다 — 대사(누가 말하나 · 초상과 이름이 바뀐다) · 몸짓 · 받기.
+   * 사용자 「혼자서 대답을 다 해버리고 … 정보를 한번에 전달하는 형태는 잘못된 대화 방법」 — 주인공의 말도 이 안에 있다.
+   */
+  beats?: readonly TalkBeat[];
+  /** 고를 말 1~4개 — 286차 `next` · `end`가 있으면 비운다(고르지 않고 이어지거나 끝나는 장면) */
   choices: readonly TalkChoiceDef[];
+  /** 286차 — 고르지 않고 다음 장면으로 */
+  next?: string;
+  /** 286차 — 고르지 않고 대화가 끝난다 */
+  end?: TalkEndDef;
+  /** 286차 — 일지(J)에 남는 한 문장(이 장면을 지났다는 것 — 1인칭) */
+  noteKo?: string;
+  noteEn?: string;
 }
 
 /**
@@ -695,6 +793,11 @@ export interface StoryQuestDef {
   ordered?: boolean;
   /** 발주 정책 (141차) — 없으면 `standard` */
   offerPolicy?: QuestOfferPolicy;
+  /**
+   * 286차 — 이 지역에서 의뢰인을 만났을 때만 받는다(떠돌이 의뢰인이 그 땅에서 꺼내는 이야기 — 「해녀의 딸」은 제주에서).
+   * 다른 지역에서 만나면 받을 일이 없는 것처럼 굴고, 할 일 안내는 이 지역을 가리킨다. 없으면 어디서든.
+   */
+  offerRegion?: string;
   /** `event` 정책의 시기 조건 */
   event?: QuestEventWindow;
 }

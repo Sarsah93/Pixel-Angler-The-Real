@@ -1,6 +1,6 @@
 /**
  * @file CharacterCast.ts
- * @description 스토리 인물 43인 외형 캐스팅 (138차 · 254차 +2)
+ * @description 스토리 인물 45인 외형 캐스팅 (138차 · 254차 +2 · 286차 +2)
  *
  * 구 배선은 **NPC 텍스처 5장으로 38인을 돌려막았다**(탁만수 = 강두철 = `npc_grandfather`,
  * 도현수 = 배누리 = `npc_tourist_f`). 한 화면에 같은 얼굴이 둘 서 있었다.
@@ -74,6 +74,9 @@ export const CAST_TRAITS: Record<string, CastTrait> = {
   // 254차 — N24 건너편 가게(찌 가게 두 집)
   mun_pilgu: { sex: 'm', age: 'elder', role: 'artisan' },
   cha_yeongbae: { sex: 'm', age: 'mid', role: 'vendor' },
+  // 286차 — N01-5 「해녀의 딸」(서귀포 해녀 모녀)
+  bu_sundeok: { sex: 'f', age: 'mid', role: 'worker' },
+  kang_haesol: { sex: 'f', age: 'young', role: 'worker' },
 };
 
 /** 손으로 굳힌 외형 (해시 결과를 덮어쓴다) */
@@ -94,6 +97,9 @@ export const CAST_OVERRIDE: Record<string, Partial<CharAppearance> & { outfit?: 
   // 254차 — 문필구는 흰머리 · 돋보기 대신 작업 앞치마, 차영배는 검은 머리 · 조끼(두 사람이 한눈에 갈리게)
   mun_pilgu: { hair: 7, beard: 6, outfit: { hat: 'beanie', hatColor: 0x8a6340, outer: 'apron', outerColor: 0x5b6637 } },
   cha_yeongbae: { hair: 0, hairStyle: 'short', outfit: { outer: 'vest', outerColor: 0x3d5a80 } },
+  // 286차 — 해녀 어머니는 볕에 그은 피부 · 희끗한 단발 · 물수건 두건, 딸은 검은 묶음 머리 · 후드(물가 일옷)
+  bu_sundeok: { hairStyle: 'bob', hair: 6, skin: 2, outfit: { hat: 'bandana', hatColor: 0x2f8377, shirt: 'knit', shirtColor: 0x4a4550 } },
+  kang_haesol: { hairStyle: 'pony', hair: 0, outfit: { shirt: 'hoodie', shirtColor: 0x3d5a80, shoes: 'rubber', shoesColor: 0x4a4550 } },
 };
 
 // ── 결정적 해시 ─────────────────────────────────────────────

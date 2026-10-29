@@ -25,7 +25,8 @@ import { TALKS_N19 } from './StoryTalkN19.js';
 import { TALKS_N02 } from './StoryTalkN02.js';
 import { TALKS_N03 } from './StoryTalkN03.js';
 import { TALKS_M2 } from './StoryTalkM2.js';
+import { TALKS_N01 } from './StoryTalkN01.js';
 
 export const STORY_TALKS: readonly StoryTalkDef[] = [
-  ...TALKS_N24, ...TALKS_N19, ...TALKS_N02, ...TALKS_N03, ...TALKS_M2,
+  ...TALKS_N24, ...TALKS_N19, ...TALKS_N02, ...TALKS_N03, ...TALKS_M2, ...TALKS_N01,
 ];

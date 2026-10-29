@@ -212,6 +212,9 @@ export class CharacterSprite {
 
   getConfig(): CharConfig { return this.cfg; }
 
+  /** 286차 — 지금 보는 쪽(대화 무대 · 입가 담배 자리) */
+  get facing(): CharDir { return this.dir; }
+
   setDir(dir: CharDir): void {
     if (this.dir === dir) return;
     this.dir = dir;

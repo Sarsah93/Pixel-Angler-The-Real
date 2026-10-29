@@ -1016,7 +1016,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const g = this.scene.add.graphics();
     c.add(g);
     const padX = 10, padY = 8, maxW = 240;
-    const tipIcon = addPixelIcon(this.scene, 'tide', padX + 9, padY + 9, 18);
+    const tipIcon = addPixelIcon(this.scene, 'tide', padX + 9, padY + 9, 16);
     if (tipIcon) c.add(tipIcon);
     const nameX = tipIcon ? padX + 24 : padX;
     const name = this.scene.add.text(nameX, padY + 2, TIDE_FLOW_LABEL_KO[st.phase], {
@@ -1073,7 +1073,7 @@ export class RegionHud extends Phaser.GameObjects.Container {
     c.add(g);
     const padX = 10, padY = 8, maxW = 240;
     // 제목 줄 = 아이콘 + 이름 (스트립 칩과 같은 그림이라 어느 배지의 설명인지 즉시 연결된다)
-    const tipIcon = addPixelIcon(this.scene, def.badge.icon, padX + 9, padY + 9, 18);
+    const tipIcon = addPixelIcon(this.scene, def.badge.icon, padX + 9, padY + 9, 16);
     if (tipIcon) c.add(tipIcon);
     const nameX = tipIcon ? padX + 24 : padX;
     const name = this.scene.add.text(nameX, padY + 2, en ? def.nameEn : def.nameKo, {

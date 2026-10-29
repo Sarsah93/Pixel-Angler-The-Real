@@ -70,6 +70,10 @@ const { chromium } = resolvePlaywright();
 | 건물 그림 단위(239차) | `s.chunks.units`(`id` · `kind` · `wallH` · `poly` · `bottomY`) · `s.chunks.onRoadBand(x,y)` · `s.chunks.coveredByBuilding(x,y)` · 간판 자리 `s.shopSignSpot(door, seed, new Set())` | 단위는 **윤곽 좌상단 타일의 청크**가 소유 — 화면에 보여도 그 청크가 안 올라왔으면 이미지가 없다. 건물 뒤 가림은 `s.updateOccluders(130)`를 직접 돌리고 이미지 `alpha`(0.38)를 읽는다 |
 
 - **패널 직접 생성 시** `scene.add.existing(panel)` 필수 — DraggablePanel(Container)은 자동 등록되지 않는다 (7차).
+- **첫 열기 안내 말풍선(`GuideTour`)이 실마우스 누름을 막는다**(286차 — 일지 스크롤바 끌기가 0으로 나왔다) — 실마우스 하네스는
+  `const G = await import('/src/ui/GuideTour.ts'); G.setGuideTipsEnabled(false)`를 창을 열기 **전에** 부른다(본 것으로 치지 않는다).
+- **대본 장면(286)** — 대화창 `panel.actPlaying`이 참이면 말을 멈추는 몸짓 중이다(`advance()`는 무시된다). 하네스는 `panel.devFinishAct()`로 넘기고,
+  필드 무대는 `s.dialogueStage`(`cigs` · `partnerId`)로 본다. 편을 처음부터 다시 보려면 `__STORY.devOfferQuest('N01-5')`.
 - HMR 후에는 `?t=` 버전 분화 가능 — 이상하면 dev 서버 재시작 후 검증.
 - ⚠ **vite dev는 `@tra/core`를 `@fs` 소스로 직접 서빙한다**(154차 실측) — core `tsc` 빌드가 **실패해도** 브라우저는 새 소스를
   그대로 돌린다. 타입 오류로 빠진 `TUNING` 키는 `undefined`가 되어 비교문이 조용히 통과한다(용량 판정이 그렇게 통과했다).

@@ -596,7 +596,7 @@ export class CookingPanel extends DraggablePanel {
     const barW = R_X + 134 - barX;
     for (let i = 0; i < 5; i++) {
       const earned = i < 4 ? scores[i] >= th : gate && scores[4] >= th;
-      const icon = addPixelIcon(sc, earned ? 'star_on' : 'star_off', R_X + 8, ry + 8, 14);
+      const icon = addPixelIcon(sc, earned ? 'star_on' : 'star_off', R_X + 8, ry + 8, 16);
       if (icon) this.dynC.add(icon);
       const nm = names[i].setY(ry + 1);
       g.fillStyle(0x0b1c2b, 1); g.fillRect(barX, ry + 4, barW, 8);

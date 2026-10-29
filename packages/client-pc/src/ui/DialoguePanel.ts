@@ -28,15 +28,26 @@
  *  위키로만 확인할 수 있도록」). 「이 답으로 — …」 · 「이 말로 — …」 · 「고르지 않은 답 — … → ???」 줄을 뺐다.
  *  받은 돈 · 물건은 화면 오른쪽 획득 알림이, 마음은 초상 아래 막대가 알린다. 답마다 효과는 위키(조행록)에 있다.
  *
+ * 286차 — **대본(주고받는 장면)**. 대본이 있는 대화(core `StoryTalkN01.ts` 등 — 단계에 `beats`)는 줄마다 말하는 사람이 바뀐다:
+ *  초상 · 이름 · 목소리가 그 사람으로 바뀌고(주인공 포함 — 「나 — 」 접두를 쓰지 않는다), 고른 말은 주인공이 실제로 하는 말(`say`)로 찍힌다.
+ *  몸짓(`act`)은 필드 무대(`scenes/field/DialogueStage.ts`)가 그린다. 사용자 지시 「연출이 나오고 있는데 갑자기 대화 코멘트가 열리거나
+ *  그러지 않았으면」 — **말을 멈추는 몸짓(block — 담배 · 건네기 · 한숨 …) 동안은 새 말을 열지 않는다**: ▼를 감추고 지난 말은 흐리게,
+ *  입력도 받지 않고, 몸짓이 끝나면 새 쪽에서 다음 말을 찍는다. 말과 함께 되는 몸짓(끄덕이기 · 시선)은 그 줄이 찍히는 동안 같이 한다.
+ *  장면 속 건네받기(`give` — 물건 · 마음)는 대화마다 한 번. 고르지 않고 이어지는 장면(`next`) · 끝(`end`)은 저장소 `talkContinue`.
+ *  받는 자리에서 끝내 거절(`end.fail`)하면 곁가지는 실패로 닫힌다.
+ *
  * 모달(dim) · depth 940 — ConfirmDialog(950) 아래, 일반 팝업(800대) 위.
  */
 
 import Phaser from 'phaser';
 import {
   getStoryNpc, getStoryQuest, characterOf, affinityTier, AFFINITY_TIER_LABEL, affinityPips, narrativeOf, INQUIRY_KIND_LABEL,
-  talkNode,
-  type StoryQuestDef, type QuestChoiceDef, type InquiryNodeDef, type StoryTalkDef, type TalkChoiceDef,
+  talkNode, talkActDef, talkActBlocks, voiceOfPlayer,
+  type StoryQuestDef, type QuestChoiceDef, type InquiryNodeDef, type StoryTalkDef, type TalkChoiceDef, type TalkActId,
 } from '@tra/core';
+import { GameState } from '../store/GameState.js';
+import { characterLook } from '../data/EquipOutfit.js';
+import type { DialogueStage } from '../scenes/field/DialogueStage.js';
 import { DraggablePanel } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { StoryStore } from '../store/StoryStore.js';
@@ -112,14 +123,41 @@ export type DialogueSceneRequest =
   /** 현장 트리거 중 `viaNpc`로 이 사람에게 말을 걸어 진행하는 단계 */
   | { kind: 'trigger'; triggerId: string };
 
+/**
+ * 286차 — 대본 장면의 박자(타자 큐에 글과 섞여 들어간다).
+ *  line = 그 사람이 하는 말(초상 · 이름 · 목소리가 바뀐다 · `act`는 말과 함께 하는 몸짓) · act = 말을 멈추는 몸짓 ·
+ *  give = 장면 속 건네받기(한 번) · goto = ▼ 뒤 다음 장면으로(고르지 않고 이어진다).
+ */
+type Cue =
+  | { cue: 'line'; who: string; text: string; act?: TalkActId }
+  | { cue: 'act'; who: string; act: TalkActId; to?: string; item?: string }
+  | { cue: 'give'; talk: StoryTalkDef; node: string; index: number }
+  | { cue: 'goto'; talk: StoryTalkDef; node: string };
+type QItem = string | Cue;
+
 /** 화면 상태 — 인사 → 기본 선택 → 퀘스트 → 응답 → 일감 · 물어보기(253차) · 이어지는 대화(254차) */
 type View = 'menu' | 'quest' | 'reply' | 'jobs' | 'ask' | 'talk';
 
 export class DialoguePanel extends DraggablePanel {
   private bodyC?: Phaser.GameObjects.Container;   // ⚠ `body`는 Phaser Container 예약 프로퍼티(44차 함정)
   private readonly npcId: string;
-  /** 211차 — 이 사람의 목소리(글자마다 블립) */
-  private readonly voice: VoiceTyper;
+  /** 211차 — 이 사람의 목소리(글자마다 블립) · 286차 — 말하는 사람이 바뀌면 그 사람 목소리 */
+  private voice: VoiceTyper;
+  private readonly voices = new Map<string, VoiceTyper>();
+  /** 286차 — 지금 말하는 사람(초상 · 이름 · 목소리) — 대본 장면에서만 대화 상대와 달라진다 */
+  private speaker: string;
+  /** 286차 — 필드 무대(몸짓 그림 · 카메라) · 무대가 열렸는가 · 말을 멈추는 몸짓 중인가 */
+  private readonly stage?: DialogueStage;
+  private staged = false;
+  private actBusy = false;
+  private actTimer?: Phaser.Time.TimerEvent;
+  /** 286차 — 큐가 다 비면(선택지 대신) 부를 것 — 장면의 끝(`end`) */
+  private queueThen?: () => void;
+  /** 286차 — 대본 장면의 첫 대화 안내는 고를 말이 처음 뜰 때 */
+  private tourAtChoices = false;
+  /** 하네스 — 지금 말을 멈추는 몸짓 중인가 · 말하는 사람 */
+  get actPlaying(): boolean { return this.actBusy; }
+  get currentSpeaker(): string { return this.speaker; }
   private readonly onClose: () => void;
   private readonly regionId: string;
   private readonly onTrade?: (shopId: string) => void;
@@ -146,8 +184,8 @@ export class DialoguePanel extends DraggablePanel {
   /** 257차 — 이만큼 찍은 뒤 쉬어 간다(문장 끝) · 남은 쉼(타이머 횟수) */
   private pauses = new Set<number>();
   private holdTicks = 0;
-  /** 아직 안 찍은 단락들 */
-  private queue: string[] = [];
+  /** 아직 안 찍은 단락들(286차 — 대본 박자가 섞인다) */
+  private queue: QItem[] = [];
   private typeTimer?: Phaser.Time.TimerEvent;
   private logText?: Phaser.GameObjects.Text;
   private logInner?: Phaser.GameObjects.Container;
@@ -185,6 +223,8 @@ export class DialoguePanel extends DraggablePanel {
     regionId = '', onTrade?: (shopId: string) => void, onScene?: (req: DialogueSceneRequest) => void,
     /** 214차 — 집에 있는 사람의 문을 두드려 열었다(까닭에 따라 첫마디가 다르다). 메뉴는 평소와 같다(R12) */
     atDoor?: DoorReason | 'inside',
+    /** 286차 — 필드 무대(없으면 몸짓은 지문 글로) */
+    stage?: DialogueStage,
   ) {
     const npc = getStoryNpc(npcId);
     super(scene, {
@@ -194,7 +234,9 @@ export class DialoguePanel extends DraggablePanel {
       sound: false,   // 252차 — 말 걸기 소리(talk)를 따로 낸다
     });
     this.npcId = npcId;
-    this.voice = new VoiceTyper(voiceOfNpc(npcId));
+    this.speaker = npcId;
+    this.stage = stage;
+    this.voice = this.voiceFor(npcId);
     this.onClose = onClose;
     this.regionId = regionId;
     this.onTrade = onTrade;
@@ -221,6 +263,8 @@ export class DialoguePanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     if (this.typeTimer) { this.typeTimer.remove(); this.scene?.time?.removeEvent(this.typeTimer); }   // 213차 — 닫은 뒤 한 번 더 불리지 않게
+    this.actTimer?.remove(); this.actTimer = undefined;
+    if (this.staged) { this.staged = false; this.stage?.end(); }   // 286차 — 담배 · 연기 · 카메라를 되돌린다
     this.caretTween?.stop();
     this.scene?.input?.keyboard?.off('keydown', this.keyHandler);
     this.scene?.events?.off('postupdate', this.postUpdate);
@@ -232,7 +276,7 @@ export class DialoguePanel extends DraggablePanel {
   // ═══════════ 입력 ═══════════
   /** 아직 찍는 중이거나 남은 단락이 있다 = 선택지를 내주지 않는다 */
   private get busy(): boolean {
-    return this.typed < this.typingPara.length || this.queue.length > 0;
+    return this.actBusy || this.typed < this.typingPara.length || this.queue.length > 0;
   }
 
   private onKey(ev: KeyboardEvent): void {
@@ -252,6 +296,7 @@ export class DialoguePanel extends DraggablePanel {
 
   /** 한 번 더 누르면 = 지금 단락 즉시 완성 → 그다음은 다음 단락 */
   private advance(): void {
+    if (this.actBusy) return;   // 286차 — 말을 멈추는 몸짓 중에는 넘기지 않는다(몸짓 위로 말이 열리지 않게)
     if (this.typed < this.typingPara.length) { this.typed = this.typingPara.length; this.paintLog(); this.afterPara(); return; }
     if (this.queue.length > 0) { this.commitPara(); this.startNextPara(); }
   }
@@ -347,7 +392,10 @@ export class DialoguePanel extends DraggablePanel {
     // 이름 슬롯이 호감도 텍스트와 겹치지 않도록 각 영역을 독립 높이로 예약한다.
     const BAR_H = 8, BAR_GAP = 18, AFFINITY_GAP = 6, AFFINITY_H = 16;
     const NAME_GAP = PORTRAIT_LAYOUT.nameGap, NAME_H = PORTRAIT_LAYOUT.nameHeight;
-    const npc = getStoryNpc(this.npcId);
+    // 286차 — 말하는 사람의 초상(대본 장면에서는 주인공 · 다른 사람도 — 우호도 막대는 인물만)
+    const who = this.speaker;
+    const isPlayer = who === 'player';
+    const npc = isPlayer ? undefined : getStoryNpc(who);
     const showAffinity = !!npc;
     const affinityBlockH = showAffinity
       ? BAR_GAP + BAR_H + AFFINITY_GAP + AFFINITY_H + NAME_GAP
@@ -362,7 +410,8 @@ export class DialoguePanel extends DraggablePanel {
     g.lineStyle(2, 0x6b9fbc, 0.95);
     g.strokeRoundedRect(frameX, top, PORTRAIT_FRAME_W, PORTRAIT_FRAME_H, PORTRAIT_LAYOUT.frameRadius);
 
-    const key = ensureFacePortrait(this.scene, characterOf(this.npcId), FACE_SCALE, this.npcId);
+    const key = isPlayer ? ensureFacePortrait(this.scene, characterLook(), FACE_SCALE, 'player')
+      : ensureFacePortrait(this.scene, characterOf(who), FACE_SCALE, who);
     // 32×32 전체 래스터를 유지하되 프레임 안에서 중앙 정렬한다. 특히 y=30~31의
     // 어깨 행이 칸 밖으로 밀려나지 않도록 위·아래 여백을 동일하게 둔다.
     const imageSize = Math.min(FACE_PX, PORTRAIT_FRAME_H - 16);
@@ -383,8 +432,9 @@ export class DialoguePanel extends DraggablePanel {
     // NPC 대화에서는 호감도 막대와 상태 텍스트를 이름 바로 위에 유지한다.
     // 자기 캐릭터 표시처럼 NPC 데이터가 없는 경우에만 이 블록을 생략한다.
     let nameY = top + PORTRAIT_FRAME_H + NAME_GAP;
+    this.affinityBar = undefined;   // 286차 — 주인공 칸에는 막대가 없다(안내 말풍선이 옛 자리를 짚지 않게)
     if (showAffinity) {
-      const aff = StoryStore.affinityOf(this.npcId);
+      const aff = StoryStore.affinityOf(who);
       const tier = affinityTier(aff);
       const lab = AFFINITY_TIER_LABEL[tier];
       const pips = affinityPips(aff);
@@ -420,7 +470,7 @@ export class DialoguePanel extends DraggablePanel {
     g.fillRoundedRect(nameX, nameY, nameW, NAME_H, 5);
     g.lineStyle(1, 0x356b8f, 0.9);
     g.strokeRoundedRect(nameX, nameY, nameW, NAME_H, 5);
-    const t = this.scene.add.text(PORTRAIT_W / 2, nameY + NAME_H / 2, npc?.nameKo ?? this.npcId, {
+    const t = this.scene.add.text(PORTRAIT_W / 2, nameY + NAME_H / 2, isPlayer ? (GameState.player.nickname || '나') : (npc?.nameKo ?? who), {
       fontFamily: FONT, fontSize: '12px', color: COL.accent, fontStyle: 'bold',
     }).setOrigin(0.5);
     c.add(t);
@@ -439,13 +489,14 @@ export class DialoguePanel extends DraggablePanel {
 
   // ═══════════ 타이핑 ═══════════
   /** 단락들을 차례로 찍고, 다 찍히면 선택지를 연다 */
-  private play(paras: string[], rows: ChoiceRow[], _keepLog = false): void {
+  private play(paras: QItem[], rows: ChoiceRow[], _keepLog = false, then?: () => void): void {
     // 267차 — 화면(인사 · 의뢰 · 답 · 진행)마다 **새 쪽**에서 시작한다. 옛 규칙(keepLog)은 앞 화면 글 아래에 이어 붙여
     //   앞 단락이 반쯤 잘린 채 위로 밀려 보였다(사용자 「앞에 내용이 겹쳐서 나옴 … 똑같이 그대로 점멸」).
     //   찍을 단락이 없으면(답 뒤 「계속 이야기하기」 메뉴) 지금 쪽을 그대로 둔다 — 마지막 단락을 쪽에 붙여 두고 선택지만 바꾼다.
-    const list = paras.filter((p) => p.trim().length > 0);
+    const list = paras.filter((p) => typeof p !== 'string' || p.trim().length > 0);
     if (list.length > 0) { this.logDone = ''; this.setHintPage(false); }
     else if (this.typingPara) { this.typed = this.typingPara.length; this.commitPara(); }
+    this.queueThen = then;
     this.queue = list;
     this.pendingRows = rows;
     this.rows = [];
@@ -459,6 +510,14 @@ export class DialoguePanel extends DraggablePanel {
     this.typeTimer?.remove(); this.typeTimer = undefined;
     const next = this.queue.shift();
     if (next === undefined) { this.typingPara = ''; this.typed = 0; this.paintLog(); this.afterPara(); return; }
+    if (typeof next !== 'string') { this.runCue(next); return; }
+    // 286차 — 대본 줄이 아닌 글(편 제목 · 결과 · 주의)은 대화 상대의 칸에서 새 쪽으로
+    if (this.speaker !== this.npcId) { this.setSpeaker(this.npcId); this.logDone = ''; }
+    this.typePara(next);
+  }
+
+  /** 단락 하나를 찍는다(번역 → 문장마다 줄 · 쉼 → 넘치면 쪽 가르기 → 타자). `who` = 대본 줄이면 말하는 사람(쪽을 가를 때 나머지도 그 사람 말) */
+  private typePara(next: string, who?: string): void {
     // 187차 — 찍기 **전에** 번역한다. 부분 문자열은 사전에 없어서, 영어 설정에서 한국어가 한 글자씩
     //   찍히다가 끝에서야 영어로 바뀌었다(따옴표로 감싼 대사는 끝까지 한국어였다 — I18n 인용부호 규칙).
     // 257차 — 번역한 **뒤에** 문장마다 줄을 바꾸고(빈 줄) 문장 끝에서 쉬어 간다(사용자 「실제로 말할 때 저렇게 빠르게 말하지 않으니까」)
@@ -492,7 +551,7 @@ export class DialoguePanel extends DraggablePanel {
           text = text.slice(0, cut).replace(/\n+$/, '');
           if (quoted) { text += '"'; rest = `"${rest}`; }
           pauses = pauses.filter((i) => i < text.length);
-          this.queue.unshift((isHint ? HINT_PREFIX : '') + rest);
+          this.queue.unshift(who ? { cue: 'line', who, text: rest } : (isHint ? HINT_PREFIX : '') + rest);
         }
       }
     }
@@ -535,9 +594,12 @@ export class DialoguePanel extends DraggablePanel {
   private afterPara(): void {
     if (this.queue.length > 0) { this.showCaret(true); return; }
     this.showCaret(false);
+    // 286차 — 장면의 끝(`end`): 마지막 말이 다 찍히면 그 자리의 일(받기 · 실패 · 목표 · 마침)
+    if (this.queueThen) { const f = this.queueThen; this.queueThen = undefined; f(); return; }
     if (this.rows.length === 0 && this.pendingRows.length > 0) {
       this.rows = this.pendingRows;
       this.renderChoiceRows();
+      if (this.tourAtChoices && this.view === 'talk') { this.tourAtChoices = false; this.maybeTalkTour(); }
     }
   }
 
@@ -565,6 +627,7 @@ export class DialoguePanel extends DraggablePanel {
   /** 인사 + 기본 선택지 3종 */
   private enterMenu(greet: boolean): void {
     this.view = 'menu';
+    this.endStage();   // 286차 — 대본 장면에서 돌아왔다(담배 · 카메라 · 말하는 사람)
     const paras: string[] = [];
     if (this.lastWorkMsg) { paras.push(this.lastWorkMsg); this.lastWorkMsg = ''; }
     const at = this.atDoor;
@@ -576,7 +639,7 @@ export class DialoguePanel extends DraggablePanel {
       const [ko] = NPC_IDLE[this.npcId] ?? (['…', '…'] as const);
       paras.push(`"${ko}"`);
     }
-    const { completable, active, offer } = StoryStore.questsForNpc(this.npcId);
+    const { completable, active, offer } = StoryStore.questsForNpc(this.npcId, this.regionId);
     const mark = completable[0] ? '보고할 일이 있습니다'
       : offer[0] ? '새 의뢰가 있습니다'
       : active[0] ? '진행 중인 의뢰가 있습니다' : undefined;
@@ -613,7 +676,7 @@ export class DialoguePanel extends DraggablePanel {
 
   private enterQuest(): void {
     this.view = 'quest';
-    const { completable, active, offer, refusedSub } = StoryStore.questsForNpc(this.npcId);
+    const { completable, active, offer, refusedSub } = StoryStore.questsForNpc(this.npcId, this.regionId);
     if (completable[0]) this.playComplete(completable[0]);
     else if (active[0]) this.playActive(active[0]);
     else if (offer[0]) this.playOffer(offer[0]);
@@ -878,20 +941,182 @@ export class DialoguePanel extends DraggablePanel {
   /** 이어지는 대화를 연다 — 하다 만 대화면 그 단계부터. `head` = 앞에 찍을 단락(편 제목 · 서두) */
   private enterTalk(talk: StoryTalkDef, head: string[] = []): void {
     this.view = 'talk';
+    // 286차 — 대본 장면이면 무대를 열고(카메라 · 마주 보기) 박자대로 흐른다
+    if (DialoguePanel.isScript(talk)) {
+      this.beginStage();
+      // 첫 대화 안내는 장면 도중(말 · 몸짓 위)에 띄우지 않는다 — 처음 고를 말이 뜰 때
+      this.tourAtChoices = true;
+      this.playScene(talk, StoryStore.talkResume(talk), head);
+      return;
+    }
     this.playTalkNode(talk, StoryStore.talkResume(talk), head);
     this.maybeTalkTour();
+  }
+
+  /** 286차 — 대본(장면 박자)으로 쓴 대화인가 */
+  private static isScript(talk: StoryTalkDef): boolean {
+    return Object.values(talk.nodes).some((n) => !!n.beats);
   }
 
   /** 한 단계 — 말하는 사람의 대사(단락마다 ▼) + 지금 보이는 말 */
   private playTalkNode(talk: StoryTalkDef, nodeId: string, head: string[] = []): void {
     const node = talkNode(talk, nodeId);
     if (!node) { this.talk = null; this.enterMenu(false); return; }
+    if (node.beats) { this.beginStage(); this.playScene(talk, nodeId, head); return; }
     this.talk = { def: talk, node: nodeId };
     const paras = [...head, ...this.speakerParas(node.lineKo, node.speaker ?? talk.npcId)];
     const rows: ChoiceRow[] = StoryStore.talkChoices(talk, nodeId).map((c) => ({
       label: c.labelKo, action: () => this.chooseTalk(talk, nodeId, c),
     }));
     this.play(paras, rows, true);
+  }
+
+  // ── 286차 대본 장면 ──────────────────────────────────
+
+  /**
+   * 장면 하나 — 박자(말 · 몸짓 · 건네기)를 큐에 싣고, 끝은 셋 중 하나:
+   *  고를 말(선택지) · ▼ 뒤 다음 장면(`next` — 고르지 않고 이어진다) · 마지막 말 뒤 그 자리의 일(`end`).
+   */
+  private playScene(talk: StoryTalkDef, nodeId: string, lead: QItem[] = []): void {
+    const node = talkNode(talk, nodeId);
+    if (!node) { this.talk = null; this.enterMenu(false); return; }
+    this.talk = { def: talk, node: nodeId };
+    const items: QItem[] = [...lead, ...this.sceneCues(talk, nodeId)];
+    if (node.next) items.push({ cue: 'goto', talk, node: nodeId });
+    const rows: ChoiceRow[] = node.choices.length
+      ? StoryStore.talkChoices(talk, nodeId).map((c) => ({ label: c.labelKo, action: () => this.chooseTalk(talk, nodeId, c) }))
+      : [];
+    const then = node.end ? () => {
+      const res = StoryStore.talkContinue(talk, nodeId);
+      if (res) this.talkEnded(talk, res, []);
+    } : undefined;
+    this.play(items, rows, true, then);
+  }
+
+  /** 단계의 박자 → 큐 항목 */
+  private sceneCues(talk: StoryTalkDef, nodeId: string): Cue[] {
+    const node = talkNode(talk, nodeId);
+    const female = GameState.character.look.sex === 'f';
+    return (node?.beats ?? []).map((b, i): Cue => {
+      if (b.kind === 'line') {
+        const text = female && b.koF ? b.koF : b.ko;
+        return b.who === '' ? { cue: 'line', who: this.speaker, text } : { cue: 'line', who: b.who, text: DialoguePanel.quote(text), act: b.act };
+      }
+      if (b.kind === 'act') return { cue: 'act', who: b.who, act: b.act, to: b.to, item: b.item };
+      return { cue: 'give', talk, node: nodeId, index: i };
+    });
+  }
+
+  /** 말은 따옴표 — 통째로 괄호(속말 · 몸짓)는 그대로 */
+  private static quote(text: string): string {
+    return /^\(.*\)$/s.test(text.trim()) ? text : `"${text}"`;
+  }
+
+  /** 큐의 박자 하나 */
+  private runCue(c: Cue): void {
+    switch (c.cue) {
+      case 'line': {
+        // 말하는 사람이 바뀌면 그 사람 칸(초상 · 이름 · 목소리) · 새 쪽
+        if (c.who !== this.speaker) { this.setSpeaker(c.who); this.logDone = ''; }
+        if (c.act) this.stage?.play(c.who, c.act);   // 말과 함께 하는 몸짓(끄덕이기 · 시선) — 줄이 찍히는 동안
+        this.typePara(c.text, c.who);
+        return;
+      }
+      case 'act': this.playAct(c); return;
+      case 'give': {
+        const r = StoryStore.talkGive(c.talk, c.node, c.index);
+        if (r?.moved.length) this.refreshPortrait();
+        this.startNextPara();
+        return;
+      }
+      case 'goto': {
+        const res = StoryStore.talkContinue(c.talk, c.node);
+        if (res?.next) { this.playScene(c.talk, res.next); return; }
+        if (res) { this.talkEnded(c.talk, res, []); return; }
+        this.startNextPara();
+        return;
+      }
+    }
+  }
+
+  /**
+   * 몸짓 하나. 말을 멈추는 몸짓(block)이면 그동안 **새 말을 열지 않는다** — ▼를 감추고 지난 말은 흐리게 · 입력도 받지 않는다.
+   * 끝나면 새 쪽에서 다음 박자. 무대에 그 사람이 없으면 몸짓 지문을 타자 없이 잠깐 보여 준다.
+   */
+  private playAct(c: Extract<Cue, { cue: 'act' }>): void {
+    if (!talkActBlocks(c.act)) {
+      this.stage?.play(c.who, c.act, { to: c.to, item: c.item });
+      this.startNextPara();
+      return;
+    }
+    this.actBusy = true;
+    this.showCaret(false);
+    this.logText?.setAlpha(0.42);
+    let ms = this.stage?.has(c.who) ? this.stage.play(c.who, c.act, { to: c.to, item: c.item }) : 0;
+    if (!ms) {
+      const def = talkActDef(c.act);
+      const name = c.who === 'player' ? '' : (getStoryNpc(c.who)?.nameKo ?? '');
+      this.logDone = ''; this.typingPara = ''; this.typed = 0;
+      this.logInner?.setY(0);
+      this.logText?.setAlpha(1).setColor(COL.narr).setText(`${name ? `${t(name)} ` : ''}${t(def?.captionKo ?? '(…)')}`);
+      ms = Math.max(900, Math.round((def?.ms ?? 1000) * 0.8));
+    }
+    this.actTimer = this.scene.time.delayedCall(ms, () => this.actDone());
+  }
+
+  /** 몸짓이 끝났다 — 다음 박자는 새 쪽에서 */
+  private actDone(): void {
+    this.actTimer = undefined;
+    if (!this.actBusy) return;
+    this.actBusy = false;
+    this.logText?.setAlpha(1).setColor(this.hintPage ? COL_CAUTION : COL.text);
+    this.logDone = '';
+    this.paintLog();
+    this.startNextPara();
+  }
+
+  /** 하네스 — 지금 몸짓을 바로 끝낸다(헤드리스는 시간이 느리다) */
+  devFinishAct(): void {
+    if (!this.actBusy) return;
+    this.actTimer?.remove();
+    this.actDone();
+  }
+
+  /** 말하는 사람을 바꾼다 — 초상 · 이름 · 목소리 */
+  private setSpeaker(who: string): void {
+    if (who === this.speaker) return;
+    this.speaker = who;
+    this.voice = this.voiceFor(who);
+    this.refreshPortrait();
+  }
+
+  private voiceFor(who: string): VoiceTyper {
+    let v = this.voices.get(who);
+    if (!v) {
+      v = new VoiceTyper(who === 'player' ? voiceOfPlayer(GameState.character.look.sex) : voiceOfNpc(who));
+      this.voices.set(who, v);
+    }
+    return v;
+  }
+
+  /** 무대를 연다 — 두 사람이 마주 보고 카메라가 대화창 위로 · 어둠 막을 걷어 몸짓이 보이게 */
+  private beginStage(): void {
+    if (this.staged || !this.stage) return;
+    this.staged = true;
+    this.stage.begin(this.npcId);
+    this.setDimAlpha(0.12);
+  }
+
+  /** 무대를 닫는다 — 담배 · 연기를 걷고 카메라 · 어둠 막 · 말하는 사람을 되돌린다 */
+  private endStage(): void {
+    this.actTimer?.remove(); this.actTimer = undefined;
+    if (this.actBusy) { this.actBusy = false; this.logText?.setAlpha(1).setColor(COL.text); }
+    this.queueThen = undefined;
+    this.setSpeaker(this.npcId);
+    if (!this.staged) return;
+    this.staged = false;
+    this.stage?.end();
+    this.setDimAlpha(0.5);
   }
 
   /**
@@ -914,21 +1139,34 @@ export class DialoguePanel extends DraggablePanel {
   private chooseTalk(talk: StoryTalkDef, nodeId: string, c: TalkChoiceDef): void {
     const res = StoryStore.talkChoose(talk, nodeId, c.id);
     if (!res) return;
-    const said = c.labelKo.startsWith('(') ? c.labelKo : `나 — "${c.labelKo}"`;
-    const head = [said];
     // 258차 — 마음이 움직인 수치(「이 말로 — 이름 우호도 ±x」)는 찍지 않는다. 초상 아래 막대가 바뀌고, 말마다 효과는 위키에 있다
     if (res.moved.length) this.refreshPortrait();
+    if (DialoguePanel.isScript(talk)) {
+      // 286차 — 고른 말은 주인공이 실제로 하는 말(`say` — 없으면 고른 말 그대로)로, 주인공 칸에서 찍힌다
+      const female = GameState.character.look.sex === 'f';
+      const say = (female && c.sayKoF) || c.sayKo || c.labelKo;
+      const lead: QItem[] = [{ cue: 'line', who: 'player', text: DialoguePanel.quote(say) }];
+      if (res.next) { this.playScene(talk, res.next, lead); return; }
+      this.talkEnded(talk, res, lead);
+      return;
+    }
+    const said = c.labelKo.startsWith('(') ? c.labelKo : `나 — "${c.labelKo}"`;
+    const head = [said];
     if (res.next) { this.playTalkNode(talk, res.next, head); return; }
     this.talkEnded(talk, res, head);
   }
 
-  /** 대화가 끝났다 — 대화가 열린 자리마다 마무리(받음 · 미룸 · 목표 · 단계 · 마침과 결말) */
-  private talkEnded(talk: StoryTalkDef, res: NonNullable<ReturnType<typeof StoryStore.talkChoose>>, head: string[]): void {
+  /** 대화가 끝났다 — 대화가 열린 자리마다 마무리(받음 · 미룸 · 실패 · 목표 · 단계 · 마침과 결말) */
+  private talkEnded(talk: StoryTalkDef, res: NonNullable<ReturnType<typeof StoryStore.talkChoose>>, head: QItem[]): void {
     this.talk = null;
     const q = getStoryQuest(talk.questId);
     const end = res.end ?? {};
-    const paras = [...head];
-    if (end.lineKo) paras.push(...this.speakerParas(end.lineKo, talk.npcId));
+    const script = DialoguePanel.isScript(talk);
+    const paras: QItem[] = [...head];
+    if (end.lineKo) {
+      if (script) paras.push({ cue: 'line', who: talk.npcId, text: DialoguePanel.quote(end.lineKo) });
+      else paras.push(...this.speakerParas(end.lineKo, talk.npcId));
+    }
     if (!res.ok) {
       // 가방 자리 등으로 끝의 일이 막혔다 — 대화는 그 단계에 남아 다시 고를 수 있다
       paras.push(StoryStore.lastRefusal ?? '지금은 진행할 수 없습니다.');
@@ -937,7 +1175,8 @@ export class DialoguePanel extends DraggablePanel {
     }
     const rows: ChoiceRow[] = [{ label: '계속 이야기하기', action: () => { this.reply = null; this.enterMenu(false); } }, this.exitRow()];
     if (talk.at === 'offer') {
-      if (StoryStore.lastAction === 'declined') paras.push('의뢰를 받지 않았습니다.');
+      if (StoryStore.lastAction === 'failed') paras.push(`${HINT_PREFIX}(결국 거절했다. 그 일은 여기서 내 손을 떠났다.)`);
+      else if (StoryStore.lastAction === 'declined') paras.push('의뢰를 받지 않았습니다.');
       else {
         StoryStore.emitActionSource('selection', `talk:${talk.id}`);
         if (q) paras.push(...this.hoursHintParas(q, false));   // 267차 — 받는 자리 대화가 끝나면 영업시간 주의(빨간 글)

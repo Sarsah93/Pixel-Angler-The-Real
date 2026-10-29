@@ -152,6 +152,11 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   { npcId: 'oh_serin', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 502, ty: 403, behavior: 'fishing' },
   { npcId: 'yu_ria', regionId: 'jeju', dataRegion: 'jeju_city', tx: 501, ty: 378, behavior: 'wander' },
   { npcId: 'mara', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 226, ty: 439, behavior: 'fishing' },
+  // 286차 — N01-5 「해녀의 딸」 무대(서귀포항 안쪽 갯바위 · 물 빠지는 자리). 바람은 떠돌이라 속초와 서귀포 두 곳에 선다
+  //  (받는 자리는 서귀포에서만 — 편의 `offerRegion`). 자리는 사용자 실검증 뒤 다듬는다.
+  { npcId: 'baram', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 497, ty: 399, behavior: 'wander' },
+  { npcId: 'kang_haesol', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 486, ty: 394, behavior: 'wander', facing: 'right' },
+  { npcId: 'bu_sundeok', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 491, ty: 394, behavior: 'stall', facing: 'down' },
   { npcId: 'oh_sera', regionId: 'ulleungdo' },
   { npcId: 'yeon_taeo', regionId: 'ulleungdo' },
   { npcId: 'seok_daeyang', regionId: 'ulleungdo' },

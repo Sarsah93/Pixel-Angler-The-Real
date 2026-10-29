@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-29 285차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-29 286차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,16 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-29 285차) — 방앗간 알림 · 갈무리 · 씨 받기 · 생기름 · 압맥 · 나물 볶음 이름 · main · 93차 배포**
+**최근 변경 (2026-10-29 286차) — 주고받는 대본 · 몸짓 동안 말 멈춤 · 「해녀의 딸」 시범 · 일지 스크롤바 · 아이콘 점검**
+
+- 사용자 「담배를 꺼내 문 상태에서, 연기를 내뿜을 때 실제로 사람이 말을 하면서 저 동작을 동시에 할 순 없잖아?」 → 대본 박자 · 몸짓 14(block 7 · overlap 7) ·
+  block 동안 대화창은 새 말 · ▼ · 누름 없음 · 말하는 사람 초상 · 이름 · 목소리 · 고른 말 = 실제 말 · 거절 = 실패(`story.failed`) · 일지 요약 · 필드 무대(`DialogueStage`).
+- N01-5 다시 씀(사용자 대본 · 해솔 · 부순덕 · 서귀포 · 담배 한 갑) · F10 「대본 시범 — 해녀의 딸」.
+- 할 일 스크롤바 누르기 · 끌기 · 보상 아이콘 6 · 퀘스트 물건 4(Gemini) · `addPixelIcon` 비정수 크기 매끈한 판 · 「탈진」 색.
+- 검증: core 404 · 하네스 19 + 4 + 5 + 7 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. 다음 = 사용자 시범 확인 → 190편(백로그 DC).
+  상세: [286차 워크로그](../docs/wiki/03-WORKLOG/2026-10-29-286-talk-script-pilot-haenyeo.md).
+
+**이전 변경 (2026-10-29 285차) — 방앗간 알림 · 갈무리 · 씨 받기 · 생기름 · 압맥 · 나물 볶음 이름 · main · 93차 배포**
 
 - 284 「뒤로 미룬 것」 전부 → 다 됐을 때 채널 · 손목시계 알람(삐빅 × 3 + 알림 창) · 방앗간 문 위 · 지도 초록 느낌표(`ui/MillNotifier`).
 - 텃밭 건조 걸대 · 장독(core `rules/HomeCure.ts` · `CureQueue` · `CurePanel`) — 말린 시래기 · 옥수수수염차 · 깻잎 · 콩잎 장아찌(실제 날짜).
@@ -335,16 +344,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 속초 「설악기름방앗간」(core `rules/OilMill.ts` · `MillPanel`): 180 · 350ml · 공임 4,000원/kg · 60분 · 들깨 갈기 · 깻묵 · 나물 볶음(레시피 10).
 - 검증: core 시험 378 · 하네스 17 · 11 · 4 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. main · 배포는 사용자 지시 뒤.
   상세: [284차 워크로그](../docs/wiki/03-WORKLOG/2026-10-28-284-byproducts-grain-weight-oil-mill.md).
-
-**이전 변경 (2026-10-27 283차) — 일지 초상을 그림 얼굴로 · 목표 옆 진행 레일 · main 반영 · 92차 배포**
-
-- 사용자 실검증 「일지에서는 … 일러스트 변경이 적용되지 않았네」 → 스스로 정한 할 일(「막차」)은 의뢰인이 `''`라
-  `q.giver ?? 'player'`가 빈 글자를 넘겨 그림 얼굴을 건너뛰었다 → `q.giver || 'player'`(일지 두 곳 · 혼잣말 · 대화창은 원래 정상).
-- 「빨간색 점선 화살표 … 더 세련된 도형으로」 → 이야기 탭 진행 레일(`drawProgressRail`)
-  — 청록 선 · 점 · 금빛 고리 · 숨 쉬는 후광 · 금빛 줄 바탕 · 흐려지는 꼬리.
-- main 빨리 감기(`bef0850`) · **92차 배포**(실행 21 · gh-pages `1f2975d` · pageerror 0).
-- 검증: 하네스(일지 이미지 키 `face2_` 0 · 레일 확대 캡처 · 트윈 쌓임 없음) · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
-  상세: [283차 워크로그](../docs/wiki/03-WORKLOG/2026-10-27-283-journal-face-progress-rail.md).
 
 ---
 

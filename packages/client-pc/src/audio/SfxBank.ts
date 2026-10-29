@@ -107,6 +107,24 @@ export const SFX_RECIPES = {
   /** 말 걸기(대화창 열림) — 퐁 */
   talk: { layers: [tone(440, 0.07, 0.05, { wave: 'sine', f1: 660 }), noise('bandpass', 3000, 0.04, 0.015, { q: 2 })] },
 
+  // ── 286차 — 대화 장면의 몸짓(`core rules/TalkActs.ts` sfx) ──
+  /** 라이터 — 부싯돌 휠 「치익」 + 불꽃 「화르륵」(불붙이기 몸짓 중간에 낸다) */
+  lighter: { layers: [
+    noise('highpass', 5200, 0.05, 0.05, { attack: 0.001 }),
+    noise('bandpass', 3800, 0.03, 0.035, { q: 2.5, at: 0.06, attack: 0.001 }),
+    noise('lowpass', 1400, 0.42, 0.03, { f1: 700, at: 0.09, attack: 0.03, am: [24, 0.5] }),
+  ], minGapMs: 800 },
+  /** 내뿜기 — 사용자 지정 「후~」: 길게 새는 숨(낮은 대역 잡음이 천천히 줄어든다) */
+  exhale: { layers: [
+    noise('bandpass', 900, 1.25, 0.075, { f1: 520, q: 0.7, attack: 0.12, hold: 0.35 }),
+    noise('lowpass', 2200, 1.1, 0.025, { f1: 900, attack: 0.15, hold: 0.25 }),
+  ], jitter: 0.05, minGapMs: 1500 },
+  /** 한숨 — 짧게 들이쉬고 길게 내쉰다 */
+  sigh: { layers: [
+    noise('bandpass', 1300, 0.28, 0.03, { f1: 1700, q: 0.8, attack: 0.08 }),
+    noise('bandpass', 1100, 0.85, 0.06, { f1: 480, q: 0.7, at: 0.32, attack: 0.06, hold: 0.15 }),
+  ], jitter: 0.04, minGapMs: 1200 },
+
   // ── 가방 · 물건 ─────────────────────────────────────────
   /** 땅에 내려놓기 — 둔탁한 툭 */
   item_drop: { layers: [tone(160, 0.12, 0.12, { wave: 'sine', f1: 70, attack: 0.003 }), noise('lowpass', 900, 0.1, 0.06, { f1: 200, attack: 0.002 })] },

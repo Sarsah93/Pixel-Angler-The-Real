@@ -770,7 +770,7 @@ export class GameStateManager {
   /** 활동 XP — 손질/회뜨기/채집/제작/요리 완료 시 호출 (mult = 등급·품질 계수). 반환 = 레벨업 수 */
   addActivityXp(kind: XpActivity, mult = 1, src: { traded?: boolean } = {}): number {
     // 233차 — 거래로 받은 것(계보 포함)으로 한 행동이면 표시해 보낸다 — 「직접 마련한 것만」 목표는 세지 않는다
-    StoryStore.event({ kind: 'activity', activity: kind, ...(src.traded ? { traded: true } : {}) });
+    StoryStore.event({ kind: 'activity', activity: kind, regionId: this.currentRegionId, ...(src.traded ? { traded: true } : {}) });
     // 140차 — 같은 행위가 숙련도도 채운다(손질·회뜨기·채집·제작·요리)
     const profOf: Partial<Record<XpActivity, ProfActionKey>> = { butcher: 'butcher', sashimi: 'sashimi', forage: 'forage', craft: 'craft', cook: 'cook' };
     const pa = profOf[kind];

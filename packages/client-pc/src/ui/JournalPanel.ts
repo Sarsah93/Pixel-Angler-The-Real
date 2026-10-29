@@ -38,6 +38,8 @@ import { ensureFacePortrait } from './CharacterSprite.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { GameState } from '../store/GameState.js';
 import { addPixelIcon } from './PixelIcon.js';
+import { createItemIcon } from './ItemIcon.js';
+import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { questRewardItemName } from '../data/QuestRewardItems.js';
 import { getLocale, t } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -129,6 +131,11 @@ export class JournalPanel extends DraggablePanel {
   private narrMask?: Phaser.GameObjects.Graphics;
   private narrRect: Phaser.Geom.Rectangle | null = null;
   private listRect: Phaser.Geom.Rectangle | null = null;
+  /** 286차 — 할 일 목록 스크롤바(끌기 · 누르기): 트랙 자리(패널 좌표) · 끄는 중인가 */
+  private listTrack: { x: number; y: number; h: number; thumb: number } | null = null;
+  private listDrag = false;
+  private readonly onListDragMove = (p: Phaser.Input.Pointer): void => { if (this.listDrag) this.scrollListTo(p.y - this.y); };
+  private readonly onListDragUp = (): void => { this.listDrag = false; };
   private wheelHandler?: (p: Phaser.Input.Pointer, o: unknown[], dx: number, dy: number) => void;
   private readonly postUpdate: () => void;
   private lastX = NaN; private lastY = NaN;
@@ -175,6 +182,9 @@ export class JournalPanel extends DraggablePanel {
       }
     };
     scene.input.on('wheel', this.wheelHandler);
+    // 286차 — 목록 스크롤바 끌기(ui-panel 규칙: 요소 pointerdown → 씬 pointermove/pointerup)
+    scene.input.on('pointermove', this.onListDragMove);
+    scene.input.on('pointerup', this.onListDragUp);
     this.postUpdate = () => { if (this.x !== this.lastX || this.y !== this.lastY) this.syncNarrMask(); };
     scene.events.on('postupdate', this.postUpdate);
 
@@ -184,6 +194,8 @@ export class JournalPanel extends DraggablePanel {
 
   override destroy(fromScene?: boolean): void {
     if (this.wheelHandler) this.scene?.input?.off('wheel', this.wheelHandler);
+    this.scene?.input?.off('pointermove', this.onListDragMove);
+    this.scene?.input?.off('pointerup', this.onListDragUp);
     this.scene?.events?.off('postupdate', this.postUpdate);
     this.narrMask?.destroy();
     super.destroy(fromScene);
@@ -199,12 +211,12 @@ export class JournalPanel extends DraggablePanel {
     const out: Row[] = [];
     for (const q of STORY_QUESTS) {
       const st = StoryStore.status(q);
-      if (st === 'done' && !this.showDone) continue;
+      if ((st === 'done' || st === 'failed') && !this.showDone) continue;   // 286차 — 실패로 닫힌 편은 끝난 편과 함께(토글)
       if ((st === 'locked' || st === 'declined') && !this.showLocked) continue;
       out.push({ q, st, pct: this.pctOf(q, st) });
     }
     // 진행 중 → 받을 수 있는 것 → 완료 → 잠김 순, 그 안에서는 챕터·발행 순
-    const rank = (s: string): number => (s === 'active' ? 0 : s === 'available' ? 1 : s === 'done' ? 2 : 3);
+    const rank = (s: string): number => (s === 'active' ? 0 : s === 'available' ? 1 : s === 'done' || s === 'failed' ? 2 : 3);
     out.sort((a, b) => rank(a.st) - rank(b.st) || a.q.chapter - b.q.chapter || a.q.id.localeCompare(b.q.id));
     return out;
   }
@@ -231,6 +243,7 @@ export class JournalPanel extends DraggablePanel {
       case 'available': return { ko: '새 할 일', color: C_OK };
       case 'done': return { ko: '완료함', color: C_DIM };
       case 'declined': return { ko: '거절함', color: C_LOCK };
+      case 'failed': return { ko: '실패 — 거절', color: C_LOCK };   // 286차 — 받는 자리에서 끝내 거절
       default: return { ko: '잠김', color: C_LOCK };
     }
   }
@@ -365,6 +378,16 @@ export class JournalPanel extends DraggablePanel {
     applyScreenFixed(this);
   }
 
+  /** 286차 — 스크롤바 위 세로 자리(패널 좌표)로 목록을 옮긴다(손잡이 가운데가 그 자리에 오게) */
+  private scrollListTo(py: number): void {
+    const tr = this.listTrack;
+    if (!tr) return;
+    const max = Math.max(0, this.rows.length - this.visibleRows());
+    const rel = Phaser.Math.Clamp((py - tr.y - tr.thumb / 2) / Math.max(1, tr.h - tr.thumb), 0, 1);
+    const next = Math.round(rel * max);
+    if (next !== this.scroll) { this.scroll = next; this.renderList(); }
+  }
+
   private renderList(): void {
     this.listC?.destroy();
     const c = this.scene.add.container(0, 0);
@@ -412,6 +435,7 @@ export class JournalPanel extends DraggablePanel {
     }
 
     // 스크롤바 + 위치 표기 (조용한 잘림 금지)
+    this.listTrack = null;
     if (this.rows.length > vis) {
       const trackY = hy + 14, trackH = vis * ROW_H;
       const bx = LIST_X + LIST_W - 4;
@@ -419,8 +443,15 @@ export class JournalPanel extends DraggablePanel {
       g.fillStyle(0x0d1c2c, 1); g.fillRect(bx, trackY, 5, trackH);
       const th = Math.max(22, trackH * (vis / this.rows.length));
       const ty = trackY + (trackH - th) * (start / Math.max(1, this.rows.length - vis));
-      g.fillStyle(0x3d6f96, 1); g.fillRect(bx, ty, 5, th);
+      g.fillStyle(this.listDrag ? 0x5a93bf : 0x3d6f96, 1); g.fillRect(bx, ty, 5, th);
       c.add(g);
+      // 286차 — 사용자 「리스트가 늘어나면 상하 스크롤바로 내릴 수 있도록」: 휠뿐 아니라 막대를 누르거나 끌어도 내려간다.
+      //  잡는 폭은 그림(5px)보다 넓게(14px) — 행 칸(LIST_W − 8)과 겹치지 않는 오른쪽 끝 띠
+      this.listTrack = { x: bx, y: trackY, h: trackH, thumb: th };
+      const hit = this.scene.add.rectangle(bx + 2, trackY + trackH / 2, 14, trackH, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', (p: Phaser.Input.Pointer) => { this.listDrag = true; this.scrollListTo(p.y - this.y); });
+      c.add(hit);
       const pos = this.scene.add.text(LIST_X + LIST_W - 12, PANEL_H - 16,
         `${start + 1}–${end} / ${this.rows.length}`, { fontFamily: FONT, fontSize: '9px', color: '#6a8aa0' })
         .setOrigin(1, 1);
@@ -1220,7 +1251,7 @@ export class JournalPanel extends DraggablePanel {
     const qs = STORY_QUESTS.filter((q) => q.chapter === ch);
     for (const q of qs) {
       const st = StoryStore.status(q);
-      if (st === 'locked' || st === 'declined') continue;
+      if (st === 'locked' || st === 'declined' || st === 'failed') continue;
       const n = narrativeOf(q.id);
       let stop = false;
       q.objectives.forEach((o, i) => {
@@ -1425,7 +1456,11 @@ export class JournalPanel extends DraggablePanel {
     // 274차 — 대화창에서 뺀 배경 나레이션(받는 자리 서두 · 맺음)은 여기서 읽는다.
     //  말(따옴표)과 나레이션(따옴표 없음)을 가른다 — 맺음은 나레이션이라 따옴표를 씌우지 않는다.
     if (n?.intro) parts.push(n.intro);
-    if (st === 'done') {
+    // 286차 — 대본 장면의 요약: 지나온 장면 · 고른 말마다 한두 문장(대화창에서 주고받은 것을 1인칭으로 되짚는다)
+    for (const note of StoryStore.talkNotes(q.id)) parts.push(note.ko);
+    if (st === 'failed') {
+      parts.push('(결국 거절했다. 그 일은 여기서 내 손을 떠났다.)');
+    } else if (st === 'done') {
       if (n?.done) parts.push(`"${n.done}"`);
       if (n?.epilogue) parts.push(n.epilogue);
     } else {
@@ -1505,12 +1540,13 @@ export class JournalPanel extends DraggablePanel {
 
   /** 보상 카드 — 아이콘 + 라벨 + 값. 줄바꿈으로 흐른다 */
   private drawRewards(c: Phaser.GameObjects.Container, q: StoryQuestDef, st: string, y0: number): void {
-    const cards: { icon: string; label: string; value: string }[] = [];
+    // 286차 — 물건 보상은 그 물건의 그림(옛 「가방」 16px 공용 그림 대신) · 나머지는 그린 보상 아이콘(`rw_*` — Gemini)
+    const cards: { icon: string; label: string; value: string; itemId?: string }[] = [];
     cards.push({ icon: 'rw_xp', label: '경험치', value: `+${q.xp.toLocaleString()}` });
     const r = q.rewards;
     if (r?.coins) cards.push({ icon: 'rw_coin', label: '재화', value: `${r.coins.toLocaleString()}원` });
     for (const it of r?.items ?? []) {
-      cards.push({ icon: 'it_backpack', label: questRewardItemName(it.id) ?? it.id, value: it.qty > 1 ? `x${it.qty}` : (it.bound ? '귀속' : '') });
+      cards.push({ icon: 'it_backpack', itemId: it.id, label: questRewardItemName(it.id) ?? it.id, value: it.qty > 1 ? `x${it.qty}` : (it.bound ? '귀속' : '') });
     }
     for (const lic of r?.licenses ?? []) {
       cards.push({ icon: 'rw_license', label: getLicenseByType(lic)?.nameKo ?? String(lic), value: '자격' });
@@ -1538,16 +1574,19 @@ export class JournalPanel extends DraggablePanel {
       g.lineStyle(1, 0x24455f, 1); g.strokeRect(x, y, CW, CH);
       c.add(g);
       const secret = hide && card.label !== '경험치' && card.label !== '재화';
-      const ic = addPixelIcon(this.scene, card.icon, x + 18, y + CH / 2, 18);
+      // 286차 — 18px(16px 손그림을 비정수로 늘림) → 32px 그린 아이콘 · 물건은 그 물건 그림
+      const tpl = card.itemId && !secret ? buildItemWikiCatalog().find((w) => w.id === card.itemId)?.tpl : undefined;
+      const ic = tpl ? createItemIcon(this.scene, x + 21, y + CH / 2, { id: tpl.id, icon: tpl.icon, iconTexture: tpl.iconTexture, name: tpl.name }, 32)
+        : addPixelIcon(this.scene, card.icon, x + 21, y + CH / 2, 32);
       if (ic) { ic.setAlpha(secret ? 0.3 : 1); c.add(ic); }
-      const lt = this.scene.add.text(x + 34, y + 13, secret ? '???' : card.label, {
+      const lt = this.scene.add.text(x + 42, y + 13, secret ? '???' : card.label, {
         fontFamily: FONT, fontSize: '11px', color: secret ? C_LOCK : C_TEXT,
       }).setOrigin(0, 0.5);
-      clampTextWidth(lt, CW - 42);
-      const vt = this.scene.add.text(x + 34, y + 29, secret ? '' : card.value, {
+      clampTextWidth(lt, CW - 48);
+      const vt = this.scene.add.text(x + 42, y + 29, secret ? '' : card.value, {
         fontFamily: FONT, fontSize: '11px', color: C_GOLD,
       }).setOrigin(0, 0.5);
-      clampTextWidth(vt, CW - 42);
+      clampTextWidth(vt, CW - 48);
       c.add([lt, vt]);
       i++;
     }

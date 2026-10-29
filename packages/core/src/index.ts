@@ -657,14 +657,20 @@ export {
 export type {
   TalkStance, TalkGate, TalkEndDef, TalkChoiceDef, TalkNodeDef, StoryTalkDef,
   StoryEndingKind, NpcShopTerms, StoryEndingEffects, StoryEndingDef,
+  // 286차 — 대본(주고받는 장면) · 몸짓
+  TalkActId, TalkActDef, TalkBeat, TalkLineBeat, TalkActBeat, TalkGiveBeat,
 } from './types/Story.js';
 export { STORY_TALKS } from './db-schema/StoryTalks.js';
 export { STORY_ENDINGS } from './db-schema/StoryEndings.js';
-export { opt as talkOpt, say as talkSay, endTalk, type OptExtra as TalkOptExtra } from './db-schema/StoryTalkKit.js';
+export {
+  opt as talkOpt, say as talkSay, endTalk, type OptExtra as TalkOptExtra,
+  line as talkLine, act as talkAct, give as talkGive, scene as talkScene,
+} from './db-schema/StoryTalkKit.js';
+export { TALK_ACTS, talkActDef, talkActBlocks, talkActStep } from './rules/TalkActs.js';
 export {
   talkById, talksOfQuest, offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, progressTalksOfNpc,
   talkNode, talkGateOk, talkVisibleChoices, endingById, endingsOfArc, canonEndingOf, endingArcOfQuest,
-  npcShopTerms, npcAffinityCap, npcEndingRole, allTalkLines, validateTalks, validateEndings, TALK_AFFINITY_MAX,
+  npcShopTerms, npcAffinityCap, npcEndingRole, allTalkLines, validateTalks, validateEndings, TALK_AFFINITY_MAX, TALK_GIVE_AFFINITY_MAX,
   type TalkCtx,
 } from './rules/StoryTalk.js';
 // 257차 — 대사를 문장마다 가르고 쉬는 자리를 돌려준다(대화창 · 혼잣말 · 컷씬 공통)

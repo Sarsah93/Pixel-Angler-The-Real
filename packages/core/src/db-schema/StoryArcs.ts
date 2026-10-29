@@ -19,7 +19,10 @@ export const STORY_MAIN_NPCS: StoryNpcDef[] = [
 
 export const STORY_ARCS: StoryArcDef[] = [
   { id: 'N01', titleKo: '바람 — 이름을 말하지 않는 떠돌이', titleEn: 'Baram — the drifter with no name', regionId: 'gangwon_sokcho',
-    npcs: [{ id: 'baram', nameKo: '바람', nameEn: 'Baram', roleKo: '리어카 자전거로 전국 항구를 도는 무적(無籍) 조사', roleEn: 'An unregistered angler touring every port on a cart-bicycle' }],
+    npcs: [{ id: 'baram', nameKo: '바람', nameEn: 'Baram', roleKo: '리어카 자전거로 전국 항구를 도는 무적(無籍) 조사', roleEn: 'An unregistered angler touring every port on a cart-bicycle' },
+      // 286차 — N01-5 「해녀의 딸」 대본(주고받는 장면)에 나오는 두 사람(서귀포)
+      { id: 'bu_sundeok', nameKo: '부순덕', nameEn: 'Bu Sundeok', roleKo: '58세 · 서귀포 해녀 · 허리를 다쳐 쉬는 중', roleEn: '58 · a Seogwipo haenyeo, resting an injured back' },
+      { id: 'kang_haesol', nameKo: '강해솔', nameEn: 'Kang Haesol', roleKo: '24세 · 부순덕의 딸', roleEn: "24 · Bu Sundeok's daughter" }],
     relationKo: '떠돌며 한 마리로 매듭을 푸는 해결사', relationEn: 'A wanderer who unties knots with a single fish',
     angleKo: '소속 없이 사는 삶의 다른 답', angleEn: 'Another answer to living without belonging',
     questIds: ['N01-1', 'N01-2', 'N01-3', 'N01-4', 'N01-5', 'N01-6', 'N01-7'] },
