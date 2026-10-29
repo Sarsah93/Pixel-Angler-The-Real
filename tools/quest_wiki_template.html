@@ -530,9 +530,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         (o.spotKind ? ' · 정해진 자리에서만 인정됩니다' : '') + '</td></tr>';
     }
     h += '</tbody></table></div>';
-    if (q.nar && q.nar.progress){
-      h += '<p class="note" style="margin-top:14px">아직 끝나지 않았을 때</p>' +
-        talk(q.nar.progress, solo ? '' : q.giverName);
+    // 287차 — 아직 끝나지 않았을 때: 지금 할 일마다 의뢰인이 묻고(물음 하나) · 내가 답하고 · 의뢰인이 일러 준다
+    if (q.asks && q.asks.length){
+      h += '<p class="note" style="margin-top:14px">아직 끝나지 않았을 때 — 지금 할 일마다 의뢰인이 묻는다</p>';
+      q.asks.forEach(function (a, i){
+        const lbl = q.obj[i] ? q.obj[i].label : '';
+        h += '<p class="note" style="margin-top:10px">' + esc(lbl) + '</p>' +
+          talk(a.q, solo ? '' : q.giverName) + talk(a.a, '나') + talk(a.r, solo ? '' : q.giverName);
+      });
     }
     h += '<p style="margin-top:14px">' + esc(q.desc) + '</p>';
     h += '</section>';

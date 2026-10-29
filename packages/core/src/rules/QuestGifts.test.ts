@@ -8,6 +8,7 @@ import { cropStartOfItem } from '../db-schema/CropDatabase.js';
 import { cropGate } from '../simulation/FarmSim.js';
 import { STORY_QUESTS, getStoryQuest, validateStoryQuests } from '../db-schema/StoryQuestDatabase.js';
 import { narrativeOf } from '../db-schema/StoryNarrative.js';
+import { STORY_PROGRESS_ASKS } from '../db-schema/StoryProgressAsk.js';
 import { choicesFor, lessonCategoryOf, validateStoryChoices } from '../db-schema/StoryChoices.js';
 import { objectiveTarget } from './QuestGuide.js';
 
@@ -67,10 +68,12 @@ describe('237차 — 텃밭 입문 서브 퀘스트(N19-7 귀퉁이 바구니 ·
     for (const id of ['N19-7', 'N19-8']) {
       const n = narrativeOf(id)!;
       expect(n.introEn && n.introEn !== n.intro, id).toBeTruthy();
-      for (const k of ['offer', 'progress', 'done', 'epilogue'] as const) {
+      for (const k of ['offer', 'done', 'epilogue'] as const) {
         const en = n[`${k}En` as const];
         expect(en && en !== n[k], `${id} ${k}`).toBeTruthy();
       }
+      // 287차 — 진행 중 말은 목표마다 물음 · 내 답 · 조언(영어 포함)
+      for (const p of STORY_PROGRESS_ASKS[id] ?? []) expect(p.askEn && p.replyEn && p.answerEn, `${id} 진행 중 물음`).toBeTruthy();
       const s = choicesFor(getStoryQuest(id)!);
       for (const c of s.complete) {
         expect(c.labelEn, `${id}/${c.id}`).not.toBe(c.labelKo);

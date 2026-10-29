@@ -70,7 +70,8 @@ function questBlock(q) {
   L.push(`- 목표: ${(n?.objectives ?? q.objectives.map((o) => o.labelKo ?? o.kind)).join(' / ')}`);
   if (n?.intro) L.push(`- 서두(주인공): ${n.intro}`);
   if (n?.offer) L.push(`- 받는 자리 말(ko): ${n.offer}\n- 받는 자리 말(en): ${en.offer ?? '(없음)'}`);
-  if (n?.progress) L.push(`- 진행 중 말: ${n.progress}`);
+  // 287차 — 진행 중 말은 목표마다 물음 · 내 답 · 조언
+  for (const p of core.STORY_PROGRESS_ASKS?.[q.id] ?? []) L.push(`- 진행 중 물음: ${p.askKo} → 나 「${p.answerKo}」 → ${p.replyKo}`);
   if (n?.done) L.push(`- 끝낼 때 말(ko): ${n.done}\n- 끝낼 때 말(en): ${en.done ?? '(없음)'}`);
   if (n?.epilogue) L.push(`- 맺음(주인공): ${n.epilogue}`);
   L.push('');

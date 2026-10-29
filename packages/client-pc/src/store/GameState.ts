@@ -2059,6 +2059,7 @@ StoryStore.bind({
   acquireLicense: (t) => GameState.acquireLicense(t as never),
   heldLicenses: () => GameState.licenses.filter((l) => !l.isExpired).map((l) => l.type as string),
   level: () => GameState.player.level ?? 1,
+  currentRegion: () => GameState.currentRegionId,   // 287차 — 받는 순간 지역 도착 목표
   coins: () => GameState.player.inventory.coins,
   setFlag: (k, v) => GameState.setFlag(k, v),
   markQuestDone: (id) => GameState.completeQuest(id),

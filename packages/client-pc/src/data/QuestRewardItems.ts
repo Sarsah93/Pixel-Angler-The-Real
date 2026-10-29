@@ -72,7 +72,7 @@ export const QUEST_REWARD_ITEMS: InvItemTemplate[] = [
     equippable: true, bagSlots: 5 },
 
   // ── 286차 — 대본(주고받는 장면) 속에서 건네받는 물건 ──
-  // N01-5 「해녀의 딸」 — 바람이 「내가 신뢰하는 사람에겐 담배 한 갑도 곧바로 줄 수 있다네」 하며 건넨다(사용자 대본). 귀속 아님 · 무지 갑(상표 없음)
+  // N01-5 「해녀의 딸」 — 바람이 「내가 신뢰하는 남자(여자 주인공이면 여자)에겐 담배 한 갑도 곧바로 줄 수 있다네」 하며 건넨다(사용자 대본 · 287 성별). 귀속 아님 · 무지 갑(상표 없음)
   { id: 'inv_cigarette_pack', name: '담배 한 갑', icon: '', iconTexture: 'px:it_breadpack', category: 'etc', subCategory: '기호품', basePrice: 4500,
     equippable: false },
 ];

@@ -673,6 +673,12 @@ export {
   npcShopTerms, npcAffinityCap, npcEndingRole, allTalkLines, validateTalks, validateEndings, TALK_AFFINITY_MAX, TALK_GIVE_AFFINITY_MAX,
   type TalkCtx,
 } from './rules/StoryTalk.js';
+// 287차 — 진행 중 물음(목표마다 물음 · 내 답 · 조언 — 자문자답 · 진행 나레이션 대신)
+export type { ProgressAskDef } from './types/Story.js';
+export {
+  STORY_PROGRESS_ASKS, PROGRESS_ASK_FALLBACK, progressAskOf, allProgressAskLines, validateProgressAsks,
+} from './db-schema/StoryProgressAsk.js';
+export { pa as progressAsk, type KoEn } from './db-schema/StoryProgressAskKit.js';
 // 257차 — 대사를 문장마다 가르고 쉬는 자리를 돌려준다(대화창 · 혼잣말 · 컷씬 공통)
 export type { PacedText, PaceOptions } from './rules/DialoguePacing.js';
 export { paceSentences, SENTENCE_PAUSE_MS } from './rules/DialoguePacing.js';

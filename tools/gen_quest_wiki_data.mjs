@@ -146,7 +146,9 @@ const quests = core.STORY_QUESTS.map((q) => {
       shops: (r.shopUnlocks ?? []).map((k) => SHOP_UNLOCK_LABEL[k] ?? k),
       rep: q.reputation ?? null,
     },
-    nar: n ? { intro: n.intro, offer: n.offer, progress: n.progress, done: n.done, epi: n.epilogue } : null,
+    nar: n ? { intro: n.intro, offer: n.offer, done: n.done, epi: n.epilogue } : null,
+    // 287차 — 진행 중 물음(목표마다 물음 · 내 답 · 조언 — 옛 `progress` 한 줄 대신)
+    asks: (core.STORY_PROGRESS_ASKS?.[q.id] ?? []).map((p) => ({ q: p.askKo, a: p.answerKo, r: p.replyKo })),
     offerChoices: (ch.offer ?? []).map((c) => ({ label: c.labelKo, reply: c.replyKo, decline: !!c.outcome?.decline, out: core.describeOutcomeKo(c.outcome) })),
     complete: (ch.complete ?? []).map((c) => ({ label: c.labelKo, reply: c.replyKo, out: core.describeOutcomeKo(c.outcome) })),
     // 254차 — 이어지는 대화(갈래) · 이 편이 정하는 결말

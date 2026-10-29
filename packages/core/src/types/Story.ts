@@ -810,7 +810,8 @@ export interface StoryQuestDef {
  * 퀘스트 한 편의 서사 텍스트. 데이터는 `db-schema/StoryNarrative.ts`.
  *  - `intro` — **주인공 시점 나레이션**(1인칭 현재형). 누가·어디서·왜·어떻게가 문장 안에 있어야 한다.
  *    정의문("첫 품삯이 기본 재화다")은 금지 — 감각·판단·기대로 쓴다.
- *  - `offer`/`progress`/`done` — 발주 NPC의 **말**(따옴표 없이 대사만). 없으면 `StoryDialogue` 폴백.
+ *  - `offer`/`done` — 발주 NPC의 **말**(따옴표 없이 대사만). 없으면 `StoryDialogue` 폴백.
+ *    진행 중 화면의 말은 287차부터 목표마다 「물음 · 내 답 · 조언」(`ProgressAskDef` — `db-schema/StoryProgressAsk.ts`)이 맡는다.
  *  - `objectives` — 목표를 문장으로 바꾼 라벨(순서 = `StoryQuestDef.objectives`). 없으면 원 라벨.
  *  - `epilogue` — 완료 후 주인공 한 줄(일지 하단·대화 응답 뒤).
  * 영문은 선택 — 없으면 한국어가 그대로 노출된다(사전 미수록 규칙과 동일).
@@ -820,8 +821,6 @@ export interface QuestNarrative {
   introEn?: string;
   offer?: string;
   offerEn?: string;
-  progress?: string;
-  progressEn?: string;
   done?: string;
   doneEn?: string;
   objectives?: string[];
@@ -831,6 +830,23 @@ export interface QuestNarrative {
   /** 267차 — 받는 자리에서 의뢰인이 덧붙이는 주의(영업시간 등 — 대화창이 빨간 글로 따로 찍는다) */
   hint?: string;
   hintEn?: string;
+}
+
+/**
+ * 287차 — 진행 중 물음 한 벌(목표 하나에 하나 · 순서 = `StoryQuestDef.objectives`).
+ * 사용자 「'딸은 만나봤나?'로만 물어보고, 선택지 1) …아직 만나보지 않았습니다. 2) 나가기 … 1)을 누르면 바람: 시간 잘 확인해서 …」.
+ *  - `ask` — 의뢰인이 **지금 할 목표**를 묻는 말. 물음 하나로 끝나고 스스로 답하지 않는다(옛 「딸은 만나 봤나? 물속은 안 돼.」 자문자답 금지).
+ *  - `answer` — 주인공의 답. 고르는 말이자 실제로 하는 말(주인공 칸에서 찍힌다). 그 목표를 아직 못 했다는 말이다.
+ *  - `reply` — 답을 들은 의뢰인이 일러 주는 말(그 목표를 이루는 단서 · 주의).
+ * 진행 나레이션(「해야 할 것은 …」)은 대화창에 찍지 않는다 — 일지(J)가 맡는다.
+ */
+export interface ProgressAskDef {
+  askKo: string;
+  askEn: string;
+  answerKo: string;
+  answerEn: string;
+  replyKo: string;
+  replyEn: string;
 }
 
 // ─────────────────────────────────────────────

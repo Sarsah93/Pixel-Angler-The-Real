@@ -57,10 +57,10 @@ import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { applyScreenFixed } from './DraggablePanel.js';
-import { t, getLocale } from '../i18n/I18n.js';
+import { t } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, spokenProgressKo, particle, type SpokenObjective } from '@tra/core';
+import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, particle, progressAskOf, PROGRESS_ASK_FALLBACK, type ProgressAskDef } from '@tra/core';
 import { SHOP_CATALOG, BUILDING_HOURS, BUILDING_LABEL, type BuildingKind } from '../data/ShopCatalog.js';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
@@ -745,14 +745,19 @@ export class DialoguePanel extends DraggablePanel {
     this.play(paras, rows, true);
   }
 
+  /**
+   * 진행 중 화면. 287차 — 의뢰인이 **지금 할 목표** 하나를 묻는다(물음 하나 · 스스로 답하지 않는다 — `progressAskOf`).
+   * 고르는 말은 [내 답 · 나가기]. 내 답을 고르면 그 말이 주인공 칸에서 찍히고 의뢰인이 일러 준다 → [나가기].
+   * 사용자 「'딸은 만나봤나?'로만 물어보고, 선택지 1) …아직 만나보지 않았습니다. 2) 나가기(대화 종료)」 ·
+   * 「(진행 나레이션) 이 텍스트도 나오는 게 너무 이상해. 차라리 빼줘. 일지에서 확인하도록.」 — 옛 자문자답 한 줄(`progress`)과
+   * 267 진행 나레이션(`spokenProgressKo`) · 「○○을 직접 찾아가야 한다」 · 「이어서 할 일 — …」은 찍지 않는다(일지 J가 맡는다).
+   * 이 사람 앞에서 바로 할 수 있는 단계(장면 · 방식 고르기 · 조사 물음 · 이어지는 대화)가 있으면 그 행이 함께 뜨고,
+   * 그 단계만 남았으면 물음 뒤 그 행이 곧 답이다(「아직」 답을 두지 않는다).
+   */
   private playActive(q: StoryQuestDef): void {
-    const np = narrativeOf(q.id)?.progress;
-    const paras = [this.questHead(q)];
-    paras.push(`"${np ?? dialogueOf(q.id).progress[0]}"`);
+    const paras: QItem[] = [this.questHead(q)];
+    // 방식을 고른 직후(대화 · 선택 계통이 아닌 단계) — 그 방식에 대한 의뢰인의 말을 먼저
     if (this.actionReply) { paras.push(`"${this.actionReply}"`); this.actionReply = ''; }
-    // 267차 — 「[완료] … / - …」 나열 대신 말하듯(1인칭 산문). 다 했으면 그 문장이 「다시 말을 걸면 보고할 수 있다」까지 말한다
-    paras.push(this.progressNarration(q));
-    paras.push(...this.hoursHintParas(q, true));   // 267차 — 아직 안 산 가게 목표가 있으면 영업시간 주의
     const rows: ChoiceRow[] = [];
     const idx = q.objectives.findIndex((o, i) => o.manual && !StoryStore.objectiveDone(q, i));
     if (idx >= 0) {
@@ -782,7 +787,6 @@ export class DialoguePanel extends DraggablePanel {
         if (actTalk) {
           rows.push({ label: stepLine, hint: '이야기가 이어집니다', action: () => this.enterTalk(actTalk) });
         } else if (StoryStore.inquiryDrivesAction(q.id, idx)) {
-          if (!stepChoice) paras.push(`이어서 할 일 — ${stepLine}`);
           for (const n of StoryStore.inquiryQuestNodes(this.npcId, q.id, idx)) rows.push(this.inquiryRow(n, () => this.playActive(q)));
         } else for (const ch of spec.choices) rows.push({
           label: ch.labelKo,
@@ -803,15 +807,34 @@ export class DialoguePanel extends DraggablePanel {
           disabled: taken,
         });
       } else if (StoryStore.isSceneObjective(objective)) {
-        // 167차 — 구 `[이 자리에서 마무리]`(advanceManual 클릭) 폐기. 장면의 상대가 이 사람이면 장면 행,
-        //  다른 사람이면 그 사람을 찾아가라고만 말한다.
+        // 167차 — 구 `[이 자리에서 마무리]`(advanceManual 클릭) 폐기. 장면의 상대가 이 사람이면 장면 행.
+        //  다른 사람이면 행이 없다 — 의뢰인의 물음(「딸은 만나 봤나?」)이 그 사람을 가리킨다(287).
         const entry = StoryStore.sceneEntryNpc(q, objective);
         if (entry === this.npcId) rows.push(this.sceneRow(q.id, idx, false));
-        else paras.push(`${getStoryNpc(StoryStore.sceneNpcOf(q, objective))?.nameKo ?? '그 사람'}을(를) 직접 찾아가야 한다.`);
       }
     }
-    rows.push(this.backRow(), this.exitRow());
+    // 287차 — 물을 목표: 아직 안 끝난 목표 중 첫째. 이 자리에서 바로 할 수 있는 단계(살아 있는 행)는 건너뛴다 — 그 행이 답이다.
+    const live = rows.some((r) => !r.disabled);
+    let askIdx = q.objectives.findIndex((_, i) => !StoryStore.objectiveDone(q, i) && !(i === idx && live));
+    const answerable = askIdx >= 0;
+    if (!answerable) askIdx = idx;
+    const ask = (askIdx >= 0 ? progressAskOf(q.id, askIdx) : undefined) ?? PROGRESS_ASK_FALLBACK;
+    paras.push(`"${ask.askKo}"`);
+    if (answerable) rows.push({ label: ask.answerKo, action: () => this.answerProgress(q, ask) });
+    rows.push({ label: '나가기', action: () => this.onClose() });
     this.play(paras, rows, true);
+  }
+
+  /**
+   * 287차 — 진행 중 물음에 답했다: 내 말(주인공 칸) → 의뢰인의 조언 → 영업시간 주의(아직 안 산 가게 목표가 있으면 · 빨간 글) → [나가기].
+   */
+  private answerProgress(q: StoryQuestDef, ask: ProgressAskDef): void {
+    const paras: QItem[] = [
+      { cue: 'line', who: 'player', text: DialoguePanel.quote(ask.answerKo) },
+      { cue: 'line', who: this.npcId, text: DialoguePanel.quote(ask.replyKo) },
+      ...this.hoursHintParas(q, true),
+    ];
+    this.play(paras, [{ label: '나가기', action: () => this.onClose() }], true);
   }
 
   /**
@@ -834,41 +857,6 @@ export class DialoguePanel extends DraggablePanel {
       ? '"…부탁할 일이 있긴 한데, 지금은 너한테 맡길 마음이 안 든다."\n사이가 틀어져 의뢰를 내주지 않습니다. 일감을 돕다 보면 마음이 풀립니다.'
       : '"지금은 딱히 맡길 일이 없다."\n실력을 더 쌓거나 다른 의뢰를 마치고 다시 오세요.'];
     this.play(paras, [this.backRow(), this.exitRow()], true);
-  }
-
-  private objectiveLines(q: StoryQuestDef): string {
-    return q.objectives.map((o, i) => {
-      const done = StoryStore.objectiveDone(q, i);
-      const tgt = StoryStore.objectiveTarget(o);
-      const cur = o.actionKey
-        ? StoryStore.actionStep(q.id, i)
-        : (StoryStore.progress(q.id)?.obj[i] ?? 0);
-      const prog = o.actionKey || tgt > 1
-        ? ` (${Math.min(cur, tgt).toLocaleString()}/${tgt.toLocaleString()}${o.actionKey && done ? ' · 준비 완료!' : ''})`
-        : '';
-      const label = narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo;
-      // 188차 — ✓ 글리프(§8-8) 대신 말머리. 끝난 줄은 [완료], 남은 줄은 들여쓴 그대로.
-      return done ? `[완료] ${label}${prog}` : `- ${label}${prog}`;
-    }).join('\n');
-  }
-
-  /**
-   * 267차 — 진행 상황을 **말하듯**(1인칭 산문 — R4). 「사이소에서 저가 릴대를 사는 것은 끝냈다. 이제 테트라포드 틈에서 한 마리를 올리는 것이 남았다.」
-   * 사용자 「대화하듯 진행 상황을 전개 · 설명하듯 notice 해야 하는데 … 텍스트로만 나열하듯 적혀지고 있는게 이질감」.
-   * 영어는 문장 규칙이 한국어용이라 옛 목록을 그대로 쓴다.
-   * 274차 — 진행 중 화면에서만 쓴다(보고하는 자리의 「…도 끝냈다」 되짚기는 뺐다 — 곧바로 의뢰인의 말).
-   */
-  private progressNarration(q: StoryQuestDef): string {
-    if (getLocale() !== 'ko') {
-      const list = this.objectiveLines(q);
-      return StoryStore.allObjectivesDone(q) ? `${list}\n준비 완료! 대화를 닫고 다시 말을 걸면 제출할 수 있습니다.` : list;
-    }
-    const items: SpokenObjective[] = q.objectives.map((o, i) => {
-      const tgt = StoryStore.objectiveTarget(o);
-      const cur = o.actionKey ? StoryStore.actionStep(q.id, i) : (StoryStore.progress(q.id)?.obj[i] ?? 0);
-      return { label: narrativeOf(q.id)?.objectives?.[i] ?? o.labelKo, done: StoryStore.objectiveDone(q, i), cur, target: tgt };
-    });
-    return spokenProgressKo(items);
   }
 
   /**

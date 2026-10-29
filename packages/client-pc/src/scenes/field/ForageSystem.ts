@@ -215,6 +215,44 @@ const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePr
 };
 
 /**
+ * 287차 — dev 콘솔(F10) 갯것 지급. 사용자 「갯것 3마리를 dev 모드로 아이템 얻어서 강제 진행해보려고 해 …
+ * 해루질이나 작물에 대한 아이템 강제로 얻는 기능이 추가되지 않았더라고. 전부 추가해줘.」
+ * 실제로 캔 것과 같은 아이템을 만든다 — 미끼 갯것(쫄장게 · 갯강구 · 갯지렁이)은 미끼로, 그 밖은 가방 채집물(개체 id · 크기 · 무게).
+ * 쿨러는 거치지 않는다(가방에 바로). 법정 크기 미달은 다시 굴리고 외포란 표시는 떼어 둔다.
+ * `countGather`면 채집 1회로 친다(레벨 · 숙련 · 하루 기록 · 이야기 채집 목표 — 지역 조건은 지금 있는 지역으로 센다).
+ */
+export function devGrantForage(c: ShoreCreature, countGather: boolean): boolean {
+  if (!import.meta.env.DEV) return false;
+  const regionId = GameState.currentRegionId;
+  let res = rollForageHarvest(c, Math.random, regionId);
+  for (let i = 0; i < 30 && res.undersized; i++) res = rollForageHarvest(c, Math.random, regionId);
+  if (res.undersized) res = { ...res, sizeCm: resolveLegal(c, regionId).minLegalSizeCm, undersized: false };
+  let ok = false;
+  if (c.baitItemId) {
+    const seed = InventoryStore.seedTemplate(c.baitItemId);
+    const extra = BAIT_TEMPLATES[c.baitItemId];
+    const tpl = seed ?? (extra ? {
+      id: c.baitItemId, name: extra.name, icon: '', iconTexture: extra.iconTexture,
+      category: 'tackle' as const, subCategory: '생미끼', basePrice: extra.basePrice, condition: 'live' as const, equippable: false,
+    } : null);
+    ok = !!tpl && InventoryStore.addItem({ ...tpl, conditionSinceMs: Date.now() }, 1);
+  } else {
+    ok = InventoryStore.addItem({
+      id: `inv_forage_${c.id}_${InventoryStore.nextCatchSeq()}`, name: `${c.nameKo} (${res.sizeCm}cm)`, icon: '', iconTexture: forageTexKey(c),
+      category: 'food', subCategory: '채집물',
+      basePrice: Math.max(500, Math.round((res.weightG / 1000) * c.marketValuePerKg)),
+      condition: 'live', equippable: false,
+      speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true,
+      ...(res.sex ? { sex: res.sex } : {}),
+    }, 1);
+  }
+  if (!ok) return false;
+  DiscoveryStore.record('creature', c.id, 'dev');
+  if (countGather) GameState.addActivityXp('forage');
+  return true;
+}
+
+/**
  * 달아나는 녀석 상태(스팟별 — 세션 메모리).
  * 235차 — 어슬렁은 공용 시계 + 시드(`advanceRunner`)로, 도망은 공유 기록(`r:` 키)으로 정해진다.
  * 그래서 같은 세션의 모두가 같은 녀석을 같은 칸에서 본다. 놀람(`nerve`)만 내 화면의 일이다.

@@ -7,6 +7,7 @@
  *  - 재화 조작 / 스태미나·피로 회복
  *  - 아이템 지급·제거 (시드+상점 전 카탈로그 검색)
  *  - 어종 어획물 지급 (FISH_DATABASE 전 어종 — 활어·평균 밴드 랜덤)
+ *  - 287차 — 갯것(해루질) 지급(실제로 캔 것과 같은 개체 · 채집 1회로 셈 — 이야기 채집 목표가 오른다) · 작물 · 텃밭 물건 지급
  *  - 도감/위키 전체 해금·초기화 (DiscoveryStore)
  *  - 276차 — 모든 지역 열기(세계 지도 장 순서 잠금 건너뛰기 · 세이브 무관)
  *
@@ -23,6 +24,12 @@ import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { DevMode, setAllRegionsOpen } from './DevMode.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { StoryStore } from '../store/StoryStore.js';
+import { devGrantForage } from '../scenes/field/ForageSystem.js';
+import { CROP_ITEM_TEMPLATES, EARTHWORM_TEMPLATE } from '../data/CropItems.js';
+import { MILL_ITEM_TEMPLATES } from '../data/MillItems.js';
+import { CURE_ITEM_TEMPLATES } from '../data/CureItems.js';
+import { cropOfProduce } from '@tra/core';
+import type { InvItemTemplate } from '../store/InventoryStore.js';
 
 let mounted = false;
 let root: HTMLDivElement | null = null;
@@ -98,6 +105,8 @@ function buildPanel(): HTMLDivElement {
   buildPlayerSection(box);
   buildItemSection(box);
   buildFishSection(box);
+  buildForageSection(box);
+  buildFarmSection(box);
   buildDiscoverySection(box);
   buildLicenseSection(box);
   buildStoryActionSection(box);
@@ -343,6 +352,154 @@ function buildFishSection(box: HTMLElement): void {
       list.appendChild(row);
     }
   };
+  search.oninput = renderList;
+  renderList();
+}
+
+/** 검색 입력 한 칸(아이템 · 어종 칸과 같은 모양) */
+function searchInput(body: HTMLElement, placeholder: string): HTMLInputElement {
+  const search = document.createElement('input');
+  search.placeholder = placeholder;
+  Object.assign(search.style, {
+    width: '100%', boxSizing: 'border-box', marginBottom: '5px', padding: '4px 6px',
+    background: '#0e1c2d', color: '#e8f4fd', border: '1px solid #2a5a8a', borderRadius: '4px',
+    font: '11px "Noto Sans KR",sans-serif',
+  });
+  body.appendChild(search);
+  return search;
+}
+
+function listBox(body: HTMLElement, maxH: number): HTMLDivElement {
+  const list = document.createElement('div');
+  Object.assign(list.style, { maxHeight: `${maxH}px`, overflowY: 'auto', border: '1px solid #1f3d5a', borderRadius: '4px', padding: '3px' });
+  body.appendChild(list);
+  return list;
+}
+
+function listRow(list: HTMLElement, label: string, title: string): HTMLDivElement {
+  const row = document.createElement('div');
+  Object.assign(row.style, { display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 2px', borderBottom: '1px solid #16283a' });
+  const name = document.createElement('span');
+  name.textContent = label;
+  name.title = title;
+  Object.assign(name.style, { flex: '1', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
+  row.appendChild(name);
+  list.appendChild(row);
+  return row;
+}
+
+function smallBtn(row: HTMLElement, label: string, onClick: (b: HTMLButtonElement) => void, primary = false): void {
+  const b = document.createElement('button');
+  b.textContent = label;
+  styleBtn(b, primary);
+  b.style.marginRight = '0';
+  b.style.padding = '1px 5px';
+  b.onclick = () => onClick(b);
+  row.appendChild(b);
+}
+
+/**
+ * ④-2 갯것(해루질) 지급 — 287차. 실제로 캔 것과 같은 개체(크기 · 무게)가 가방에 들어온다(미끼 갯것은 미끼로).
+ * 「채집으로 셈」이 켜져 있으면 채집 1회로 쳐서 이야기 채집 목표(「제주 물가에서 갯것 셋」 등)가 오른다 — 지역 조건은 지금 있는 지역.
+ */
+function buildForageSection(box: HTMLElement): void {
+  const body = section(box, '④-2 갯것(해루질) 지급 (개체 · 랜덤 크기)');
+  const opt = document.createElement('label');
+  Object.assign(opt.style, { display: 'block', fontSize: '10px', color: '#8faabf', marginBottom: '4px' });
+  const chk = document.createElement('input');
+  chk.type = 'checkbox';
+  chk.checked = true;
+  opt.appendChild(chk);
+  opt.appendChild(document.createTextNode(' 채집으로 셈(레벨 · 이야기 채집 목표 — 지금 지역)'));
+  body.appendChild(opt);
+  const where = document.createElement('div');
+  Object.assign(where.style, { fontSize: '10px', color: '#5a8fab', marginBottom: '4px' });
+  body.appendChild(where);
+  const search = searchInput(body, '갯것 이름 검색…');
+  const list = listBox(body, 150);
+  const renderList = (): void => {
+    where.textContent = `지금 지역: ${GameState.currentRegionId}`;
+    list.textContent = '';
+    const q = search.value.trim();
+    const items = SHORE_CREATURE_DATABASE.filter((c) => !q || c.nameKo.includes(q) || c.category.includes(q));
+    for (const c of items) {
+      const row = listRow(list, `${c.nameKo}${c.baitItemId ? ' (미끼)' : ''}`, `${c.category} · ${c.id}`);
+      for (const n of [1, 3]) {
+        smallBtn(row, n === 1 ? '지급' : '×3', (b) => {
+          let got = 0;
+          for (let i = 0; i < n; i++) if (devGrantForage(c, chk.checked)) got++;
+          GameState.markDirty();
+          flash(b, got === n ? '✓' : got > 0 ? `${got}` : '가득');
+        }, n === 1);
+      }
+    }
+  };
+  search.oninput = renderList;
+  renderList();
+}
+
+/**
+ * ④-3 작물 · 텃밭 물건 지급 — 287차. 씨앗 · 모종 · 받은 씨앗 · 농산물(3등급) · 조각 · 먹는 부산물 · 밭 부산물 · 농사 도구 ·
+ * 방앗간 기름 · 갈무리 · 땅지렁이. 일반 아이템 칸(③)은 상위 60개만 보여 텃밭 물건을 찾기 어려웠다.
+ * 「거두기로 셈」이 켜져 있으면 농산물을 줄 때 그 작물을 한 번 거둔 것으로 친다(이야기 「거둔다」 목표).
+ */
+function buildFarmSection(box: HTMLElement): void {
+  const body = section(box, '④-3 작물 · 텃밭 물건 지급');
+  const all: InvItemTemplate[] = [...CROP_ITEM_TEMPLATES, ...MILL_ITEM_TEMPLATES, ...CURE_ITEM_TEMPLATES, EARTHWORM_TEMPLATE];
+  const subs = ['전체', ...new Set(all.map((t) => t.subCategory))];
+  const bar = document.createElement('div');
+  Object.assign(bar.style, { display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '4px' });
+  body.appendChild(bar);
+  let sub = '전체';
+  const opt = document.createElement('label');
+  Object.assign(opt.style, { display: 'block', fontSize: '10px', color: '#8faabf', marginBottom: '4px' });
+  const chk = document.createElement('input');
+  chk.type = 'checkbox';
+  chk.checked = false;
+  opt.appendChild(chk);
+  opt.appendChild(document.createTextNode(' 농산물은 거두기로 셈(이야기 「거둔다」 목표)'));
+  body.appendChild(opt);
+  const search = searchInput(body, '작물 · 물건 이름 검색…(예: 상추 · 참깨 · 시래기)');
+  const count = document.createElement('div');
+  Object.assign(count.style, { fontSize: '10px', color: '#5a8fab', marginBottom: '3px' });
+  body.appendChild(count);
+  const list = listBox(body, 210);
+  const renderList = (): void => {
+    list.textContent = '';
+    const q = search.value.trim();
+    const hit = all.filter((t) => (sub === '전체' || t.subCategory === sub) && (!q || t.name.includes(q) || t.id.includes(q)));
+    const shown = hit.slice(0, 120);
+    count.textContent = `${hit.length}개${hit.length > shown.length ? ` 중 ${shown.length}개 — 검색으로 좁히세요` : ''}`;
+    for (const t of shown) {
+      const held = InventoryStore.find(t.id)?.qty ?? 0;
+      const row = listRow(list, `${t.name}${held > 0 ? `  ×${held}` : ''}`, `${t.subCategory} · ${t.id} · ${t.basePrice.toLocaleString()}원`);
+      for (const [label, n] of [['+1', 1], ['+10', 10], ['+최대', 99], ['−1', -1]] as const) {
+        smallBtn(row, label, () => {
+          if (n > 0) {
+            if (InventoryStore.addItem({ ...t, conditionSinceMs: Date.now() }, n)) {
+              DiscoveryStore.record('item', t.id, 'dev');
+              const crop = chk.checked ? cropOfProduce(t.id) : undefined;
+              if (crop) StoryStore.event({ kind: 'farm', action: 'harvest', cropId: crop.id });
+            }
+          } else InventoryStore.removeQty(t.id, 1);
+          GameState.markDirty();
+          renderList();
+        });
+      }
+    }
+  };
+  for (const name of subs) {
+    const b = document.createElement('button');
+    b.textContent = name;
+    styleBtn(b, name === sub);
+    b.style.padding = '1px 5px';
+    b.onclick = () => {
+      sub = name;
+      for (const x of Array.from(bar.children) as HTMLButtonElement[]) styleBtn(x, x.textContent === sub);
+      renderList();
+    };
+    bar.appendChild(b);
+  }
   search.oninput = renderList;
   renderList();
 }

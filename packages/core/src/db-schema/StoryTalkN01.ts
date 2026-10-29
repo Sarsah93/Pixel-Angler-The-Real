@@ -73,7 +73,7 @@ export const TALKS_N01: StoryTalkDef[] = [
         line(B, '고맙군.', "Thanks."),
         act(B, 'give', { to: P, item: 'inv_cigarette_pack' }),
         line(B, '내가 신뢰하는 남자에겐 담배 한 갑도 곧바로 줄 수 있다네.', "For a man I trust, I'd hand over a whole pack of cigarettes on the spot.",
-          { f: ['내가 신뢰하는 사람에겐 담배 한 갑도 곧바로 줄 수 있다네.', "For someone I trust, I'd hand over a whole pack of cigarettes on the spot."] }),
+          { f: ['내가 신뢰하는 여자에겐 담배 한 갑도 곧바로 줄 수 있다네.', "For a woman I trust, I'd hand over a whole pack of cigarettes on the spot."] }),
         give(B, { items: [{ id: 'inv_cigarette_pack', qty: 1 }], affinity: { [B]: 0.25 } }),
         line(P, '…그렇게까지 말씀해 주시니… 감사합니다.', "...Coming from you... thank you.", { act: 'receive' }),
         line(B, '자네 생각엔 그럼 어떻게 도와줄 수 있겠나?', 'So how do you think you could help?'),

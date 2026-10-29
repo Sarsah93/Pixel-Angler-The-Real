@@ -22,7 +22,7 @@ import {
   REGION_DATABASE, WORLD_NODE_DATABASE, REGION_AREA_NODES, REGION_MAP_GRAPHS, allSeamlessRegionDefs,
   DATA_ATTRIBUTIONS, LICENSE_LABEL, LICENSE_LABEL_EN,
   CRAFT_BLUEPRINTS, CRAFT_GROUP_LABEL, CRAFT_STATION_LABEL, CRAFT_QUALITY_LABEL,
-  allChoiceLines, allNarrativeLines, allInquiryLines, allTalkLines,
+  allChoiceLines, allNarrativeLines, allInquiryLines, allTalkLines, allProgressAskLines,
   FIRE_RECIPES, COOK_INGREDIENTS, HEAT_SOURCES, COOKWARES, FUELS,
   RECIPE_LORE, DISH_VARIANT_LORE, RECIPE_EFFECTS, FOOD_EFFECT_KIND_KO, DISH_MODIFIER_KO, DISH_MODIFIER_EN, allDishVariantLines,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel,
@@ -197,6 +197,7 @@ function buildRuntimeDict(): void {
   for (const [ko, en] of allInquiryLines()) put(ko, en);   // 253차 — 물어보기(화제 · 물음 · 답 · 단락)
   for (const [ko, en] of allTalkLines()) put(ko, en);   // 254차 — 이어지는 대화 · 결말(단락 짝 포함)
   for (const [ko, en] of allNarrativeLines()) put(ko, en);   // 151차 — 퀘스트 나레이션 186편
+  for (const [ko, en] of allProgressAskLines()) put(ko, en);   // 287차 — 진행 중 물음 · 내 답 · 조언
   for (const [ko, en] of allCinematicLines()) put(ko, en);   // 165차 — 컷씬 각본
   for (const [ko, en] of allQuestSceneLines()) put(ko, en);   // 167차 — 퀘스트 장면 손글 각본
   for (const t of STORY_FIELD_TRIGGERS) {

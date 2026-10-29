@@ -1464,8 +1464,9 @@ export class JournalPanel extends DraggablePanel {
       if (n?.done) parts.push(`"${n.done}"`);
       if (n?.epilogue) parts.push(n.epilogue);
     } else {
-      const line = st === 'active' ? n?.progress ?? n?.offer : n?.offer;
-      if (line) parts.push(`"${line}"`);
+      // 287차 — 진행 중에도 맡긴 말(`offer`)을 둔다 — 옛 진행 중 한 줄(`progress`)은 자문자답이라 지웠고,
+      //  무엇이 얼마나 남았는지는 아래 목표 바가 보여 준다(대화창에서 뺀 진행 나레이션은 일지가 맡는다 — 사용자 지시)
+      if (n?.offer) parts.push(`"${n.offer}"`);
     }
     // 254차 — 이 편이 이야기의 결말을 정한 편이면 다다른 결말(제목 · 한두 문장)
     if (st === 'done') {

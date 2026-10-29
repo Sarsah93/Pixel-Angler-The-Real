@@ -107,6 +107,8 @@ export interface StoryHost {
   heldLicenses(): string[];
   level(): number;
   coins(): number;
+  /** 287차 — 지금 서 있는 지역(받는 순간 「○○에 도착한다」 목표를 바로 센다) */
+  currentRegion?(): string;
   setFlag(k: string, v?: boolean): void;
   markQuestDone(id: string): void;
   markDirty(): void;
@@ -1405,6 +1407,10 @@ class StoryStoreManager {
       if (o.kind === 'reachLevel') p.obj[i] = Math.max(p.obj[i] ?? 0, this.host?.level() ?? 1);
       if (o.kind === 'earn') p.obj[i] = Math.max(p.obj[i] ?? 0, this.host?.coins() ?? 0);
       if (o.kind === 'license' && o.licenseId && this.host?.heldLicenses().includes(o.licenseId)) p.obj[i] = this.objectiveTarget(o);
+      // 287차 — 「○○에 도착한다」(`region:*`)는 지역에 내릴 때만 셌다 → 그 지역 안에서 받으면 다시 들어올 때까지 안 닫혔다
+      //  (포항 남궁현 N10-4 · 울릉 오세라 M6-01 · 태안 M4-07 · N13-3 · 부산 N06-4 — 287 집필 작업자 보고)
+      const here = this.host?.currentRegion?.();
+      if (o.kind === 'visit' && here && o.placeKey === `region:${here}`) p.obj[i] = this.objectiveTarget(o);
     });
   }
 
