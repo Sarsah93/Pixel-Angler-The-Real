@@ -100,6 +100,7 @@
   바람 「신뢰하는 남자에겐」 → 여자 주인공 「여자에겐」 · F10 「④-2 갯것」(실제 개체 · 채집으로 셈 → 「갯것 셋」 목표) · 「④-3 작물」(갈래 칩 · 541개) ·
   「○○에 도착한다」를 그 지역 안에서 받으면 받는 순간 셈(`StoryHost.currentRegion`) · 위키 편마다 「아직 끝나지 않았을 때」 = 목표마다 물음 · 내 답 · 조언 ·
   검증 = 하네스 17/17 · 전 편 훑기 350/351 · core 410 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개(위키 84).
+  main 빨리 감기(`4186cfc`) · 95차 배포(실행 24 · gh-pages `6768723` · 4xx 0 · pageerror 0).
   **다음 = 사용자 확인 → 나머지 190편 대본 · 기존 대사 속 주인공 성별 말 → 288 해루질 규제 · 입질(백로그 DC)**. 상세 `docs/wiki/03-WORKLOG/2026-10-29-287-progress-ask-dev-forage-crops.md`.
 - **286차**: **주고받는 대본 · 몸짓 동안 말 멈춤 · 「해녀의 딸」 시범 · 일지 스크롤바 · 아이콘 점검** —
   사용자 「담배를 꺼내 문 상태에서, 연기를 내뿜을 때 실제로 사람이 말을 하면서 저 동작을 동시에 할 순 없잖아? … 갑자기 대화 코멘트가 열리거나 그러지 않았으면」 →
@@ -218,9 +219,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `b67a842` — **최근 94차 배포 2026-10-29 = 286차 코드까지 포함**(286 주고받는 대본 · 몸짓 동안 말 멈춤 · 「해녀의 딸」 · 일지 스크롤바 · 보상 아이콘) —
-  main `9c4194f` · 실행 23 · 정적 2,119(소스맵 0) · 기동 15.8초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0 · pageerror 0. main은 2026-10-29 사용자 지시로 작업 브랜치에 빨리 감기했다(286차).
-  ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범은 로컬 dev에서 F10 「①-3」으로 본다.
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `6768723` — **최근 95차 배포 2026-10-30 = 287차 코드까지 포함**(287 진행 중 물음 · 진행 나레이션 빼기 · 바람 「여자에겐」 · 지역 도착 목표) —
+  main `4186cfc` · 실행 24 · 정적 2,119(소스맵 0) · 기동 19.6초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-10-29 사용자 지시로 작업 브랜치에 빨리 감기했다(287차).
+  ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 84 = 287**(시스템 「진행 중 물음」 · 83 = 286 · 82 = 285)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
