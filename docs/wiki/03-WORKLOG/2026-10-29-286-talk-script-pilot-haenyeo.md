@@ -5,7 +5,7 @@
 | **날짜** | 2026-10-29 |
 | **시스템** | `스토리` `대화` `UI` `필드` `에셋` `세이브` `데이터` |
 | **트리거** | 사용자 지시(285차 끝에 받은 대화 비평 · 「해녀의 딸」 대본) + 진행 중 추가 질문 둘 |
-| **커밋** | 미커밋(작업 브랜치에 올림 — 이 문서와 같은 커밋) |
+| **커밋** | `9c4194f`(작업 브랜치 · main 빨리 감기) · 94차 배포 gh-pages `b67a842` |
 | **빌드·타입체크** | 3/3 · 0 오류 · core 시험 404 |
 
 ---
@@ -130,4 +130,6 @@
 - [x] 아티팩트 4개 — 위키 [Version 83](https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c)(「주고받는 대화 · 몸짓」 절 · 새 그림 파일 0) ·
   남은 과업 설계 [29](https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4) · 구현 라이브러리 [30](https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5) ·
   채비 모딩 순서도 [28](https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1)(「286차 기준」 줄)
+- [x] main 빨리 감기(`5940351` → `9c4194f` — 사용자 지시) · **94차 배포**(Actions 「테스트 배포」 실행 23 · gh-pages `b67a842` · 정적 2,119 · 소스맵 0) —
+  gh-pages를 로컬로 띄워 기동 15.8초 · 4xx 0 · pageerror 0 · 새 텍스처(`item_rw_xp` · `item_qi_tide_sample` · `item_cigarette_pack`) 로드. 배포본에는 F10이 없다(시범은 로컬 dev).
 - [x] 스킬 — `verify-render`(안내 말풍선이 실마우스를 막음 · 대본 장면 하네스) · `asset-pipeline` ⑤-b(16px UI 아이콘을 그림으로)

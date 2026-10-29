@@ -99,6 +99,7 @@
   거절 = 실패(`story.failed` · `isClosed`) · 일지 대화 요약 · 서귀포 바람 · 해솔 · 부순덕 · 담배 한 갑 · F10 「대본 시범 — 해녀의 딸」 ·
   사용자 추가 질문 → 할 일 스크롤바 누르기 · 끌기 · 보상 아이콘 6 · 퀘스트 물건 4(Gemini) · `addPixelIcon` 비정수 크기 매끈한 판 ·
   검증 = core 시험 404 · 하네스 19 + 4 + 5 + 7 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
+  main 빨리 감기(`9c4194f`) · 94차 배포(실행 23 · gh-pages `b67a842` · 4xx 0 · pageerror 0).
   **다음 = 사용자 시범 확인(로컬 dev F10) → 나머지 190편 대본 → 287 해루질 규제 · 입질(백로그 DC)**. 상세 `docs/wiki/03-WORKLOG/2026-10-29-286-talk-script-pilot-haenyeo.md`.
 - **285차**: **방앗간 알림 · 갈무리 · 씨 받기 · 런너 · 생기름 · 압맥 · 나물 볶음 이름 · main 반영 · 93차 배포** —
   사용자 「이번 차수에서 언급된 '뒤로 미룬 것' … 다 반영하기 … 아티팩트, main 반영 및 재배포」 →
@@ -216,8 +217,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `695b690` — **최근 93차 배포 2026-10-29 = 285차 코드까지 포함**(285 방앗간 알림 · 갈무리 · 씨 받기 · 생기름 · 압맥 · 나물 이름 · 284 부산물 · 방앗간) —
-  main `5940351` · 실행 22 · 정적 2,095(소스맵 0) · 기동 10.3초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0 · pageerror 0. main은 2026-10-29 사용자 지시로 작업 브랜치에 빨리 감기했다(284 · 285차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `b67a842` — **최근 94차 배포 2026-10-29 = 286차 코드까지 포함**(286 주고받는 대본 · 몸짓 동안 말 멈춤 · 「해녀의 딸」 · 일지 스크롤바 · 보상 아이콘) —
+  main `9c4194f` · 실행 23 · 정적 2,119(소스맵 0) · 기동 15.8초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0 · pageerror 0. main은 2026-10-29 사용자 지시로 작업 브랜치에 빨리 감기했다(286차).
+  ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범은 로컬 dev에서 F10 「①-3」으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 83 = 286**(시스템 「주고받는 대화 · 몸짓」 · 82 = 285 · 80 = 284)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)

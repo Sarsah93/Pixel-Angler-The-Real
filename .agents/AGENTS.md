@@ -325,7 +325,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   block 동안 대화창은 새 말 · ▼ · 누름 없음 · 말하는 사람 초상 · 이름 · 목소리 · 고른 말 = 실제 말 · 거절 = 실패(`story.failed`) · 일지 요약 · 필드 무대(`DialogueStage`).
 - N01-5 다시 씀(사용자 대본 · 해솔 · 부순덕 · 서귀포 · 담배 한 갑) · F10 「대본 시범 — 해녀의 딸」.
 - 할 일 스크롤바 누르기 · 끌기 · 보상 아이콘 6 · 퀘스트 물건 4(Gemini) · `addPixelIcon` 비정수 크기 매끈한 판 · 「탈진」 색.
-- 검증: core 404 · 하네스 19 + 4 + 5 + 7 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. 다음 = 사용자 시범 확인 → 190편(백로그 DC).
+- 검증: core 404 · 하네스 19 + 4 + 5 + 7 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main `9c4194f` · 94차 배포(gh-pages `b67a842`).
+  다음 = 사용자 시범 확인 → 190편(백로그 DC).
   상세: [286차 워크로그](../docs/wiki/03-WORKLOG/2026-10-29-286-talk-script-pilot-haenyeo.md).
 
 **이전 변경 (2026-10-29 285차) — 방앗간 알림 · 갈무리 · 씨 받기 · 생기름 · 압맥 · 나물 볶음 이름 · main · 93차 배포**
