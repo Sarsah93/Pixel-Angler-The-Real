@@ -36,6 +36,24 @@ import {
   type MpPlaceItem, type MpPlacedSyncRes,
 } from '@tra/core';
 
+const FACINGS: readonly MpPeer['facing'][] = ['down', 'up', 'left', 'right'];
+const ACTIVITIES: readonly MpActivity[] = ['field', 'fishing', 'shop', 'indoor', 'menu', 'cinematic', 'foraging'];
+/** 외형(`look`) · 프로필을 JSON으로 펼쳤을 때의 글자 수 상한 — 넘으면 새 값을 버리고 이전 값을 유지한다 */
+const LOOK_MAX_JSON = 2_000;
+const PROFILE_MAX_JSON = 4_000;
+/** 지도 좌표 한계(px) — 유한한 수가 아니면 0 */
+const COORD_LIMIT = 1_000_000;
+
+function cleanStr(v: unknown, max: number): string { return typeof v === 'string' ? v.slice(0, max) : ''; }
+function cleanCoord(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) ? Math.max(-COORD_LIMIT, Math.min(COORD_LIMIT, v)) : 0;
+}
+/** 객체 모양이고 JSON 크기가 상한 이내인 값만 받는다 — 아니면 undefined */
+function cleanBlob<T>(v: T | undefined, maxJson: number): T | undefined {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+  try { return JSON.stringify(v).length <= maxJson ? v : undefined; } catch (_e) { return undefined; }
+}
+
 interface SessionPlayer extends MpPeer {
   /** 재접속 열쇠 — 게임을 껐다 켜도 이 id로 같은 자리에 돌아온다 */
   userId: string;
@@ -154,6 +172,7 @@ export class SessionRegistry {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
 
+    if (typeof userId !== 'string' || userId.length > 128) return { ok: false, reasonKo: '요청이 올바르지 않습니다.' };
     const prior = userId ? [...s.players.values()].find((p) => p.userId === userId) : undefined;
     const chk = this.checkName(code, name, userId);
     if (!chk.ok) return { ok: false, duplicate: chk.duplicate, reasonKo: chk.reasonKo };
@@ -172,7 +191,7 @@ export class SessionRegistry {
       const playerId = this.newPlayerId();
       const revived: SessionPlayer = {
         ...prior, playerId, name: name.trim(), nameKey: characterNameKey(name),
-        look: look ?? prior.look, lastSeenMs: Date.now(), offline: false, token: newToken(),
+        look: cleanBlob(look, LOOK_MAX_JSON) ?? prior.look, lastSeenMs: Date.now(), offline: false, token: newToken(),
       };
       s.players.set(playerId, revived);
       s.dirty = true; this.save(code);
@@ -186,7 +205,7 @@ export class SessionRegistry {
     const token = newToken();
     s.players.set(playerId, {
       playerId, userId: userId || playerId, name: name.trim(), nameKey: characterNameKey(name),
-      regionId: '', x: 0, y: 0, facing: 'down', moving: false, activity: 'field', look,
+      regionId: '', x: 0, y: 0, facing: 'down', moving: false, activity: 'field', look: cleanBlob(look, LOOK_MAX_JSON),
       lastSeenMs: Date.now(), offline: false, token,
     });
     s.dirty = true; this.save(code);
@@ -239,12 +258,14 @@ export class SessionRegistry {
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
     const me = this.authed(s, playerId, token);
     if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
-    me.regionId = pos.regionId;
-    me.x = pos.x; me.y = pos.y;
-    me.facing = pos.facing; me.moving = pos.moving;
-    me.activity = pos.activity ?? 'field';
-    if (pos.look) me.look = pos.look;
-    if (pos.profile) me.profile = pos.profile;
+    // 위치 알림은 전원에게 되돌아가므로 모양·크기를 서버가 한 번 걸러 받는다(하모니 점검)
+    me.regionId = cleanStr(pos.regionId, 64);
+    me.x = cleanCoord(pos.x); me.y = cleanCoord(pos.y);
+    me.facing = FACINGS.includes(pos.facing) ? pos.facing : 'down';
+    me.moving = pos.moving === true;
+    me.activity = ACTIVITIES.includes(pos.activity as MpActivity) ? pos.activity : 'field';
+    const look = cleanBlob(pos.look, LOOK_MAX_JSON); if (look) me.look = look;
+    const profile = cleanBlob(pos.profile, PROFILE_MAX_JSON); if (profile) me.profile = profile;
     me.lastSeenMs = Date.now();
     me.offline = false;
 
