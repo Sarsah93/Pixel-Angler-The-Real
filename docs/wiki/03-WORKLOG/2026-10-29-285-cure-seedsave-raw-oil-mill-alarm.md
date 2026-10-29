@@ -118,4 +118,5 @@
   - 남은 과업 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 **Version 28**(추천 순서 1 = 286 ~ 288)
   - 구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 **Version 29**
   - 채비 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 27**(「285차 기준」 줄 · 문법 258)
-- [ ] main 빨리 감기 · 93차 배포 — 아래 배포 기록 커밋에서 채운다
+- [x] main 빨리 감기 `54373e4..5940351`(284 · 285) · **93차 배포** — Actions 「테스트 배포」 실행 22 → gh-pages `695b690` ·
+  배포본 점검(gh-pages 브랜치를 로컬 서버로 — 컨테이너에서 라이브 주소는 닿지 않는다): 파일 2,095 · 소스맵 0 · 새 그림 10 포함 · 기동 10.3초 · 4xx 0 · pageerror 0

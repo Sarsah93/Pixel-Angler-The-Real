@@ -324,7 +324,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 284 「뒤로 미룬 것」 전부 → 다 됐을 때 채널 · 손목시계 알람(삐빅 × 3 + 알림 창) · 방앗간 문 위 · 지도 초록 느낌표(`ui/MillNotifier`).
 - 텃밭 건조 걸대 · 장독(core `rules/HomeCure.ts` · `CureQueue` · `CurePanel`) — 말린 시래기 · 옥수수수염차 · 깻잎 · 콩잎 장아찌(실제 날짜).
 - 씨 받기 · 씨앗으로 덜기 · 받은 씨앗(`seed_x_saved` — ×0.92 · 교잡종 ×0.85) · 딸기 런너 · 생기름 4병 · 압맥 · 「토란대 들깨볶음」(나물 13 × 2).
-- 검증: core 392 · 하네스 21/21 · 8/9 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. 다음 = 286 대화 체계(백로그 DC).
+- 검증: core 392 · 하네스 21/21 · 8/9 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main `5940351` · 93차 배포(gh-pages `695b690`). 다음 = 286 대화 체계(백로그 DC).
   상세: [285차 워크로그](../docs/wiki/03-WORKLOG/2026-10-29-285-cure-seedsave-raw-oil-mill-alarm.md).
 
 **이전 변경 (2026-10-28 284차) — 작물 부산물 전수 · 낱알 무게(g) · 봉지 · 방앗간(180 · 350ml) · 나물 볶음**
