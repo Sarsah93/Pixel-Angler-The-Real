@@ -1,12 +1,12 @@
 {
- "date": "2026-10-29",
- "audited_commit": "54373e4d89e949c85acf31709e2145c808949860",
+ "date": "2026-10-30",
+ "audited_commit": "4186cfc1b2c22fd6fb3a8ce828f2c279281d6ebd",
  "summary": {
-  "harmony_index": 52.2,
-  "balance": 53.0,
+  "harmony_index": 54.9,
+  "balance": 69.3,
   "weakest": "q5-security",
-  "found_today": 0,
-  "fixed_today": 0,
+  "found_today": 1,
+  "fixed_today": 2,
   "scoring_version": 2
  },
  "lanes": {
@@ -101,24 +101,24 @@
   "q5-security": {
    "name": "⑤ 보안·계정·서비스",
    "kind": "product",
-   "health": 41.0,
-   "scenarios": 0.0,
+   "health": 47.0,
+   "scenarios": 33.3,
    "agency": null,
-   "overall": 25.6,
+   "overall": 41.9,
    "scenario_total": 6,
-   "scenario_recent": 0,
+   "scenario_recent": 2,
    "open_findings": {
     "심각": 1,
-    "보통": 6,
+    "보통": 5,
     "경미": 4
    },
-   "found_today": 0,
-   "fixed_today": 0,
+   "found_today": 1,
+   "fixed_today": 2,
    "decisions": {
     "merged": 0,
     "closed": 0
    },
-   "open_proposals": 0
+   "open_proposals": 1
   },
   "q6-access": {
    "name": "⑥ 접근성·사용성",
@@ -187,5 +187,5 @@
    "open_proposals": 1
   }
  },
- "previous_date": "2026-10-28"
+ "previous_date": "2026-10-29"
 }

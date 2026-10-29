@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "next_id": 24,
+ "next_id": 25,
  "proposals": [
   {
    "id": "P-0001",
@@ -429,6 +429,21 @@
    ],
    "origin": "일일 점검 S3-07",
    "lane": "q3-flow"
+  },
+  {
+   "id": "P-0024",
+   "date": "2026-10-30",
+   "domain": "q5-security",
+   "kind": "적용",
+   "title": "위치 알림·입장 입력 모양/크기 검증",
+   "pr": 15,
+   "branch": "harmony/2026-10-30-presence-validate",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0101"
+   ],
+   "lane": "q5-security"
   }
  ]
 }

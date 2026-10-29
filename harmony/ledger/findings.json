@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "next_id": 100,
+ "next_id": 102,
  "findings": [
   {
    "id": "F-0001",
@@ -54,11 +54,12 @@
     "packages/server/src/multiplayer/SessionRegistry.ts:644"
    ],
    "why": "인증 없는 세션 생성 · 참가 경로로 파일과 메모리가 한도 없이 늘 수 있다. 공개 호스팅 전에 정해야 한다.",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null,
-   "lane": "q5-security"
+   "resolved_at": "2026-10-30",
+   "lane": "q5-security",
+   "resolution": "guards.ts CORS 허용 목록 · rateLimit, MP_MAX_SESSIONS/LIVE_PLAYERS/SEATS, express.json 512kb 상한 확인"
   },
   {
    "id": "F-0004",
@@ -790,9 +791,10 @@
    "why": "같은 세션의 상대가 보낸 값이 받는 사람 가방에 그대로 들어가고 거래 자동 저장이 세이브에 굳힌다. 표시(name · qty)와 실제 지급(payload)이 다른 필드다. 세션 코드를 아는 참가자에 한한다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-10-30",
    "resolved_at": null,
-   "lane": "q5-security"
+   "lane": "q5-security",
+   "note": "서버 setTradeOffer가 sanitizeTradeItems/Coins 적용 확인(30일 재검토: 받는 쪽 적용 검증은 미확인)"
   },
   {
    "id": "F-0044",
@@ -965,11 +967,12 @@
     "packages/server/src/multiplayer/SessionRegistry.ts:84"
    ],
    "why": ".env의 KMA_API_KEY · KHOA_API_KEY · MP_SESSION_DIR가 적용되지 않는다(셸 환경 변수만 통한다).",
-   "status": "열림",
+   "status": "해소",
    "first_seen": "2026-10-08",
    "last_seen": "2026-10-08",
-   "resolved_at": null,
-   "lane": "q5-security"
+   "resolved_at": "2026-10-30",
+   "lane": "q5-security",
+   "resolution": "index.ts 첫 import가 'dotenv/config' 확인"
   },
   {
    "id": "F-0054",
@@ -1842,6 +1845,23 @@
    "last_seen": "2026-10-28",
    "status": "열림",
    "pr": 14
+  },
+  {
+   "id": "F-0101",
+   "lane": "q5-security",
+   "severity": "보통",
+   "title": "위치 알림·입장이 지역 id·좌표·방향·외형·프로필의 모양과 크기를 확인하지 않고 전원에게 되돌린다",
+   "evidence": "packages/server/src/multiplayer/SessionRegistry.ts presence · join",
+   "why": "요청 본문 상한(512kb)만 있고 필드 검증 없음, 1초 폴링마다 모든 접속자에게 중계 · 디스크 저장",
+   "repro": "로컬 레지스트리에 숫자가 아닌 좌표와 큰 외형 객체를 넣고 다른 접속자의 응답 확인(약 145KB)",
+   "expected": "유한한 좌표 · 허용 목록 값 · 작은 객체만",
+   "actual": "그대로 저장 · 중계",
+   "player_impact": "변조된 클라이언트 하나가 모든 접속자의 폴링 응답을 키우거나 이름표 좌표를 깨뜨림",
+   "pattern": "BP-37",
+   "first_seen": "2026-10-30",
+   "last_seen": "2026-10-30",
+   "status": "열림",
+   "pr": 15
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."
