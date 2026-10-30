@@ -113,7 +113,10 @@
 - [x] 시스템 페이지 [`story-quests.md`](../02-SYSTEMS/story-quests.md) · [`world-field.md`](../02-SYSTEMS/world-field.md)
 - [x] `04-BACKLOG.md` · `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 **Version 36** ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 **Version 37** · 채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 35** ·
-  위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c **Version 90**(지도 탭 = 포항 · 해금강 · 안흥 · 만리포 다시 찍음 — 시트 22 + 축소판 4 · `files`로 26장 교체 · pageerror 0)
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 **Version 37** ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 35** ·
+  위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c **Version 90**
+  (지도 탭 = 포항 · 해금강 · 안흥 · 만리포 다시 찍음 — 시트 22 + 축소판 4 · `files`로 26장 교체 · pageerror 0)
 - [x] main 빨리 감기 `7453cda` → `06340b3`(27 커밋 · CI 검증 #69 초록) · **97차 배포** = Actions 「테스트 배포」 실행 26 → gh-pages `9fa6c6d`
-  (정적 2,121 · 소스맵 0 · 로컬로 띄워 점검 `deploy292.cjs` — 기동 11.3초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0 · 번들에 낚시용품점 · 야간 입고 정리 · 인사말 · 라디오 부산 · 손 POI 6 실림 · dev 해루질 칸 없음)
+  (정적 2,121 · 소스맵 0 · 로컬로 띄워 점검 `deploy292.cjs` — 기동 11.3초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0).
+  번들에 낚시용품점 · 야간 입고 정리 · 인사말 · 라디오 부산 · 손 POI 6이 실렸고 dev 해루질 칸은 없다.
