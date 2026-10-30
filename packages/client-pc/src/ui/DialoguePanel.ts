@@ -57,7 +57,7 @@ import { STORY_FIELD_TRIGGERS } from '../data/StoryNpcs.js';
 import { clampTextWidth } from './TextFit.js';
 import { ensureFacePortrait } from './CharacterSprite.js';
 import { applyScreenFixed } from './DraggablePanel.js';
-import { t } from '../i18n/I18n.js';
+import { t, getLocale } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
 import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, particle, progressAskOf, PROGRESS_ASK_FALLBACK, fillPlayerName, type ProgressAskDef } from '@tra/core';
@@ -1291,21 +1291,29 @@ export class DialoguePanel extends DraggablePanel {
     return new Phaser.Geom.Rectangle(this.x + TEXT_X - 4, top, TEXT_W + 8, this.y + this.panelH - 8 - top);
   }
 
-  /** 일감(품삯) — 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기 */
+  /**
+   * 일감(품삯) — 품삯은 우호도 배율이 곱해진 **지급될 값** 그대로 표기.
+   * 293차 — 서두는 그 사람이 하는 말(`DayJobDef.askKo` — 지금 줄 수 있는 첫 일감의 말 · 없으면 첫 일감). 구: 「손이 모자랄 때 부르는 일이다 …」
+   *   정의문이 따옴표에 담겨 찍혔다(사용자 「이 부분도 수정해줘」 — R4 나레이션은 정의문 요약이 아니다). 이름 · 설명 · 작업 로그도 로케일로 고른다.
+   */
   private enterJobs(): void {
-    const paras = ['"손이 모자랄 때 부르는 일이다. 사이가 좋으면 품삯을 더 쳐주고, 틀어지면 일을 주지 않는다."'];
+    const en = getLocale() === 'en';
+    const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
+    const lead = jobs.find((j) => !j.locked && j.remaining > 0) ?? jobs[0];
+    const ask = lead ? (en ? lead.job.askEn : lead.job.askKo) : '';
+    const paras = ask ? [`"${ask}"`] : [];
     const rows: ChoiceRow[] = [];
-    for (const { job, remaining, locked } of StoryStore.jobsOfNpc(this.npcId, this.regionId)) {
+    for (const { job, remaining, locked } of jobs) {
       const can = !locked && remaining > 0;
       const wage = StoryStore.jobWage(job).toLocaleString();
       rows.push({
-        label: `${job.nameKo} — ${wage}원 · 오늘 ${remaining}/${job.perDay}회`,
-        hint: locked ?? (remaining > 0 ? job.descKo : '오늘 몫은 다 했습니다'),
+        label: `${en ? job.nameEn : job.nameKo} — ${wage}원 · 오늘 ${remaining}/${job.perDay}회`,
+        hint: locked ?? (remaining > 0 ? (en ? job.descEn : job.descKo) : '오늘 몫은 다 했습니다'),
         disabled: !can,
         action: () => {
           const res = StoryStore.work(job.id);
           this.lastWorkMsg = res.ok
-            ? `${res.flavorKo ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)`
+            ? `${(en ? job.flavorEn : res.flavorKo) ?? ''} (품삯 ${(res.wage ?? 0).toLocaleString()}원)`
             : `일할 수 없습니다 — ${res.reason ?? ''}`;
           this.enterJobs();
         },

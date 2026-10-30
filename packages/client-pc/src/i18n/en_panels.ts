@@ -388,6 +388,11 @@ export const EN_PANELS: Record<string, string> = {
     'The moment the tip reaches the gap where the shell lifts a little (blue), press the left button (or Space) to wedge it in. Fill every circle and it comes free.',
   '묻힌 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.':
     'This one is buried. Hold the left button (or Space) to dig. The bar on the right is how much noise you are making.',
+  // 293차 — 파기 안내 둘째 문장(구멍 메워짐 삭제) · 셋째 문장(닿으면 잡힌다)
+  '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 손을 떼고 쉬면 조용히 올라온다. 파고 쉬는 박자를 찾자.':
+    'Too much noise and it flinches and burrows deeper. Let go and rest and it creeps back up. Find the rhythm of digging and resting.',
+  '도구 끝이 녀석에게 닿으면 잡힌다 — 구멍 바닥이 녀석 그림에 겹치는 순간이다.':
+    'The moment the tip of your tool touches it, it is caught — when the bottom of the hole overlaps its picture.',
   '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 손을 떼고 쉬면 조용히 올라오지만 판 구멍도 조금씩 메워진다. 파고 쉬는 박자를 찾자.':
     'Too much noise and it flinches and burrows deeper. Let go and rest and it creeps back up — but your hole slowly fills in. Find the rhythm of digging and resting.',
   '바위 틈에 숨은 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 끌어낸다. 아래 막대가 줄의 긴장이다 — 밝은 칸 안에서만 끌려 나온다.':

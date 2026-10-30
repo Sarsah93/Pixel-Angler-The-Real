@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 36 — 292차 기준(§07 292 ✅ · 맵 확장 영향 ③ 남은 설계). 35 = 291 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 37 — 292차 기준(「지역 일감 · 일과 · 낚시용품점」 DATA 둘 · 워크로그 213). 36 = 291 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 35 — 292차 기준 · 채비 문법은 258차(「292차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 90 — 292차(시스템 「지역 일감 · 일과 · 낚시용품점」 · 지도 탭 포항 · 해금강 · 안흥 · 만리포 다시 찍음). 89 = 291 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 37 — 293차 기준(§07 293 ✅ 실플레이 피드백 셋). 36 = 292 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 38 — 293차 기준(「해루질 놀이 난이도 · 닿는 선」 DATA · 워크로그 214). 37 = 292 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 36 — 293차 기준 · 채비 문법은 258차(「293차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 91 — 293차(시스템 「해루질 놀이 손맛 · 집 문 식구 · 일감 대사」). 90 = 292 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

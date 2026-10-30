@@ -15,7 +15,7 @@ import Phaser from 'phaser';
 import { mulberry32, type ForageGameKind } from '@tra/core';
 import { ensurePixelIcon } from './PixelIcon.js';
 
-export type ForageBedKind = 'rock' | 'water' | 'cut' | 'crevice';
+export type ForageBedKind = 'rock' | 'water' | 'cut' | 'crevice' | 'shore';
 
 /** 바닥 텍스처 원본 크기(판은 2배) */
 export const BED_W = 220;
@@ -23,10 +23,11 @@ export const BED_H = 90;
 /** 2px 셀 — 판에서는 4px 도트 */
 const CELL = 2;
 
-/** 놀이 갈래 · 물속 여부 → 바닥 종류 */
+/** 놀이 갈래 · 물속 여부 → 바닥 종류. 293차 — 떼기는 옆에서 본 물가 바위(하늘 · 바다 · 바위) — 붙어 사는 녀석은 땅속이 아니라 바위 위다(사용자) */
 export function bedKindFor(kind: ForageGameKind, underwater: boolean): ForageBedKind {
   if (kind === 'dig') return 'cut';
   if (kind === 'pull') return 'crevice';
+  if (kind === 'pry') return 'shore';
   return underwater ? 'water' : 'rock';
 }
 
@@ -185,6 +186,44 @@ const PAINTERS: Record<ForageBedKind, Painter> = {
     }
     // 틈 밑 그늘
     g.fillStyle(0x0a0c10, 0.25); g.fillRect(0, BED_H - 12, BED_W, 12);
+  },
+  // 293차 — 물가 바위(옆에서 본 그림) — 위 하늘 · 가운데 바다(수평선 · 잔물결 · 물보라) · 아래 갯바위(젖은 윗면 · 따개비 · 균열)
+  shore: (g, rng) => {
+    const SKY_ROWS = 13, SEA_ROWS = 9;   // 셀 단위(45줄) — 하늘 13 · 바다 9 · 바위 23
+    // 하늘 — 위로 갈수록 짙은 파랑 · 옅은 구름 띠
+    for (let y = 0; y < SKY_ROWS; y++) {
+      const k = y / SKY_ROWS;
+      const base = k < 0.35 ? 0x6fb3e2 : k < 0.7 ? 0x8cc6ea : 0xa9d6ef;
+      for (let x = 0; x < COLS; x++) cell(g, x, y, rng() < 0.06 ? 0xbfe0f4 : base);
+    }
+    for (let i = 0; i < 4; i++) blob(g, rng, 10 + rng() * (COLS - 20), 2 + rng() * 6, 7 + rng() * 9, 1.2 + rng() * 1.3, [0xeef6fb, 0xdbeaf4]);
+    // 바다 — 수평선은 짙고 앞으로 올수록 밝다 · 잔물결 밝은 점
+    for (let y = SKY_ROWS; y < SKY_ROWS + SEA_ROWS; y++) {
+      const k = (y - SKY_ROWS) / SEA_ROWS;
+      const base = k < 0.2 ? 0x1f4f7a : k < 0.55 ? 0x2a6a95 : 0x3a86ad;
+      for (let x = 0; x < COLS; x++) cell(g, x, y, rng() < (0.05 + k * 0.1) ? 0x9fd6ec : base);
+    }
+    cell(g, 0, SKY_ROWS, 0x173f63); for (let x = 1; x < COLS; x++) cell(g, x, SKY_ROWS, 0x173f63, 0.9);   // 수평선
+    // 바위 — 바다에 닿는 윗면은 들쭉날쭉(물보라 · 젖은 윤기) · 아래로 갈수록 어둡다
+    const rockTop = SKY_ROWS + SEA_ROWS;
+    const edge: number[] = [];
+    for (let x = 0; x < COLS; x++) edge.push(rockTop - 2 + Math.round(Math.sin(x * 0.18) * 1.6 + Math.sin(x * 0.47 + 1.3) * 1.1 + (rng() - 0.5)));
+    for (let x = 0; x < COLS; x++) {
+      for (let y = edge[x]!; y < ROWS; y++) {
+        const k = (y - edge[x]!) / (ROWS - edge[x]!);
+        const r = rng();
+        const c = k < 0.12 ? (r < 0.5 ? 0x7d7a72 : 0x6b675f) : r < 0.55 ? 0x55504a : r < 0.8 ? 0x5f5a52 : r < 0.93 ? 0x47423b : 0x3b3730;
+        cell(g, x, y, c);
+      }
+      // 물보라 — 바위가 물에 닿는 줄 위 흰 점
+      if (rng() < 0.45) cell(g, x, edge[x]! - 1, 0xe8f6fb, 0.85);
+      if (rng() < 0.2) cell(g, x, edge[x]! - 2, 0xd0ecf6, 0.6);
+    }
+    for (let i = 0; i < 6; i++) crack(g, rng, Math.floor(rng() * COLS), rockTop + 3 + Math.floor(rng() * (ROWS - rockTop - 6)), 10 + Math.floor(rng() * 16), 0x2a2622);
+    for (let i = 0; i < 5; i++) blob(g, rng, 8 + rng() * (COLS - 16), rockTop + 4 + rng() * (ROWS - rockTop - 8), 3 + rng() * 5, 1.5 + rng() * 2.5, [0x4f6b3a, 0x5f7f44]);
+    for (let i = 0; i < 22; i++) barnacle(g, 1 + Math.floor(rng() * (COLS - 3)), rockTop + 1 + Math.floor(rng() * (ROWS - rockTop - 3)));
+    for (let i = 0; i < 30; i++) cell(g, Math.floor(rng() * COLS), rockTop + Math.floor(rng() * 5), 0x9a958a, 0.5);   // 젖은 윤기
+    g.fillStyle(0x0a0c10, 0.22); g.fillRect(0, BED_H - 12, BED_W, 12);
   },
 };
 

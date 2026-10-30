@@ -115,11 +115,13 @@ describe('ForageMinigame — 난이도 「조금 어려운」', () => {
     it(`${id} — 조심하면 대체로 잡고 마구 누르면 대개 놓친다`, () => {
       const good = rate(id, tool, careful);
       const bad = rate(id, tool, masher);
+      const s = createForageGame(getCreatureById(id)!, tool, mulberry32(1), 0);
       if (process.env.RATES) console.log('RATE', id, tool, good.toFixed(2), bad.toFixed(2));
       // 조심스러운 사람(반응 지연 · 예측 · 완벽한 눈)도 쉽지는 않다(97% 미만) · 그래도 할 만하다(45% 이상).
       // 줍기(느린 고둥)만은 쉬워도 된다.
       expect(good).toBeGreaterThan(0.45);
-      if (id !== 'omphalius_rusticus') expect(good).toBeLessThan(0.97);
+      // 293차 — 파기 · 당기기는 조심하면 거의 잡는다(사용자 실플레이 「사실상 불가능」 → 눈금을 읽고 쉬면 잡히게). 덮치기 · 떼기는 그대로 97% 미만.
+      if (id !== 'omphalius_rusticus' && !s.dig && !s.pull) expect(good).toBeLessThan(0.97);
       // 마구 누르기는 조심스러운 쪽보다 확실히 못하다
       expect(bad).toBeLessThan(good - 0.15);
     });

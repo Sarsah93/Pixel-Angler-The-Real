@@ -7547,10 +7547,24 @@ export class RegionFieldScene extends Phaser.Scene {
       const last = nm.charCodeAt(nm.length - 1);
       const gwa = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 === 0 ? '와' : '과';
       const home = this.storyNpcs.find((x) => x.def.npcId === id && x.atHome);
-      // 216차 — 들일 수 있는 집이고 잘 시간이 아니면 「들어가기」(똑똑 → 안으로). 아니면 문 앞에서(214차)
-      const canEnter = !!home && home.homeReason !== 'sleep' && !!homeLayoutOf(id);
-      if (home && canEnter) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 들어가기`, note, run: () => this.visitHome(id), action: 'npc' });
-      else if (home) opts.push({ label: `${home.def.home?.labelKo ?? nm} — 문 두드리기`, note, run: () => this.knockDoor(id), action: 'npc' });
+      if (home?.door) {
+        // 293차 — 같은 문을 쓰는 식구(부순덕 · 강해솔 · 탁씨 공방)는 저마다 한 줄 — 「누구 집 — 누구 부르기」. 구: 가장 가까운 한 사람만 잡혀
+        //  「해녀의 딸」 안내를 따라온 문이 「오세린의 집 — 문 두드리기」로만 읽혔다(사용자 캡처 — 강해솔의 집 문이 오세린의 집 문과 같은 칸).
+        const d = home.door;
+        const mates = this.storyNpcs.filter((x) => x.atHome && x.door && x.door.c === d.c && x.door.r === d.r);
+        for (const m of mates) {
+          const mid = m.def.npcId;
+          const mq = mid === id ? q : StoryStore.questsForNpc(mid, this.region);
+          const mnote = mq.completable.length ? '의뢰 완료' : mq.offer.length ? '새 의뢰' : mq.active.length ? '진행 중' : undefined;
+          const mname = getStoryNpc(mid)?.nameKo ?? mid;
+          const label = m.def.home?.labelKo ?? mname;
+          // 216차 — 들일 수 있는 집이고 잘 시간이 아니면 「들어가기」(똑똑 → 안으로). 아니면 문 앞에서(214차)
+          const canEnter = m.homeReason !== 'sleep' && !!homeLayoutOf(mid);
+          const many = mates.length > 1;
+          if (canEnter) opts.push({ label: many ? `${label} — 들어가기 (${mname})` : `${label} — 들어가기`, note: mnote, run: () => this.visitHome(mid), action: 'npc' });
+          else opts.push({ label: many ? `${label} — ${mname} 부르기` : `${label} — 문 두드리기`, note: mnote, run: () => this.knockDoor(mid), action: 'npc' });
+        }
+      }
       else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id), action: 'npc' });
     }
     // ③ 오브젝트(문·버스·설치물) — 247차 텃밭 칸을 겨누고 있으면 그 칸의 일(손에 든 것 · 할 일 · 텃밭 창)이 대신한다

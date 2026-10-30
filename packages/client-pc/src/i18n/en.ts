@@ -691,6 +691,8 @@ export const EN_DICT: Record<string, string> = {
   '정옥선의 집': "Jeong Okseon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeonsu's house",
   '강두철의 집': "Kang Ducheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
   '배누리가 묵는 민박': "Bae Nuri's guesthouse",
+  // 293차 — 식구가 한집(제주) · 하민지 새 집
+  '부순덕 · 강해솔의 집': "Bu Sundeok & Kang Haesol's house", '하민지의 집': "Ha Minji's house",
   // 214차 — 나날 · 맡긴 물건 · 문 두드리기
   '나날': 'Days', '지난 날들': 'Past days', '일지 — 나날': 'Journal — Days', '일지 — 이야기': 'Journal — Story',
   // 253차 — 일지 「수첩」(물어보기로 알게 된 것)
@@ -904,6 +906,9 @@ export const EN_RULES: Rule[] = [
   [/^\[F\] ([^·›]+) — 물건 보기$/, (m, tr) => `[F] ${tr(m[1])} — Browse`],
   [/^([^·›]+) — 물건 보기$/, (m, tr) => `${tr(m[1])} — Browse`],
   [/^([^·›]+) — 들어가기$/, (m, tr) => `${tr(m[1])} — Enter`],
+  // 293차 — 같은 문을 쓰는 식구는 한 줄씩: 「집 — 이름 부르기」 · 「집 — 들어가기 (이름)」
+  [/^(.+) — (.+) 부르기$/, (m, tr) => `${tr(m[1])} — Call ${tr(m[2])}`],
+  [/^(.+) — 들어가기 \((.+)\)$/, (m, tr) => `${tr(m[1])} — Enter (${tr(m[2])})`],
   [/^직판장 안이다\. 계산대 앞에 서서 \[F\]를 눌러 주인에게 물건을 보자\. \((.+)\)$/, (m, tr) => `Inside the fish market. Stand at the counter and press [F] to see the goods. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
   [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 안으로 들어가자\. 원투 채비를 하나씩 사야 한다\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market to go inside. I need one of each part for a bottom rig. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
   [/^(활어|선어) 경매는 지금 서고 있다\.$/, (m) => `The ${m[1] === '활어' ? 'live-fish' : 'fresh-fish'} auction is on right now.`],

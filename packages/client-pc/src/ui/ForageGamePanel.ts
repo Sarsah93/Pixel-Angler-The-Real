@@ -9,6 +9,8 @@
  *  - 278차 — 가이드가 다른 말풍선(물가 캐스팅 · 코치) 뒤에 줄 서서 판이 영영 멈추던 것을 고쳤다: 놀이 가이드는 세상 안 말풍선을
  *    밀어내고(`preempt`) 1.5초 안에 자기 가이드가 뜨지 않으면 판을 그냥 시작한다. 제목줄 「방법」으로 언제든 다시 본다.
  *  - ESC · ✕ = 포기 → 그 생물은 사라진다(사용자 지시 「놓친 생물은 사라지도록」).
+ *  - 293차 — 떼기: 틈 · 집게 끝 · 가장자리 길은 생물 그림 **위** 층(`gTop`)에 그리고 길은 그림 크기에서 잰다(거북손처럼 키 큰 그림이 틈을 가렸다) ·
+ *    판 바탕은 옆에서 본 물가(하늘 · 바다 · 바위). 파기: 녀석을 「도구 끝이 닿는 선」에 그려 **겹치면 잡힌다**로 보인다(core `reach`).
  */
 
 import { colorVisionMode, cv, drawHatch, shapeCuesOn } from './ColorAssist.js';
@@ -59,7 +61,8 @@ const TOUR_TEXT: Record<ForageGameKind, string[]> = {
   ],
   dig: [
     '묻힌 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다.',
-    '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 손을 떼고 쉬면 조용히 올라오지만 판 구멍도 조금씩 메워진다. 파고 쉬는 박자를 찾자.',
+    '소란이 크면 녀석이 움찔하며 더 깊이 숨는다. 손을 떼고 쉬면 조용히 올라온다. 파고 쉬는 박자를 찾자.',
+    '도구 끝이 녀석에게 닿으면 잡힌다 — 구멍 바닥이 녀석 그림에 겹치는 순간이다.',
   ],
   pull: [
     '바위 틈에 숨은 녀석이다. 왼쪽 버튼(또는 Space)을 누르고 있으면 끌어낸다. 아래 막대가 줄의 긴장이다 — 밝은 칸 안에서만 끌려 나온다.',
@@ -74,6 +77,8 @@ export class ForageGamePanel extends DraggablePanel {
   private readonly creature: ShoreCreature;
   private readonly rng: () => number;
   private readonly g: Phaser.GameObjects.Graphics;
+  /** 293차 — 생물 그림 위에 그리는 층(떼기 틈 · 집게 끝 · 판정 고리) */
+  private readonly gTop: Phaser.GameObjects.Graphics;
   private readonly img: Phaser.GameObjects.Image | null;
   /** 229차 — 구운 바닥 그림 · 손 도구 스프라이트 · 1자형 지렁이(파기) */
   private readonly toolImg: Phaser.GameObjects.Image | null;
@@ -145,6 +150,8 @@ export class ForageGamePanel extends DraggablePanel {
     this.wormImg = state.kind === 'dig' && STRAIGHT_WORM_IDS.has(creature.id) && scene.textures.exists('honmushi_straight_px')
       ? scene.add.image(0, 0, 'honmushi_straight_px').setAngle(-90).setScale(1.5) : null;
     if (this.wormImg) { this.add(this.wormImg); this.img?.setVisible(false); }
+    this.gTop = scene.add.graphics();
+    this.add(this.gTop);
     // 229차 — 손 도구 스프라이트(맨손 · 장갑 · 집게 · 갈퀴 · 갈고리)
     this.toolKey = toolSpriteKey(tool, InventoryStore.wearingGloves);
     this.toolImg = addToolSprite(scene, this.toolKey, 2);
@@ -172,7 +179,8 @@ export class ForageGamePanel extends DraggablePanel {
     // 처음이면 가이드가 끝날 때까지 판을 멈춘다(R11)
     // 225차 — 떼기 가이드 문장을 고쳐 다시 보여 준다(_v2)
     // 278차 — 조작 문장을 고쳐 갈래마다 다시 보여 준다(_v3)
-    this.tourId = `forage_${state.kind}_v3`;
+    // 293차 — 파기(닿으면 잡힌다 한 문장) · 떼기(판 바탕이 바뀜)는 다시 보여 준다(_v4)
+    this.tourId = `forage_${state.kind}_${state.kind === 'dig' || state.kind === 'pry' ? 'v4' : 'v3'}`;
     this.paused = guideTipsEnabled() && !tourSeen(this.tourId);   // 277차 — 안내 말풍선을 끈 동안은 멈추지 않는다
     if (this.paused) GuideTour.request(scene, () => this.buildTour(this.tourId), { preempt: true });
     this.buildHowButton();
@@ -343,6 +351,7 @@ export class ForageGamePanel extends DraggablePanel {
   private draw(): void {
     const g = this.g;
     g.clear();
+    this.gTop.clear();
     const top = this.boardTop;
     // 바닥은 구운 그림(229차). 여기서는 자갈 몇 개로 깊이감만 더한다(단면 · 틈 판은 그림이 다 그린다)
     const s = this.gs;
@@ -429,13 +438,21 @@ export class ForageGamePanel extends DraggablePanel {
     const g = this.g;
     const top = this.boardTop;
     const flash = p.flash;
-    const cx = BX + BW / 2, cy = top + 74;
-    // 껍데기 가장자리 타원 — 그림(도트 16px × 8.4배)이 그래픽 위에 그려지므로 그림 바깥으로 잡아야 틈이 가려지지 않는다
-    const a = 74, b = 54, ry = cy + 6;
+    // 293차 — 바위는 판 아래쪽(옆에서 본 물가 — 위 하늘 · 바다) · 그림은 바위 안에 들어가게 크기를 맞춘다
+    const cx = BX + BW / 2, cy = top + 112;
+    let k = 8.4;
+    if (this.img) {
+      const f = this.img.frame, raw = k * this.imgBase * this.sizeMul;
+      const fit = Math.min(1, 116 / Math.max(1, f.height * raw), (BW - 150) / Math.max(1, f.width * raw));
+      k *= fit;
+    }
     // 껍데기 — 맞힐수록 조금씩 들려 그림자가 넓어진다
     const lift = p.hits / Math.max(1, p.need);
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(cx, cy + 6 + lift * 4, a * 2 + 6, b * 2 + 6);
-    this.setCreature(cx, cy, 8.4 * (flash?.kind === 'miss' ? 0.96 : 1), flash?.kind === 'miss' ? 0xff9a8a : undefined);
+    this.setCreature(cx, cy, k * (flash?.kind === 'miss' ? 0.96 : 1), flash?.kind === 'miss' ? 0xff9a8a : undefined);
+    // 가장자리 길은 **그림 크기**에서 잰다(구: 고정 74×54 — 거북손처럼 키 큰 그림이 길과 틈을 덮었다). 길 · 틈 · 집게는 그림 위 층에 그린다
+    const a = this.img ? this.img.displayWidth / 2 + 10 : 74, b = this.img ? this.img.displayHeight / 2 + 8 : 54, ry = cy;
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(cx, cy + 4 + lift * 4, a * 2 + 6, b * 2 + 6);
+    const gt = this.gTop;
     // 가장자리 앞쪽 반원 — 각도 θ = π(1 − 바늘) (왼쪽 → 아래 → 오른쪽)
     const at = (v: number): { x: number; y: number; nx: number; ny: number } => {
       const th = Math.PI * (1 - Math.max(0, Math.min(1, v)));
@@ -444,11 +461,11 @@ export class ForageGamePanel extends DraggablePanel {
       return { x, y, nx: nx / l, ny: ny / l };
     };
     const arc = (v0: number, v1: number, w: number, color: number, alpha = 1): void => {
-      g.lineStyle(w, color, alpha);
-      g.beginPath();
+      gt.lineStyle(w, color, alpha);
+      gt.beginPath();
       const n = 24;
-      for (let k = 0; k <= n; k++) { const q = at(v0 + (v1 - v0) * (k / n)); if (k === 0) g.moveTo(q.x, q.y); else g.lineTo(q.x, q.y); }
-      g.strokePath();
+      for (let i = 0; i <= n; i++) { const q = at(v0 + (v1 - v0) * (i / n)); if (i === 0) gt.moveTo(q.x, q.y); else gt.lineTo(q.x, q.y); }
+      gt.strokePath();
     };
     arc(0, 1, 4, 0xe8d8b8, 0.6);                                    // 가장자리 길
     arc(p.zoneC - p.zoneW / 2, p.zoneC + p.zoneW / 2, 14, 0x0a0e14); // 들린 틈(어둠)
@@ -457,14 +474,14 @@ export class ForageGamePanel extends DraggablePanel {
     const q = at(p.needle);
     const into = { x: -q.nx, y: -q.ny };
     this.placeTool(q.x + q.nx * 26, q.y + q.ny * 26, into, 1);
-    g.fillStyle(0x000000, 0.25); g.fillCircle(q.x + q.nx * 6, q.y + q.ny * 6, 5);
+    gt.fillStyle(0x000000, 0.25); gt.fillCircle(q.x + q.nx * 6, q.y + q.ny * 6, 5);
     if (flash) {
-      g.lineStyle(2, cv(flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a), 1);
-      g.strokeCircle(q.x, q.y, 8 + (1 - flash.ms / 320) * 10);
+      gt.lineStyle(2, cv(flash.kind === 'hit' ? 0x4af2a1 : 0xff6a5a), 1);
+      gt.strokeCircle(q.x, q.y, 8 + (1 - flash.ms / 320) * 10);
       // 251차 — 「모양으로도 표시」: 헛짚으면 고리 안에 X
       if (flash.kind !== 'hit' && shapeCuesOn()) {
-        g.lineStyle(2, 0xffffff, 1);
-        g.lineBetween(q.x - 5, q.y - 5, q.x + 5, q.y + 5); g.lineBetween(q.x + 5, q.y - 5, q.x - 5, q.y + 5);
+        gt.lineStyle(2, 0xffffff, 1);
+        gt.lineBetween(q.x - 5, q.y - 5, q.x + 5, q.y + 5); gt.lineBetween(q.x + 5, q.y - 5, q.x - 5, q.y + 5);
       }
     }
     // 비집을 횟수 — 판 왼쪽 아래
@@ -488,19 +505,24 @@ export class ForageGamePanel extends DraggablePanel {
       g.fillStyle(0xb8a680, 1);
       g.fillEllipse(sx + sw / 2 - 30, top + 9, 26, 7); g.fillEllipse(sx + sw / 2 + 30, top + 9, 26, 7);
     }
-    // 녀석
-    const wy = top + 8 + (BOARD_H - 16) * Math.min(1, d.prey);
+    // 녀석 — 293차: 그림 **윗변**을 「도구 끝이 닿는 선」(녀석 깊이 − reach)에 둔다. 구멍 바닥(도구 끝)이 그 선에 닿는 순간 = 잡힘(core 판정과 한 선)
+    const lineY = (v: number): number => top + 8 + (BOARD_H - 16) * Math.max(0, Math.min(1, v));
+    const reachY = lineY(d.prey - d.reach);
     const wig = Math.sin(this.gs.t * (d.flinch ? 0.05 : 0.012)) * (d.flinch ? 6 : 3);
     if (this.wormImg && !this.finished) {
-      this.wormImg.setPosition(sx + sw / 2 + wig * 0.5, wy + 20).setAngle(-90 + (d.flinch ? wig * 2 : wig * 0.6));
+      const half = this.wormImg.displayWidth / 2;   // 세워 둔 그림(−90°)의 세로 반
+      const wy = Math.min(reachY + half, top + BOARD_H - 4 - half);
+      this.wormImg.setPosition(sx + sw / 2 + wig * 0.5, wy).setAngle(-90 + (d.flinch ? wig * 2 : wig * 0.6));
       if (d.flinch) this.wormImg.setTint(0xffb0a0); else this.wormImg.clearTint();
     } else if (!this.wormImg) {
+      const half = this.img ? Math.max(8, this.img.frame.height * 2.6 * this.imgBase * this.sizeMul / 2) : 10;
+      const wy = Math.min(reachY + half, top + BOARD_H - 4 - half);
       this.setCreature(sx + sw / 2 + wig, wy, 2.6, d.flinch ? 0xffb0a0 : undefined, d.flinch ? wig * 3 : 0);
     }
-    // 갈퀴(손) — 구멍 위에서 파는 만큼 내려간다 · 누르고 있으면 흔들린다
+    // 갈퀴(손) — 끝이 구멍 바닥에 온다(도구 그림 48px · 끝이 아래) · 누르고 있으면 흔들린다
     if (!this.finished) {
       const bob = this.holding && !this.paused ? Math.sin(this.gs.t * 0.03) * 4 : 0;
-      this.placeTool(sx + sw / 2 + 2, top + 8 + Math.min(depthPx, BOARD_H - 60) + bob - 6, { x: 0, y: 1 }, 1);
+      this.placeTool(sx + sw / 2 + 2, Math.max(top + 20, Math.min(top + 8 + depthPx, top + BOARD_H - 6) - 22) + bob, { x: 0, y: 1 }, 1);   // 판 위로 삐져나오지 않게
     }
     // 소란 막대(오른쪽)
     const mx = BX + BW - 46, mh = BOARD_H - 24, my = top + 12;

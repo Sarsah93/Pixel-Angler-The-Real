@@ -157,14 +157,17 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   // 286차 — N01-5 「해녀의 딸」 무대(서귀포항 안쪽 갯바위 · 물 빠지는 자리). 바람은 떠돌이라 속초와 서귀포 두 곳에 선다
   //  (받는 자리는 서귀포에서만 — 편의 `offerRegion`). 자리는 사용자 실검증 뒤 다듬는다.
   { npcId: 'baram', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 497, ty: 399, behavior: 'wander' },
-  { npcId: 'kang_haesol', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 486, ty: 394, behavior: 'wander', facing: 'right', home: { tx: 539, ty: 399, labelKo: '강해솔의 집' } },
-  { npcId: 'bu_sundeok', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 491, ty: 394, behavior: 'stall', facing: 'down', home: { tx: 543, ty: 411, labelKo: '부순덕의 집' } },
+  // 293차 — 해솔은 어머니(부순덕)와 한집에 산다. 구 (539, 399)는 오세린의 집(536, 399)과 같은 건물 아랫변이라 문이 하나로 붙어
+  //  「해녀의 딸」 안내를 따라가면 [F]가 「오세린의 집 — 문 두드리기」로 읽혔다(사용자 캡처). 같은 문을 쓰는 식구는 문 앞 [F]가 저마다 한 줄이다.
+  { npcId: 'kang_haesol', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 486, ty: 394, behavior: 'wander', facing: 'right', home: { tx: 543, ty: 411, labelKo: '부순덕 · 강해솔의 집' } },
+  { npcId: 'bu_sundeok', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 491, ty: 394, behavior: 'stall', facing: 'down', home: { tx: 543, ty: 411, labelKo: '부순덕 · 강해솔의 집' } },
   { npcId: 'oh_sera', regionId: 'ulleungdo' },
   { npcId: 'yeon_taeo', regionId: 'ulleungdo' },
   { npcId: 'seok_daeyang', regionId: 'ulleungdo' },
   { npcId: 'seok_dokgu', regionId: 'ulleungdo' },
   { npcId: 'dan_cheolho', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 319, ty: 351, behavior: 'fishing', home: { tx: 321, ty: 400, labelKo: '단철호의 집' } },
-  { npcId: 'ha_minji', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 331, ty: 358, behavior: 'wander', home: { tx: 324, ty: 400, labelKo: '하민지의 집' } },
+  // 293차 — 구 (324, 400)은 단철호의 집(321, 400)과 같은 건물이라 문이 붙었다 → 동쪽 아파트로
+  { npcId: 'ha_minji', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 331, ty: 358, behavior: 'wander', home: { tx: 386, ty: 375, labelKo: '하민지의 집' } },
 ];
 
 /**

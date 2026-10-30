@@ -16,6 +16,12 @@
  *    곧 버틴다 — 그때 놓아야 한다. 계속 당기면 다리가 끊기고 먹물을 쏘며 달아난다(순발력).
  *
  * 놓치면(lost) 그 생물은 사라진다(사용자 지시 — 씬이 스팟을 지운다).
+ *
+ * 293차 — 실플레이 20판 피드백(사용자)으로 수치를 다시 잡았다.
+ *  - 떼기: 헛짚은 뒤 틈이 줄어드는 폭을 0.65 → 0.85(단단히 붙는 삿갓조개 0.35 → 0.62)로 — 「두 번째 자리는 처음과 같거나 덜 줄어야」.
+ *  - 파기: 파는 양을 두 배로 · 소란은 천천히 · 쉴 때 구멍이 메워지는 빠르기 1/3 · 녀석이 물러서는 빠르기 절반 · 제한 16초.
+ *    이기는 기준을 또렷이 — 도구 끝이 녀석에게 **닿는** 순간(`reach` — 도구마다 닿는 길이). 씬은 녀석을 그 선에 그려 「겹치면 잡힌다」로 보인다.
+ *  - 당기기: 부풀리는 예고 0.38 → 0.7초 · 버틸 때 긴장이 오르는 세기 2.0 → 1.1 · 끌어내는 양 0.21 → 0.34 · 제한 22초.
  */
 
 import type { ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
@@ -90,6 +96,8 @@ export interface DigState {
   calm: number;
   /** 지금 움찔(더 깊이 숨는 중) — 그림용 */
   flinch: boolean;
+  /** 293차 — 도구 끝이 닿는 길이(판 비율). 구멍 깊이 + reach ≥ 녀석 깊이 = 잡힘 */
+  reach: number;
 }
 
 /** 당기기 상태 */
@@ -142,36 +150,42 @@ export const FORAGE_GAME = {
   pry: {
     speed: 1.15,
     zoneW: { hand: 0.11, tongs: 0.15, net: 0.1, gaff: 0.14, rake: 0.1 } as Record<ForageTool, number>,
-    missShrink: 0.65,
-    hardShrink: 0.35,
-    missSpeedUp: 1.15,
+    /** 293차 — 헛짚으면 틈이 이만큼으로(0.65 → 0.85 · 단단히 붙는 녀석 0.35 → 0.62) */
+    missShrink: 0.85,
+    hardShrink: 0.62,
+    missSpeedUp: 1.08,
     hitSpeedUp: 1.06,
-    minZoneW: 0.045,
+    minZoneW: 0.04,
     maxMisses: 3,
     limitMs: 12_000,
   },
   dig: {
-    digRate: { hand: 0.065, rake: 0.11, tongs: 0.06, net: 0.04, gaff: 0.07 } as Record<ForageTool, number>,
-    noiseRate: { hand: 0.3, rake: 0.42, tongs: 0.3, net: 0.3, gaff: 0.36 } as Record<ForageTool, number>,
-    noiseDecay: 0.55,
-    calmRange: [0.42, 0.72] as [number, number],
-    retreatK: 1.1,
-    boltRate: 0.22,
-    creepAfterMs: 900,
-    creepRate: 0.025,
-    startDepth: [0.26, 0.42] as [number, number],
-    /** 쉬는 동안 판 구멍이 무너져 메워지는 빠르기 */
-    refill: 0.035,
-    limitMs: 13_000,
+    // 293차 — 파는 양 두 배 · 소란은 천천히(「파면서 내려가는 양이 너무 작다」)
+    digRate: { hand: 0.12, rake: 0.2, tongs: 0.11, net: 0.08, gaff: 0.13 } as Record<ForageTool, number>,
+    noiseRate: { hand: 0.36, rake: 0.5, tongs: 0.36, net: 0.32, gaff: 0.42 } as Record<ForageTool, number>,
+    noiseDecay: 0.7,
+    calmRange: [0.5, 0.8] as [number, number],
+    /** 소란이 문턱을 넘으면 물러서는 세기 — 쉬지 않고 파는 사람은 녀석이 더 빨리 달아난다(파는 양 < 물러서는 양) */
+    retreatK: 0.9,
+    boltRate: 0.2,
+    creepAfterMs: 700,
+    creepRate: 0.04,
+    startDepth: [0.45, 0.65] as [number, number],
+    /** 쉬는 동안 판 구멍이 무너져 메워지는 빠르기 — 293차 0.035 → 0.012(「기다릴 때 모래가 다시 차오른다」) */
+    refill: 0.012,
+    /** 293차 — 도구 끝이 닿는 길이(판 비율). 구멍 깊이 + 이것 ≥ 녀석 깊이 = 잡힘(씬은 녀석을 이 선에 그린다 — 겹치면 잡힌다) */
+    reach: { hand: 0.08, rake: 0.12, tongs: 0.09, net: 0.07, gaff: 0.1 } as Record<ForageTool, number>,
+    limitMs: 16_000,
   },
   pull: {
-    rise: 0.62, fall: 0.8, surgeRise: 2.0,
-    windowLo: 0.3, windowHi: 0.85,
-    gain: 0.21, slack: 0.03, surgeLoss: 0.05,
-    calmMs: [1100, 2400] as [number, number],
-    tellMs: 380, surgeMs: 800,
+    // 293차 — 「부풀 때 긴장이 너무 세게 오르고 끌려 나오는 양이 너무 적다」: 예고를 길게 · 버틸 때 세기를 낮게 · 끌어내는 양을 올림
+    rise: 0.5, fall: 1.0, surgeRise: 1.1,
+    windowLo: 0.25, windowHi: 0.88,
+    gain: 0.34, slack: 0.02, surgeLoss: 0.03,
+    calmMs: [1500, 2800] as [number, number],
+    tellMs: 700, surgeMs: 700,
     pullMult: { gaff: 1.25, tongs: 1.0, net: 0.8, hand: 0.85, rake: 0.8 } as Record<ForageTool, number>,
-    limitMs: 18_000,
+    limitMs: 22_000,
   },
 } as const;
 
@@ -217,7 +231,7 @@ export function createForageGame(c: ShoreCreature, tool: ForageTool, rng: () => 
     base.dig = {
       depth: 0, prey: between(G.startDepth, rng), noise: 0, quietMs: 0,
       digRate: G.digRate[tool] * (1 + d * 0.3), noiseRate: G.noiseRate[tool],
-      calm: between(G.calmRange, rng), flinch: false,
+      calm: between(G.calmRange, rng), flinch: false, reach: G.reach[tool],
     };
   } else {
     const L = FORAGE_GAME.pull;
@@ -374,8 +388,8 @@ function stepDig(s: ForageGameState, g: DigState, input: ForageGameInput, dt: nu
   g.flinch = g.noise > g.calm;
   if (g.noise >= 1) g.prey += G.boltRate * sec;                                   // 크게 놀라 깊이 파고든다
   else if (g.noise > g.calm) g.prey += (0.08 + (g.noise - g.calm)) * G.retreatK * sec;
-  else if (g.quietMs > G.creepAfterMs) g.prey = Math.max(g.depth + 0.02, g.prey - G.creepRate * sec);   // 조용하면 슬금슬금 올라온다
-  if (g.depth >= g.prey) { s.status = 'won'; return s; }
+  else if (g.quietMs > G.creepAfterMs) g.prey = Math.max(g.depth + g.reach + 0.01, g.prey - G.creepRate * sec);   // 조용하면 슬금슬금 올라온다(닿는 선 바로 위까지)
+  if (g.depth + g.reach >= g.prey) { s.status = 'won'; return s; }   // 293차 — 도구 끝이 녀석에게 닿았다
   if (g.prey >= 1) return lose(s, 'deeper');
   if (s.t >= s.limitMs) return lose(s, 'timeout');
   return s;
