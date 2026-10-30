@@ -87,4 +87,6 @@
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 36**(「293차 기준」 줄만) ·
   위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c **Version 91**
   (시스템 「해루질 놀이 손맛 · 집 문 식구 · 일감 대사」 · 지도 탭 그림은 그대로 — 인물 자리 데이터만 다시 덤프)
-- [ ] main 빨리 감기 · 98차 배포 — 아래에 적는다
+- [x] main 빨리 감기 `aff80d6` → `5a80a81` · **98차 배포** = Actions 「테스트 배포」 실행 27 → gh-pages `5806b7e`
+  (정적 2,121 · 소스맵 0 · 로컬로 띄워 점검 `deploy293.cjs` — 기동 11.3초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0).
+  번들에 일감 대사(전단) · 「부르기」 문 · 파기 안내 「닿으면 잡힌다」 · 낚시용품점 · 손 POI 6이 실렸고 dev 해루질 칸은 없다.

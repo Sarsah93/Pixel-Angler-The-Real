@@ -220,8 +220,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 13 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo`(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `9fa6c6d` — **최근 97차 배포 2026-10-30 = 292차 코드까지 포함**(290 전 편 대본 · 호칭 「OOO 씨」 + 291 출장 인물 · 만나는 자리 + 292 지역 일감 · 인물 집 · 일과 · 낚시용품점 · 편 지역 정정 · 라디오) —
-  main `06340b3` · 실행 26 · 정적 2,121(소스맵 0) · 기동 11.3초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-10-30 사용자 지시로 작업 브랜치에 빨리 감기했다(292차 · main CI 초록 · 96차 = `4d79deb` 289차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `5806b7e` — **최근 98차 배포 2026-10-30 = 293차 코드까지 포함**(293 일감 대사 · 집 문 식구 · 해루질 놀이 손맛 + 292 지역 일감 · 낚시용품점 + 291 출장 인물 + 290 전 편 대본) —
+  main `5a80a81` · 실행 27 · 정적 2,121(소스맵 0) · 기동 11.3초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-10-30 사용자 지시로 작업 브랜치에 빨리 감기했다(293차 · main CI 초록 · 97차 = `9fa6c6d` 292차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 91 = 293**(시스템 「해루질 놀이 손맛 · 집 문 식구 · 일감 대사」 · 90 = 292 지도 탭 포항 · 해금강 · 안흥 · 만리포 · 89 = 291)
