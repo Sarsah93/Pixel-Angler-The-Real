@@ -23,6 +23,8 @@ export type NpcRoutineKind =
   | 'kid'
   /** 구경 · 여행 (09~21시) */
   | 'visitor'
+  /** 밤 근무 — 물류창고 야간 관리인(18~06시 · 292차) */
+  | 'night'
   /** 24시간 — 떠돌이 · 감시원 교대 · 밤낚시꾼 */
   | 'always';
 

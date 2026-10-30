@@ -58,8 +58,8 @@ export const EN_HELP: Record<string, string> = {
   '① 스탠드 불빛 ② 창 — 시각 · 날씨 ③ 라디오 ④ 고양이 ⑤ 관상 수조 ⑥ 벽 장식(책 · 달력 · 어탁)': '① Lamp light ② Window — time · weather ③ Radio ④ Cat ⑤ Aquarium ⑥ Wall decor (books · calendar · fish print)',
   '창밖은 실제 시각과 홈타운 날씨를 따라 바뀝니다 — 낮 · 노을 · 밤, 비 · 눈 · 안개. 방 안은 늘 밝게 보이고, 밤에 협탁 앞에서 [F]로 스탠드를 켜면 따뜻한 빛이 번집니다. 관상 수조도 은은하게 빛납니다.':
     'The view outside follows the real time and the hometown weather — day, sunset, night; rain, snow, fog. The room itself always stays bright; at night, turn on the lamp with [F] at the nightstand and a warm glow spreads. The aquarium glows softly too.',
-  '라디오 [F](소파에 앉아 「라디오 듣기」로도): 오늘 · 내일 물때와 만조 · 간조 시각, 속초 · 부산 앞바다의 지금 날씨와 내일 예보를 들려 줍니다.':
-    "Radio [F] (or \"Listen to the radio\" from the sofa): today's and tomorrow's tides with high and low water times, plus current weather and tomorrow's forecast off Sokcho and Busan.",
+  '라디오 [F](소파에 앉아 「라디오 듣기」로도): 오늘 · 내일 물때와 만조 · 간조 시각, 이야기가 열어 준 바다마다(속초 · 부산 · 울산 · 포항 · 거제 · 여수 · 태안 · 제주 · 인천) 지금 날씨와 내일 예보를 들려 줍니다.':
+    "Radio [F] (or \"Listen to the radio\" from the sofa): today's and tomorrow's tides with high and low water times, plus current weather and tomorrow's forecast for every sea the story has opened (Sokcho, Busan, Ulsan, Pohang, Geoje, Yeosu, Taean, Jeju, Incheon).",
   '식탁을 바라보는 의자에 앉으면 「식사하기」가 뜹니다. 앉은 채로 먹으면 허기가 25% 더 찹니다.':
     'Sit on a chair facing the table and "Have a meal" appears. Eating while seated fills Hunger 25% more.',
   '고양이 [F]: 쓰다듬기(30분에 한 번 피로가 조금 풀립니다) · 밥 주기(가방의 손질 부산물 하나 — 배가 부르면 먹지 않습니다). 오래 굶으면 곁에 와서 울고, 정이 들면 소파에 앉을 때 곁으로 옵니다. 쓰다듬으면 골골거리고, 밥을 먹을 때는 오도독 소리를 내고, 평소에도 가끔 웁니다.':
@@ -99,7 +99,7 @@ export const EN_HELP: Record<string, string> = {
   '출조와 귀가': 'Heading out and coming home',
   '전국 지도 — ① 지역 목록(자물쇠 = 아직 준비 중) ② 지도 핀 ③ 범례(낚시 유형) ④ 집으로 돌아가기': 'National Map — ① Region list (padlock = not ready yet) ② Map pins ③ Legend (fishing types) ④ Return Home',
   '홈타운 출조 버스 정류장에서 [F] → 전국 지도. 왼쪽 목록이나 지도 핀으로 지역을 고르고 → 구역 카드 → 「예, 출조하기」. 이때 교통비 10,000원이 나가고(모자라면 갈 수 없습니다) 이동하는 동안 허기 · 수분 · 피로도 조금 듭니다.': '[F] at the Hometown Trip Bus stop → National Map. Pick a region from the list on the left or a map pin → area card → "Yes, go". This costs a 10,000 won fare (you cannot go if you are short), and the journey costs a little Hunger, Water and Fatigue.',
-  '지금 갈 수 있는 곳은 강원 속초와 부산입니다. 자물쇠가 걸린 지역은 아직 준비 중입니다. 오른쪽 아래 범례는 핀 색이 뜻하는 낚시 유형입니다.': 'Right now you can go to Sokcho, Gangwon and Busan. Regions with a padlock are not ready yet. The legend at the bottom right shows which fishing type each pin colour means.',
+  '지역은 이야기 장 순서로 열립니다 — 속초 · 부산 · 울산 · 포항 · 거제 · 여수 · 태안 · 제주 · 인천. 자물쇠가 걸린 지역은 그 장에 닿으면 열립니다. 오른쪽 아래 범례는 핀 색이 뜻하는 낚시 유형입니다.': 'Regions open in story-chapter order — Sokcho, Busan, Ulsan, Pohang, Geoje, Yeosu, Taean, Jeju, Incheon. A padlocked region opens when you reach its chapter. The legend at the bottom right shows which fishing type each pin colour means.',
   '속초는 어느 구역을 골라도 동명항 방파제 입구에 도착합니다. 속초는 하나로 이어진 실지형 맵이라 항구 · 방파제 · 해수욕장 · 호수까지 걸어서 다닙니다.': 'In Sokcho you arrive at the Dongmyeong Port breakwater entrance whichever area you pick. Sokcho is one continuous real-terrain map, so you walk everywhere — harbours · breakwaters · beaches · lakes.',
   '집으로 돌아갈 때는 필드에서 ESC → 「집으로 가기」(무료), 전국 지도에서는 왼쪽 위 [집으로 돌아가기]입니다.': 'To go home, press ESC in the field → "Go Home" (free); on the National Map, use [Return Home] at the top left.',
   'ESC → 환경설정': 'ESC → Settings',

@@ -145,6 +145,8 @@ const EN_BASE: Record<string, string> = {
   '24시간 영업': 'Open 24 hours', '핀을 꽂은 곳': 'Pinned', '영업 전': 'Not open yet', '영업 종료': 'Closed',
   '공중화장실': 'Restroom', '파출소': 'Police Box', '여객터미널': 'Ferry Terminal', '등대': 'Lighthouse', '전망 포인트': 'Viewpoint', '낚시터': 'Fishing Spot', '시장': 'Market', '관광안내소': 'Tourist Info', '주유소': 'Gas Station',
   '거래하기': 'Trade', '편의점': 'Convenience Store', '식자재마트': 'Grocery Mart', '직판장': 'Fish Market', '음식점': 'Restaurant', '카페': 'Cafe', '주점': 'Pub',
+  '낚시용품점': 'Tackle Shop', '미끼 · 루어 · 에기 · 원줄 · 입문 대 · 릴 · 헤드랜턴': 'Bait, lures, egi, line, starter rods, reels, headlamps',
+  '밤낚시 가세요? 미끼는 새벽에 들어온 겁니다.': 'Night fishing? The bait came in this morning.',
   '종묘사': 'Seed & Seedling Shop', '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약': 'Seedlings, seeds, sets, stakes, fertilizer, pesticides',
   '모종은 철 봐 가며 들여요. 고추는 늦서리 지나고 심으세요.': 'Seedlings come in by the season. Plant chili after the last frost.',
   '모종은 철 봐 가며 들여요. 뭐 찾으세요?': 'Seedlings come in by the season. What are you after?',

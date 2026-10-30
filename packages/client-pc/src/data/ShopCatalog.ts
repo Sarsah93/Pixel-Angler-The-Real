@@ -20,7 +20,7 @@ import type { FurnKind } from './HomeFurniture.js';
 
 /** 건물(상점) 종류 */
 export type BuildingKind =
-  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery' | 'mill';
+  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery' | 'mill' | 'tackle';
 
 export const BUILDING_LABEL: Record<BuildingKind, string> = {
   convenience: '편의점',
@@ -33,6 +33,7 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   daily: '생활용품점',
   nursery: '종묘사',   // 238차 — 모종 · 씨앗 · 농자재 · 농약
   mill: '방앗간',      // 284차 — 참기름 · 들기름 짜기 · 들깨 갈기 · 참깨 볶기
+  tackle: '낚시용품점', // 292차 — 미끼 · 루어 · 줄 · 입문 대(24시간 · 위판 창구 없음)
 };
 
 /**
@@ -45,6 +46,7 @@ export const BUILDING_GOODS: Record<BuildingKind, string> = {
   daily: '낚싯대 · 릴 · 원줄 · 손도구 · 가구',
   nursery: '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약',
   mill: '기름 짜기 · 들깨 갈기 · 참깨 볶기 · 곡물 봉투',
+  tackle: '미끼 · 루어 · 에기 · 원줄 · 입문 대 · 릴 · 헤드랜턴',
   convenience: '간식 · 생수 · 각얼음 · 상비약',
   pharmacy: '붕대 · 구급품 · 약',
   restaurant: '식사 · 매운탕 · 회',
@@ -63,6 +65,7 @@ export type ShopHours = 'always' | { open: number; close: number };
  */
 export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
   market: 'always',
+  tackle: 'always',   // 292차 — 낚시용품점은 밤낚시꾼을 위해 밤새 연다
   convenience: 'always',
   mart: { open: 10, close: 22 },
   daily: { open: 10, close: 22 },
@@ -652,6 +655,22 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_anju',      name: '해물 안주',   icon: '', iconTexture: 'art_anju', category: 'food', subCategory: '가공품', basePrice: 12000, price: 15000, maxPerPurchase: 3, equippable: false, desc: 'HP +20, 체온 유지.' },
       { id: 'shop_soju',      name: '소주',        icon: '', iconTexture: 'art_soju', category: 'food', subCategory: '가공품', basePrice: 3000, price: 4000, maxPerPurchase: 5, equippable: false, desc: '피로 -10. 추위는 잊게 해주지만 탈수가 빠르다.' },
     ],
+  },
+  // 292차 — 낚시용품점(포항 · 거제 · 태안 · 여수 · 울산의 낚시점 POI · 위판 창구 없음 · 매입 없음).
+  //  품목은 직판장 · 생활용품점 · 마트의 낚시 물건을 그대로 판다(한 물건 = 한 정의 — 값 · 묶음 · 해금 열쇠가 같다).
+  tackle: {
+    kind: 'tackle',
+    name: '낚시용품점',
+    greeting: '밤낚시 가세요? 미끼는 새벽에 들어온 겁니다.',
+    buysCategories: [],
+    get sells(): ShopEntry[] {
+      const pick = (kind: BuildingKind, ids: string[]): ShopEntry[] => SHOP_CATALOG[kind].sells.filter((e) => ids.includes(e.id));
+      return [
+        ...SHOP_CATALOG.market.sells.filter((e) => e.category === 'tackle' || e.id === 'inv_bakkan'),
+        ...pick('daily', ['inv_rod_budget', 'inv_reel_budget', 'inv_line_nylon3', 'inv_headlamp']),
+        ...pick('mart', ['inv_breadbait_pack', 'inv_chum_krill_block']),
+      ];
+    },
   },
 };
 

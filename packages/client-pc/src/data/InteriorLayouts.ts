@@ -104,6 +104,7 @@ const AUCTION_NAME = /수협|위판|활어\s*센터|어판장|공판장|공동�
 /** 건물 종류 + 상호 → 실내 틀 */
 export function interiorTemplateOf(kind: BuildingKind, name: string): InteriorTemplate {
   if (kind === 'market') return AUCTION_NAME.test(name) ? 'auction' : 'tackle';
+  if (kind === 'tackle') return 'tackle';   // 292차 — 낚시용품점은 직판장의 낚시점 틀 그대로
   if (kind === 'restaurant' || kind === 'cafe' || kind === 'pub') return 'food';
   return 'store';
 }

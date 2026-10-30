@@ -277,7 +277,7 @@ def main() -> None:
         # 262차 — 표에 없는 가게는 자동으로 조금씩 바꿔 표에 넣는다(auto: true). 공공 · 시설 · 이미 바뀐 이름은 건너뛴다
         made = 0
         for p in json.load(open(OUTS[1], encoding='utf-8')):
-            if p.get('src') == 'capture' or p.get('type') not in BUSINESS:
+            if p.get('src') in ('capture', 'manual') or p.get('type') not in BUSINESS:   # 292차 — manual = 손으로 넣은 게임 가게(낚시용품점) — 이름을 바꾸지 않는다
                 continue
             real = p.get('name') or p.get('nameEn') or ''
             if not real or name_key(real) in aliases or real in alias_values or is_public_name(real):

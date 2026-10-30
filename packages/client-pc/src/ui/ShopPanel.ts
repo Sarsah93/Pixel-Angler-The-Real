@@ -202,7 +202,7 @@ export class ShopPanel extends DraggablePanel {
   private tabDefs: { id: ShopTab; label: string }[] = [];
   /** 수리 가능 상점 = 낚시 장비를 취급하는 곳 (직판장 · 생활용품점) */
   private get canRepair(): boolean {
-    return this.shop.kind === 'market' || this.shop.kind === 'daily';
+    return this.shop.kind === 'market' || this.shop.kind === 'daily' || this.shop.kind === 'tackle';
   }
   private selectedRepair: InvItem | null = null;
   /** 위판 창구를 겸하는 상점인가 (147차 — 건물 종류가 아니라 데이터가 정한다) */

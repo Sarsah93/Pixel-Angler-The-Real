@@ -1647,7 +1647,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private playRadio(src: FurnInstance): void {
     if (this.tourPanel) return;
     this.hintText.setVisible(false);
-    const lines = buildRadioBroadcast(getLocale() === 'en' ? 'en' : 'ko');
+    const lines = buildRadioBroadcast(getLocale() === 'en' ? 'en' : 'ko', new Date(), StoryStore.currentChapter());   // 292차 — 열린 바다만
     this.startRadioWaves(src);
     const panel = new MonologuePanel(this, lines, () => {
       panel.destroy();

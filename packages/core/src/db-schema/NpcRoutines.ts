@@ -18,6 +18,7 @@ export const NPC_ROUTINES: Record<NpcRoutineKind, NpcRoutineDef> = {
   craft: { kind: 'craft', shifts: [{ fromMin: h(7), toMin: h(17) }] },
   kid: { kind: 'kid', shifts: [{ fromMin: h(8), toMin: h(19) }] },
   visitor: { kind: 'visitor', shifts: [{ fromMin: h(9), toMin: h(21) }] },
+  night: { kind: 'night', shifts: [{ fromMin: h(18), toMin: h(6) }] },   // 292차 — 자정을 넘는 한 토막
   always: { kind: 'always', shifts: [{ fromMin: 0, toMin: 1440 }] },
 };
 
@@ -44,6 +45,34 @@ export const STORY_NPC_ROUTINE: Record<string, NpcRoutineKind> = {
   // 254차 — 찌 가게 두 집(가게는 장 서는 시간과 같다 — 집 문은 없다: 일과 밖에는 가게 안에 있다)
   mun_pilgu: 'always',
   cha_yeongbae: 'always',
+  // 292차 — 속초 밖 지역 인물(263차 자리 · 292차 집). 밤낚시 동아리(씨바스터즈) · 폐어선 거처 · 캠핑카 · 갯바위의 두 소녀는 집이 없어 24시간 밖
+  na_gibeom: 'market',
+  seo_harin: 'visitor',
+  jim_kang: 'angler',
+  go_hosu: 'always',
+  mo_taejo: 'always',
+  yeo_gangsan: 'always',
+  chae_surim: 'office',
+  yu_harang: 'visitor',
+  ha_nui: 'craft',
+  namgung_hyeon: 'night',
+  han_bom: 'always',
+  lee_suyeon: 'always',
+  go_manseok: 'angler',
+  go_haena: 'visitor',
+  chae_geumja: 'angler',
+  chae_pado: 'angler',
+  song_gibaek: 'always',
+  ma_gamgi: 'visitor',
+  oh_gayun: 'office',
+  jeong_umi: 'always',
+  oh_serin: 'day_angler',
+  mara: 'day_angler',
+  yu_ria: 'visitor',
+  bu_sundeok: 'day_angler',
+  kang_haesol: 'visitor',
+  dan_cheolho: 'day_angler',
+  ha_minji: 'visitor',
 };
 
 export function routineOfNpc(npcId: string): NpcRoutineDef {

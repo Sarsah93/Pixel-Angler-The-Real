@@ -9,7 +9,7 @@
  */
 
 import {
-  calculateTideInfo, getLunarDayDisplay, kstParts, WEATHER_LABEL, toxinBanLabel,
+  calculateTideInfo, getLunarDayDisplay, kstParts, WEATHER_LABEL, toxinBanLabel, isRegionOpenAtChapter,
   type KmaWeatherInfo, type KmaDailyOutlook, type WeatherKind,
 } from '@tra/core';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -25,6 +25,14 @@ const MONTH_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July'
 const SEAS: { id: string; ko: string; en: string }[] = [
   { id: 'gangwon_sokcho', ko: '동해 중부, 속초 앞바다', en: 'Off Sokcho, on the central East Sea' },
   { id: 'busan', ko: '남해 동부, 부산 앞바다', en: 'Off Busan, on the eastern South Sea' },
+  // 292차 — 열린 지역을 전부 읽는다(이야기 장 순서로 열린 곳만 — `isRegionOpenAtChapter`)
+  { id: 'ulsan', ko: '동해 남부, 울산 앞바다', en: 'Off Ulsan, on the southern East Sea' },
+  { id: 'gyeongbuk_pohang', ko: '동해 남부, 포항 구룡포 앞바다', en: 'Off Guryongpo, Pohang, on the southern East Sea' },
+  { id: 'gyeongnam_geoje', ko: '남해 동부, 거제 앞바다', en: 'Off Geoje, on the eastern South Sea' },
+  { id: 'jeonnam_yeosu', ko: '남해 서부, 여수 앞바다', en: 'Off Yeosu, on the western South Sea' },
+  { id: 'chungnam_taean', ko: '서해 중부, 태안 앞바다', en: 'Off Taean, on the central West Sea' },
+  { id: 'jeju', ko: '제주 앞바다', en: 'Off Jeju' },
+  { id: 'incheon', ko: '서해 중부, 인천 앞바다', en: 'Off Incheon, on the central West Sea' },
 ];
 
 const hm = (d: Date): string => { const p = kstParts(d); return `${p.hh}:${p.mi}`; };
@@ -90,7 +98,9 @@ function tomorrowPart(o: KmaDailyOutlook, en: boolean): string {
 }
 
 /** 방송 원고 — 단락 배열 (MonologuePanel이 한 단락씩 타이핑한다) */
-export function buildRadioBroadcast(locale: 'ko' | 'en', now = new Date()): string[] {
+/** @param chapter 지금 열린 장(292차 — 그 장까지 열린 바다만 읽는다 · 없으면 전부) */
+export function buildRadioBroadcast(locale: 'ko' | 'en', now = new Date(), chapter = 7): string[] {
+  const seas = SEAS.filter((sea) => isRegionOpenAtChapter(sea.id, chapter));
   const en = locale === 'en';
   const p = kstParts(now);
   const lunar = getLunarDayDisplay(noonKst(0, now));
@@ -100,7 +110,7 @@ export function buildRadioBroadcast(locale: 'ko' | 'en', now = new Date()): stri
     : `(지지직…) 바다 날씨와 물때를 전해 드리는 시간입니다. 오늘은 ${p.mo}월 ${p.d}일 ${p.dow}요일, 음력 ${lunar}일입니다.`);
   out.push(tideLine(noonKst(0, now), en, true));
   out.push(tideLine(noonKst(1, now), en, false));
-  for (const sea of SEAS) {
+  for (const sea of seas) {
     const w = ExternalDataStore.getKmaWeather(sea.id);
     if (!w) continue;
     const head = en ? `${sea.en}: right now ${nowPart(w, true)}.` : `${sea.ko}는 지금 ${nowPart(w, false)}입니다.`;
@@ -110,7 +120,7 @@ export function buildRadioBroadcast(locale: 'ko' | 'en', now = new Date()): stri
     out.push(head + tail);
   }
   // 229차 — 패류독소 채취 금지 발령(해역별 · 봄). 홍합 · 바지락 · 굴
-  for (const sea of SEAS) {
+  for (const sea of seas) {
     const lbl = toxinBanLabel(sea.id, now);
     if (!lbl) continue;
     out.push(en

@@ -1833,7 +1833,9 @@ export class RegionFieldScene extends Phaser.Scene {
       const k = poi.shopKind ?? '';
       if (k === 'convenience') return 'convenience';
       if (k === 'supermarket' || k === 'grocery' || k === 'greengrocer') return 'mart';
-      if (k === 'seafood' || k === 'fishery' || k === 'fishing') return 'market';
+      // 292차 — 낚시용품점(OSM shop=fishing · 「낚시」가 든 outdoor · 게임 캡처 tackle). 전에는 fishing이 직판장이었다
+      if (k === 'fishing' || k === 'tackle' || (k === 'outdoor' && /낚시|낚스|피싱|fishing|tackle/i.test(poi.name ?? ''))) return 'tackle';
+      if (k === 'seafood' || k === 'fishery') return 'market';
       if (k === 'alcohol' || k === 'beverages' || k === 'pub') return 'pub';
       if (k === 'chemist' || k === 'medical_supply' || k === 'herbalist') return 'pharmacy';
       // 135차 — 생활용품점(사이소): Ch1 저가 장비 한 벌. 속초 실데이터 general 12 · variety_store 5
@@ -1936,7 +1938,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (bk === 'market' && interiorTemplateOf('market', name) === 'auction') return { w: 4, h: 3, kind: 'industrial', levels: 1 };
     const size: Record<BuildingKind, [number, number]> = {
       convenience: [2, 2], mart: [3, 2], market: [3, 2], restaurant: [3, 2], cafe: [2, 2], pub: [2, 2], pharmacy: [2, 2], daily: [3, 2], nursery: [3, 2],
-      mill: [2, 2],
+      mill: [2, 2], tackle: [3, 2],
     };
     const [w, hh] = size[bk];
     return { w, h: hh, kind: 'commercial', levels: bk === 'mart' || bk === 'daily' || bk === 'pharmacy' ? 2 : (h < 0.5 ? 1 : 2) };
@@ -2462,7 +2464,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
         convenience: 0x2f8a57, mart: 0xc8662a, market: 0x2a6aa8, restaurant: 0xa8402a,
-        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a,
+        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a, tackle: 0x2a7ab8,
       };
       const g = this.add.graphics();
       g.fillStyle(0x3a2616, 1); g.fillRect(10, 18, 4, 12);            // 기둥
@@ -6527,7 +6529,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 상점 카테고리 → 미니맵 아이콘 키 */
   private static readonly MINI_SHOP_ICON: Record<BuildingKind, string> = {
     convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food',
-    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill',
+    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill', tackle: 'mm_tackle',
   };
 
   /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */

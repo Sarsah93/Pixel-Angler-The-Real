@@ -61,6 +61,7 @@ export function shopScaleOf(s: ShopScaleInput): ShopScale {
       if (LARGE_NAME.test(name)) return 'large';
       return 'medium';
     case 'daily':
+    case 'tackle':   // 292차 — 낚시용품점(「○○낚시마트」는 대형)
       return LARGE_NAME.test(name) ? 'large' : 'medium';
     case 'convenience':
     case 'pharmacy':

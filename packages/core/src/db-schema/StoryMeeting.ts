@@ -10,6 +10,8 @@
 import type { QuestMeetingDef } from '../types/Story.js';
 
 export const QUEST_MEETING: Readonly<Record<string, QuestMeetingDef>> = {
+  // 292차 — 편 지역을 대본에 맞췄다(M3-09 · M4-10 · M2-09 · N22-2~5는 의뢰인 집 지역이 되어 표에서 뺐다). N20-3: 받는 자리 「그쪽 홈그라운드로 갈게요」는 부산(집) · 끝 · 편집본은 속초
+  'N20-3': { offer: 'home', complete: 'here', talks: { 2: 'here' } },
   // offer: 「부산 갈 준비는 됐냐」·note 「부산으로 떠나기 전」 / complete: 「첫 상자가 낙찰됐다더라」 hearsay
   'M2-01': { offer: 'home' },
   // offer: 「너도 감천 왔냐」「겨울엔 여기야」 / complete: 계측자에 올린 42cm를 그 자리에서 보고 대를 건넴
@@ -22,8 +24,6 @@ export const QUEST_MEETING: Readonly<Record<string, QuestMeetingDef>> = {
   'M3-07': { offer: 'here', complete: 'here' },
   // offer: 「참돔 잡으러 간다」 출항 전, 장소 불명 / complete: 「배에 있던 사람은 다 봤다」 부러진 마디를 그 자리에서 천으로 싸 줌
   'M3-08': { complete: 'here' },
-  // offer: 부러진 대를 들고 공방에 감 「이건 여기 둬」 / talk1: 「죽간 공방에서」 / complete: note 「공방에 들렀다」 — 전부 속초 공방
-  'M3-09': { offer: 'home', complete: 'home', talks: { 1: 'home' } },
   // offer: 「왔다! 여기, 여기!」「태안까지 어떻게 왔어요?」 / complete: 「잡았어!」 포말대에서 바로
   'M4-08': { offer: 'here', complete: 'here' },
   // offer: note 「제주로 떠나기 전에 어촌계에 들렀다」「배는 어디 묶을 거냐」 / complete: 「들어왔지」 보고·영수증 — 장소 불명

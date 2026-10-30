@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-30 291차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-30 292차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-30 291차) — 맵 확장 영향 ①: 출장 나온 사람 · 만나는 자리 · 안내 화살표(인물이 지금 있는 곳)**
+**최근 변경 (2026-10-30 292차) — 맵 확장 영향 ②: 지역마다 일감 · 인물 집 · 일과 · 낚시용품점 · 편 지역 정정 · 라디오**
+
+- 사용자 「편 지역을 대본에 맞춰 · 지역 활동 전부 다른 지역에서도 · 포항 · 거제 · 태안 미끼 가게 2개씩 · main & 재배포 · wiki」 → 편 지역 5(M3-09 · M4-10 · M2-09 · N20-3 → 속초 · N22-2~5 → 부산).
+- 품삯 일감 18(8지역 · `DayJobs` — 그 사람이 서 있는 지역에서만) · 일과 갈래 `night` + 27명 · 집 `home` 20(건물 아랫변 걷는 칸 — `r292/homes.py`).
+- 가게 종류 `tackle` 낚시용품점(24시간 · 직판장 tackle 품목 + 사이소 입문 대 · 마트 밑밥 — `get sells()` 한 정의) · OSM fishing · 「낚시」 outdoor · 손 POI 5(`src: manual`) → 포항 2 · 거제 2 · 태안 2 · 여수 4 · 울산 1 · 라디오 바다 9(열린 장까지).
+- 검증: core 459 · 하네스 r292 12/12 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [292차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-292-regional-jobs-routines-tackle-shops.md).
+
+**이전 변경 (2026-10-30 291차) — 맵 확장 영향 ①: 출장 나온 사람 · 만나는 자리 · 안내 화살표(인물이 지금 있는 곳)**
 
 - 의뢰인이 있는 189편 중 76편은 의뢰인이 편의 지역에 없다(대본은 「너도 감천 왔냐」) → 받을 수 있는 · 진행 중인 동안 그 지역 출장 자리(`STORY_GUEST_ANCHORS` 9곳)에 나온다.
 - 편마다 받는 · 끝내는 자리 · 대화 목표 = `here` · `home` · `any`(63편 대본 전문 분류 · `QUEST_MEETING` 42편 · core `rules/QuestMeeting.ts`) · 판정은 `questsForNpc` 한 곳.
@@ -333,13 +340,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 대본 밖도 정리: 일지 서두 · 목표 줄 · 진행 중 내 답(반말 33 → 해요체) · 물어보기 물음 · 주제 · 컷씬 속말 · 탁새벽 「아저씨」 → 이름.
 - **290(2)**: 옛 답 글 호칭 약 320곳(5갈래 · 필드 장면 속말 5줄 포함) · 데이터 어긋남 넷(네 살 사진 18년 전 · M3-08 겨울 + 조행록 6장 · M4-03 밤 · M4-11 · N03-5 신분 앞당김) · 영어 성 Go · core 452.
   상세: [290차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-290-talk-scripts-all-honorific.md).
-
-**이전 변경 (2026-10-30 289차) — 입질 B 단계: 바다 · 철 · 수온 존재 가중 · 새 미끼 셋 · 풍랑 통제 · 살오징어**
-
-- 사용자 「추천대로 추가해주고, main 반영 및 재배포, wiki 업데이트도 해줘」(288 감사 D1~D6) → core `rules/SpeciesPresence.ts`(바다 가중 · 연안 평년 수온 · 계절 · 수온 · 이야기 하한) · `presenceBiteRate`.
-- 존재 가중은 후보를 거른 뒤에 곱한다(드물게 ≠ 없음) · 해양기상 Mock은 수온 · 안개에 쓰지 않는다(`liveMarine`) · 적수온 정정 5 · 살오징어 · 미끼 셋 · 캔 갯것 미끼 · 풍랑 통제.
-- 검증: core 438 · 하네스 9/9 · 3/3 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개 · main `7453cda` · 96차 배포(gh-pages `4d79deb`).
-  상세: [289차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md).
 
 ---
 
