@@ -16,7 +16,8 @@ import { dishVariantCandidates, dishVariantKind, allDishVariantLines } from '../
 import { namulVariantOf, parseNamulVariant, NAMUL_VEG } from '../db-schema/NamulDishes.js';
 import { oilQuote, grindQuote, millService, MILL_TUNING, OILCAKE_ID, oilBottleDef, millStepG } from '../rules/OilMill.js';
 import { CURE_RECIPES, cureRecipesAt, cureReadyAt, cureLeftKo, CURE_STATION_FACILITY } from '../rules/HomeCure.js';
-import type { DishData, FarmPlotState } from '../types/Farming.js';
+import type { FarmPlotState } from '../types/Farming.js';
+import type { DishData } from '../types/Cooking.js';
 
 const H = 3_600_000;
 const kst = (y: number, m: number, d: number): number => Date.UTC(y, m - 1, d) - 9 * H;

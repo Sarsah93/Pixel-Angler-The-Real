@@ -79,8 +79,9 @@ describe('286차 — 대본 검사', () => {
   });
 
   it('고르는 말은 이어짐 · 끝과 같이 두지 않는다', () => {
-    const t = offerTalk([line('baram', '그래.', 'Right.')]);
-    t.nodes.start = { ...t.nodes.start, choices: [opt('x', '좋아요.', 'Sure.', { end: endTalk({ accept: true }) })] };
+    const t0 = offerTalk([line('baram', '그래.', 'Right.')]);
+    // 대본 마디 표는 읽기 전용 — 고친 사본을 만든다
+    const t = { ...t0, nodes: { ...t0.nodes, start: { ...t0.nodes.start, choices: [opt('x', '좋아요.', 'Sure.', { end: endTalk({ accept: true }) })] } } };
     expect(validateTalks([t]).some((s) => s.includes('고를 말을 두지 않는다'))).toBe(true);
   });
 });
