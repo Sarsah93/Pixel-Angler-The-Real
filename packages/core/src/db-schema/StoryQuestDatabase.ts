@@ -93,7 +93,7 @@ const MAIN: StoryQuestDef[] = mainRows([
         howToKo: '직판장 [F] → 「판매하기」 → 오징어', howToEn: 'Fish market [F] → "Sell" → the squid' }),
       auto('visit', '영금정에 도착한다', 'Arrive at Yeonggeumjeong', { placeKey: 'poi:yeonggeumjeong' }),
       auto('visit', '동명항 방파제 쪽 정옥선 좌판 근처까지 이동한다', 'Reach Okseon\'s stall by the Dongmyeonghang breakwater', { placeKey: 'poi:okseon-stall' }),
-      talk('okseon', '정옥선 할머니에게 고민을 털어놓는다', 'Tell Grandma Okseon what is on your mind')],
+      talk('okseon', '정옥선 씨에게 고민을 털어놓는다', 'Tell Okseon what is on your mind')],
     { teaches: ['movement', 'inventory', 'statusPanel', 'worldMap', 'shop', 'save'], ordered: true }],
   ['M1-02', 1, 2, 270, 'okseon', SOK, '얼음 나르기', 'Hauling Ice',
     '정옥선의 심부름용 얼음 상자를 경매장까지 나른다. 인벤토리에서 퀘스트 아이템을 확인하고, 경매장까지 이동한 뒤, 얼음 상자를 지정된 위치에 내려놓는다.',
@@ -900,7 +900,7 @@ const SUB_EXTRA: StoryQuestDef[] = subExtra([
       howToKo: '집 마당 텃밭 [F] → 호미로 칸을 일구고 심는다 (콩나물은 방에 둔 시루 앞 [F]) · 텃밭이 없으면 생활용품점의 개간 키트',
       howToEn: 'Garden plot at home [F] → till a cell with the homi and plant (bean sprouts: [F] at the jar in your room) · no plot yet? Garden Plot Kit at the general store',
     }),
-      talk('okseon', '심었다고 할머니께 알린다', 'Tell her you have planted them')],
+      talk('okseon', '심었다고 정옥선 씨께 알린다', 'Tell her you have planted them')],
     ['M1-02'], { teaches: ['farming'] }],
   ['N19-8', 'N19', 1, 12, 350, 'okseon', SOK, '첫물', 'The First Picking',
     '다 자라 처음 거두면 맛 좀 보여 달라고 했다. "첫물은 남 주는 거야." 거둔 것을 챙겨 좌판으로 간다.',
@@ -910,7 +910,7 @@ const SUB_EXTRA: StoryQuestDef[] = subExtra([
       howToKo: '집 마당 텃밭 · 집 안 선반 [F] → 다 자란 칸을 골라 「거두기」 (솎음 · 잎 따기도 된다)',
       howToEn: 'Garden plot or indoor shelf at home [F] → pick a ripe cell and press Harvest (thinning and leaf-picking count too)',
     }),
-      talk('okseon', '거둔 것을 할머니께 맛보인다', 'Let her taste what you grew')],
+      talk('okseon', '거둔 것을 정옥선 씨께 맛보인다', 'Let her taste what you grew')],
     ['N19-7'], { teaches: ['farming'] }],
 
   // ── Ch2 부산 — 두 편은 속초로 되돌아간다 ──

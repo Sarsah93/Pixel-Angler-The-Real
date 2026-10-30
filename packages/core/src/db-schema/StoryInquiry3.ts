@@ -129,7 +129,7 @@ export const INQUIRY_NODES_3: InquiryNodeDef[] = [
     { requires: { questActive: 'M2-05' } }),
 
   // ═══ 명태를 본 적 있어요? — 정옥선 · 열쇠(단계 0 허락 → 1 이야기 → 2 저장) + 곁물음 ═══
-  ask('okseon.oral_permit', 'okseon', 'w_oral_record', '할머니 이야기도 받아 적어도 될까요?', 'Could I write down your story too, Grandma?',
+  ask('okseon.oral_permit', 'okseon', 'w_oral_record', '정옥선 씨 이야기도 받아 적어도 될까요?', 'Could I write down your story too, Okseon?',
     '내 얘기를? (손사래를 치다가 멈춘다.) …셋 채우기 힘들지. 나도 이 바다 노인이니 하나로 쳐라.\n\n켜라, 그 녹음기. 대신 두 번 말 안 한다. 끊지 말고 받아 적어.',
     "My story? (She starts to wave me off, then stops.) …Three is hard to fill, isn't it. I'm an old woman of this sea too, so count me as one.\n\nTurn it on, that recorder. But I won't say it twice. Don't cut in, just write.",
     { effect: { affinity: 0.02, action: { questId: 'M3-06', objectiveIndex: 1, step: 0 } } }),
@@ -146,7 +146,7 @@ export const INQUIRY_NODES_3: InquiryNodeDef[] = [
     "(She closes her eyes and listens to the end.) …Nothing wrong. You even got the way I talk. Don't fix it. Fix it and it's not my words.\n\nPut it in your log. Next to the fish you caught. Someday when somebody opens it, at least they'll know what this sea was like.",
     { effect: { action: { questId: 'M3-06', objectiveIndex: 1, step: 2 } } }),
   // 진행 후 — 채록을 마친 뒤
-  ask('okseon.journal_save.after', 'okseon', 'w_journal', '할머니 이야기, 조행록에 잘 넣어 뒀어요.', 'I put your story in my log. It\'s safe.',
+  ask('okseon.journal_save.after', 'okseon', 'w_journal', '정옥선 씨 이야기, 조행록에 잘 넣어 뒀어요.', 'I put your story in my log. It\'s safe.',
     '(조행록을 받아 몇 장 넘겨 본다.) …내 말이 종이에 앉아 있으니 이상하구나. 내 목소리가 이렇게 생겼나.\n\n잘 둬라. 젖으면 못 쓴다. 고기 피 묻은 손으로 펼치지 말고.',
     "(She takes the log and turns a few pages.) …Strange, seeing my words sitting on paper. So that's what my voice looks like.\n\nKeep it safe. Once it gets wet it's done for. And don't open it with fish blood on your hands.",
     { parent: 'okseon.journal_save', requires: { questDone: 'M3-06' }, effect: { affinity: 0.02 } }),
@@ -206,7 +206,7 @@ export const INQUIRY_NODES_3: InquiryNodeDef[] = [
     '(가방에서 수첩 두 권을 꺼내 하나를 내게 던진다.) 수첩 하나씩, 연필은 넉넉히. 녹음기는 켜 두되 어르신 코앞에 들이밀지 마. 말이 굳어.\n\n물을 건 하나만 정해. 명태 본 적 있으세요. 그다음부턴 듣는 거야.',
     "(He pulls two notebooks from his bag and tosses me one.) A notebook each, plenty of pencils. Leave the recorder running, but don't shove it under their noses. The words freeze up.\n\nPick one question. Have you ever seen a pollock. After that, we listen.",
     { effect: { action: { questId: 'N18-3', objectiveIndex: 1, step: 0 } } }),
-  ask('hyeonsu.oral_take', 'hyeonsu', 'w_oral_record', '어르신 말씀, 같이 받아 적자.', "Let's both write down what he's saying.",
+  ask('hyeonsu.oral_take', 'hyeonsu', 'w_oral_record', '그분들 말씀, 같이 받아 적자.', "Let's both write down what he's saying.",
     '(어르신 말씀이 느리게 이어진다. 도현수가 고개를 숙인 채 낮게 말한다.) 그물 찢어진 겨울 얘기야. 그대로 적어. 고치지 말고.\n\n…방금 옆자리 어르신이 그해가 아니라고 하셨지. 그것도 적어. 날짜가 두 개면 두 개 다.',
     "(The old man's words come slowly. Hyeonsu keeps his head down and speaks low.) It's the winter the nets tore. Write it as it is. Don't fix anything.\n\n…The old man beside him just said it wasn't that year, right? Write that too. Two dates, then both of them.",
     { opens: ['c_torn_nets', 'c_two_dates'], effect: { action: { questId: 'N18-3', objectiveIndex: 1, step: 1 } } }),

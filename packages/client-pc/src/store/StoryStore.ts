@@ -27,7 +27,7 @@ import {
   type OkseonSpareGift,
   inquiryTopicsFor, inquiryFollowUps, inquiryNodesForQuest, inquiryKnownTopics, inquiryNode, inquiryDrivesAction,
   type InquiryCtx, type InquiryTopicEntry, type InquiryNodeDef, type InquiryTopicDef,
-  offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, talkNode, talkGateOk, talkVisibleChoices,
+  offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, talkNode, talkGateOk, talkVisibleChoices, talkAnswerRef,
   endingById, endingsOfArc, endingArcOfQuest, npcShopTerms, npcAffinityCap, npcEndingRole,
   type TalkCtx, type StoryTalkDef, type TalkChoiceDef, type TalkEndDef, type NpcShopTerms, type StoryEndingDef,
 } from '@tra/core';
@@ -758,10 +758,17 @@ class StoryStoreManager {
     const at = this.talkAt[t.id];
     return at && t.nodes[at] ? at : t.start;
   }
-  /** 이 단계에서 지금 보이는 말 */
+  /** 이 단계에서 지금 보이는 말 — 290차: 옛 답에 묶인 말은 그 답이 지금 보일 때만(우호도 · 레벨 · 면허 · 표시 조건) */
   talkChoices(t: StoryTalkDef, nodeId: string): TalkChoiceDef[] {
     const n = talkNode(t, nodeId);
-    return n ? talkVisibleChoices(n, this.talkCtx()) : [];
+    return n ? talkVisibleChoices(n, this.talkCtx()).filter((c) => this.talkAnswerOk(t, c)) : [];
+  }
+  /** 290차 — 끝이 묶인 옛 답(받는 답 · 보상 답)이 지금 보이는가(묶이지 않았으면 늘 참) */
+  private talkAnswerOk(t: StoryTalkDef, c: TalkChoiceDef): boolean {
+    const ref = talkAnswerRef(t, c.end);
+    if (!ref) return true;
+    const q = getStoryQuest(t.questId);
+    return !!q && this.visibleChoices(q, ref.stage).some((x) => x.id === ref.id);
   }
   /** 이 말을 전에 골라 본 적이 있는가(우호도는 처음 한 번만 — 일지 · 검증용) */
   talkChosenBefore(t: StoryTalkDef, nodeId: string, choiceId: string): boolean {
@@ -778,7 +785,7 @@ class StoryStoreManager {
   talkChoose(t: StoryTalkDef, nodeId: string, choiceId: string): TalkStepResult | null {
     const node = talkNode(t, nodeId);
     const c = node?.choices.find((x) => x.id === choiceId);
-    if (!node || !c || !talkGateOk(c.requires, this.talkCtx())) return null;
+    if (!node || !c || !talkGateOk(c.requires, this.talkCtx()) || !this.talkAnswerOk(t, c)) return null;
     const q = getStoryQuest(t.questId);
     if (!q) return null;
     const key = `${t.id}/${nodeId}/${c.id}`;
@@ -907,8 +914,9 @@ class StoryStoreManager {
     switch (t.at) {
       case 'offer':
         if (end.fail && q.kind === 'sub') { this.failOffer(q); return true; }   // 286차 — 끝내 거절 = 실패
-        if (end.decline && q.kind === 'sub') { this.declineOffer(q); return true; }
-        return this.accept(q.id, undefined, true);
+        // 290차 — 옛 받는 답에 묶였으면 그 답으로(결과 · 기록 · 미루기 규칙이 그대로 — `accept`가 미루는 답도 처리한다)
+        if (end.decline && q.kind === 'sub') { if (end.offer) return this.accept(q.id, end.offer, true); this.declineOffer(q); return true; }
+        return this.accept(q.id, end.offer, true);
       case 'objective':
         if (t.objectiveIndex === undefined || this.objectiveDone(q, t.objectiveIndex)) return false;
         this.event({ kind: 'scene', questId: q.id, objectiveIndex: t.objectiveIndex });

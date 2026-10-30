@@ -43,9 +43,9 @@ export const CINE_M1_OKSEON_STALL: CineScript = {
     { kind: 'face', who: 'okseon', dir: 'down' },
     { kind: 'emote', who: 'okseon', emote: 'surprise', ms: 700 },
     { kind: 'focus', who: 'player', ms: 480 },
-    { kind: 'say', who: 'player', thought: true, text: '…음? 할머니가 날 계속 쳐다보고 계셨네…', textEn: '…Hm? That grandmother has been watching me the whole time…' },
+    { kind: 'say', who: 'player', thought: true, text: '…음? 저 좌판 주인분이 날 계속 쳐다보고 계셨네…', textEn: '…Hm? The woman at that stall has been watching me the whole time…' },
     { kind: 'say', who: 'okseon', text: '...' },
-    { kind: 'say', who: 'player', thought: true, text: '할머니께 고민 상담을 해볼까?', textEn: 'Should I ask her for advice?' },
+    { kind: 'say', who: 'player', thought: true, text: '저분께 고민 상담을 해볼까?', textEn: 'Should I ask her for advice?' },
   ],
 };
 
@@ -60,7 +60,7 @@ export const CINE_M1_ICE_DROP: CineScript = {
     { kind: 'say', who: 'player', thought: true, text: '여기다. 하역대 바로 옆… 바닥이 젖어 있으니 미끄러지지 않게.', textEn: 'Here. Right beside the unloading dock… the floor is wet, so careful not to slip.' },
     { kind: 'emote', who: 'player', emote: 'joy', ms: 700 },
     { kind: 'say', who: 'coop', text: '어, 만복상회 얼음이네. 거기 놓고 가면 돼. 수고했어요.', textEn: 'Oh, Manbok Store ice. You can leave it right there. Thanks for the work.' },
-    { kind: 'say', who: 'player', thought: true, text: '이제 할머니께 돌아가서 다 옮겼다고 말씀드리자.', textEn: 'Now back to Grandma to tell her it is all moved.' },
+    { kind: 'say', who: 'player', thought: true, text: '이제 정옥선 씨께 돌아가서 다 옮겼다고 말씀드리자.', textEn: 'Now back to Okseon to tell her it is all moved.' },
   ],
 };
 

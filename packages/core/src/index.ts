@@ -678,8 +678,11 @@ export {
   talkById, talksOfQuest, offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, progressTalksOfNpc,
   talkNode, talkGateOk, talkVisibleChoices, endingById, endingsOfArc, canonEndingOf, endingArcOfQuest,
   npcShopTerms, npcAffinityCap, npcEndingRole, allTalkLines, validateTalks, validateEndings, TALK_AFFINITY_MAX, TALK_GIVE_AFFINITY_MAX,
+  talkAnswerRef, talkCoverageIssues, talkAddressWarnings,
   type TalkCtx,
 } from './rules/StoryTalk.js';
+// 290차 — 호칭 「OOO 씨」(주인공 이름 자리 표시 · 부름말 검사)
+export { PLAYER_TOKEN, fillPlayerName, playerAddressIssues, npcAddressIssue, playerTokenIssue, type AddressIssue } from './rules/PlayerAddress.js';
 // 287차 — 진행 중 물음(목표마다 물음 · 내 답 · 조언 — 자문자답 · 진행 나레이션 대신)
 export type { ProgressAskDef } from './types/Story.js';
 export {

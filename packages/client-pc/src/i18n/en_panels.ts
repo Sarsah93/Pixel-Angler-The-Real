@@ -310,7 +310,7 @@ export const EN_PANELS: Record<string, string> = {
   '원줄의 감도와 대상어의 이빨·여밭 쓸림 사이를 조정하는 쇼크리더입니다.': 'A shock leader balancing main-line sensitivity against teeth and reef abrasion.',
   '채비 검증 카탈로그': 'Rig check catalogue',
   '[할 일] 동명항 방파제 쪽 좌판 거리로 이동한다': '[Task] Head to the stall row by the Dongmyeong breakwater',
-  '[할 일] 정옥선 할머니에게 말을 건다': '[Task] Speak to Grandma Okseon',
+  '[할 일] 정옥선 씨에게 말을 건다': '[Task] Speak to Okseon',
   // ── 171차 · 정기 지출(유지비) ──
   '정기 지출': 'Recurring costs',
   '수협 조합비': 'Cooperative dues',

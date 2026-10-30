@@ -63,7 +63,7 @@ export const PROGRESS_ASKS_5: Record<string, ProgressAskDef[]> = {
       ['좌판 얼음통 밑에 수평 맞춰 밀어 넣기만 하면 된다. 그 사람이 묻기 전에 나와라.',
         "Just slide it level under the ice tub at the stall. Get out before she asks anything."]), // 1 — 받침 전하기(방식은 이 자리)
     pa(['그 사람 좌판엔 들러 봤냐?', 'Have you been by her stall?'],
-      ['…아직 할머니께 들르지 못했습니다.', "...I haven't been to see her yet."],
+      ['…아직 정옥선 씨께 들르지 못했습니다.', "...I haven't been to see Okseon yet."],
       ['들러서 얼음이 오래 가는지만 보고 와라. 그 사람이 무슨 말을 하든 그냥 듣고 오고.',
         "Go by and just see whether the ice is lasting. Whatever she says, just listen and come back."]), // 2 — 정옥선의 반응
   ],

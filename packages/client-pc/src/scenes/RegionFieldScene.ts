@@ -6016,7 +6016,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.playCinematic(script, { player: 'player', okseon: 'okseon' }, () => {
       this.hud?.pushLog(placeKey === 'poi:yeonggeumjeong'
         ? '[할 일] 동명항 방파제 쪽 좌판 거리로 이동한다'
-        : '[할 일] 정옥선 할머니에게 말을 건다');
+        : '[할 일] 정옥선 씨에게 말을 건다');
     });
   }
 

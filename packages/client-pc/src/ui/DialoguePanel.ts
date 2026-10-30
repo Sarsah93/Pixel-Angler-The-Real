@@ -60,7 +60,7 @@ import { applyScreenFixed } from './DraggablePanel.js';
 import { t } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, particle, progressAskOf, PROGRESS_ASK_FALLBACK, type ProgressAskDef } from '@tra/core';
+import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, particle, progressAskOf, PROGRESS_ASK_FALLBACK, fillPlayerName, type ProgressAskDef } from '@tra/core';
 import { SHOP_CATALOG, BUILDING_HOURS, BUILDING_LABEL, type BuildingKind } from '../data/ShopCatalog.js';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
@@ -522,7 +522,8 @@ export class DialoguePanel extends DraggablePanel {
     //   찍히다가 끝에서야 영어로 바뀌었다(따옴표로 감싼 대사는 끝까지 한국어였다 — I18n 인용부호 규칙).
     // 257차 — 번역한 **뒤에** 문장마다 줄을 바꾸고(빈 줄) 문장 끝에서 쉬어 간다(사용자 「실제로 말할 때 저렇게 빠르게 말하지 않으니까」)
     const isHint = next.startsWith(HINT_PREFIX);
-    const paced = paceSentences(t(isHint ? next.slice(HINT_PREFIX.length) : next));
+    // 290차 — 인물이 주인공을 부르는 자리 표시(`{player} 씨`)는 번역한 **뒤에** 이름으로 바꾼다(사전 열쇠는 자리 표시가 든 원문)
+    const paced = paceSentences(fillPlayerName(t(isHint ? next.slice(HINT_PREFIX.length) : next), GameState.player.nickname));
     // 267차 — 주의 단락(빨간 글)은 제 쪽에 홀로 찍는다 — 앞뒤로 쪽을 넘긴다
     if (isHint || this.hintPage) this.logDone = '';
     this.setHintPage(isHint);
@@ -732,7 +733,8 @@ export class DialoguePanel extends DraggablePanel {
     if (offerTalk) {
       const fresh = StoryStore.talkResume(offerTalk) === offerTalk.start;
       const note = StoryStore.offerNoteKo(q);
-      this.enterTalk(offerTalk, fresh && note ? [...paras, note] : paras);
+      // 290차 — 대본으로 받는 자리도 영업시간 주의(빨간 글 · 267차)를 앞에 찍는다(옛 표준 답 화면만 찍고 있었다)
+      this.enterTalk(offerTalk, fresh ? [...paras, ...this.hoursHintParas(q, false), ...(note ? [note] : [])] : paras);
       return;
     }
     if (n?.offer) paras.push(`"${n.offer}"`);
@@ -954,7 +956,7 @@ export class DialoguePanel extends DraggablePanel {
     this.talk = { def: talk, node: nodeId };
     const paras = [...head, ...this.speakerParas(node.lineKo, node.speaker ?? talk.npcId)];
     const rows: ChoiceRow[] = StoryStore.talkChoices(talk, nodeId).map((c) => ({
-      label: c.labelKo, action: () => this.chooseTalk(talk, nodeId, c),
+      label: DialoguePanel.named(c.labelKo), action: () => this.chooseTalk(talk, nodeId, c),
     }));
     this.play(paras, rows, true);
   }
@@ -972,7 +974,7 @@ export class DialoguePanel extends DraggablePanel {
     const items: QItem[] = [...lead, ...this.sceneCues(talk, nodeId)];
     if (node.next) items.push({ cue: 'goto', talk, node: nodeId });
     const rows: ChoiceRow[] = node.choices.length
-      ? StoryStore.talkChoices(talk, nodeId).map((c) => ({ label: c.labelKo, action: () => this.chooseTalk(talk, nodeId, c) }))
+      ? StoryStore.talkChoices(talk, nodeId).map((c) => ({ label: DialoguePanel.named(c.labelKo), action: () => this.chooseTalk(talk, nodeId, c) }))
       : [];
     const then = node.end ? () => {
       const res = StoryStore.talkContinue(talk, nodeId);
@@ -993,6 +995,11 @@ export class DialoguePanel extends DraggablePanel {
       if (b.kind === 'act') return { cue: 'act', who: b.who, act: b.act, to: b.to, item: b.item };
       return { cue: 'give', talk, node: nodeId, index: i };
     });
+  }
+
+  /** 290차 — 고를 말 속 자리 표시를 이름으로(번역 뒤) */
+  private static named(ko: string): string {
+    return ko.includes('{player}') ? fillPlayerName(t(ko), GameState.player.nickname) : ko;
   }
 
   /** 말은 따옴표 — 통째로 괄호(속말 · 몸짓)는 그대로 */

@@ -45,7 +45,7 @@ import { getLocale, t } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { LedgerStore } from '../store/LedgerStore.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
-import { kstYmd, type DayLedgerPage } from '@tra/core';
+import { kstYmd, fillPlayerName, type DayLedgerPage } from '@tra/core';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -765,7 +765,7 @@ export class JournalPanel extends DraggablePanel {
       const q = this.scene.add.text(detX, yy, `${who} — ${nd.askKo}`, { fontFamily: FONT, fontSize: '12px', color: C_GOLD, fontStyle: 'bold' });
       clampTextWidth(q, detW);
       // 답 첫 단락 — 번역을 먼저 하고 자른다(잘린 한국어는 사전에 없다)
-      const first = t(nd.answerKo.split('\n\n')[0]);
+      const first = fillPlayerName(t(nd.answerKo.split('\n\n')[0]), GameState.player.nickname);   // 290차 — 주인공 이름 자리 표시
       const a = this.scene.add.text(detX + 10, q.y + q.height + 2, first.length > 120 ? `${first.slice(0, 118)}…` : first, {
         fontFamily: FONT, fontSize: '12px', color: C_DIM, lineSpacing: 3, wordWrap: { width: detW - 10, useAdvancedWrap: true },
       });

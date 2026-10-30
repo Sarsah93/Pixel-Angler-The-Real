@@ -100,7 +100,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'emote', who: 'player', emote: 'sad', ms: 800 },
         { kind: 'say', who: 'player', bubble: '...', text: '부모님이랑 왔던 자리예요. 이제 저 혼자인데, 어디서부터 시작해야 할지 모르겠어요.', textEn: 'I came here with my parents. Now it is just me, and I do not know where to start.' },
         { kind: 'say', who: 'npc', bubble: '...', text: '울고 싶으면 울어도 된다. 다만 손은 놀리지 마라. 네가 할 수 있는 일부터 같이 해 보자.', textEn: 'Cry if you need to. Just keep your hands busy. Let us start with what you can do.' },
-        { kind: 'say', who: 'player', thought: true, text: '할머니가 먼저 손을 내밀어 주셨다. 여기서 시작하면 된다.', textEn: 'She reached out first. This is where I start.' },
+        { kind: 'say', who: 'player', thought: true, text: '정옥선 씨가 먼저 손을 내밀어 주셨다. 여기서 시작하면 된다.', textEn: 'She reached out first. This is where I start.' },
       ],
     };
     return base;
@@ -119,7 +119,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'faceTo', who: 'player', target: 'npc' },
         { kind: 'say', who: 'player', thought: true, text: '받침을 얼음 상자 옆에 놓고 왔다.', textEn: 'I left the tray beside the ice crate.' },
         { kind: 'emote', who: 'npc', emote: 'think', ms: 900 },
-        { kind: 'say', who: 'player', thought: true, text: '할머니는 받침을 한참 봤다. 손으로 마디를 쓸어 보더니, 얼음 상자를 그 위에 올렸다.', textEn: 'She looked at it for a long time, ran a hand over the joints, then set the ice crate on top of it.' },
+        { kind: 'say', who: 'player', thought: true, text: '정옥선 씨는 받침을 한참 봤다. 손으로 마디를 쓸어 보더니, 얼음 상자를 그 위에 올렸다.', textEn: 'She looked at it for a long time, ran a hand over the joints, then set the ice crate on top of it.' },
         { kind: 'wait', ms: 1200 },
         { kind: 'say', who: 'npc', bubble: '...', text: '탁 영감이 주던가?', textEn: 'Did old Tak give you this?' },
         { kind: 'say', who: 'player', bubble: '...', text: '…모르겠어요.', textEn: '…I would not know.' },
@@ -165,7 +165,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'say', who: 'npc', bubble: '...', text: '22년 전. 네가 거기 서 있었어. 저 손 잡고.', textEn: 'Twenty-two years ago. You stood right there. Holding those hands.' },
         { kind: 'photo', show: false },
         { kind: 'say', who: 'npc', bubble: '...', text: '울 거면 얼음부터 나르고 울라고 했지. 그 말이 왜 그렇게 빨리 나왔는지, 이제 알겠냐.', textEn: 'I told you to haul the ice first if you were going to cry. Now you know why it came out so fast.' },
-        { kind: 'say', who: 'player', thought: true, text: '할머니가 나를 처음 본 날이 22년 전이었다. 나는 몰랐고, 할머니는 알았다.', textEn: 'The first time she saw me was twenty-two years ago. I did not know. She did.' },
+        { kind: 'say', who: 'player', thought: true, text: '정옥선 씨가 나를 처음 본 날이 22년 전이었다. 나는 몰랐고, 정옥선 씨는 알았다.', textEn: 'The first time she saw me was twenty-two years ago. I did not know. She did.' },
         { kind: 'give', from: 'npc', to: 'player', item: 'photo', ms: 800 },
       ],
     };
@@ -200,7 +200,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'say', who: 'player', thought: true, text: '처음 거둔 것을 봉지째 내민다. 모양도 크기도 들쭉날쭉하다.', textEn: 'I hold out the bag with the first picking in it. Uneven in shape and size.' },
         { kind: 'give', from: 'player', to: 'npc', item: 'greens', ms: 900 },
         { kind: 'emote', who: 'npc', emote: 'think', ms: 900 },
-        { kind: 'say', who: 'player', thought: true, text: '할머니는 봉지에서 하나를 집어 흙을 털고 입에 넣는다. 한참을 씹는다.', textEn: 'She takes one out, brushes off the soil and puts it in her mouth. She chews for a long time.' },
+        { kind: 'say', who: 'player', thought: true, text: '정옥선 씨는 봉지에서 하나를 집어 흙을 털고 입에 넣는다. 한참을 씹는다.', textEn: 'She takes one out, brushes off the soil and puts it in her mouth. She chews for a long time.' },
         { kind: 'wait', ms: 900 },
         { kind: 'say', who: 'npc', bubble: '...', text: '…흙 맛이 좋다. 처음 치고는 잘했다.', textEn: '…The soil tastes good in it. Not bad for a first time.' },
         { kind: 'emote', who: 'player', emote: 'joy', ms: 800 },
@@ -253,7 +253,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'give', from: 'npc', to: 'player', item: 'book', ms: 900 },
         { kind: 'say', who: 'npc', bubble: '...', text: '조행록. 마지막 권. 네 아버지 거야. 나머지는 네가 써.', textEn: 'The log. The last volume. It was your father\'s. You write the rest.' },
         { kind: 'say', who: 'player', bubble: '...', text: '…나머지는 제가 쓰겠습니다.', textEn: '…I will write the rest.' },
-        { kind: 'say', who: 'player', thought: true, text: '손이 떨렸다. 할머니 손도 내 손도.', textEn: 'Our hands were shaking. Hers and mine.' },
+        { kind: 'say', who: 'player', thought: true, text: '손이 떨렸다. 그 손도 내 손도.', textEn: 'Our hands were shaking. Hers and mine.' },
       ],
     };
     return base;

@@ -7,8 +7,12 @@
  *  - 오류(✗) = `validateTalks`(참조 · 끝 규칙 · 막다른 길 · 글 규칙) — 반드시 고친다.
  *    경고(△) = 사람이 판단 — 말 길이 · 대사 길이 · 깎이는 말 없음 · 그 자리에 없는 사람에게 미치는 말 없음 · 남기고 안 읽는 표시.
  *
- *  사용: node tools/check_talks.mjs --part N19        (묶음 하나)
- *        node tools/check_talks.mjs --all             (N24 · N19 · N02 · N03 · M2)
+ *  290차 — 묶음은 `StoryTalk<묶음>.ts` 파일 전부(편 id 머리와 같은 이름 — M1 · N01 …). 묶음 검사에 더한다:
+ *    덮개(그 묶음 편마다 받는 자리 · 끝내는 자리 대본 · 옛 답의 표시 · 보상 답 · 미루기 — `talkCoverageIssues`) ·
+ *    호칭(주인공 말 속 부름말 — `--strict`면 가리키는 말도 오류).
+ *
+ *  사용: node tools/check_talks.mjs --part N19 [--strict]   (묶음 하나)
+ *        node tools/check_talks.mjs --all [--strict]        (있는 묶음 전부)
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -23,7 +27,8 @@ const DIST = process.env.CORE_DIST ? path.resolve(process.env.CORE_DIST) : path.
 const core = await import(pathToFileURL(path.join(DIST, 'index.js')).href);
 const SRC = path.join(ROOT, 'packages/core/src/db-schema');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'talks-'));
-const PARTS = ['N24', 'N19', 'N02', 'N03', 'M2'];
+const PARTS = fs.readdirSync(SRC).map((f) => /^StoryTalk([MN]\d+)\.ts$/.exec(f)?.[1]).filter(Boolean)
+  .sort((a, b) => (a[0] === b[0] ? +a.slice(1) - +b.slice(1) : a < b ? -1 : 1));
 
 const transpile = (file, outName) => {
   const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -56,6 +61,11 @@ for (const t of all) for (const n of Object.values(t.nodes)) for (const c of n.c
 for (const p of parts) {
   const talks = await loadPart(p);
   const errs = core.validateTalks(talks).map((m) => `✗ ${m}`);
+  // 290차 — 덮개(이 묶음 편 = id 머리가 묶음 이름) · 호칭
+  const own = new Set(core.STORY_QUESTS.filter((q) => q.id.split('-')[0] === p).map((q) => q.id));
+  for (const m of core.talkCoverageIssues(talks, own)) errs.push(`✗ ${m}`);
+  for (const t of talks) if (!own.has(t.questId)) errs.push(`✗ ${t.id}: 이 묶음 편이 아니다(${t.questId}) — 그 편 묶음 파일로`);
+  for (const m of core.talkAddressWarnings(talks)) (arg('strict') ? errs : null)?.push(`✗ ${m}`);
   const warns = [];
   const stats = { talks: talks.length, nodes: 0, choices: 0, neg: 0, cross: 0, gated: 0, ko: 0, stance: { giver: 0, other: 0, mid: 0, self: 0 } };
   for (const t of talks) {
@@ -65,7 +75,13 @@ for (const p of parts) {
       stats.nodes++;
       stats.ko += len(n.lineKo);
       if (len(n.lineKo) > 330) warns.push(`△ ${t.id}/${nid} 대사 ${len(n.lineKo)}자 — 330자 넘으면 대화창에서 세 번 넘게 밀린다`);
-      if (len(n.lineKo) < 12) warns.push(`△ ${t.id}/${nid} 대사가 짧다(${len(n.lineKo)}자)`);
+      if (!n.beats && len(n.lineKo) < 12) warns.push(`△ ${t.id}/${nid} 대사가 짧다(${len(n.lineKo)}자)`);
+      if (!n.beats) warns.push(`△ ${t.id}/${nid} 대본 장면이 아니다(상대 대사 한 덩어리) — scene([...])으로`);
+      for (const b of n.beats ?? []) {
+        if (b.kind !== 'line') continue;
+        stats.ko += len(b.ko);
+        if (b.who !== 'player' && len(b.ko) > 140) warns.push(`△ ${t.id}/${nid} 한 줄 ${len(b.ko)}자 — 140자 넘으면 둘로 나누고 사이에 주인공 말을`);
+      }
       for (const c of n.choices) {
         stats.choices++;
         if (c.stance) stats.stance[c.stance]++;
@@ -81,7 +97,7 @@ for (const p of parts) {
       }
     }
     stats.neg += neg; stats.cross += cross;
-    if (!neg) warns.push(`△ ${t.id} 마음이 식는 말이 하나도 없다`);
+    if (!neg && !Object.values(t.nodes).some((n) => n.beats)) warns.push(`△ ${t.id} 마음이 식는 말이 하나도 없다`);
     if (!cross && (q?.objectives ?? []).some((o) => o.npcId && o.npcId !== t.npcId)) warns.push(`△ ${t.id} 다른 인물이 얽힌 편인데 그 사람에게 미치는 말이 없다`);
   }
   console.log(`\n── 묶음 ${p} — 대화 ${stats.talks} · 단계 ${stats.nodes} · 말 ${stats.choices}(조건 ${stats.gated}) · 깎이는 말 ${stats.neg} · 다른 사람에게 미치는 말 ${stats.cross} · 대사 ${stats.ko.toLocaleString()}자`);

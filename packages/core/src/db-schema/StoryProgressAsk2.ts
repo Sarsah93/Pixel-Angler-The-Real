@@ -199,7 +199,7 @@ export const PROGRESS_ASKS_2: Record<string, ProgressAskDef[]> = {
       ['등대 밑은 물이 돌아. 채비가 무거우면 바닥에 박히니까 가볍게 해.',
         'The water swirls under the lighthouse. A heavy rig digs into the bottom, so go light.']),   // 0 — 등대 밑에서 1마리
     pa(['편지, 할아버지한테 갖다 줬어?', 'Did you give Grandpa the letter?'],
-      ['…아직 할아버지는 못 뵈었다.', "...I haven't seen your grandfather yet."],
+      ['…아직 너희 할아버지는 못 뵈었다.', "...I haven't seen your grandfather yet."],
       ['등대까지 걸어서 가야 돼. 배 없어. 오르막이 기니까 물 챙기고, 접은 데는 펴지 마.',
         "You have to walk up to the lighthouse — there's no boat. The climb's long, so take water. And don't unfold it."]),   // 1 — 편지를 전한다(석대양)
   ],
@@ -211,7 +211,7 @@ export const PROGRESS_ASKS_2: Record<string, ProgressAskDef[]> = {
   ],
   'N16-4': [
     pa(['내 제자랑 같이 재고 놓는 거, 아직이야?', 'Measuring and releasing with my apprentice — not done yet?'],
-      ['…아직이다. 선생님 수업이 꽤 길다.', "...Not yet. Teacher's lessons run long."],
+      ['…아직이다. 수업이 꽤 길다.', "...Not yet. The lesson's running long."],
       ['길어도 돼. 고기보다 미끄러운 데가 먼저야. 젖은 데는 안 딛고, 물 들어오면 먼저 나오는 거야. 옆에서 보기만 해.',
         "Long's fine. Slippery spots come before fish. Don't step on the wet bits, and get out first when the water comes in. You just watch."]),   // 0 — 독구와 2마리 계측 · 방류
   ],

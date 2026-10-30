@@ -37,13 +37,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { obj: ["Open my father's tackle box", "Open the bag and take my father's rod in hand", "Fit the reel to the rod", "Look at the back of the family photo", "Open the journal and check today's tasks", "Take the frozen squid from the freezer", "Record the day at the bed", "Step outside", "Take a drink from the well", "Check how I'm doing", "Open the map and find the bus stop", "Take the last bus to Sokcho", "Buy basic tackle at the fish market, one piece at a time", "Sell the frozen squid at the fish market", "Walk to Yeonggeumjeong, the place written on the back of the photo"],
       epi: "I am standing in front of the same rock as the photo. I remember visiting a fish market with my parents — somewhere near the breakwater I can see from here. Should I walk toward Dongmyeonghang?" }),
   'M1-02': E(
-    "I followed the breakwater toward Dongmyeonghang. The old woman at the stall kept watching me. This was the place. It has changed, but the memories are coming back — enough to make my eyes sting. What should I do? Maybe I should ask her for advice.",
+    "I followed the breakwater toward Dongmyeonghang. Okseon at the stall kept watching me. This was the place. It has changed, but the memories are coming back — enough to make my eyes sting. What should I do? Maybe I should ask her for advice.",
     { offer: "You came looking for the memory in that photo. Cry if you need to. But could you carry one ice box from behind the stall to the auction hall? Start with something you can do.",
       done: "Your wages. At least this much is your own money. The shop inside the market sells ice and bait. Prices move every day, so learn them with your eyes.",
       obj: ["Check Okseon's errand ice crate in the inventory", "Carry the ice crate to the marked place near the auction hall", "Place the ice crate at the marked location", "Report the ice crate delivery to Okseon"],
       epi: "The envelope was thin. Still, it is the first money with my name on it." }),
   'M1-03': E(
-    "They said there was an old fishery cooperative dormitory behind the stall. When I opened the door, dust and mildew came out first. One bed, one refrigerator, one window. The old woman held out a trainee card. Nobody here becomes a member on their first day, she said. One hundred and eighty days. The moment I took that number I understood I no longer had a place to go back to, I had a place to stay.",
+    "They said there was an old fishery cooperative dormitory behind the stall. When I opened the door, dust and mildew came out first. One bed, one refrigerator, one window. Okseon held out a trainee card. Nobody here becomes a member on their first day, she said. One hundred and eighty days. The moment I took that number I understood I no longer had a place to go back to, I had a place to stay.",
     { offer: "Key to the room behind the stall. You beat the dust out yourself. This is a trainee card, and our cooperative takes six months. Other places take three years. Learn the work first.",
       done: "One hundred and eighty days from today. Write it on a calendar. And here, a tackle pouch an old member left behind. Seemed a waste to throw out. You use it.",
       obj: ["Open the door of the dormitory behind the stall", "Lie down on the bed and get through the first night"],
@@ -61,12 +61,12 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       obj: ["Cast with your father's reel rod and land two fish"],
       epi: "The scratches left on the grip line up with the lines of my palm. This rod is mine to hold now." }),
   'M1-06': E(
-    "A juvenile black seabream came up. I was about to put a fish barely two knuckles long into the cooler when the old woman caught me at it. I heard five laws right there on the spot. What you catch, you eat. What you take with a rod you may never sell, even as a member. The small ones go back. My hand feels clumsy lowering a small fish into the water. Still, I think the line about the sea surviving because someone keeps these rules will stay with me a long time.",
+    "A juvenile black seabream came up. I was about to put a fish barely two knuckles long into the cooler when Okseon caught me at it. I heard five laws right there on the spot. What you catch, you eat. What you take with a rod you may never sell, even as a member. The small ones go back. My hand feels clumsy lowering a small fish into the water. Still, I think the line about the sea surviving because someone keeps these rules will stay with me a long time.",
     { offer: "Put that down. What you catch, you eat. That's the law. Even as a member you can't sell what a rod caught. Sit. Hear all five before you go.",
       done: "That's the beginning. That's what you learn before you learn to catch. Write it in your log. Minimum sizes, closed seasons. Ask if you don't know. Pretending to know is the dangerous part.",
       obj: ["Measure with a ruler and return undersized or closed-season fish to the sea", "Hear all five laws through from Jeong Okseon"] }),
   'M1-07': E(
-    "It looks like I will eat a proper meal for the first time in two years. The old woman gave me the board and started with how to hold the knife. Spiking, bleeding, scaling, the head, and then the order for a three-piece fillet. The flesh is slippery and the knife is heavy. My first sashimi came out in uneven thicknesses. Still, it is a fish I caught and dressed myself. I know I will repeat this order until my body remembers it.",
+    "It looks like I will eat a proper meal for the first time in two years. Okseon gave me the board and started with how to hold the knife. Spiking, bleeding, scaling, the head, and then the order for a three-piece fillet. The flesh is slippery and the knife is heavy. My first sashimi came out in uneven thicknesses. Still, it is a fish I caught and dressed myself. I know I will repeat this order until my body remembers it.",
     { offer: "If you caught it, dress it, and then it's your fish. Sit at the board. Start with the spike, in order. Rush it and you cut your hand.",
       done: "Edible enough. This knife is the one I used. See if it fits your hand. Freshness is a clock. Save on cooler ice and you get feed, not sashimi.",
       obj: ["Dress one whole fish", "Slice the dressed loin into sashimi"],
@@ -77,7 +77,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "...crooked. But it looks all right on your back. Next time you cut the wood. Hands are taught by hands.",
       obj: ["Make one item from a plan in the crafting tab", "Make the rough backpack and wear it"] }),
   'M1-09': E(
-    "I read a tide table with my own hands for the first time. Low water at two in the morning. I switch on one headlamp and climb down to the rocks. My footing slips and the wind freezes my fingertips. The old woman told me twice never to cross into the village fishery grounds. Something moves inside the lamplight. One, then two. My hands are not shaking only from the cold. I think I am starting to understand what people mean when they say the night sea is more honest than the day.",
+    "I read a tide table with my own hands for the first time. Low water at two in the morning. I switch on one headlamp and climb down to the rocks. My footing slips and the wind freezes my fingertips. Okseon told me twice never to cross into the village fishery grounds. Something moves inside the lamplight. One, then two. My hands are not shaking only from the cold. I think I am starting to understand what people mean when they say the night sea is more honest than the day.",
     { offer: "Can you read a tide table? Low water is before dawn today. Take a lamp, and don't cross inside the ground markers. Cross that and it isn't me who catches you, it's the law.",
       done: "Coming home alive is half of it. Cold hands, eh. This lamp is what the cooperative gives its trainees. Brighter than yours.",
       obj: ["Climb down to the rocks at low water and gather two specimens"] }),
@@ -91,13 +91,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "The assembly is in three days. Four documents, your level, and what you did for a hundred and eighty days. Stand up with that. Your name gets called that day.",
       done: "Approved as a member. From today the Busan consignment floor is your place too. Your name got called. Don't forget, anything done under that name is the cooperative's work.",
       obj: ["Build yourself up to level 18", "Stand at the cooperative assembly and hear your name called"],
-      epi: "When I came out of the hall the old woman from the stall was standing there. She pointed at the ice boxes without a word. I carry them again today. Under my own name now." }),
+      epi: "When I came out of the hall Okseon from the stall was standing there. She pointed at the ice boxes without a word. I carry them again today. Under my own name now." }),
   'N01-1': E(
-    "A man with a cart hitched to his bicycle is standing in front of the stall. When I asked his name he only said Baram. He noticed before anyone else that the old woman was fretting because she could not get a marbled flounder for her grandson's birthday table. He teaches me how to throw a surf rig and how to measure a fish. Land one flounder, leave it at the stall, and he will hand over a cart plan. I have decided not to ask why he does this.",
+    "A man with a cart hitched to his bicycle is standing in front of the stall. When I asked his name he only said Baram. He noticed before anyone else that the stall owner was fretting because she could not get a marbled flounder for her grandson's birthday table. He teaches me how to throw a surf rig and how to measure a fish. Land one flounder, leave it at the stall, and he will hand over a cart plan. I have decided not to ask why he does this.",
     { offer: "That old lady wants a flounder for her grandson's birthday table. Can you throw a surf rig? Bring one back and I'll give you a cart plan.",
       done: "There we go. Did you see her face? That's enough. Here's the plan. A cart isn't luggage, it's legs." }),
   'N02-1': E(
-    "I brought my father's reel rod to the bamboo workshop. Old Tak handled it for a long while and said nothing. Instead his twelve-year-old grandson Saebyeok challenged me to a halfbeak contest. While his grandfather looks at the rod, whoever lands a halfbeak first on the breakwater wins. If the boy wins, he says his grandfather won't tell me the story of my rod. I do not want to lose to a twelve-year-old. Strangely, I am taking this seriously.",
+    "I brought my father's reel rod to the bamboo workshop. Old Tak handled it for a long while and said nothing. Instead his twelve-year-old grandson Saebyeok challenged me to a halfbeak contest. While Old Tak looks at the rod, whoever lands a halfbeak first on the breakwater wins. If the boy wins, he says his grandfather won't tell me the story of my rod. I do not want to lose to a twelve-year-old. Strangely, I am taking this seriously.",
     { offer: "Leave that rod here. I'll look at it. Meanwhile go catch halfbeak with Saebyeok. The boy likes a wager.",
       done: "The rod is alive. One joint is crying, but it can still cast. If Saebyeok beat you, listen to him. His eyes are better than mine." }),
   'N02-5': E(
@@ -195,7 +195,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "Passed. Do Hyeonsu voted against. Ask him for the reason yourself. This is an allowance from the cooperative. You know where it goes.",
       obj: ["Build a record of five consigned lots for the review", "Stand at the quarterly assembly and hear the review result"] }),
   'M2-11': E(
-    "I came back to Sokcho with the box regulation I learned in Busan. The Manbok Store stall still has boxes of every size. The old woman's hands are not what they were. She handles ice noticeably slower now. While I fixed the display she sat beside me and only watched, instead of nagging. That bothers me more.",
+    "I came back to Sokcho with the box regulation I learned in Busan. The Manbok Store stall still has boxes of every size. Okseon's hands are not what they were. She handles ice noticeably slower now. While I fixed the display she sat beside me and only watched, instead of nagging. That bothers me more.",
     { offer: "...you're back? How was Busan. Look at the stall. My hands don't listen these days.",
       done: "...it looks good. Now I see what's good about those Busan regulations. Sorry my hands are slow. It's fine now that you're here.",
       obj: ["Return to Manbok Store in Sokcho", "Rebuild the stall display to the Busan regulation"] }),
@@ -249,7 +249,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Three viewers... I'm streaming anyway. Show them dressing a fish. Gibeom will keep his back turned.",
       done: "Done. It went up to five viewers! He said it, didn't he. Dull is fine as long as it's real." }),
   'N02-6': E(
-    "Tak Saebyeok finished his first rod at twelve. His grandfather said it was thin without even looking. Saebyeok did not cry. Instead he told me to fish with it at night. I go back to the Sokcho workshop and pick up the boy's rod. It really is thin. But the tip is alive. One fish came up that night. Saebyeok pretended to be asleep on the porch.",
+    "Tak Saebyeok finished his first rod at twelve. Old Tak said it was thin without even looking. Saebyeok did not cry. Instead he told me to fish with it at night. I go back to the Sokcho workshop and pick up the boy's rod. It really is thin. But the tip is alive. One fish came up that night. Saebyeok pretended to be asleep on the porch.",
     { offer: "Mister. I made this rod. Grandpa says it's thin. Catch one with it at night. Then he'll look at it.",
       done: "You caught one?! ...did you see? Did Grandpa see? No, he doesn't have to. You saw it." }),
   'N21-2': E(
@@ -453,7 +453,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "There's a man who quit after an accident on the rocks. Come to Haegeumgang with us. He won't cast. You cast.",
       done: "He took the net. That's enough. Next time he might pick up a rod." }),
   'N02-2': E(
-    "Tak Saebyeok has run away. They say he went to Taean to find a giant bamboo. His grandfather looked at me without a word. I went to Taean and found the boy. He was tapping on the nodes in a bamboo grove behind the flat. He picked one giant culm, shouldered it, and we landed a sea bass together. The boy slept on the bus back. The bamboo scraped the window.",
+    "Tak Saebyeok has run away. They say he went to Taean to find a giant bamboo. Old Tak looked at me without a word. I went to Taean and found the boy. He was tapping on the nodes in a bamboo grove behind the flat. He picked one giant culm, shouldered it, and we landed a sea bass together. The boy slept on the bus back. The bamboo scraped the window.",
     { offer: "Saebyeok went to Taean. Looking for a giant culm. ...bring him back. He won't come if I go.",
       done: "...you came. And the culm? That's a good one. Let the boy sleep." }),
   'N07-3': E(
@@ -517,7 +517,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Don't tell me in words that it was a good one. Bring it back as top grade. The dressing is the proof.",
       done: "...top. Good. The plate said it." }),
   'N20-3': E(
-    "Yu Harang asked for a joint stream. She said she would come to my home ground instead. The camera followed me all the way to Sokcho. We set up in front of Manbok Store and landed two side by side. We watched the edit together. There was a shot of the old woman from the stall walking past behind us. Harang said she would keep that cut.",
+    "Yu Harang asked for a joint stream. She said she would come to my home ground instead. The camera followed me all the way to Sokcho. We set up in front of Manbok Store and landed two side by side. We watched the edit together. There was a shot of Okseon from the stall walking past behind us. Harang said she would keep that cut.",
     { offer: "Let's stream together! I'll come to your home ground instead. Sokcho! And film the stall. Oh, with permission.",
       done: "You saw the edit? The cut with the old lady walking past, I'm keeping it. That was the best part." }),
 
@@ -802,7 +802,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "...it came up. With that rod. With the joint I made. Mister, is this my rod or your rod?",
       obj: ["Land one fish at the Dokdo-only spot with the restored heirloom reel rod"] }),
   'M7-08': E(
-    "A trainee. A twenty-two-year-old with one backpack is standing in front of the stall. Looking at me. With a face about to cry. I pointed at the ice boxes. If you're going to cry, carry the ice first and cry after. That line came out of my mouth. Twenty-two years ago the old woman said it to me, and before that someone said it to her. The log starts again here.",
+    "A trainee. A twenty-two-year-old with one backpack is standing in front of the stall. Looking at me. With a face about to cry. I pointed at the ice boxes. If you're going to cry, carry the ice first and cry after. That line came out of my mouth. Twenty-two years ago Okseon said it to me, and before that someone said it to her. The log starts again here.",
     { obj: ["Reach level 199 and hand the first page of the log to the next person"],
       epi: "The ice boxes are heavy. That one will know it soon. That you need even this much money to start anything at all." }),
   'N01-7': E(

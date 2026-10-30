@@ -229,7 +229,7 @@ export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
     id: 'n19-1-place', regionId: 'gangwon_sokcho', tx: 585, ty: 160,
     labelKo: '만복상회 좌판에 받침 놓기', labelEn: 'Set the tray at the Manbok stall',
     actionKey: 'tray_delivery', questId: 'N19-1', objectiveIndex: 1, phase: 1, take: 'qd_bamboo_tray',
-    linesKo: ['좌판 얼음통 아래에 받침을 밀어 넣자 젖은 상자가 수평을 찾는다.', '누가 두고 갔는지는 말하지 않았다. 할머니가 모서리를 한 번 쓸어 보았다.'],
+    linesKo: ['좌판 얼음통 아래에 받침을 밀어 넣자 젖은 상자가 수평을 찾는다.', '누가 두고 갔는지는 말하지 않았다. 정옥선 씨가 모서리를 한 번 쓸어 보았다.'],
     linesEn: ['I slide the tray under the ice tub and the wet crate finds level.', 'I did not say who left it. She ran a hand once along its edge.'],
   },
   // N19-3 「대를 다시 깎는 손」 — 두 번째 받침
@@ -244,7 +244,7 @@ export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
     id: 'n19-3-place', regionId: 'gangwon_sokcho', tx: 587, ty: 159,
     labelKo: '만복상회 수조 옆', labelEn: 'Beside the Manbok Store tank',
     actionKey: 'second_tray_delivery', questId: 'N19-3', objectiveIndex: 1, phase: 1, take: 'qd_bamboo_tray',
-    linesKo: ['수조 옆 자리에 받침을 내려놓는다. 물이 틈으로 곧게 빠진다.', '할머니가 아무 말 없이 받침 위에 제일 좋은 상자를 올렸다.'],
+    linesKo: ['수조 옆 자리에 받침을 내려놓는다. 물이 틈으로 곧게 빠진다.', '정옥선 씨가 아무 말 없이 받침 위에 제일 좋은 상자를 올렸다.'],
     linesEn: ['I set the tray beside the tank. Water drains straight through the gaps.', 'Without a word, she set her best crate on top of it.'],
   },
   // N19-2 「부고 아닌 편지」 — 정옥선의 반찬통 → 죽간 공방
@@ -252,7 +252,7 @@ export const STORY_FIELD_TRIGGERS: StoryFieldTrigger[] = [
     id: 'n19-2-take', regionId: 'gangwon_sokcho', tx: 582, ty: 157,
     labelKo: '정옥선의 반찬통', labelEn: 'Okseon\'s side-dish container',
     actionKey: 'food_container_delivery', questId: 'N19-2', objectiveIndex: 1, phase: 0, give: 'qd_food_box',
-    linesKo: ['보자기로 싼 반찬통이 아직 따뜻하다. 뚜껑 위에 쪽지는 없다.', '할머니는 "가는 길에"라고만 했다. 길이 정해져 있다는 뜻이다.'],
+    linesKo: ['보자기로 싼 반찬통이 아직 따뜻하다. 뚜껑 위에 쪽지는 없다.', '정옥선 씨는 "가는 길에"라고만 했다. 길이 정해져 있다는 뜻이다.'],
     linesEn: ['The wrapped container is still warm. There is no note on the lid.', 'She only said "on your way". That means the way is already decided.'],
   },
   {
