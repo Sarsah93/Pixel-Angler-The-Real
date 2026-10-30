@@ -106,7 +106,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "...you looked at the nodes. Not thickness, not colour, the nodes. Even nodes carry force evenly. It took me fifty years and you saw it in a day." }),
   'N03-1': E(
     "An old man with a tangled rig is sitting at the end of the breakwater. His main line and leader have become a ball of thread. He said his name was Kang Ducheol. He is embarrassed, says fishing is new to him. It took ten minutes to work it loose. I sat beside him and we watched his first bite together. For a second I thought the way he struck did not look like a beginner's hand, but I let it go. It does not feel bad, teaching someone.",
-    { offer: "This knot keeps coming undone. Young man, do you know rigs? I'd be grateful if you sat with me.",
+    { offer: "This knot keeps coming undone. Do you know rigs, by any chance? I'd be grateful if you sat with me.",
       done: "It's up, it's up! I'll be calling you teacher. This old man learned one thing today." }),
   'N03-5': E(
     "Old Kang Ducheol bought twenty swivels. Tie them until your hands remember, he says. A beginner teaching a beginner, except the eyes of the old man counting out twenty are strange somehow. From the tenth my fingers moved on their own. By the twentieth the line does not slip. My fingers understood before I did what people mean when they say the one teaching learns more.",
@@ -250,7 +250,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "Done. It went up to five viewers! He said it, didn't he. Dull is fine as long as it's real." }),
   'N02-6': E(
     "Tak Saebyeok finished his first rod at twelve. Old Tak said it was thin without even looking. Saebyeok did not cry. Instead he told me to fish with it at night. I go back to the Sokcho workshop and pick up the boy's rod. It really is thin. But the tip is alive. One fish came up that night. Saebyeok pretended to be asleep on the porch.",
-    { offer: "Mister. I made this rod. Grandpa says it's thin. Catch one with it at night. Then he'll look at it.",
+    { offer: "I made this rod. Grandpa says it's thin. Catch one with it at night. Then he'll look at it.",
       done: "You caught one?! ...did you see? Did Grandpa see? No, he doesn't have to. You saw it." }),
   'N21-2': E(
     "The inner bay is covered in moon jellyfish. Oh Sechan says they get hauled in with the nets and spoil the catch. Clear them wherever I see them. I throw a snagging hook and drag them in. One is heavier than I expected. After clearing five I had the illusion the water in the bay looked a little clearer. The illusion was fine by me.",
@@ -430,7 +430,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       obj: ["Arrive at Taean", "Dig three specimens from the flat on the right tide"] }),
   'M4-08': E(
     "Manripo surf. Tak Saebyeok had come all the way to Taean. Not twelve any more, somewhere in his teens now. The boy knows how to throw a surf lure before I do. Night on the foam line. Put the minnow where the waves break. A sea bass came up out of the surf. He said he is a person who makes rods, not one who throws them, and then threw better than me.",
-    { offer: "Mister! For surf you throw into the foam. At night. Sea bass are inside the waves. Throw it with the rod I made.",
+    { offer: "For surf you throw into the foam. At night. Sea bass are inside the waves. Throw it with the rod I made.",
       done: "Got it! That rod, I cut it for surf. It's yours. You can learn surf proficiency now.",
       obj: ["Land a sea bass on a night surf lure at the foam line"] }),
   'M4-09': E(
@@ -439,7 +439,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "Ink! And the boards are done. Egi is open now, right? The direct market's getting the better egi in too.",
       obj: ["Land a cuttlefish on an autumn daytime egi"] }),
   'M4-11': E(
-    "With the charter registration done I ran the boat all the way to Sokcho. A day and a half down the east coast. Chairman Kang Ducheol and Old Tak Mansu were standing on the pier. My first paying customers. The old man who pretended he could not tie a rig and the old man who cut me a bamboo blank sat side by side and looked at the sea without a word. They each brought up one fish. I was at the wheel. On my own boat, nobody else's.",
+    "With the charter registration done I ran the boat all the way to Sokcho. A day and a half down the east coast. Kang Ducheol and Tak Mansu were standing on the pier. My first paying customers. The old man who fished off the end of the breakwater and the old man who cut me a bamboo blank sat side by side and looked at the sea without a word. They each brought up one fish. I was at the wheel. On my own boat, nobody else's.",
     { offer: "Bring the boat up to Sokcho. Your first customers are Tak and me. Charge the list price. No discounts.",
       done: "...good boat. Tak says so too. Here's the fare. List price. You don't discount your first customers.",
       obj: ["Run the boat up to the Sokcho pier", "Take the two old men out onto the Sokcho sea"] }),
@@ -534,7 +534,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       obj: ["Gather three specimens outside the village fishery markers"] }),
   'M5-03': E(
     "Dodu Harbour. Oh Serin, who says she is a competition hopeful, taught me night lights for swordtip squid. Nineteen. Fast hands. Squid rise under the fish light. A light twitch of the egi and the tentacles wrap. Three of them. Serin compared it with her own record. Still a long way off, she said. Those were the eyes of someone going to a competition.",
-    { offer: "Squid! At night with the lights on. Three. I catch ten. You're still a long way off, mister.",
+    { offer: "Squid! At night with the lights on. Three. I catch ten. You're still a long way off.",
       done: "Three. Well, slower than me, but... fine. You're entering the competition, right? The qualifier.",
       obj: ["Land three swordtip squid under fish lights on a summer night"] }),
   'M5-04': E(
@@ -575,7 +575,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       epi: "On the way back I looked toward the rocks once more. Where the tide had gone out, Haesol stood alone, measuring turban shells against her finger joints the way her mother had." }),
   'N02-3': E(
     "Tak Saebyeok proposed going after the deep water monster at Seogwipo. The owner of the stone mound. Pacific cod over eighty. It tests the limit of drag control. With the rod Saebyeok cut. When the fish drives for the bottom I tighten, release, tighten. My arms felt like they would come off. What came up was eighty-four. Saebyeok felt the rod tip and laughed that it had not broken.",
-    { offer: "Mister, the owner of the stone mound. Cod over eighty. With my rod. It's a drag test. If it breaks that's my fault.",
+    { offer: "The owner of the stone mound. Cod over eighty. With my rod. It's a drag test. If it breaks that's my fault.",
       done: "Eighty-four! The rod didn't break! It's my rod! I'm telling Grandpa!" }),
   'N03-3': E(
     "The night before the vote Kang Ducheol came to see me. He declared he would not intervene. If a federation chairman touches a cooperative vote, it is not a vote. My teacher will handle it. He said that and took out his seal to show me. He did not stamp it. That day I learned there are seals that go unstamped.",
@@ -663,7 +663,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       obj: ["Land an amberjack on a popper in summer or autumn"] }),
   'M6-03': E(
     "The lighthouse. Old Seok Daeyang records the weather. Wind speed, wave height, visibility. Written by hand on paper. When he heard my name he looked at me for a long time. He asked whether I knew Skipper Ko Jintae. That is my father's name. He remembered my father. A boat that passed this lighthouse twenty-two years ago. I could not say anything.",
-    { offer: "...what did you say your name was. Are you Skipper Ko Jintae's son. Sit down. Help me with the weather log, and let's talk.",
+    { offer: "...what did you say your name was. Are you Skipper Ko Jintae's child. Sit down. Help me with the weather log, and let's talk.",
       done: "...that boat, twenty-two years back, it passed right out there. I saw it. This lantern belongs to the lighthouse. Your father saw this light too.",
       obj: ["Land one amberjack below the lighthouse", "Help lighthouse keeper Seok Daeyang with the weather log and hear his story"] }),
   'M6-04': E(
@@ -778,13 +778,13 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       obj: ["Measure three specimens and release them at once"] }),
   'M7-03': E(
     "The seventeenth page. The log's completion check. Measure a striped beakperch and release it. Seok Dokgu was beside me. Twelve years old, as a survey assistant. A striped beakperch came up. The bands are sharp. I measured, the boy photographed, and we let it go. Seventeen pages filled. I closed the log my father began. No — I opened it.",
-    { offer: "Mister, it's the seventeenth page. Striped beakperch. I'll take the photo. Measure and let it go. Then it's done.",
-      done: "Took it! Let it go! Seventeen pages! ...why are you crying, mister. No, you're not. All right.",
+    { offer: "It's the seventeenth page. Striped beakperch. I'll take the photo. Measure and let it go. Then it's done.",
+      done: "Took it! Let it go! Seventeen pages! ...why are you crying. No, you're not. All right.",
       obj: ["Measure and release a striped beakperch at Dokdo in summer or autumn"] }),
   'M7-04': E(
-    "The awning in the photo. The stall in the picture of me at four was Manbok Store. Jeong Okseon looked at the photo from her hospital bed. That awning is mine. Twenty-two years ago you stood right there. A memory. The day she first saw me was twenty-two years ago. I did not know and she did. If you're going to cry, carry the ice first. Now I know why that line came so fast.",
-    { offer: "Bring the photo. That one. ...that awning is mine. Twenty-two years ago. You were standing right there.",
-      done: "...that's why I told you to carry the ice first. I thought that child from twenty-two years ago had come back.",
+    "The awning in the photo. The stall in the picture of me at four was Manbok Store. Jeong Okseon looked at the photo from her hospital bed. That awning is mine. Eighteen years ago you stood right there. A memory. The day she first saw me was eighteen years ago, when I was four. I did not know and she did. If you're going to cry, carry the ice first. Now I know why that line came so fast.",
+    { offer: "Bring the photo. That one. ...that awning is mine. Eighteen years ago. You were standing right there.",
+      done: "...that's why I told you to carry the ice first. I thought that child from eighteen years ago had come back.",
       obj: ["Land one flounder from the same spot as when you were four", "Look at the photo from when you were four together with Jeong Okseon in the hospital room"] }),
   'M7-05': E(
     "The second floor. The cooperative's communal workshop has been in ruins for a long time. Restoration. Materials, labour, donations. Thirty million won. Looking at the balance I worked out what to sell, what to burn and what to accept. The members each put in a little. Do Hyeonsu first. When thirty million was gathered the chief said, now you are the one giving.",
@@ -798,11 +798,11 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       obj: ["Slice three plates for the opening table", "Attend the reopening and watch Jeong Okseon cut the ribbon"] }),
   'M7-07': E(
     "The last cast. The Dokdo survey waters have been permanently opened. I hold my father's reel rod, brought back by Tak Saebyeok. New bamboo has been joined onto the broken section. The boy cut it. I cast. Into the sea my father passed twenty-two years ago. One fish came up. I do not write down the species. This is not a survey, it is fishing.",
-    { offer: "Mister. The rod. Grandpa let go and I finished it. Cast with this. At Dokdo. The last one.",
-      done: "...it came up. With that rod. With the joint I made. Mister, is this my rod or your rod?",
+    { offer: "The rod. Grandpa let go and I finished it. Cast with this. At Dokdo. The last one.",
+      done: "...it came up. With that rod. With the joint I made. Is this my rod or your rod?",
       obj: ["Land one fish at the Dokdo-only spot with the restored heirloom reel rod"] }),
   'M7-08': E(
-    "A trainee. A twenty-two-year-old with one backpack is standing in front of the stall. Looking at me. With a face about to cry. I pointed at the ice boxes. If you're going to cry, carry the ice first and cry after. That line came out of my mouth. Twenty-two years ago Okseon said it to me, and before that someone said it to her. The log starts again here.",
+    "A trainee. A twenty-two-year-old with one backpack is standing in front of the stall. Looking at me. With a face about to cry. I pointed at the ice boxes. If you're going to cry, carry the ice first and cry after. That line came out of my mouth. The day I arrived, Okseon said it to me, and before that someone said it to her. The log starts again here.",
     { obj: ["Reach level 199 and hand the first page of the log to the next person"],
       epi: "The ice boxes are heavy. That one will know it soon. That you need even this much money to start anything at all." }),
   'N01-7': E(
@@ -811,7 +811,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "I sat. After thirty years. Thanks to you. The wind blew the right way." }),
   'N02-4': E(
     "The last bamboo. Old Tak let go and Saebyeok finished it. My father's broken reel rod came back to life. New bamboo joined onto the broken section, and the joint is invisible. The old man only watched from a corner of the workshop. The boy handed me the rod. The rod to cast at the end of Part 7. My hand shook taking it.",
-    { offer: "Mister. It's done. Grandpa let go and I did it. You can't see the joint. Take it. Cast it at Dokdo.",
+    { offer: "It's done. Grandpa let go and I did it. You can't see the joint. Take it. Cast it at Dokdo.",
       done: "You took it. Grandpa saw. He said nothing. That's his highest praise." }),
   'N03-4': E(
     "Teachers' Day. Kang Ducheol is retiring. He left number one on the membership roll empty. The federation supplied the materials for the second floor. A retirement greeting. He came with his rig tangled, like the day we first met on the breakwater. I worked it loose. Ten minutes. He laughed. Teacher, that was the last lesson.",
@@ -827,7 +827,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "...tournament's over. The judges' table after twenty years. I took nobody's side. Not this time." }),
   'N16-3': E(
     "Dokgu's first sea. Riding along as a survey assistant with a guardian's consent. His grandfather's last shift change. A twelve-year-old aboard a survey boat. Measure a striped beakperch and release it. The boy held the rule. His grandfather called in on the radio. Change of watch. The boy spoke into the handset. Grandpa, I measured a beakperch. The old man was a long time answering.",
-    { offer: "Mister! I'm going on the survey boat! Grandpa said yes! Measure a beakperch and let it go. I'll do the measuring. It's Grandpa's last shift.",
+    { offer: "I'm going on the survey boat! Grandpa said yes! Measure a beakperch and let it go. I'll do the measuring. It's Grandpa's last shift.",
       done: "Grandpa... isn't answering. On the radio. ...no, he did. He said well done. That's the first time." }),
   'N18-7': E(
     "Preparing the reopening. Do Hyeonsu carries chairs. It isn't opening under your name. It's opening under our name. He said our for the first time. The two of us carried a hundred chairs. The man who clicked his tongue at me on the breakwater at twenty. Setting down the last chair he said, sit. We carried them, after all.",
@@ -843,11 +843,11 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "It's up! Catch it and eat it! You're our adult member. Forever." }),
   'N16-4': E(
     "Dokgu's first apprentice. A twelve-year-old teaching a survey student the rocks. Don't step there, it's slippery. The teaching face is familiar. It is my face. Jeong Okseon to me, me to Dokgu, Dokgu to the student. The two of them measured and released two fish. What I was given goes straight across.",
-    { offer: "Mister, I've got an apprentice. The survey guy. I'm teaching him the rocks. Measure and release two with us. I'll teach him.",
+    { offer: "I've got an apprentice. The survey guy. I'm teaching him the rocks. Measure and release two with us. I'll teach him.",
       done: "Released! My apprentice is good. Because I taught him. ...exactly the way you taught me." }),
   'N14-5': E(
     "Jeju again. Oh Serin is on the tournament committee now. Mara holds a camera and Yu Ria sits at the commentary desk. All three stayed in their own way. I heard the opening declaration. Serin took the microphone and said, placing does not matter. Finish. Mara filmed it. Yu Ria commented, I taught her that line.",
-    { offer: "Mister! I'm on the committee! Come and hear the opening! Mara's on camera, Ria's on commentary. All three of us stayed.",
+    { offer: "I'm on the committee! Come and hear the opening! Mara's on camera, Ria's on commentary. All three of us stayed.",
       done: "You heard it? Placing does not matter. Finish. I said it. Me." }),
   'N21-7': E(
     "An overflowing sea. Oh Sechan leaves a last record before retiring. It has to stay as numbers or the next person cannot act. Dokdo. Two Nomura, ten moon jellyfish. Cleared, counted, written down. He handed over the observation records. Fifteen years of them. The next person was me.",
