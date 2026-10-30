@@ -1451,6 +1451,7 @@ export const TALKS_N19: StoryTalkDef[] = [
         line(N, '(받침을 뒤집어 마디를 쓸어 본다.)', '(He turns the rest over and runs his thumb along the nodes.)'),
         line(P, '…', '...'),
         line(TAK, '빈손으로 들어가는 건 더 못 하겠더라. 뭐라도 들고 있어야 손이 덜 떨려.', "Going in empty-handed, I couldn't do that either. If I'm holding something, my hands shake less."),
+        line(P, '그럼 그거 들고 가세요. 병실 문 앞까지 같이 갈게요.', "Then bring it with you. I'll go with you as far as the ward door."),
       ], {
         end: endTalk({ accept: true, offer: 'ask_third' }),
         note: ['병실에도 얼음 상자가 있느냐고 물었다. 탁만수 씨는 그냥 깎았다고, 빈손으로는 더 못 들어가겠더라고 했다. 뭐라도 들고 있어야 손이 덜 떨린다고.',
@@ -1473,6 +1474,7 @@ export const TALKS_N19: StoryTalkDef[] = [
         line(P, '…', '...'),
         line(TAK, '그래서 여태 서 있었던 거다. 모르는 채로 서 있는 게 들어가서 아는 것보다 쉬우니까.', "That's why I've been standing there. Standing not knowing is easier than going in and finding out."),
         line(TAK, '…쉬운 쪽만 골랐지, 늘.', '...I always chose the easy way.'),
+        line(P, '이번엔 제가 병실 앞까지 같이 갈게요. 문은 제가 열고요.', "This time I'll go with you to the ward. I'll open the door."),
       ], {
         end: endTalk({ accept: true, offer: 'does_she_know' }),
         note: ['정옥선 씨가 오신 걸 아시느냐고 물었다. 탁만수 씨는 모른다고, 알면 들어오라 할지 나가라 할지 몰라서 여태 서 있었다고 했다. 늘 쉬운 쪽만 골랐다고.',

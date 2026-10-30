@@ -338,7 +338,6 @@ export const TALKS_M2: StoryTalkDef[] = [
       start: scene([
         line(P, '계측자에 올려 볼게요.', "I'll put it on the measuring board."),
         line(HS, '…', '...', { act: 'peer' }),
-        act(HS, 'silence'),
         line(HS, '…42.', '...Forty-two.'),
         line(HS, '알겠어.', 'All right.'),
         line(P, '그게 다예요?', "That's it?"),

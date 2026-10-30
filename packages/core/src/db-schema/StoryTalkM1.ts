@@ -755,8 +755,7 @@ export const TALKS_M1: StoryTalkDef[] = [
       start: scene([
         line(P, '다 떴어요. 두께가 좀… 제각각이지만요.', "It's sliced. The thickness is a bit... all over the place, though."),
         line(O, '어디 보자.', "Let's see.", { act: 'peer' }),
-        act(O, 'silence'),
-        line(O, '먹을 만하네.', "It's good enough to eat."),
+        line(O, '…먹을 만하네.', "...It's good enough to eat."),
         line(P, '정말요?', 'Really?'),
         act(O, 'give', { to: P, item: 'qr_knife_okseon' }),
         line(O, '이 칼은 내가 쓰던 거다. 손에 맞는지 봐라.', "This is the knife I used to use. See if it fits your hand."),
@@ -996,7 +995,7 @@ export const TALKS_M1: StoryTalkDef[] = [
     id: 'm1_09_done', questId: 'M1-09', at: 'complete', npcId: O, start: 'start',
     nodes: {
       start: scene([
-        line(O, '살아 돌아왔으면 반은 성공이다.', "If you came back alive, that's half the job done.", { act: 'look_up' }),
+        line(O, '살아 돌아왔으면 반은 성공이다.', "If you came back alive, that's half the job done."),
         line(P, '두 마리 건졌어요. 물 들어오기 전에 올라왔고요.', 'I got two. And I came up before the tide came in.'),
         line(O, '어디.', "Let's see.", { act: 'peer' }),
         line(O, '됐다. 손 시리지.', "That'll do. Your hands are frozen, aren't they."),
