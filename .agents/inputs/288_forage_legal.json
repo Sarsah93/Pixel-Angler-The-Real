@@ -1,0 +1,1355 @@
+[
+ {
+  "id": "clam_varicosa",
+  "nameKo_current": "바지락",
+  "nameEn_fix": "Manila Clam",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {},
+   "shellfishToxin": "subject (PSP 0.8 mg/kg, NIFS area bans)"
+  },
+  "dataIssues": [
+   "dailyLimitG 3000 is a game value - no national daily limit exists",
+   "generic roll 4~16cm gives impossible 10~16cm clams; real harvest 3~4.5cm",
+   "14 g/cm gives ~60 g for a 4cm clam; real ~12 g"
+  ],
+  "size": {
+   "axis": "shell length (각장)",
+   "minCm": 2.0,
+   "typCm": [
+    3.0,
+    4.5
+   ],
+   "maxCm": 6.0,
+   "meanCm": 3.7,
+   "sdCm": 0.6,
+   "weightFormula": "W(g) ~= 0.19 * L^3.0",
+   "weightAtTyp": [
+    [
+     3,
+     5
+    ],
+    [
+     4,
+     12
+    ],
+    [
+     5,
+     24
+    ]
+   ]
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://mulmap.com/rules.php",
+   "https://www.newspim.com/news/view/20260203000783"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "turbo_cornutus",
+  "nameKo_current": "소라",
+  "sciName_fix": "Turbo sazae (Korean/Japanese 소라; T. cornutus is now the Chinese species - Fukuda 2017; optional)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "minCm": 5.0,
+    "basis": "각고(shell height) 5cm 이하 금지 - no nationwide closed season"
+   },
+   "regional": {
+    "jeju": {
+     "closed": [
+      [
+       6,
+       1,
+       8,
+       31
+      ]
+     ],
+     "minCm": 7.0,
+     "note": "추자도 only 7.1~8.31 (2023.11.7 amendment shortened from 7.1~9.30)"
+    },
+    "ulleungdo_dokdo": {
+     "closed": [
+      [
+       6,
+       1,
+       7,
+       31
+      ]
+     ],
+     "minCm": 7.0,
+     "note": "not modelled - game has ulleungdo/dokdo region ids"
+    },
+    "jeonnam_yeosu": {
+     "closed": [],
+     "note": "6.1~6.30 applies only to 여수시 삼산면(거문도) - not Yeosu city area"
+    }
+   }
+  },
+  "dataIssues": [
+   "national 5cm and Jeju 6.1~8.31/7cm are correct",
+   "울릉도·독도 7cm + 6.1~7.31 missing (LegalRegionKey only has jeju)",
+   "limit is \"이하\" (<=): rollForageHarvest uses sizeCm < legal and ForageSystem.ts:229 clamps to exactly the limit -> both should treat == limit as undersized",
+   "description says 「집어등으로 쉽게 발견」 - 집어등 use is banned for 비어업인 since 2023.12; use 랜턴/헤드랜턴 wording"
+  ],
+  "size": {
+   "axis": "shell height (각고)",
+   "minCm": 4.0,
+   "typCm": [
+    6.0,
+    9.0
+   ],
+   "maxCm": 12.0,
+   "meanCm": 7.5,
+   "sdCm": 1.2,
+   "weightFormula": "W(g) ~= 0.22 * H^2.95",
+   "weightAtTyp": [
+    [
+     6,
+     43
+    ],
+    [
+     8,
+     100
+    ],
+    [
+     10,
+     196
+    ]
+   ],
+   "note": "Jeju survey mean shell height 7.7~8.1cm"
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.law.go.kr/LSW/flDownload.do?flSeq=139909231",
+   "https://www.etoday.co.kr/news/view/2297122",
+   "https://www.mediajeju.com/news/articleView.html?idxno=365305",
+   "https://www.jibs.co.kr/news/articles/articlesDetail/63680?feed=da",
+   "https://www.accesson.kr/malacol/v.23/2/227/52269",
+   "https://www.etoday.co.kr/news/view/2310952"
+  ],
+  "confidence": "high"
+ },
+ {
+  "id": "oyster_gigas",
+  "nameKo_current": "굴",
+  "sciName_fix": "Magallana gigas (WoRMS; Crassostrea gigas still common - optional)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {
+    "gangwon": {
+     "note": "may count as 「정착성 동물」 inside 어촌계 어장 under 강원 조례 - wording unclear"
+    }
+   },
+   "shellfishToxin": "subject"
+  },
+  "dataIssues": [
+   "dailyLimitG 5000 is a game value",
+   "no size roll basis; real wild intertidal 5~9cm shell height"
+  ],
+  "size": {
+   "axis": "shell height (각고)",
+   "minCm": 3.0,
+   "typCm": [
+    5.0,
+    9.0
+   ],
+   "maxCm": 15.0,
+   "meanCm": 7.0,
+   "sdCm": 1.5,
+   "weightFormula": "W(g, with shell) ~= 0.10 * H^2.95",
+   "weightAtTyp": [
+    [
+     5,
+     12
+    ],
+    [
+     7,
+     31
+    ],
+    [
+     9,
+     65
+    ]
+   ]
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.newspim.com/news/view/20260203000783"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "haliotis_discus",
+  "nameKo_current": "전복",
+  "legal": {
+   "national": {
+    "closed": [
+     [
+      9,
+      1,
+      10,
+      31
+     ]
+    ],
+    "minCm": 7.0,
+    "basis": "전복류 각장 7cm 이하 금지"
+   },
+   "regional": {
+    "jeju": {
+     "closed": [
+      [
+       10,
+       1,
+       12,
+       31
+      ]
+     ],
+     "minCm": 10.0
+    },
+    "gangwon": {
+     "note": "강원 조례 - 비어업인 어촌계 어장(마을·협동양식) 안 연중 포획 금지"
+    }
+   }
+  },
+  "dataIssues": [
+   "legal values correct (2023 draft proposed abolishing 전복류 closed season/size; final 2023.11.7 kept both)",
+   "boundary: 이하 -> undersized when size <= 7 (Jeju <= 10)",
+   "roll legal*(0.8..1.8) gives up to 18cm in Jeju - wild abalone >15cm is very rare",
+   "14 g/cm -> 10cm = 140~240 g; real ~105 g"
+  ],
+  "size": {
+   "axis": "shell length (각장)",
+   "minCm": 5.0,
+   "typCm": [
+    8.0,
+    11.0
+   ],
+   "maxCm": 16.0,
+   "meanCm": 9.0,
+   "sdCm": 1.5,
+   "weightFormula": "W(g) ~= 0.105 * L^3.0",
+   "weightAtTyp": [
+    [
+     7,
+     36
+    ],
+    [
+     9,
+     77
+    ],
+    [
+     11,
+     140
+    ],
+    [
+     13,
+     231
+    ]
+   ],
+   "note": "Jeju wild (말전복 etc.) mean ~11cm, sd 1.5"
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://mulmap.com/rules.php",
+   "https://www.law.go.kr/LSW/flDownload.do?flSeq=139909231",
+   "https://www.dailian.co.kr/news/view/1222021/",
+   "https://www.etoday.co.kr/news/view/2297122",
+   "https://www.agrinet.co.kr/news/articleView.html?idxno=329466"
+  ],
+  "confidence": "high"
+ },
+ {
+  "id": "portunus_trituberculatus",
+  "nameKo_current": "꽃게",
+  "legal": {
+   "national": {
+    "closed": [
+     [
+      6,
+      21,
+      8,
+      20
+     ]
+    ],
+    "minCm": 6.4,
+    "basis": "두흉갑장(carapace LENGTH) 6.4cm 이하 금지; statute = 6.1~9.30 중 장관 고시 2개월 이내, 고시 practice 6.21~8.20; 외포란 암컷 연중 금지"
+   },
+   "regional": {
+    "incheon": {
+     "note": "서해5도 일부 해역 7.1~8.31 (연안부두 area = national 6.21~8.20)"
+    }
+   }
+  },
+  "dataIssues": [
+   "dates and 6.4cm correct",
+   "boundary <=",
+   "14 g/cm -> CL 8cm = 112~192 g; real ~300 g",
+   "axis is carapace length, not width (CW incl. spines ~= 2.2 x CL) - image scale should use CW"
+  ],
+  "size": {
+   "axis": "carapace length (두흉갑장)",
+   "minCm": 4.5,
+   "typCm": [
+    5.5,
+    8.0
+   ],
+   "maxCm": 10.5,
+   "meanCm": 6.6,
+   "sdCm": 1.0,
+   "weightFormula": "W(g) ~= 0.6 * CL^3.0 (CW ~= 2.2*CL)",
+   "weightAtTyp": [
+    [
+     6,
+     130
+    ],
+    [
+     7,
+     206
+    ],
+    [
+     8,
+     307
+    ],
+    [
+     9,
+     437
+    ]
+   ]
+  },
+  "sources": [
+   "https://www.mof.go.kr/doc/ko/selectDoc.do?docSeq=51347&menuSeq=971&bbsSeq=10",
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://mulmap.com/rules.php",
+   "https://epubs.icar.org.in/index.php/IJF/article/download/114209/45211/467844"
+  ],
+  "confidence": "high"
+ },
+ {
+  "id": "charybdis_japonica",
+  "nameKo_current": "민꽃게 (돌게)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {}
+  },
+  "dataIssues": [
+   "no legal limits - correct",
+   "berried auto-release is applied to 민꽃게 too (isCrabCreature) - the 외포란 ban is for 꽃게; for 민꽃게 it is voluntary, message should not cite law"
+  ],
+  "size": {
+   "axis": "carapace width (갑폭)",
+   "minCm": 4.0,
+   "typCm": [
+    6.0,
+    9.0
+   ],
+   "maxCm": 12.0,
+   "meanCm": 7.2,
+   "sdCm": 1.2,
+   "weightFormula": "W(g) ~= 0.19 * CW^3.0",
+   "weightAtTyp": [
+    [
+     6,
+     41
+    ],
+    [
+     7,
+     65
+    ],
+    [
+     9,
+     139
+    ],
+    [
+     11,
+     253
+    ]
+   ]
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.mof.go.kr/doc/ko/selectDoc.do?docSeq=51347&menuSeq=971&bbsSeq=10"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "octopus_minor",
+  "nameKo_current": "낙지",
+  "legal": {
+   "national": {
+    "closed": [
+     [
+      6,
+      1,
+      6,
+      30
+     ]
+    ],
+    "basis": "기본 6.1~6.30; 시·도지사가 4.1~9.30 중 1개월 이상 별도 고시 가능; no 금지체장/체중"
+   },
+   "regional": {
+    "gyeongnam": {
+     "closed": [
+      [
+       6,
+       16,
+       7,
+       31
+      ]
+     ]
+    },
+    "jeonnam": {
+     "closed": [
+      [
+       6,
+       21,
+       7,
+       20
+      ]
+     ]
+    },
+    "incheon": {
+     "closed": [
+      [
+       6,
+       21,
+       7,
+       20
+      ]
+     ],
+     "note": "인천 고시 제2016-109호"
+    },
+    "chungnam": {
+     "closed": [
+      [
+       6,
+       1,
+       6,
+       30
+      ]
+     ],
+     "note": "가로림만·근소만 only: 4.1~5.31 (안흥/만리포 are outside the bays -> base)"
+    },
+    "busan": {
+     "closed": [
+      [
+       6,
+       1,
+       6,
+       30
+      ]
+     ],
+     "note": "no separate notice found"
+    },
+    "ulsan": {
+     "closed": [
+      [
+       6,
+       1,
+       6,
+       30
+      ]
+     ]
+    },
+    "gyeongbuk": {
+     "closed": [
+      [
+       6,
+       1,
+       6,
+       30
+      ]
+     ]
+    },
+    "gangwon": {
+     "closed": [
+      [
+       6,
+       1,
+       6,
+       30
+      ]
+     ]
+    },
+    "jeju": {
+     "closed": [
+      [
+       6,
+       1,
+       6,
+       30
+      ]
+     ]
+    }
+   }
+  },
+  "dataIssues": [
+   "regional dates missing for Geoje(경남), Yeosu(전남), Incheon",
+   "cephalopod 60 g/cm on 4~16cm -> 240~1,120 g; real 갯벌 낙지 60~250 g"
+  ],
+  "size": {
+   "axis": "mantle length (동장) - better roll weight",
+   "minCm": 3.0,
+   "typCm": [
+    4.0,
+    7.0
+   ],
+   "maxCm": 9.0,
+   "meanCm": 5.5,
+   "sdCm": 1.0,
+   "weightFormula": "W(g) ~= 1.0 * ML^2.8",
+   "weightAtTyp": [
+    [
+     4,
+     48
+    ],
+    [
+     5,
+     90
+    ],
+    [
+     6,
+     151
+    ],
+    [
+     7,
+     233
+    ]
+   ],
+   "typWeightG": [
+    60,
+    250
+   ],
+   "maxWeightG": 400
+  },
+  "sources": [
+   "https://elecmania.com/740",
+   "https://www.hankookilbo.com/news/article/201605031540600779",
+   "https://www.nakmap.com/rules.php",
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.mof.go.kr/doc/ko/selectDoc.do?docSeq=51347&menuSeq=971&bbsSeq=10"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "octopus_vulgaris",
+  "nameKo_current": "돌문어",
+  "nameKo_fix": "참문어 (돌문어) - optional",
+  "sciName_fix": "Octopus sinensis (East Asian common octopus, split from O. vulgaris 2016 - optional)",
+  "legal": {
+   "national": {
+    "closed": [
+     [
+      5,
+      16,
+      6,
+      30
+     ]
+    ],
+    "basis": "기본 5.16~6.30; 시·도지사가 5.1~9.15 중 46일 이상 별도 가능; 금지체중 없음 (2019 draft 300g replaced by the 46-day season, in force 2021)"
+   },
+   "regional": {
+    "gyeongnam": {
+     "closed": [
+      [
+       5,
+       24,
+       7,
+       8
+      ]
+     ],
+     "note": "2021 경남 고시"
+    },
+    "jeonnam": {
+     "closed": [
+      [
+       5,
+       24,
+       7,
+       8
+      ]
+     ],
+     "note": "여수시 2023 (진도 5.24~7.4)"
+    },
+    "jeju": {
+     "closed": [
+      [
+       8,
+       1,
+       9,
+       15
+      ]
+     ],
+     "note": "LOW confidence - one secondary site only"
+    },
+    "gangwon": {
+     "closed": [
+      [
+       5,
+       16,
+       6,
+       30
+      ]
+     ],
+     "note": "+ 강원 조례: 어촌계 어장 안 문어 연중 금지"
+    }
+   }
+  },
+  "dataIssues": [
+   "national value correct; Geoje/Yeosu use 5.24~7.8, not 5.16~6.30",
+   "size in cm is meaningless for octopus - roll weight"
+  ],
+  "size": {
+   "axis": "mantle length (동장) / weight",
+   "minCm": 6.0,
+   "typCm": [
+    8.0,
+    13.0
+   ],
+   "maxCm": 18.0,
+   "meanCm": 10.0,
+   "sdCm": 2.0,
+   "weightFormula": "W(g) ~= 0.55 * ML^3.0",
+   "weightAtTyp": [
+    [
+     8,
+     282
+    ],
+    [
+     10,
+     550
+    ],
+    [
+     12,
+     950
+    ],
+    [
+     15,
+     1856
+    ]
+   ],
+   "typWeightG": [
+    300,
+    1500
+   ],
+   "maxWeightG": 3500
+  },
+  "sources": [
+   "https://www.etoday.co.kr/news/view/1957904",
+   "https://www.dailian.co.kr/news/view/919892/",
+   "https://www.dailian.co.kr/news/view/791384/",
+   "https://www.asiae.co.kr/en/article/2021043006163498987",
+   "https://www.asiae.co.kr/en/article/2023062111364099828",
+   "https://moafishing.com/prohibition/",
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.agrinet.co.kr/news/articleView.html?idxno=329466"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "strongylocentrotus_nudus",
+  "nameKo_current": "성게 (보라성게)",
+  "nameKo_fix": "둥근성게",
+  "nameEn_fix": "Northern Purple Sea Urchin",
+  "sciName_fix": "Mesocentrotus nudus (syn. Strongylocentrotus nudus)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {
+    "gangwon": {
+     "note": "강원 조례 - 어촌계 어장 안 성게 연중 금지"
+    }
+   }
+  },
+  "dataIssues": [
+   "name mix-up: S. nudus is 둥근성게 (East Sea main species, anglers often miscall it 보라성게)",
+   "comment 「산란기 보호」 is wrong - there is no closed season; 제철(roe) 5~7월 is quality, not law"
+  ],
+  "size": {
+   "axis": "test diameter without spines (각경)",
+   "minCm": 3.5,
+   "typCm": [
+    5.0,
+    7.5
+   ],
+   "maxCm": 10.0,
+   "meanCm": 6.0,
+   "sdCm": 1.0,
+   "weightFormula": "W(g) ~= 0.42 * D^3.0",
+   "weightAtTyp": [
+    [
+     5,
+     53
+    ],
+    [
+     6,
+     91
+    ],
+    [
+     7,
+     144
+    ],
+    [
+     8,
+     215
+    ]
+   ]
+  },
+  "sources": [
+   "https://species.nibr.go.kr/home/mainHome.do?cont_link=009&subMenu=009002&contCd=009002&ktsn=120000225583",
+   "https://m.fishingseasons.co.kr/news_Detail.asp?b_no=875",
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://mulmap.com/rules.php",
+   "https://www.agrinet.co.kr/news/articleView.html?idxno=329466"
+  ],
+  "confidence": "high"
+ },
+ {
+  "id": "stichopus_japonicus",
+  "nameKo_current": "해삼",
+  "sciName_fix": "Apostichopus japonicus",
+  "legal": {
+   "national": {
+    "closed": [
+     [
+      7,
+      1,
+      7,
+      31
+     ]
+    ],
+    "basis": "기타해삼 7.1~7.31 전국; no 금지체장/체중"
+   },
+   "regional": {
+    "gangwon": {
+     "note": "강원 조례 - 어촌계 어장 안 연중 금지"
+    }
+   }
+  },
+  "dataIssues": [
+   "legal value correct",
+   "comment says 하면(夏眠) - the legal reason is the 금어기 (산란 후기); ecology absence is separate (absentMonths)",
+   "length is unreliable (contracts) - roll weight"
+  ],
+  "size": {
+   "axis": "weight (relaxed body length secondary)",
+   "minCm": 8.0,
+   "typCm": [
+    12.0,
+    22.0
+   ],
+   "maxCm": 30.0,
+   "meanCm": 17.0,
+   "sdCm": 4.0,
+   "weightFormula": "W(g) ~= 0.25 * L^2.25",
+   "weightAtTyp": [
+    [
+     12,
+     67
+    ],
+    [
+     17,
+     148
+    ],
+    [
+     22,
+     264
+    ]
+   ],
+   "typWeightG": [
+    80,
+    350
+   ],
+   "maxWeightG": 800
+  },
+  "sources": [
+   "https://www.nifs.go.kr/lmo/scb/index2.lmo",
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.agrinet.co.kr/news/articleView.html?idxno=329466"
+  ],
+  "confidence": "high"
+ },
+ {
+  "id": "mytilus_coruscus",
+  "nameKo_current": "홍합 (섭)",
+  "nameKo_fix": "참담치 (섭) - optional",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {
+    "gangwon": {
+     "note": "강원 조례 - 어촌계 어장 안 홍합 연중 금지"
+    }
+   },
+   "shellfishToxin": "subject (담치류 are the main PSP indicator)"
+  },
+  "dataIssues": [
+   "dailyLimitG 5000 is a game value"
+  ],
+  "size": {
+   "axis": "shell length (각장)",
+   "minCm": 4.0,
+   "typCm": [
+    6.0,
+    11.0
+   ],
+   "maxCm": 18.0,
+   "meanCm": 8.0,
+   "sdCm": 2.0,
+   "weightFormula": "W(g) ~= 0.085 * L^3.0",
+   "weightAtTyp": [
+    [
+     6,
+     18
+    ],
+    [
+     8,
+     44
+    ],
+    [
+     10,
+     85
+    ],
+    [
+     12,
+     147
+    ]
+   ],
+   "note": "intertidal 진주담치 would be 4~7cm, ~0.06*L^3"
+  },
+  "sources": [
+   "https://www.newspim.com/news/view/20260203000783",
+   "https://news.nate.com/view/20260528n25210",
+   "https://www.agrinet.co.kr/news/articleView.html?idxno=329466"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "omphalius_rusticus",
+  "nameKo_current": "보말 (팽이고둥)",
+  "sciName_fix": "Tegula rustica (WoRMS accepted; optional)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {
+    "jeju": {
+     "note": "2021 고시(보말·게만 허용, 야간 금지) was voided; new 조례 pending - not in force per latest reports"
+    }
+   }
+  },
+  "dataIssues": [
+   "generic 4~16cm roll is far too big - real 2~3cm"
+  ],
+  "size": {
+   "axis": "shell width (각경)",
+   "minCm": 1.5,
+   "typCm": [
+    2.0,
+    3.0
+   ],
+   "maxCm": 3.8,
+   "meanCm": 2.5,
+   "sdCm": 0.4,
+   "weightFormula": "W(g) ~= 0.4 * D^2.9",
+   "weightAtTyp": [
+    [
+     2.0,
+     3.0
+    ],
+    [
+     2.5,
+     5.7
+    ],
+    [
+     3.0,
+     9.6
+    ]
+   ]
+  },
+  "sources": [
+   "https://www.jejunews.com/news/articleView.html?idxno=2226589",
+   "https://www.jejunews.com/news/articleView.html?idxno=2216872"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "capitulum_mitella",
+  "nameKo_current": "거북손",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {}
+  },
+  "dataIssues": [
+   "no legal limits - correct"
+  ],
+  "size": {
+   "axis": "total length capitulum+peduncle",
+   "minCm": 2.0,
+   "typCm": [
+    3.0,
+    5.0
+   ],
+   "maxCm": 8.0,
+   "meanCm": 4.0,
+   "sdCm": 0.8,
+   "weightFormula": "W(g) ~= 0.13 * L^3.0",
+   "weightAtTyp": [
+    [
+     3,
+     3.5
+    ],
+    [
+     4,
+     8.3
+    ],
+    [
+     5,
+     16
+    ]
+   ]
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "cellana_grata",
+  "nameKo_current": "삿갓조개 (배말)",
+  "nameKo_fix": "진주배말 (삿갓조개)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {}
+  },
+  "dataIssues": [
+   "Korean standard name of Cellana grata is 진주배말; 삿갓조개 is a generic term"
+  ],
+  "size": {
+   "axis": "shell length",
+   "minCm": 2.0,
+   "typCm": [
+    3.0,
+    4.5
+   ],
+   "maxCm": 5.5,
+   "meanCm": 3.7,
+   "sdCm": 0.6,
+   "weightFormula": "W(g) ~= 0.1 * L^3.0",
+   "weightAtTyp": [
+    [
+     3,
+     2.7
+    ],
+    [
+     4,
+     6.4
+    ],
+    [
+     5,
+     12.5
+    ]
+   ]
+  },
+  "sources": [
+   "https://koreascience.kr/article/JAKO201725651202884.pdf"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "haliotis_diversicolor",
+  "nameKo_current": "오분자기",
+  "sciName_fix": "Haliotis diversicolor supertexta (optional)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "금어기 is listed for 제주특별자치도 only; 금지체장 각장 4cm 이하 (마대오분자기 포함) listed with Jeju"
+   },
+   "regional": {
+    "jeju": {
+     "closed": [
+      [
+       7,
+       1,
+       8,
+       31
+      ]
+     ],
+     "minCm": 4.0
+    }
+   }
+  },
+  "dataIssues": [
+   "Jeju 7.1~8.31 / 4cm correct (2023 draft proposed abolition; final kept them)",
+   "whether 4cm also applies outside Jeju is unclear - outside Jeju the roll falls back to 4~16cm (impossible >9cm)",
+   "boundary <="
+  ],
+  "size": {
+   "axis": "shell length (각장)",
+   "minCm": 3.0,
+   "typCm": [
+    4.5,
+    6.5
+   ],
+   "maxCm": 9.0,
+   "meanCm": 5.5,
+   "sdCm": 0.9,
+   "weightFormula": "W(g) ~= 0.13 * L^3.0",
+   "weightAtTyp": [
+    [
+     4,
+     8
+    ],
+    [
+     5,
+     16
+    ],
+    [
+     6,
+     28
+    ],
+    [
+     7,
+     45
+    ]
+   ]
+  },
+  "sources": [
+   "https://haerujil.yesit.is/guide/closed-season-size",
+   "https://www.nifs.go.kr/lmo/scb/index2.lmo",
+   "https://www.dailian.co.kr/news/view/1222021/",
+   "https://www.etoday.co.kr/news/view/2297122"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "heliocidaris_crassispina",
+  "nameKo_current": "말똥성게",
+  "nameKo_fix": "보라성게",
+  "nameEn_fix": "Purple Sea Urchin",
+  "sciName_fix": "Heliocidaris crassispina (syn. Anthocidaris crassispina)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {
+    "gangwon": {
+     "note": "강원 조례 성게 - 어촌계 어장 안 연중 금지"
+    }
+   }
+  },
+  "dataIssues": [
+   "entry mixes 3 species: id = H. crassispina(보라성게), nameKo = 말똥성게, sci = Hemicentrotus pulcherrimus(말똥성게), desc 「가시가 굵고 검은」 = 보라성게, habitatDesc 「가시가 짧아」 = 말똥성게",
+   "recommended: make it 보라성게 (matches id, sprite creature_urchin_black, nameEn); rewrite habitatDesc to long sharp spines, 남해·제주·동해남부; lower eastSeaWeight for 강원",
+   "if 말똥성게 is wanted, add it as a new id (Hemicentrotus pulcherrimus, test 1.5~4cm, 8~26 g)"
+  ],
+  "size": {
+   "axis": "test diameter without spines (각경)",
+   "minCm": 3.5,
+   "typCm": [
+    4.5,
+    6.5
+   ],
+   "maxCm": 8.5,
+   "meanCm": 5.5,
+   "sdCm": 0.8,
+   "weightFormula": "W(g) ~= 0.45 * D^3.0",
+   "weightAtTyp": [
+    [
+     4.5,
+     41
+    ],
+    [
+     5.5,
+     75
+    ],
+    [
+     6.5,
+     124
+    ]
+   ]
+  },
+  "sources": [
+   "https://ko.wikipedia.org/wiki/%EB%B3%B4%EB%9D%BC%EC%84%B1%EA%B2%8C",
+   "https://www.kci.go.kr/kciportal/ci/sereArticleSearch/ciSereArtiView.kci?sereArticleSearchBean.artiId=ART001741689",
+   "https://species.nibr.go.kr/home/mainHome.do?cont_link=009&subMenu=009002&contCd=009002&ktsn=120000225583",
+   "https://m.fishingseasons.co.kr/news_Detail.asp?b_no=875"
+  ],
+  "confidence": "high"
+ },
+ {
+  "id": "aplysia_kurodai",
+  "nameKo_current": "참군소",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {}
+  },
+  "dataIssues": [
+   "generic 4~16cm too small - adults 12~25cm crawling, 150~800 g"
+  ],
+  "size": {
+   "axis": "body length (crawling)",
+   "minCm": 8.0,
+   "typCm": [
+    12.0,
+    25.0
+   ],
+   "maxCm": 40.0,
+   "meanCm": 18.0,
+   "sdCm": 5.0,
+   "weightFormula": "W(g) ~= 0.06 * L^3.0",
+   "weightAtTyp": [
+    [
+     12,
+     104
+    ],
+    [
+     18,
+     350
+    ],
+    [
+     25,
+     938
+    ]
+   ],
+   "typWeightG": [
+    150,
+    800
+   ]
+  },
+  "sources": [],
+  "confidence": "low"
+ },
+ {
+  "id": "hemigrapsus_sanguineus",
+  "nameKo_current": "쫄장게",
+  "nameKo_fix": "무늬발게 (쫄장게)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {
+    "jeju": {
+     "note": "게 was in the voided 2021 Jeju allow-list"
+    }
+   }
+  },
+  "dataIssues": [
+   "쫄장게 is angler slang; standard name 무늬발게",
+   "generic 4~16cm roll far too big"
+  ],
+  "size": {
+   "axis": "carapace width (갑폭)",
+   "minCm": 1.2,
+   "typCm": [
+    2.0,
+    3.2
+   ],
+   "maxCm": 4.0,
+   "meanCm": 2.6,
+   "sdCm": 0.5,
+   "weightFormula": "W(g) ~= 0.33 * CW^3.0",
+   "weightAtTyp": [
+    [
+     2.0,
+     2.6
+    ],
+    [
+     2.6,
+     5.8
+    ],
+    [
+     3.2,
+     10.8
+    ]
+   ]
+  },
+  "sources": [
+   "https://koreascience.or.kr/article/JAKO199311920827557.page"
+  ],
+  "confidence": "medium"
+ },
+ {
+  "id": "ligia_exotica",
+  "nameKo_current": "갯강구",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {}
+  },
+  "dataIssues": [
+   "0.4 g/cm gives 1~2 g - real 0.2~0.8 g"
+  ],
+  "size": {
+   "axis": "body length",
+   "minCm": 1.5,
+   "typCm": [
+    2.5,
+    4.0
+   ],
+   "maxCm": 5.0,
+   "meanCm": 3.2,
+   "sdCm": 0.6,
+   "weightFormula": "W(g) ~= 0.012 * L^3.0",
+   "weightAtTyp": [
+    [
+     2.5,
+     0.19
+    ],
+    [
+     3.2,
+     0.39
+    ],
+    [
+     4.0,
+     0.77
+    ]
+   ]
+  },
+  "sources": [],
+  "confidence": "medium"
+ },
+ {
+  "id": "perinereis_aibuhitensis",
+  "nameKo_current": "청갯지렁이",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {},
+   "note": "갯벌 습지보호지역 digging is a separate restriction"
+  },
+  "dataIssues": [
+   "0.6 g/cm gives 5~13 g - real bait worms 1~4 g"
+  ],
+  "size": {
+   "axis": "body length (relaxed)",
+   "minCm": 5.0,
+   "typCm": [
+    10.0,
+    18.0
+   ],
+   "maxCm": 30.0,
+   "meanCm": 13.0,
+   "sdCm": 3.0,
+   "weightFormula": "W(g) ~= 0.015 * L^1.9",
+   "weightAtTyp": [
+    [
+     10,
+     1.2
+    ],
+    [
+     13,
+     1.9
+    ],
+    [
+     18,
+     3.6
+    ]
+   ]
+  },
+  "sources": [],
+  "confidence": "low"
+ },
+ {
+  "id": "marphysa_sanguinea",
+  "nameKo_current": "혼무시 (바위털갯지렁이)",
+  "legal": {
+   "national": {
+    "closed": [],
+    "basis": "no national closed season / size limit found in 2025-26 secondary tables of 시행령 별표1·2"
+   },
+   "regional": {}
+  },
+  "dataIssues": [
+   "annelid roll 8~22cm too short - real 15~35cm, can exceed 60cm"
+  ],
+  "size": {
+   "axis": "body length (relaxed)",
+   "minCm": 10.0,
+   "typCm": [
+    15.0,
+    35.0
+   ],
+   "maxCm": 60.0,
+   "meanCm": 24.0,
+   "sdCm": 7.0,
+   "weightFormula": "W(g) ~= 0.02 * L^1.8",
+   "weightAtTyp": [
+    [
+     15,
+     2.6
+    ],
+    [
+     24,
+     6.1
+    ],
+    [
+     35,
+     12
+    ]
+   ]
+  },
+  "sources": [],
+  "confidence": "low"
+ },
+ {
+  "id": "_crosscutting",
+  "items": [
+   "LegalRegionKey/legalRegionOf only know jeju; world region ids are gangwon_sokcho, incheon, chungnam_taean, gyeongbuk_pohang, ulsan, busan, gyeongnam_geoje, jeonnam_yeosu, jeju, ulleungdo, dokdo -> add gyeongnam, jeonnam, incheon, chungnam, gangwon, ulleung keys by prefix",
+   "금지체장/체중 are 「이하」: undersized must be size <= limit (ForagingEngine.ts:305/339) and ForageSystem.ts:229 must not clamp to exactly the limit",
+   "GANGWON_FORAGE_ORDINANCE.effectiveFrom 2025-01-13 is the start of the crackdown (단속반 1~3월); the ordinance was promulgated and in force 2024-07-26 (강원도보 제5084호). It bans 비어업인 taking 「전복·해삼·성게·홍합 등 정착성 동물과 문어」 in 어촌계 어장 all year; exceptions = 어촌체험마을, 해수욕장, 축제, 어촌계 동의",
+   "비어업인 gear (시행규칙 [별표1] 신설 2024.2.29, rules in force 2023.12.21): 투망, 뜰채, 반두, 손들망, 외줄낚시, 가리, 통발, 낫대, 집게, 갈고리, 호미, 삽, 손, small everyday tools; one of each type at a time; no powered tools, no 집어등, no diving aids (스쿠버). Game tools hand/tongs/gaff/net are allowed; rake(갈퀴) is not named (호미/삽 are) - low confidence",
+   "Law amended 2026-03-12 (National Assembly): 시간·장소 added to 비어업인 rules, 시·군·구 may legislate; in force 6 months after promulgation (~2026 H2). No confirmed numeric daily limits anywhere -> all dailyLimitG are game values",
+   "Jeju 조례: not confirmed in force (2021 고시 voided; plan = ban 정착성 + 문어 in 마을어장, daytime only, 보말·게 only). 전남 조례 passed committee 2024-11 (마을어장·양식장 제외) - enactment unconfirmed. 충남 조례 on hold. 경북 drafting",
+   "PSP 2026: first ban 2026-02-03 (거제 시방리 0.9 mg/kg), all 경남 lifted 5.26, re-issued early June (창원, 부산 다대·사하 = next to 감천), 진해만 still banned in July. Game window 3.1~6.17 is too narrow for the south; species in real bans: 담치류, 굴, 바지락, 개조개, 키조개, 가리비, 피조개 + 멍게·미더덕",
+   "isEastSeaRegion regex misses ulsan, ulleungdo, dokdo"
+  ],
+  "sources": [
+   "https://state.gwd.go.kr/upload/report/kw_nws_data/kw_mgr_5084_20240725183631.pdf",
+   "https://www.agrinet.co.kr/news/articleView.html?idxno=329466",
+   "https://www.kwnews.co.kr/article/202501130072443",
+   "https://www.fntoday.co.kr/news/articleView.html?idxno=327976",
+   "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=140032797&bylClsCd=110201",
+   "https://www.etoday.co.kr/news/view/2310952",
+   "https://westship.mof.go.kr/ko/page.do?menuIdx=495",
+   "https://www.lcnews.co.kr/news/articleView.html?idxno=125338",
+   "https://v.daum.net/v/20260312172604762",
+   "https://www.jejunews.com/news/articleView.html?idxno=2226589",
+   "https://m.go.seoul.co.kr/news/2024/11/22/20241122500071",
+   "https://www.eomin.co.kr/etnews/?cid=21030100&fn=v&no=63006",
+   "https://www.newspim.com/news/view/20260203000783",
+   "https://news.nate.com/view/20260528n25210",
+   "https://www.busan.com/view/busan/view.php?code=2026060311201416574"
+  ]
+ }
+]

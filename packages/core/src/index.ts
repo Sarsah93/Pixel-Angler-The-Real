@@ -98,7 +98,7 @@ export {
   sinkerWeightByHo, getWeightSinkerSpec,
 } from './db-schema/SinkerDatabase.js';
 export { SHORE_CREATURE_DATABASE, getCreatureById, getCreaturesByCategory, getCreaturesBySpotType, getActiveCreaturesByMonth } from './db-schema/ShoreCreatureDatabase.js';
-export type { ShoreCreature } from './db-schema/ShoreCreatureDatabase.js';
+export type { ShoreCreature, ShoreCreatureSize } from './db-schema/ShoreCreatureDatabase.js';
 export { TRAP_DATABASE, getTrapById, getTrapsByType } from './db-schema/TrapDatabase.js';
 export { RECIPE_DATABASE, getRecipeById, getRecipesByLocation, getRecipesByIngredient } from './db-schema/RecipeDatabase.js';
 // 제작 도면 (P7 — 요리와 분리된 별도 DB)
@@ -305,6 +305,7 @@ export {
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
   rollEnforcement, enforcementFineWon, enforcementRepeatMult, trapSeasonViolations,
   forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
+  rollForageSizeCm, forageWeightG, forageImageSizeScale,   // 288차 — 종별 크기 · 무게 · 그림 배율
   isCrabCreature, BERRIED_MONTHS, BERRIED_CHANCE,
 } from './simulation/ForagingEngine.js';
 export type { ForageInjury, ForageHarvest } from './simulation/ForagingEngine.js';
@@ -764,6 +765,7 @@ export {
   SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, HAIR_STYLES, MOUTH_STYLES, FACE_SHAPES,
   ramp, defaultAppearance, bareOutfit, starterOutfit,
   renderCharCell, renderCharSheet, charCfgKey, makeCharConfig, pose,
+  PLAYER_CANON_AGE, playerAgeOf,   // 288차 — 주인공 나이
 } from './art/CharacterArt.js';
 // 152차 — 대화창 초상 전용 고밀도 얼굴 렌더러 (필드 스프라이트와 별도 격자)
 export { renderFacePortrait, PORTRAIT_CELL, type PortraitRaster } from './art/FacePortrait.js';

@@ -25,7 +25,7 @@ import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, RESIDUE_SUB, produceBaseName, looseSh
 import { gramsText, qtyWord } from './QtyLabel.js';
 import { FarmStore } from '../store/FarmStore.js';
 import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
-import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG,
+import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG, forageImageSizeScale,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel, dishVariantKind, FOOD_EFFECT_KIND_KO } from '@tra/core';
@@ -1107,7 +1107,10 @@ export class ItemDetailPanel extends DraggablePanel {
     // 실사 픽셀 생선 이미지 (어획물) — 개체 크기에 따라 확대/축소 (소형↓·보통·대형·특대↑ 단조)
     if (fishTexKey) {
       const src = scene.textures.get(fishTexKey).getSourceImage() as HTMLImageElement;
-      const sizeMul = item.speciesId && item.lengthCm ? fishImageSizeScale(item.speciesId, item.lengthCm) : 1;
+      // 288차 — 채집물(갯것)은 그 종의 보통 크기 기준(사용자 「체장 등에 따른 이미지 크기 반영」 — 옛: 어종 표에 없어 늘 1.0)
+      const shore = item.forageCatch && item.speciesId ? getCreatureById(item.speciesId) : undefined;
+      const sizeMul = shore && item.lengthCm ? forageImageSizeScale(shore, item.lengthCm)
+        : item.speciesId && item.lengthCm ? fishImageSizeScale(item.speciesId, item.lengthCm) : 1;
       // refBox = 보통 크기 기준(228×90), capBox = 특대에도 패널 폭·이미지 영역(imgH) 안에 들어오게
       const fitRef = Math.min(228 / src.width, 90 / src.height);
       const ds = Math.min(fitRef * sizeMul, 300 / src.width, 120 / src.height);

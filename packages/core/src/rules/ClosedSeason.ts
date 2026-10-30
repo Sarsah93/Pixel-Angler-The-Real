@@ -46,7 +46,13 @@ export function formatSeasons(seasons: readonly ClosedSeason[] | undefined): str
 /** 지역 id → 규정 묶음 키(없으면 국가 기본) */
 export function legalRegionOf(regionId: string | undefined): LegalRegionKey | null {
   if (!regionId) return null;
-  return /^jeju/i.test(regionId) || regionId.includes('제주') ? 'jeju' : null;
+  if (/^jeju/i.test(regionId) || regionId.includes('제주')) return 'jeju';
+  // 288차 — 시 · 도 고시가 국가 기준과 다른 지역(낙지 · 참문어 금어기 · 울릉 소라)
+  if (/^gyeongnam|geoje|tongyeong|namhae/i.test(regionId)) return 'gyeongnam';
+  if (/^jeonnam|yeosu|wando|mokpo/i.test(regionId)) return 'jeonnam';
+  if (/^incheon/i.test(regionId)) return 'incheon';
+  if (/ulleung|dokdo/i.test(regionId)) return 'ulleung';
+  return null;
 }
 
 /** 국가 기본 + 지역 덮어쓰기를 합친다 */

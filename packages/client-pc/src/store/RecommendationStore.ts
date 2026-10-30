@@ -50,7 +50,7 @@ class RecommendationStoreManager {
       .slice(0, 4)
       .map(([id]) => id);
     if (targetSpeciesIds.length === 0) {
-      targetSpeciesIds = ['black_seabream', 'flatfish', 'rockfish'];
+      targetSpeciesIds = ['black_seabream', 'flatfish', 'black_rockfish'];   // 288차 — 'rockfish'는 없는 id였다(입질 감사 F23)
     }
 
     return {

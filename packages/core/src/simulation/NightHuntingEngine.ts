@@ -169,7 +169,7 @@ export function attemptHunt(
     ? creature.minLegalSizeCm + Math.random() * (creature.minLegalSizeCm * 1.5)
     : 5 + Math.random() * 15;
 
-  const isUndersized = creature.minLegalSizeCm > 0 && sizeDescCm < creature.minLegalSizeCm;
+  const isUndersized = creature.minLegalSizeCm > 0 && sizeDescCm <= creature.minLegalSizeCm;   // 288차 — 금지체장은 「이하」
 
   // 무게/개수 계산
   const countOrWeightG = isUndersized

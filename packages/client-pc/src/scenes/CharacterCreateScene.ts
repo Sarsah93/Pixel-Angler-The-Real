@@ -504,7 +504,8 @@ export class CharacterCreateScene extends Phaser.Scene {
       outfit.shirtColor = CLOTH_COLORS[this.starterShirt];
       outfit.pantsColor = CLOTH_COLORS[this.starterPants];
     }
-    return { look: { ...this.look }, outfit };
+    // 288차 — 나이는 아직 만들기에서 정하지 않는다(정본 22세 · 다시 만들기면 지금 값 유지)
+    return { look: { ...this.look }, outfit, age: GameState.playerAge };
   }
 
   private refresh(): void {
@@ -513,7 +514,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.previewImg?.setTexture(big, charFrameName(this.previewDir, 0));
     this.applyPreviewFrame();
 
-    this.captionText?.setText(`${this.nickname || '한여름'} · ${this.look.sex === 'm' ? '남성' : '여성'}`);
+    this.captionText?.setText(`${this.nickname || '한여름'} · ${this.look.sex === 'm' ? '남성' : '여성'} · ${GameState.playerAge}세`);
 
     this.rowG.clear();
     this.views.forEach((v, i) => {

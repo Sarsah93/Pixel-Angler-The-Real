@@ -1068,8 +1068,9 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
   const maleRatio = picked.sexRule ? picked.sexRule(lengthCm) : picked.maleRatio;
   const sex: 'M' | 'F' = Math.random() < maleRatio ? 'M' : 'F';
 
-  const underWeight = picked.legalMinWeightG !== undefined && weightG < picked.legalMinWeightG;
-  const isUndersized = (picked.legalMinCm !== undefined && lengthCm < picked.legalMinCm) || underWeight;
+  // 288차 — 금지체장 · 금지체중은 「이하」(법 그대로 — 그 크기 · 무게 그대로도 못 가진다 · 해루질과 같은 규칙)
+  const underWeight = picked.legalMinWeightG !== undefined && weightG <= picked.legalMinWeightG;
+  const isUndersized = (picked.legalMinCm !== undefined && lengthCm <= picked.legalMinCm) || underWeight;
   // 188차 — 강원 조례: 산란기 8kg 이상 대문어는 방생 대상(금어기와 같은 경로로 처리)
   const octoProtected = isGiantOctopusSpawnProtected(picked.speciesId, weightG, ctx.month, ctx.region);
   const isClosedSeason = (picked.closedSeasons && picked.closedSeasons.length > 0
@@ -1089,7 +1090,7 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     isUndersized,
     isClosedSeason,
     ...(octoProtected ? { protectReasonKo: '산란기 8kg 이상 대문어', protectReasonEn: 'Spawning-season giant octopus of 8 kg or more' }
-      : underWeight ? { protectReasonKo: `금지체중 ${picked.legalMinWeightG}g 미만`, protectReasonEn: `Under the ${picked.legalMinWeightG} g legal minimum weight` } : {}),
+      : underWeight ? { protectReasonKo: `금지체중 ${picked.legalMinWeightG}g 이하`, protectReasonEn: `At or under the ${picked.legalMinWeightG} g legal weight limit` } : {}),
     powerFactor,
     fight: picked.fight,
     lineCutter: picked.fight.lineCutter ?? false,

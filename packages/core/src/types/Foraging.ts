@@ -144,8 +144,8 @@ export const GANGWON_FORAGE_ORDINANCE = {
   protectedCreatureIds: [
     'haliotis_discus',            // 전복
     'stichopus_japonicus',        // 해삼
-    'strongylocentrotus_nudus',   // 성게
-    'heliocidaris_crassispina',    // 말똥성게
+    'strongylocentrotus_nudus',   // 둥근성게(288 — 옛 표기 「성게」)
+    'heliocidaris_crassispina',    // 보라성게(288 — 옛 표기 「말똥성게」)
     'mytilus_coruscus',           // 홍합(섭)
     'octopus_vulgaris',           // 문어
     // 188차 — 오분자기는 DB에 `ordinanceProtected: true`로 적혀 있는데 이 표에서 빠져 단속이 없었다(AG ②f).

@@ -42,7 +42,7 @@ import {
   FLASHER_ONLY_BITE_MULT, FLASHER_TARGET_SPECIES,
   getAreaSnagRiskMult,
   BiteSequenceEngine, TidalCurrentEngine, TidalInfluence,
-  SeabedProfile, kstHour,
+  SeabedProfile, kstHour, kstParts,
   LureSpec, LureSinkProfile, getLureSinkProfile, jigHeadWeightById, lureBodyType,
   computeFeedingActivity, feedingRegionProfileOf, FeedingActivityResult,
   tideFlowStateAt, tideFlowSizeBias, type TideFlowState,
@@ -2395,7 +2395,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (retrieving) {
       const p = this.input.activePointer;
       const side = p.x < GAME_WIDTH / 2 ? -1 : 1;   // 좌측 화면 릴링 = 좌로 당김
-      const cross = this.tidal.crossSpeedNow(new Date().getHours());
+      const cross = this.tidal.crossSpeedNow(kstHour());   // 288차 — 기기 시간대가 아니라 KST
       // 조류 순방향 릴링은 빠르고, 역방향은 저항으로 느리다 (대신 입질 유도 리액션)
       const withCurrent = Math.sign(cross) === side;
       const reelMps = 1.7 * (withCurrent ? 1.4 : 0.65);
@@ -2466,6 +2466,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const hold = isHoldState(this.rig);
     const nearBottom = this.rig.baitZ >= Math.min(this.zLimitM, bedHereM) - 1.2;
     const inReef = nearBottom && this.seabed.isRockAt(this.distM);
+    // 288차 — 어떤 고기가 오는가(스폰 · 미끼 친화)는 「발밑 바닥이 여인가」로 본다(미끼 높이와 무관).
+    //  옛 판정은 여 위 중층 찌를 모래로 쳐서 벵에돔이 38% → 11%로 떨어졌다(입질 감사 F07). 미끼가 여에 닿았나(`inReef`)는 입질 확률 · 걸림 쪽만.
+    const reefBottom = this.seabed.isRockAt(this.distM);
     // 밑밥 동조율 — 3D 파슬 (x 좌우 · d 원근거리 · z 수심) 최대 동조 (B-3)
     // rev2: 바닥층 미끼(국소 바닥 근처)는 코팅 파슬의 bottomSyncBonus 가산 대상 (§2-5)
     // 미끼(바늘) 위치 = 뒷줄견제 목줄 스트리밍 반영 (Task 5) — 밑밥 파슬과의 3D 겹침 판정
@@ -2521,13 +2524,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // 미끼 종류 × 어종 선호도 친화도 (오라클 연동)
     //   193차 — 바늘마다 미끼가 다르면 끼운 미끼들의 평균(서로 다른 미끼 = 더 많은 어종에 말을 건다)
-    const baitAffinity = this.rigBaitAffinity(inReef);
+    const baitAffinity = this.rigBaitAffinity(reefBottom);
     // 193차 — 반짝이 깃 카드 채비만 단 채(미끼 없음): 전갱이만, 미끼를 끼웠을 때의 10%.
     //   이 자리에 전갱이가 없으면(지역·수심·홈타운 규제) 입질 자체가 없다
     const flasherMult = InventoryStore.rigSummary().flasherOnly
-      ? (candidateCount(this.buildSpawnCtx(inReef)) > 0 ? FLASHER_ONLY_BITE_MULT : 0) : 1;
+      ? (candidateCount(this.buildSpawnCtx(reefBottom)) > 0 ? FLASHER_ONLY_BITE_MULT : 0) : 1;
     // 바다낚시지수 API 캐시 → P_base 보정 (지수 1~5 → 0.7~1.4배)
-    const indexModifier = ExternalDataStore.getFishingIndexModifier();
+    const indexModifier = ExternalDataStore.getRegionFishingIndexModifier(this.cfg.region);   // 288차 — 그 지역 지수(옛: 전국 목록 첫 지점)
 
     // ── 루어/지깅 액션 반응형 입질 (찌낚시=기다림 ↔ 루어=액션이 입질을 만든다) ──
     // 방치된 루어는 거의 물지 않고(0.15배), 리트리브/폴/트위칭 등 살아있는 움직임에
@@ -2626,11 +2629,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     if (snagNow) {
       this.enterSnagStuck(snagKind);
-    } else if (tick.event === 'bite' && !this.biteSeq.active && !this.pendingFish) {
+    } else if (tick.event === 'bite' && !this.biteSeq.active && !this.pendingFish
+      // 288차 — 이 자리 · 이 미끼로 올 고기가 하나도 없으면 입질이 아니다(옛 `spawnFish`는 빈 후보에서 55종 아무거나 뽑았다 — 입질 감사 F26)
+      && candidateCount(this.buildSpawnCtx(reefBottom)) > 0) {
       // 입질 발생 → 어종 결정 + 입질 시퀀스 시작 (파이팅은 챔질 성공 시에만)
       //   193차 — 미끼를 단 바늘 하나가 물린다: 그 바늘의 미끼가 어종을 정하고, 소모도 그 바늘에서만 일어난다
       InventoryStore.pickBittenBait();
-      const biteCtx = this.buildSpawnCtx(inReef);
+      const biteCtx = this.buildSpawnCtx(reefBottom);
       this.pendingFish = spawnFish(biteCtx);
       this.rollSchool(biteCtx, this.pendingFish);   // 195차 — 열기·전갱이 무리 걸림(제철 + 입질 확률 50% 이상)
       this.biteSeq.start({
@@ -2712,8 +2717,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private refreshFeedingActivity(): void {
     const tide = calculateTideInfo();
     this.feeding = computeFeedingActivity({
-      hour: kstHour() + new Date().getMinutes() / 60,
-      month: new Date().getMonth() + 1,
+      hour: kstHour() + Number(kstParts().mi) / 60,   // 288차 — KST(입질 감사 F13)
+      month: Number(kstParts().mo),
       tidePhase: tide.tidePhase,
       minutesToNextTide: tide.minutesToNextTide,
       nextTideType: tide.nextTideType,
@@ -2767,14 +2772,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   }
 
   private buildSpawnCtx(inReef: boolean): SpawnContext {
-    const hour = new Date().getHours();
+    const kp = kstParts();   // 288차 — 기기 시간대가 아니라 KST(입질 감사 F13 — 채집은 232차에 고쳤다)
     const tnSpawn = this.tideNow();
     const ctx: SpawnContext = {
       depthZ: this.rig.baitZ,
       zMax: this.cfg.zMaxM,
       region: this.cfg.region,
       tidePhase: calculateTideInfo().tidePhase,
-      month: new Date().getMonth() + 1, day: new Date().getDate(),
+      month: Number(kp.mo), day: Number(kp.d),
       // 204차 — 물돌이·끝들물 대물 가중(205차 — 동해 감쇠) · 205차 어종별 물때 선호 · 단계 대물
       // 222차 — 「대물 운」은 물때 대물 가중에 더해진다(0~1로 묶임)
       sizeBias: Math.min(1, (tnSpawn ? regionalSizeBias(tideFlowSizeBias(tnSpawn.state.phase), tnSpawn.k) : 0) + GameState.skillBonus('big_fish_luck')),
@@ -2783,7 +2788,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       tideRegionK: tnSpawn?.k,
       baitKey: this.currentBaitKey(),
       inReef,
-      isNight: hour >= 20 || hour < 5,
+      // 288차 — 밤은 게임 전체가 쓰는 철 따라 바뀌는 밤(겨울 17~07시 · 화면 · 밤 스킬과 같다 — 옛 20~05시 고정은 겨울 초저녁을 낮으로 쳤다)
+      isNight: isNightNowKst(),
       // KOSIS 시도별 어획량 캐시 → 지역 어종 스폰 가중치
       catchWeightBySpecies: ExternalDataStore.getCatchWeights(this.cfg.region),
     };
@@ -3623,7 +3629,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     if (protectedFish) {
       GameState.addLawfulReleaseXp(f.speciesId, f.lengthCm);   // 준법 방생 XP (124차 — 어획 XP × 0.5)
-      const reason = f.protectReasonKo ?? (f.isClosedSeason ? '금어기' : `금지체장 미만`);   // 188차 — 대문어 8kg 조례
+      const reason = f.protectReasonKo ?? (f.isClosedSeason ? '금어기' : `금지체장 이하`);   // 188차 — 대문어 8kg 조례
       this.finishFight(`${f.nameKo} ${f.lengthCm}cm — 방생`,
         `${f.nameKo} ${f.lengthCm}cm / ${(f.weightG / 1000).toFixed(2)}kg / ${sexLabel}\n\n${reason} 개체입니다. 규정에 따라 방생합니다.`, '#9fd0e4', fishTexture, imgScale);
     } else {

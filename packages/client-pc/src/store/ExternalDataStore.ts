@@ -51,6 +51,16 @@ function envKey(name: string): string | undefined {
 const REGION_TO_INDEX_KEYWORDS: Record<string, string[]> = {
   gangwon_sokcho: ['속초', '고성', '양양', '강릉'],
   busan: ['감천', '부산', '태종대', '영도', '송도', '다대포', '기장'],
+  // 288차 — 나머지 지역(입질 감사 F06 — 전에는 맞는 지점이 없으면 목록 첫 지점 = 다른 바다의 지수를 썼다)
+  ulsan: ['방어진', '슬도', '울산', '간절곶', '정자'],
+  gyeongbuk_pohang: ['구룡포', '영일만', '포항', '호미곶', '양포'],
+  gyeongnam_geoje: ['지세포', '구조라', '해금강', '거제', '장승포'],
+  jeonnam_yeosu: ['돌산', '여수', '금오도', '거문도'],
+  chungnam_taean: ['안흥', '만리포', '신진도', '태안', '격렬비'],
+  jeju: ['도두', '모슬포', '서귀포', '제주', '차귀도', '성산'],
+  incheon: ['연안부두', '인천', '영흥', '무의'],
+  ulleungdo: ['울릉', '저동', '도동'],
+  dokdo: ['독도'],
 };
 
 /** 오라클 서식 지형 → 표시 라벨 */
@@ -63,19 +73,22 @@ const LAYER_LABEL: Record<string, string> = {
   surface: '상층', mid: '중층', bottom: '저층',
 };
 
-/** 지역 ID → KOSIS 시도명 접두 매핑 */
-const REGION_TO_SIDO: Record<string, string> = {
-  gangwon_sokcho: '강원',
-  incheon: '인천',
-  chungnam_taean: '충남',
-  gyeongbuk_pohang: '경북',
-  ulsan: '울산',
-  busan: '부산',
-  gyeongnam_geoje: '경남',
-  jeonnam_yeosu: '전남',
-  jeju: '제주',
-  ulleungdo: '경북',
-  dokdo: '경북',
+/**
+ * 지역 ID → KOSIS 시도명 접두(별칭 여럿). 288차 — KOSIS · 모의 자료는 「경상북도」처럼 정식 이름이라
+ * 줄임말(「경북」)만 보던 옛 표는 경북 · 경남 · 전남 · 충남 행을 버렸다(포항 · 거제 · 여수 · 태안 · 울릉 · 독도가 늘 빈 가중 — 입질 감사 F04).
+ */
+const REGION_TO_SIDO: Record<string, string[]> = {
+  gangwon_sokcho: ['강원'],
+  incheon: ['인천'],
+  chungnam_taean: ['충남', '충청남도'],
+  gyeongbuk_pohang: ['경북', '경상북도'],
+  ulsan: ['울산'],
+  busan: ['부산'],
+  gyeongnam_geoje: ['경남', '경상남도'],
+  jeonnam_yeosu: ['전남', '전라남도'],
+  jeju: ['제주'],
+  ulleungdo: ['경북', '경상북도'],
+  dokdo: ['경북', '경상북도'],
 };
 
 /**
@@ -546,12 +559,12 @@ class ExternalDataStoreManager {
   getCatchWeights(regionId: string): Partial<Record<string, number>> {
     const stats = this._snapshot?.regionalCatch;
     const sido = REGION_TO_SIDO[regionId];
-    if (!stats || !sido) return {};
+    if (!stats || !sido?.length) return {};
 
     // 시도 매칭 행만 집계 (총중량 기준 — KosisCatchApiClient에서 사전 필터됨)
     const bySpecies = new Map<string, number>();
     for (const row of stats) {
-      if (!row.regionName.startsWith(sido)) continue;
+      if (!sido.some((p) => row.regionName.startsWith(p))) continue;
       const match = KOSIS_SPECIES_MATCH.find((m) => m.keywords.some((k) => row.speciesName.includes(k)));
       if (!match) continue;
       for (const id of match.speciesIds) {
@@ -562,8 +575,10 @@ class ExternalDataStoreManager {
 
     const max = Math.max(...bySpecies.values());
     const weights: Partial<Record<string, number>> = {};
+    // 288차 — 기록된 어종은 1.0 ~ 1.3(많이 잡힐수록 조금 더). 옛 0.7 ~ 1.8은 기록이 적은 어종을 기록 없는 어종(1.0)보다 낮췄다
+    //  (속초 감성돔 0.857 < 긴꼬리벵에돔 1.0 — 입질 감사 F05). 지역 · 철 존재감은 따로 다룬다(사용자 결정 대기).
     bySpecies.forEach((v, id) => {
-      weights[id] = 0.7 + (v / max) * 1.1;   // 0.7 ~ 1.8
+      weights[id] = 1 + (v / max) * 0.3;
     });
     return weights;
   }
@@ -589,7 +604,14 @@ class ExternalDataStoreManager {
       const hit = list.find((i) => i.placeName.includes(k));
       if (hit) return hit;
     }
-    return list[0];
+    return undefined;   // 288차 — 맞는 지점이 없으면 없다(옛 `list[0]` = 다른 바다의 지수)
+  }
+
+  /** 288차 — 그 지역의 낚시지수 → 입질 배율(맞는 지점이 없으면 1.0 — 입질 감사 F06) */
+  getRegionFishingIndexModifier(regionId: string): number {
+    const info = this.getRegionFishingIndex(regionId);
+    if (!info) return 1.0;
+    return [0, 0.7, 0.85, 1.0, 1.2, 1.4][info.indexLevel] ?? 1.0;
   }
 
   /**
@@ -667,8 +689,8 @@ class ExternalDataStoreManager {
   }[] {
     const stats = this._snapshot?.regionalCatch;
     const sido = REGION_TO_SIDO[regionId];
-    if (!stats || !sido) return [];
-    const rows = stats.filter((r) => r.regionName.startsWith(sido));
+    if (!stats || !sido?.length) return [];
+    const rows = stats.filter((r) => sido.some((p) => r.regionName.startsWith(p)));   // 288차 — 정식 이름(「경상북도」)도
     if (rows.length === 0) return [];
     const latest = rows.reduce((m, r) => (r.period > m ? r.period : m), rows[0].period);
     return rows

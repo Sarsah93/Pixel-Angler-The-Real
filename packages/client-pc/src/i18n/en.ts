@@ -448,7 +448,7 @@ const EN_BASE: Record<string, string> = {
   '여 박기! ↑를 꾹 눌러 버티세요!': 'Diving for the reef! Hold ↑!', '줄터짐! 찌까지 터졌습니다': 'Line break! Lost the float too', '줄터짐! 목줄이 터졌습니다': 'Line break! The leader snapped',
   '복어가 목줄을 끊었습니다!': 'A puffer cut the leader!', '미끼가 털렸습니다': 'Bait shaken off', '바늘이 빠졌습니다. 루어는 무사히 회수했습니다.\n\n다시 캐스팅하세요.': 'The hook pulled free. The lure came back fine.\n\nCast again.',
   '놓쳤다! 물고기가 탈출했습니다': 'Lost it! The fish escaped', '물고기가 탈출했습니다. 루어는 무사히 회수했습니다.': 'The fish escaped. The lure came back fine.', '무리한 릴링! 줄이 터졌습니다': 'Forced reeling! The line snapped',
-  '수컷': 'male', '암컷': 'female', '금어기': 'closed season', '금지체장 미만': 'under size limit', '쿨러에 보관하기': 'Keep in Cooler', '쿨러에 보관하였습니다.': 'Stored in the cooler.', '인벤토리에 보관하기': 'Keep in Inventory',
+  '수컷': 'male', '암컷': 'female', '금어기': 'closed season', '금지체장 이하': 'under size limit', '쿨러에 보관하기': 'Keep in Cooler', '쿨러에 보관하였습니다.': 'Stored in the cooler.', '인벤토리에 보관하기': 'Keep in Inventory',
   '인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요': 'No inventory (Food) space — release it or free a slot', '인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)': 'Stored in inventory. (freshness starts after 10 min live)',
   '해당 어종을 방생하였습니다.': 'Released the fish.', '계속하기 (SPACE)': 'Continue (SPACE)', '그만하기 (ESC)': 'Stop (ESC)', '계속 낚시하거나 필드로 복귀하세요.': 'Keep fishing or return to the field.',
   ' (쿨러 가득 — 방생)': ' (cooler full — released)', ' (어창)': ' (cooler)', ' (인벤토리)': ' (inventory)', ' (인벤 가득 — 방생)': ' (inventory full — released)', '다시 캐스팅 (SPACE)': 'Cast again (SPACE)',
@@ -760,6 +760,7 @@ const DOW_EN: Record<string, string> = {
 export const EN_RULES: Rule[] = [
   ...EN_CURE_RULES,    // 285차 갈무리 · 씨 받기(문장이 정해진 것 — 넓은 「— 」 규칙보다 먼저)
   ...EN_TALK_RULES,    // 286차 실패(거절) · 장면 속 건네받기
+  [/^(\d+)세$/, (m) => `Age ${m[1]}`],   // 288차 — 캐릭터 만들기 머리줄 「한여름 · 남성 · 22세」의 나이 칸(구분자 분해 뒤)
   // ── 254차 이어지는 대화 · 결말 · 인물 가게 ──
   [/^나 — ([\s\S]+)$/, (m, tr) => `Me — ${tr(m[1])}`],
   [/^받은 것 — ([\s\S]+)$/, (m, tr) => `Received — ${tr(m[1])}`],
@@ -1390,7 +1391,7 @@ export const EN_RULES: Rule[] = [
   [/^(.+) 선택$/, 'Select $1'], [/^추천 \((.+)\): (.+)$/, (m, tr) => `Pick (${m[1].split('·').map((x) => tr(x)).join(' · ')}): ${m[2].split(' · ').map((x) => tr(x)).join(' · ')}`], [/^조법 (.+)$/, (m, tr) => `Method ${tr(m[1])}`], [/^찌 (.+)호$/, 'Float #$1'], [/^미끼 (.+)$/, (m, tr) => `Bait ${m[1].split('·').map((x) => tr(x)).join(' · ')}`],
   [/^배합 완료 — 남은 밑밥 (\d+) \/ (\d+) \(1인칭 C 투척 1회당 (\d+) 소모\)$/, 'Mixed — chum left $1 / $2 (C throw uses $3)'],
   [/^발견 (\d+) \/ (\d+)종$/, 'Found $1 / $2 species'], [/^제철 (.+)월$/, 'Season: months $1'], [/^최대어 (.+) cm$/, 'Record $1 cm'], [/^누적 (\d+) 수$/, 'Total $1'], [/^kg당 (.+)원$/, '₩$1/kg'],
-  [/^금어기 ([\d.~ ·]+)$/, 'Closed $1'], [/^금지체중 (\d+)g 미만$/, 'Under the $1 g legal minimum weight'],
+  [/^금어기 ([\d.~ ·]+)$/, 'Closed $1'], [/^금지체중 (\d+)g 이하$/, 'At or under the $1 g legal weight limit'],
   [/^금어기 (.+)월$/, 'Closed: months $1'], [/^(.+)월$/, 'months $1'], [/^(.+)에서 구매$/, 'Sold at $1'], [/^(.+) — 플레이로 입수$/, '$1 — obtained in play'],
   [/^발견 (\d+) \/ (\d+) — 취득하면 등록$/, 'Found $1 / $2 — registers when obtained'], [/^발견 (\d+) \/ (\d+)종 — 해루질·통발로 채집해 발견$/, 'Found $1 / $2 — discover by gathering/traps'],
   [/^(\d+)개 관측소$/, '$1 stations'], [/^(\d+)\/(\d+)개 지역$/, '$1/$2 regions'], [/^(\d+)개$/, '$1'], [/^상점 매입가: (.+) 원$/, 'Shop buys at: ₩$1'], [/^(.+) g 상당$/, '$1 g eq.'],

@@ -23,7 +23,7 @@ import {
   isOrdinanceViolation, rollEnforcement, creatureTools, FORAGE_TOOL_LABEL,
   calculateTideInfo, isNightNow, checkSlipHazard, TUNING, kstParts,
   tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
-  forageBehaviorOf, isEastSeaRegion, rollForageHarvest, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
+  forageBehaviorOf, isEastSeaRegion, rollForageHarvest, forageImageSizeScale, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
   type ForageGameState, type ForageHarvest,
   isToxinShellfish, toxinBanActive, toxinBanLabel,
   advanceRunner, decodeRunnerFlee, encodeRunnerFlee, runnerEpoch, runnerFleeKey,
@@ -70,7 +70,7 @@ export interface ForageHost {
   /** 224차 — 달리는 중인가(달아나는 생물이 놀란다) */
   running?: () => boolean;
   /** 224차 — 손놀림 놀이 창을 연다(씬 팝업 스택) */
-  openForageGame?: (c: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean }, onEnd: (s: ForageGameState) => void) => void;
+  openForageGame?: (c: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean; sizeMul?: number }, onEnd: (s: ForageGameState) => void) => void;
   /** 229차 — 벌금을 낼 돈이 없다 → 파산 연출(암전 · 처음부터) */
   bankrupt?: (fineWon: number) => void;
   /** 229차 — 알 밴 암컷을 놓아주는 혼잣말(초상 = 외포란 꽃게 그림) */
@@ -143,7 +143,7 @@ export function ensureForageDotTextures(scene: Phaser.Scene): void {
         g.fillStyle(0x8db39a, 1); g.fillEllipse(6, 7, 5, 3);
         g.lineStyle(1, 0x1c3939, 1); g.strokeEllipse(8, 8, 12, 8);
         break;
-      case 'heliocidaris_crassispina': // 말똥성게 — 굵은 갈색 가시
+      case 'heliocidaris_crassispina': // 보라성게(288 — 옛 표기 말똥성게) — 길고 검은 가시
         g.fillStyle(0x3f251d, 1); g.fillCircle(8, 8, 4);
         g.lineStyle(1, 0x8d5c3c, 1);
         for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; g.lineBetween(8, 8, 8 + Math.cos(a) * 8, 8 + Math.sin(a) * 8); }
@@ -221,12 +221,13 @@ const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePr
  * 쿨러는 거치지 않는다(가방에 바로). 법정 크기 미달은 다시 굴리고 외포란 표시는 떼어 둔다.
  * `countGather`면 채집 1회로 친다(레벨 · 숙련 · 하루 기록 · 이야기 채집 목표 — 지역 조건은 지금 있는 지역으로 센다).
  */
-export function devGrantForage(c: ShoreCreature, countGather: boolean): boolean {
+export function devGrantForage(c: ShoreCreature, countGather: boolean, pre?: ForageHarvest): boolean {
   if (!import.meta.env.DEV) return false;
   const regionId = GameState.currentRegionId;
-  let res = rollForageHarvest(c, Math.random, regionId);
+  let res = pre && !pre.undersized ? pre : rollForageHarvest(c, Math.random, regionId);
   for (let i = 0; i < 30 && res.undersized; i++) res = rollForageHarvest(c, Math.random, regionId);
-  if (res.undersized) res = { ...res, sizeCm: resolveLegal(c, regionId).minLegalSizeCm, undersized: false };
+  // 288차 — 금지체장은 「이하」라 그 크기 그대로는 못 잡는다 — 0.1cm 위로
+  if (res.undersized) res = { ...res, sizeCm: Math.round((resolveLegal(c, regionId).minLegalSizeCm + 0.1) * 10) / 10, undersized: false };
   let ok = false;
   if (c.baitItemId) {
     const seed = InventoryStore.seedTemplate(c.baitItemId);
@@ -291,7 +292,8 @@ export class ForageSystem {
   /** 현재 가장 가까운(상호작용 대상) 스팟 */
   private nearSpot: ForageSpot | null = null;
   /** 224차 — 손놀림 놀이 중인 스팟 */
-  private playing: { spot: ForageSpot; creature: ShoreCreature; tool: ForageTool } | null = null;
+  /** 288차 — `res` = 놀이 전에 굴린 그 녀석의 크기 · 무게(판에 그 크기로 그리고, 이기면 그대로 담는다) */
+  private playing: { spot: ForageSpot; creature: ShoreCreature; tool: ForageTool; res: ForageHarvest } | null = null;
 
   /** 채집 중인가(놀이 창이 열려 있다) — 생존 지표 드레인 활동 판정(125차) */
   get isHolding(): boolean {
@@ -925,10 +927,12 @@ export class ForageSystem {
     }
     if (safety.warning) this.host.floatingHint(safety.warning);
     if (!this.host.openForageGame) return false;
-    this.playing = { spot: s, creature: c, tool };
+    // 288차 — 크기를 놀이 전에 굴린다(큰 꽃게는 판에서도 크게 — 사용자 「체장 등에 따른 이미지 크기 반영」)
+    const res = rollForageHarvest(c, Math.random, this.host.regionId, this.env().month);
+    this.playing = { spot: s, creature: c, tool, res };
     // 손재주 — 채집 손놀림 스킬(gath_speed) 배율을 0~1로 펼친다
     const dex = Math.max(0, Math.min(1, (GameState.skillMult('forage_speed') - 1) * 2));
-    const open = (): void => { this.host.openForageGame?.(c, tool, { dex, underwater: s.kind === 'shallows' }, (st) => this.finishGame(st)); };
+    const open = (): void => { this.host.openForageGame?.(c, tool, { dex, underwater: s.kind === 'shallows', sizeMul: forageImageSizeScale(c, res.sizeCm) }, (st) => this.finishGame(st)); };
     if (!MultiplayerClient.isConnected) { open(); return true; }
     // 232차 — 멀티: 손대는 순간 「내 것」이라고 먼저 알린다. 거의 동시에 둘이 잡으면 서버에 먼저 닿은 사람이 임자.
     // 233차 — 놀이 동안은 **채집 중 잠금**(2분 — 도중에 튕기면 풀린다). 남 화면에선 흐려지고 손댈 수 없다.
@@ -986,7 +990,7 @@ export class ForageSystem {
       this.host.pushLog(`[채집] ${msg}`);
       if (inj.dropped) return;
     }
-    const res = rollForageHarvest(c, Math.random, this.host.regionId, this.env().month);
+    const res = h.res;   // 288차 — 놀이 전에 굴린 그 녀석
     if (res.undersized) {
       const msg = `${c.nameKo} ${res.sizeCm}cm — 법정 크기(${resolveLegal(c, this.host.regionId).minLegalSizeCm}cm) 미달, 놓아주었다`;
       this.host.floatingHint(msg);

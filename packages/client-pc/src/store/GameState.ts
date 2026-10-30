@@ -35,7 +35,7 @@ import type {
 } from '@tra/core';
 import type { CoinReason } from '@tra/core';
 import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
-import { type CharConfig, type CharSex, defaultAppearance, starterOutfit } from '@tra/core';
+import { type CharConfig, type CharSex, defaultAppearance, starterOutfit, PLAYER_CANON_AGE, playerAgeOf } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { playCoin } from '../audio/Sfx.js';
 import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
@@ -520,6 +520,8 @@ export class GameStateManager {
     }
     // 138차 — 구세이브는 외형 필드가 없다(기본 남성 + 스타터 한 벌로 시작)
     this._character = saved.character ?? GameStateManager.defaultCharacter('m');
+    // 288차 — 구세이브는 나이가 없다 → 정본 22세(누락분만 채운다 · 저장된 값은 그대로)
+    if (this._character.age === undefined) this._character = { ...this._character, age: PLAYER_CANON_AGE };
     // 130차 (e) — 구세이브가 이미 조합을 갖췄을 수 있다(히든 노드는 세이브에 없던 시절 데이터).
     //   포인트를 쓰지 않으므로 소급 지급해도 예산이 어긋나지 않는다.
     this.refreshHiddenSkills();
@@ -1981,8 +1983,11 @@ export class GameStateManager {
   private _character: CharConfig = GameStateManager.defaultCharacter('m');
 
   static defaultCharacter(sex: CharSex): CharConfig {
-    return { look: defaultAppearance(sex), outfit: starterOutfit(sex) };
+    return { look: defaultAppearance(sex), outfit: starterOutfit(sex), age: PLAYER_CANON_AGE };
   }
+
+  /** 288차 — 주인공 나이(살 · 정본 22세 — 캐릭터 만들기에서 정하는 것은 다음 차수) */
+  get playerAge(): number { return playerAgeOf(this._character); }
 
   get character(): CharConfig { return this._character; }
 

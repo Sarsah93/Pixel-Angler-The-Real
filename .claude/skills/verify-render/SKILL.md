@@ -69,6 +69,10 @@ const { chromium } = resolvePlaywright();
 | 모듈 함수(렌더러 등) | `await import('/src/…​.ts')` — **`.ts` URL** | `.js` URL은 별개 모듈. 상태 없는 순수 함수 호출에만 사용 |
 | 건물 그림 단위(239차) | `s.chunks.units`(`id` · `kind` · `wallH` · `poly` · `bottomY`) · `s.chunks.onRoadBand(x,y)` · `s.chunks.coveredByBuilding(x,y)` · 간판 자리 `s.shopSignSpot(door, seed, new Set())` | 단위는 **윤곽 좌상단 타일의 청크**가 소유 — 화면에 보여도 그 청크가 안 올라왔으면 이미지가 없다. 건물 뒤 가림은 `s.updateOccluders(130)`를 직접 돌리고 이미지 `alpha`(0.38)를 읽는다 |
 
+- **해루질 놀이 판은 F10 「④-2b」로 바로 연다**(288) — 콘솔 DOM의 [시작] 단추를 누르면 필드 훅 `DevHooks.playForageGame(id, tool, underwater, keepCatch)`가 판을 연다(필드 밖이면 null).
+  판은 `s.popupStack` 맨 위 `ForageGamePanel` — 처음 열면 체험 가이드가 판을 멈춰 두므로 `globalThis.__TOUR?.active?.dismiss?.(); p.devUnpause();` 뒤에 `p.tick(0, 33)`을 수동으로 돌린다.
+  `import('/src/ui/GuideTour.ts')`의 `setGuideTipsEnabled`는 게임과 다른 인스턴스라 듣지 않는다(288 실측). 이기기 강제 = `p.gs.status = 'won'`(파기 이김은 닫히는 연출 700ms — 헤드리스는 1.6초 기다린다).
+  가방이 차면(약 22개) 이김이 가방에 안 든다 — 돌 때마다 `__INV`에서 `forageCatch` 칸을 비운다.
 - **패널 직접 생성 시** `scene.add.existing(panel)` 필수 — DraggablePanel(Container)은 자동 등록되지 않는다 (7차).
 - **첫 열기 안내 말풍선(`GuideTour`)이 실마우스 누름을 막는다**(286차 — 일지 스크롤바 끌기가 0으로 나왔다) — 실마우스 하네스는
   `const G = await import('/src/ui/GuideTour.ts'); G.setGuideTipsEnabled(false)`를 창을 열기 **전에** 부른다(본 것으로 치지 않는다).

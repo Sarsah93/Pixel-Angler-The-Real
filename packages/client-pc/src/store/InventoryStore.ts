@@ -50,7 +50,7 @@ import { millItemTemplate } from '../data/MillItems.js';
 import { cureItemTemplate } from '../data/CureItems.js';
 import { StoryStore } from './StoryStore.js';
 import { CoolerStore } from './CoolerStore.js';
-import { migrateCatchItemId, migrateSpeciesId } from '../data/SpeciesMigration.js';
+import { migrateCatchItemId, migrateSpeciesId, migrateForageName } from '../data/SpeciesMigration.js';
 import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
 import { rigViewOf, isPackItem } from './RigParts.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
@@ -1714,6 +1714,8 @@ class InventoryStoreManager {
     // 256차 — 정본 id로 바뀌어 같은 id가 둘이 된 칸은 하나로 합치고, 분류가 바뀌어 겹친 칸 번호는 빈 칸으로 옮긴다
     this._items = mergeSameIdItems(this._items);
     fixSlotCollisions(this._items, catChanged);
+    // 288차 — 이름을 바로잡은 갯것(둥근성게 · 보라성게)은 옛 칸 이름도 새 이름으로(크기 꼬리는 그대로)
+    for (const it of this._items) if (it.forageCatch) it.name = migrateForageName(it.speciesId, it.name);
     this._catchSeq = s.catchSeq ?? 0;
     // 282차 — 장비 · 단단한 루어를 개체로 나눈다(옛 세이브의 「같은 id 한 칸 · 수량 n」 → 번호 붙은 n개).
     //  순번은 세이브 값과 가방에 이미 있는 번호 중 큰 쪽에서 잇는다(번호가 겹치지 않게)

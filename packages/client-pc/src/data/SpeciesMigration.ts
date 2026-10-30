@@ -26,3 +26,23 @@ export function migrateCatchItemId(itemId: string): string {
   }
   return itemId;
 }
+
+/**
+ * 288차 — 이름을 바로잡은 갯것(채집물). 옛 세이브의 가방 · 쿨러 칸은 이름을 글자로 들고 있어
+ * 불러올 때 옛 이름 앞부분만 새 이름으로 바꾼다(크기 꼬리 「(6cm)」 · 유저 상태는 그대로).
+ * id → [옛 이름들, 새 이름]
+ */
+export const FORAGE_NAME_MIGRATION: Readonly<Record<string, readonly [readonly string[], string]>> = Object.freeze({
+  // 이 학명은 둥근성게다(보라성게는 heliocidaris) — 옛 「성게 (보라성게)」
+  strongylocentrotus_nudus: [['성게 (보라성게)'], '둥근성게'] as const,
+  // id · 그림 · 설명은 보라성게였는데 이름만 「말똥성게」였다
+  heliocidaris_crassispina: [['말똥성게'], '보라성게'] as const,
+});
+
+/** 갯것 칸 이름 한 건을 현행 이름으로(해당 없으면 원본 그대로). */
+export function migrateForageName(speciesId: string | undefined, name: string): string {
+  const m = speciesId ? FORAGE_NAME_MIGRATION[speciesId] : undefined;
+  if (!m) return name;
+  for (const old of m[0]) if (name.startsWith(old)) return m[1] + name.slice(old.length);
+  return name;
+}

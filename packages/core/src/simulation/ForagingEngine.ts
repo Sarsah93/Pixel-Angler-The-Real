@@ -145,7 +145,8 @@ export function shallowWaterDepthM(tideLevel01: number): number {
 
 /** 224차 — 동해(강원 · 경북) 지역인가 — 출현 배율(`eastSeaWeight`)을 건다 */
 export function isEastSeaRegion(regionId: string): boolean {
-  return /gangwon|sokcho|gangneung|pohang|gyeongbuk|uljin|donghae/.test(regionId);
+  // 288차 — 울산 · 울릉도 · 독도도 동해다(전에는 빠져 오분자기 같은 남해 종이 나왔다)
+  return /gangwon|sokcho|gangneung|pohang|gyeongbuk|uljin|donghae|ulsan|ulleung|dokdo/.test(regionId);
 }
 
 /** 보유 도구 중 이 생물에 쓸 수 있는 가장 좋은 도구 (없으면 undefined). 맨손은 항상 후보 */
@@ -301,9 +302,9 @@ export function attemptForage(c: ShoreCreature, tool: ForageTool, rng: () => num
 
   // 크기·무게 — 법정 크기 기준 밴드 (미달 개체는 방류)
   const legal = c.minLegalSizeCm;
-  const sizeCm = legal > 0 ? legal * (0.8 + rng() * 1.0) : 4 + rng() * 12;
-  const undersized = legal > 0 && sizeCm < legal;
-  const weightG = Math.round(sizeCm * (c.category === 'cephalopod' ? 60 : 14) + rng() * sizeCm * 10);
+  const sizeCm = rollForageSizeCm(c, rng, legal);   // 288차 — 종별 크기(조사값)
+  const undersized = legal > 0 && sizeCm <= legal;   // 288차 — 금지체장은 「이하」(그 크기 그대로도 못 잡는다)
+  const weightG = forageWeightG(c, sizeCm, rng);
   return {
     ...base, outcome: 'success', sizeCm: Math.round(sizeCm * 10) / 10, weightG, undersized,
     message: undersized ? `${c.nameKo} ${sizeCm.toFixed(1)}cm — 법정 크기(${legal}cm) 미달, 방류` : `${c.nameKo} ${weightG}g 채집!`,
@@ -330,15 +331,51 @@ export function isCrabCreature(c: Pick<ShoreCreature, 'id' | 'category'>): boole
 export const BERRIED_MONTHS: readonly number[] = [4, 5, 6, 7, 8, 9];
 export const BERRIED_CHANCE = 0.35;
 
-export function rollForageHarvest(c: ShoreCreature, rng: () => number, regionId?: string, month?: number): ForageHarvest {
-  const legal = resolveLegal(c, regionId).minLegalSizeCm;   // 227차 — 지역 규정(제주 전복 10cm 등)
-  const sizeCm = legal > 0 ? legal * (0.8 + rng() * 1.0)
+/**
+ * 288차 — 한 마리의 크기(cm). 종별 크기(`size` — 조사값)가 있으면 정규 분포를 [min, max]로 자르고,
+ * 없으면 옛 일반 밴드(법정 크기 0.8 ~ 1.8배 · 갯지렁이 8 ~ 22 · 갯강구 2.5 ~ 4.5 · 그 밖 4 ~ 16).
+ */
+export function rollForageSizeCm(c: ShoreCreature, rng: () => number, legalCm: number): number {
+  const z = c.size;
+  if (z) {
+    const u = Math.max(1e-9, rng());
+    const v = rng();
+    const n = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    return Math.max(z.minCm, Math.min(z.maxCm, z.meanCm + n * z.sdCm));
+  }
+  return legalCm > 0 ? legalCm * (0.8 + rng() * 1.0)
     : c.category === 'annelid' ? 8 + rng() * 14
     : c.id === 'ligia_exotica' ? 2.5 + rng() * 2
     : 4 + rng() * 12;
-  const undersized = legal > 0 && sizeCm < legal;
+}
+
+/** 288차 — 크기에 맞는 무게(g). 종별 `wA × L^wB` ±10%, 없으면 옛 cm당 무게 */
+export function forageWeightG(c: ShoreCreature, sizeCm: number, rng: () => number): number {
+  const z = c.size;
+  if (z) return Math.max(1, Math.round(z.wA * Math.pow(sizeCm, z.wB) * (0.9 + rng() * 0.2)));
   const perCm = c.category === 'cephalopod' ? 60 : c.category === 'annelid' ? 0.6 : c.id === 'ligia_exotica' ? 0.4 : 14;
-  const weightG = Math.max(1, Math.round(sizeCm * perCm + rng() * sizeCm * (perCm < 5 ? 0.3 : 10)));
+  return Math.max(1, Math.round(sizeCm * perCm + rng() * sizeCm * (perCm < 5 ? 0.3 : 10)));
+}
+
+/**
+ * 288차 — 채집물 그림 표시 배율(1.0 = 그 종의 보통 크기). 사용자 「체장 등에 따른 이미지 크기 반영」.
+ * 어종(`fishImageSizeScale`)과 같은 곡선 — 작은 것은 완만히(지수 0.38) · 큰 것은 뚜렷이(0.55) · [0.80, 1.35].
+ * 기준 = 종별 평균 크기(`size.meanCm`) — 없으면 법정 크기의 1.3배 · 그것도 없으면 옛 일반 밴드 가운데(10cm · 갯지렁이 15 · 갯강구 3.5).
+ */
+export function forageImageSizeScale(c: ShoreCreature, sizeCm: number): number {
+  if (!Number.isFinite(sizeCm) || sizeCm <= 0) return 1;
+  const ref = c.size?.meanCm
+    ?? (c.minLegalSizeCm > 0 ? c.minLegalSizeCm * 1.3
+      : c.category === 'annelid' ? 15 : c.id === 'ligia_exotica' ? 3.5 : 10);
+  const ratio = sizeCm / ref;
+  return Math.max(0.8, Math.min(1.35, Math.pow(ratio, ratio < 1 ? 0.38 : 0.55)));
+}
+
+export function rollForageHarvest(c: ShoreCreature, rng: () => number, regionId?: string, month?: number): ForageHarvest {
+  const legal = resolveLegal(c, regionId).minLegalSizeCm;   // 227차 — 지역 규정(제주 전복 10cm 등)
+  const sizeCm = rollForageSizeCm(c, rng, legal);
+  const undersized = legal > 0 && sizeCm <= legal;   // 288차 — 금지체장은 「이하」(그 크기 그대로도 못 잡는다)
+  const weightG = forageWeightG(c, sizeCm, rng);
   const out: ForageHarvest = { sizeCm: Math.round(sizeCm * 10) / 10, weightG, undersized };
   if (isCrabCreature(c)) {
     out.sex = rng() < 0.5 ? 'M' : 'F';

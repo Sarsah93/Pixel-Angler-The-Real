@@ -15,6 +15,23 @@ import type { ForageTool, ForageSpotKind, ForageAccess, ForageBehavior } from '.
 // 해루질 생물 스키마
 // ─────────────────────────────────────────────
 
+/**
+ * 288차 — 종별 채집 크기(조사값). 사용자 「해루질 어종의 … 체장 등에 따른 이미지 크기 반영」.
+ * 크기는 그 종을 재는 축(각장 · 각고 · 두흉갑장 · 몸길이 …)이고, 무게는 `wA × 길이^wB`(g · ±10%).
+ * 굴림은 평균 · 표준편차의 정규 분포를 [min, max]로 자른다. 없으면 옛 일반 밴드(`rollForageHarvest`).
+ */
+export interface ShoreCreatureSize {
+  /** 재는 축 — 표시 · 법정 크기 판정 기준과 같아야 한다 */
+  axis: 'shell_length' | 'shell_height' | 'shell_width' | 'carapace_width' | 'carapace_length' | 'test_diameter' | 'body_length' | 'total_length' | 'mantle_length';
+  minCm: number;
+  maxCm: number;
+  meanCm: number;
+  sdCm: number;
+  /** 무게(g) = wA × 길이(cm)^wB */
+  wA: number;
+  wB: number;
+}
+
 export interface ShoreCreature {
   id: string;
   nameKo: string;
@@ -78,6 +95,8 @@ export interface ShoreCreature {
   pryHits?: number;
   /** 떼기 — 한 번 놓치면 꽉 조여 붙는다(삿갓조개 — 놀라기 전에 한 번에) */
   clampsHard?: boolean;
+  /** 288차 — 종별 채집 크기 · 무게(조사값) — 굴림 · 그림 크기 배율이 읽는다 */
+  size?: ShoreCreatureSize;
 }
 
 // ─────────────────────────────────────────────
@@ -88,6 +107,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   // ────────── 조개류 ──────────
   {
     id: 'clam_varicosa',
+    size: { axis: 'shell_length', minCm: 2.0, maxCm: 6.0, meanCm: 3.7, sdCm: 0.6, wA: 0.19, wB: 3.0 },
     nameKo: '바지락',
     nameEn: 'Short-necked Clam',
     scientificName: 'Ruditapes philippinarum',
@@ -114,6 +134,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'turbo_cornutus',
+    size: { axis: 'shell_height', minCm: 4.0, maxCm: 12.0, meanCm: 7.5, sdCm: 1.2, wA: 0.22, wB: 2.95 },
     nameKo: '소라',
     nameEn: 'Horned Turban',
     scientificName: 'Turbo cornutus',
@@ -129,7 +150,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     marketValuePerKg: 25000,
     isRestaurantIngredient: true,
     canBeUsedAsBait: true,
-    description: '해루질의 대표 종. 야간에 바위 표면을 기어다니므로 집어등으로 쉽게 발견 가능.',
+    description: '해루질의 대표 종. 밤에 바위 표면을 기어다녀 손전등 불빛에 잘 띈다(집어등은 비어업인이 쓸 수 없다).',
     requiredLicense: 'shore_hunting_basic',
     tools: ['tongs', 'hand'],
     behavior: 'crawler',
@@ -139,10 +160,14 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     eastSeaWeight: 0.3,
     handInjury: true,
     // 국가 금어기 없음 · 각고 5cm — 제주만 6.1~8.31 금어기 · 각고 7cm
-    regional: { jeju: { closedSeasons: [{ from: [6, 1], to: [8, 31] }], minLegalSizeCm: 7 } },
+    regional: {
+      jeju: { closedSeasons: [{ from: [6, 1], to: [8, 31] }], minLegalSizeCm: 7 },
+      ulleung: { closedSeasons: [{ from: [6, 1], to: [7, 31] }], minLegalSizeCm: 7 },   // 288차 — 울릉도 · 독도 6.1~7.31 · 각고 7cm
+    },
   },
   {
     id: 'oyster_gigas',
+    size: { axis: 'shell_height', minCm: 3.0, maxCm: 15.0, meanCm: 7.0, sdCm: 1.5, wA: 0.1, wB: 2.95 },
     nameKo: '굴',
     nameEn: 'Pacific Oyster',
     scientificName: 'Crassostrea gigas',
@@ -166,6 +191,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'haliotis_discus',
+    size: { axis: 'shell_length', minCm: 5.0, maxCm: 16.0, meanCm: 9.0, sdCm: 1.5, wA: 0.105, wB: 3.0 },
     nameKo: '전복',
     nameEn: 'Pacific Abalone',
     scientificName: 'Haliotis discus hannai',
@@ -196,6 +222,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   // ────────── 갑각류 ──────────
   {
     id: 'portunus_trituberculatus',
+    size: { axis: 'carapace_length', minCm: 4.5, maxCm: 10.5, meanCm: 6.6, sdCm: 1.0, wA: 0.6, wB: 3.0 },
     nameKo: '꽃게',
     nameEn: 'Swimming Crab',
     scientificName: 'Portunus trituberculatus',
@@ -224,6 +251,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'charybdis_japonica',
+    size: { axis: 'carapace_width', minCm: 4.0, maxCm: 12.0, meanCm: 7.2, sdCm: 1.2, wA: 0.19, wB: 3.0 },
     nameKo: '민꽃게 (돌게)',
     nameEn: 'Japanese Swimming Crab',
     scientificName: 'Charybdis japonica',
@@ -252,6 +280,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   // ────────── 두족류 ──────────
   {
     id: 'octopus_minor',
+    size: { axis: 'mantle_length', minCm: 3.0, maxCm: 9.0, meanCm: 5.5, sdCm: 1.0, wA: 1.0, wB: 2.8 },
     nameKo: '낙지',
     nameEn: 'Long-arm Octopus',
     scientificName: 'Octopus minor',
@@ -276,9 +305,16 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     tools: ['rake', 'hand'],
     eastSeaWeight: 0.1,
     closedSeasons: [{ from: [6, 1], to: [6, 30] }],
+    // 288차 — 시 · 도 고시(중간 신뢰도): 경남 6.16~7.31 · 전남 6.21~7.20 · 인천 6.21~7.20 · 충남은 가로림만 · 근소만만(안흥 · 만리포는 국가)
+    regional: {
+      gyeongnam: { closedSeasons: [{ from: [6, 16], to: [7, 31] }] },
+      jeonnam: { closedSeasons: [{ from: [6, 21], to: [7, 20] }] },
+      incheon: { closedSeasons: [{ from: [6, 21], to: [7, 20] }] },
+    },
   },
   {
     id: 'octopus_vulgaris',
+    size: { axis: 'mantle_length', minCm: 6.0, maxCm: 18.0, meanCm: 10.0, sdCm: 2.0, wA: 0.55, wB: 3.0 },
     nameKo: '돌문어',
     nameEn: 'Common Octopus',
     scientificName: 'Octopus vulgaris',
@@ -302,20 +338,26 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     substrate: 'rock',
     eastSeaWeight: 0.6,
     closedSeasons: [{ from: [5, 16], to: [6, 30] }],
+    // 288차 — 경남(2021) · 전남(2023) 고시 5.24~7.8(국가 기준 대신). 제주 8.1~9.15는 근거가 약해 넣지 않았다
+    regional: {
+      gyeongnam: { closedSeasons: [{ from: [5, 24], to: [7, 8] }] },
+      jeonnam: { closedSeasons: [{ from: [5, 24], to: [7, 8] }] },
+    },
   },
   // ────────── 극피동물 ──────────
   {
     id: 'strongylocentrotus_nudus',
-    nameKo: '성게 (보라성게)',
-    nameEn: 'Sea Urchin',
-    scientificName: 'Strongylocentrotus nudus',
+    size: { axis: 'test_diameter', minCm: 3.5, maxCm: 10.0, meanCm: 6.0, sdCm: 1.0, wA: 0.42, wB: 3.0 },
+    nameKo: '둥근성게',   // 288차 — 옛 「성게 (보라성게)」: 이 학명은 둥근성게다(보라성게는 아래 heliocidaris)
+    nameEn: 'Round Sea Urchin',
+    scientificName: 'Mesocentrotus nudus',
     spriteKey: 'creature_sea_urchin',
     category: 'echinoderm',
     habitatSpotTypes: ['rocky_shore'],
     habitatDesc: '얕은 물 바위 표면과 틈. 아주 느리게 움직인다. 가시가 길고 날카로워 부러져 박힌다.',
     minLegalSizeCm: 0,
     dailyLimitG: 1000,
-    closedSeasonMonths: [],  // 산란기 보호
+    closedSeasonMonths: [],  // 288차 — 국가 금어기 · 금지체장 없음(옛 「산란기 보호」 주석은 틀렸다) · 강원 조례 어장 보호종
     discoveryTime: 'both',
     minLampLumens: 300,
     marketValuePerKg: 80000,
@@ -331,6 +373,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'stichopus_japonicus',
+    size: { axis: 'body_length', minCm: 8.0, maxCm: 30.0, meanCm: 17.0, sdCm: 4.0, wA: 0.25, wB: 2.25 },
     nameKo: '해삼',
     nameEn: 'Japanese Sea Cucumber',
     scientificName: 'Stichopus japonicus',
@@ -359,6 +402,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   // ────────── 동해 암반 조간대 4종 (121차 — 속초 갯바위·방파제 실제 채집물) ──────────
   {
     id: 'mytilus_coruscus',
+    size: { axis: 'shell_length', minCm: 4.0, maxCm: 18.0, meanCm: 8.0, sdCm: 2.0, wA: 0.085, wB: 3.0 },
     nameKo: '홍합 (섭)',
     nameEn: 'Korean Mussel',
     scientificName: 'Mytilus coruscus',
@@ -382,6 +426,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'omphalius_rusticus',
+    size: { axis: 'shell_width', minCm: 1.5, maxCm: 3.8, meanCm: 2.5, sdCm: 0.4, wA: 0.4, wB: 2.9 },
     nameKo: '보말 (팽이고둥)',
     nameEn: 'Top Shell',
     scientificName: 'Omphalius rusticus',
@@ -405,6 +450,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'capitulum_mitella',
+    size: { axis: 'total_length', minCm: 2.0, maxCm: 8.0, meanCm: 4.0, sdCm: 0.8, wA: 0.13, wB: 3.0 },
     nameKo: '거북손',
     nameEn: 'Goose Barnacle',
     scientificName: 'Capitulum mitella',
@@ -428,6 +474,7 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   {
     id: 'cellana_grata',
+    size: { axis: 'shell_length', minCm: 2.0, maxCm: 5.5, meanCm: 3.7, sdCm: 0.6, wA: 0.1, wB: 3.0 },
     nameKo: '삿갓조개 (배말)',
     nameEn: 'Limpet',
     scientificName: 'Cellana grata',
@@ -452,7 +499,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   // ────────── 추가 조간대 종 — 사용자 요청 2026-09-20 ──────────
   {
-    id: 'haliotis_diversicolor', nameKo: '오분자기', nameEn: 'Small Abalone',
+    id: 'haliotis_diversicolor',
+    size: { axis: 'shell_length', minCm: 3.0, maxCm: 9.0, meanCm: 5.5, sdCm: 0.9, wA: 0.13, wB: 3.0 }, nameKo: '오분자기', nameEn: 'Small Abalone',
     scientificName: 'Haliotis diversicolor', spriteKey: 'creature_abalone_small', category: 'gastropod',
     habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '제주와 남해 일부의 얕은 바다 바위 틈. 동해에는 살지 않는다.',
     minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'night', minLampLumens: 800,   // 227차 — 금어기 · 체장은 제주 한정(아래 regional)
@@ -467,9 +515,10 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     regional: { jeju: { closedSeasons: [{ from: [7, 1], to: [8, 31] }], minLegalSizeCm: 4 } },
   },
   {
-    id: 'heliocidaris_crassispina', nameKo: '말똥성게', nameEn: 'Black-spined Urchin',
-    scientificName: 'Hemicentrotus pulcherrimus', spriteKey: 'creature_urchin_black', category: 'echinoderm',
-    habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '조간대 바위의 돌 밑·틈. 밤에 나와 해조를 먹는다. 가시가 짧아 장갑이면 손으로도 된다.',
+    id: 'heliocidaris_crassispina',
+    size: { axis: 'test_diameter', minCm: 3.5, maxCm: 8.5, meanCm: 5.5, sdCm: 0.8, wA: 0.45, wB: 3.0 }, nameKo: '보라성게', nameEn: 'Purple Sea Urchin',   // 288차 — 옛 「말똥성게」: id · 그림 · 설명은 보라성게였다
+    scientificName: 'Heliocidaris crassispina', spriteKey: 'creature_urchin_black', category: 'echinoderm',
+    habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '남해 · 제주 · 동해 남부 조간대 바위의 돌 밑·틈. 밤에 나와 해조를 먹는다. 가시가 길고 날카로워 장갑을 껴도 조심해야 한다.',
     minLegalSizeCm: 0, dailyLimitG: 2000, closedSeasonMonths: [], discoveryTime: 'both', minLampLumens: 200,
     marketValuePerKg: 28000, isRestaurantIngredient: true, canBeUsedAsBait: false,
     description: '가시가 굵고 검은 성게. 맨손 채집 시 부상 위험이 있어 집게를 사용한다.',
@@ -480,7 +529,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     eastSeaWeight: 0.4,
   },
   {
-    id: 'aplysia_kurodai', nameKo: '참군소', nameEn: 'Sea Hare',
+    id: 'aplysia_kurodai',
+    size: { axis: 'body_length', minCm: 8.0, maxCm: 40.0, meanCm: 18.0, sdCm: 5.0, wA: 0.06, wB: 3.0 }, nameKo: '참군소', nameEn: 'Sea Hare',
     scientificName: 'Aplysia kurodai', spriteKey: 'creature_sea_hare', category: 'gastropod',
     habitatSpotTypes: ['rocky_shore'], habitatDesc: '해조류가 자라는 얕은 암반과 조수웅덩이.',
     minLegalSizeCm: 0, dailyLimitG: 1500, closedSeasonMonths: [], discoveryTime: 'both', minLampLumens: 0,
@@ -491,7 +541,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     agility: 0.15,
   },
   {
-    id: 'hemigrapsus_sanguineus', nameKo: '쫄장게', nameEn: 'Asian Shore Crab',
+    id: 'hemigrapsus_sanguineus',
+    size: { axis: 'carapace_width', minCm: 1.2, maxCm: 4.0, meanCm: 2.6, sdCm: 0.5, wA: 0.33, wB: 3.0 }, nameKo: '쫄장게', nameEn: 'Asian Shore Crab',
     scientificName: 'Hemigrapsus sanguineus', spriteKey: 'creature_shore_crab', category: 'crustacean',
     habitatSpotTypes: ['rocky_shore', 'breakwater'], habitatDesc: '갯바위·사석의 돌 밑과 바위 틈. 불빛이나 그림자에 옆걸음으로 달아나 돌 밑으로 숨는다.',
     minLegalSizeCm: 0, dailyLimitG: 1000, closedSeasonMonths: [], discoveryTime: 'both', minLampLumens: 0,
@@ -504,7 +555,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
   },
   // ────────── 224차 — 미끼로 쓰는 갯것 (사용자 지시 「직접 파낸 갯지렁이 · 갯강구 · 쫄장게를 미끼로」) ──────────
   {
-    id: 'ligia_exotica', nameKo: '갯강구', nameEn: 'Sea Slater',
+    id: 'ligia_exotica',
+    size: { axis: 'body_length', minCm: 1.5, maxCm: 5.0, meanCm: 3.2, sdCm: 0.6, wA: 0.012, wB: 3.0 }, nameKo: '갯강구', nameEn: 'Sea Slater',
     scientificName: 'Ligia exotica', spriteKey: 'creature_sea_slater', category: 'crustacean',
     habitatSpotTypes: ['rocky_shore', 'breakwater'],
     habitatDesc: '물속엔 들어가지 않는다. 파도가 튀는 갯바위 · 방파제 벽 · 해조 더미에 떼 지어 산다. 다가가면 순식간에 흩어진다.',
@@ -515,7 +567,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     behavior: 'runner', agility: 0.97, absentMonths: [1, 2], baitItemId: 'inv_bait_slater',
   },
   {
-    id: 'perinereis_aibuhitensis', nameKo: '청갯지렁이', nameEn: 'Clam Worm',
+    id: 'perinereis_aibuhitensis',
+    size: { axis: 'body_length', minCm: 5.0, maxCm: 30.0, meanCm: 13.0, sdCm: 3.0, wA: 0.015, wB: 1.9 }, nameKo: '청갯지렁이', nameEn: 'Clam Worm',
     scientificName: 'Perinereis aibuhitensis', spriteKey: 'creature_ragworm', category: 'annelid',
     habitatSpotTypes: ['tidal_flat', 'beach'],
     habitatDesc: '펄 · 모래 · 자갈이 섞인 얕은 물가 바닥 속. 동해는 펄이 적어 드물다 — 귀한 현지 미끼.',
@@ -526,7 +579,8 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     behavior: 'buried', substrate: 'soft', eastSeaWeight: 0.35, baitItemId: 'inv_ragworm',
   },
   {
-    id: 'marphysa_sanguinea', nameKo: '혼무시 (바위털갯지렁이)', nameEn: 'Rock Worm',
+    id: 'marphysa_sanguinea',
+    size: { axis: 'body_length', minCm: 10.0, maxCm: 60.0, meanCm: 24.0, sdCm: 7.0, wA: 0.02, wB: 1.8 }, nameKo: '혼무시 (바위털갯지렁이)', nameEn: 'Rock Worm',
     scientificName: 'Marphysa sanguinea', spriteKey: 'creature_honmushi', category: 'annelid',
     habitatSpotTypes: ['rocky_shore', 'tidal_flat'],
     habitatDesc: '물이 빠진 갯바위 아래 펄 섞인 자갈 속. 돌을 뒤집어 그 밑을 판다. 남해 · 서해에 많고 동해엔 드물다.',

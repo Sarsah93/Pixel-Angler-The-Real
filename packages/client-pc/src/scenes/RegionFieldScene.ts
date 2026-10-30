@@ -35,6 +35,9 @@ import { CharacterSprite, ensureCharSheet, charFrameName } from '../ui/Character
 import { NuisanceField } from '../ui/NuisanceField.js';
 import { planBuildingUnits, drawBuildingUnit, packUnits, labelBuildingComps, unitBodyRects, pointInPoly, doorEdgeOf, doorPointsOf, type BuildingUnit } from './field/BuildingArt.js';
 import type { MarineNuisance } from '@tra/core';
+// 288차 — dev 콘솔 「해루질 놀이 바로 시작」
+import { getCreatureById, creatureTools, forageLossLineKo, FORAGE_TOOL_LABEL, rollForageHarvest, forageImageSizeScale } from '@tra/core';
+import { DevHooks } from '../dev/DevMode.js';
 import { RegionLight, RegionBuilding,
   REGION_MAP_GRAPHS,
   getRegionMapNode,
@@ -86,7 +89,7 @@ import { RegionLight, RegionBuilding,
 } from '@tra/core';
 import { SeamlessChunks, type OccluderObj, PROP_DEFS, propFootprint, type PropDef } from './SeamlessChunks.js';
 import { ForageGamePanel } from '../ui/ForageGamePanel.js';
-import { ForageSystem } from './field/ForageSystem.js';
+import { ForageSystem, devGrantForage } from './field/ForageSystem.js';
 import { AmbientNpcSystem, StoryNpcActor, type NpcFieldHost } from './field/FieldNpcSystem.js';
 import { TrapFieldSystem } from './field/TrapFieldSystem.js';
 import { TrapDeployPanel } from '../ui/TrapDeployPanel.js';
@@ -1501,6 +1504,22 @@ export class RegionFieldScene extends Phaser.Scene {
     if (import.meta.env.DEV) {
       const issues = [...validateStoryQuests(), ...validateStoryChoices(), ...validateLicenseStoryRoutes(STORY_QUESTS)];
       if (issues.length) console.warn('[Story] 퀘스트·선택지·자격 경로 DB 무결성', issues);
+      // 288차 — dev 콘솔 「해루질 놀이 바로 시작」: 스팟 없이 그 갯것의 손놀림 놀이 창을 바로 연다
+      DevHooks.playForageGame = (id, tool, underwater, keepCatch) => {
+        const c = getCreatureById(id);
+        if (!c) return '그런 갯것이 없습니다';
+        if (!this.scene.isActive()) return '필드가 멈춰 있습니다 — 창을 닫고 다시';
+        const tl = tool ?? creatureTools(c)[0];
+        const dex = Math.max(0, Math.min(1, (GameState.skillMult('forage_speed') - 1) * 2));
+        const pre = rollForageHarvest(c, Math.random, this.region);   // 288차 — 판에 그 크기로 그린다
+        this.openPopup((close) => new ForageGamePanel(this, c, tl, { dex, underwater, sizeMul: forageImageSizeScale(c, pre.sizeCm) }, (st) => {
+          const msg = st.status === 'won' ? `${c.nameKo} — 잡았다` : forageLossLineKo(c.nameKo, st.lost ?? 'escaped');
+          this.hud?.pushLog(`[dev 채집 놀이] ${msg} (${FORAGE_TOOL_LABEL[tl]}${underwater ? ' · 물속' : ''})`);
+          if (st.status === 'won' && keepCatch && !devGrantForage(c, false, pre)) this.hud?.pushLog('[dev 채집 놀이] 가방이 가득 차 넣지 못했다');
+        }, close));
+        return null;
+      };
+      this.events.once('shutdown', () => { DevHooks.playForageGame = undefined; });
     }
     this.playerBody.setVisible(false);
     this.playerBody.setCollideWorldBounds(true);

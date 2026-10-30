@@ -8,6 +8,7 @@
  *  - 아이템 지급·제거 (시드+상점 전 카탈로그 검색)
  *  - 어종 어획물 지급 (FISH_DATABASE 전 어종 — 활어·평균 밴드 랜덤)
  *  - 287차 — 갯것(해루질) 지급(실제로 캔 것과 같은 개체 · 채집 1회로 셈 — 이야기 채집 목표가 오른다) · 작물 · 텃밭 물건 지급
+ *  - 288차 — 해루질 손놀림 놀이 바로 시작(21종 · 도구 고르기 · 물속 · 이기면 가방에) — 필드에서만
  *  - 도감/위키 전체 해금·초기화 (DiscoveryStore)
  *  - 276차 — 모든 지역 열기(세계 지도 장 순서 잠금 건너뛰기 · 세이브 무관)
  *
@@ -21,14 +22,15 @@ import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
-import { DevMode, setAllRegionsOpen } from './DevMode.js';
+import { DevMode, DevHooks, setAllRegionsOpen } from './DevMode.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { devGrantForage } from '../scenes/field/ForageSystem.js';
 import { CROP_ITEM_TEMPLATES, EARTHWORM_TEMPLATE } from '../data/CropItems.js';
 import { MILL_ITEM_TEMPLATES } from '../data/MillItems.js';
 import { CURE_ITEM_TEMPLATES } from '../data/CureItems.js';
-import { cropOfProduce } from '@tra/core';
+import { cropOfProduce, creatureTools, forageGameKindOf, FORAGE_TOOL_LABEL, type ForageTool } from '@tra/core';
+import { FORAGE_GAME_LABEL } from '../ui/ForageGamePanel.js';
 import type { InvItemTemplate } from '../store/InventoryStore.js';
 
 let mounted = false;
@@ -106,6 +108,7 @@ function buildPanel(): HTMLDivElement {
   buildItemSection(box);
   buildFishSection(box);
   buildForageSection(box);
+  buildForageGameSection(box);
   buildFarmSection(box);
   buildDiscoverySection(box);
   buildLicenseSection(box);
@@ -432,6 +435,60 @@ function buildForageSection(box: HTMLElement): void {
           flash(b, got === n ? '✓' : got > 0 ? `${got}` : '가득');
         }, n === 1);
       }
+    }
+  };
+  search.oninput = renderList;
+  renderList();
+}
+
+/**
+ * ④-2b 해루질 놀이 바로 시작 — 288차. 사용자 「해루질 미니게임 버그/에러 없는 지, 실검증을 dev 모드에서 곧바로 해볼 수 있도록 …
+ * 갯강구 미니게임 시작하기, 거북손 시작하기 등」. 스팟 · 물때 · 면허 · 도구 보유 없이 그 갯것의 손놀림 놀이 창을 바로 연다(필드에서만).
+ * 시작하면 이 콘솔은 접힌다(놀이 창을 가리지 않게) — 다시 F10.
+ */
+function buildForageGameSection(box: HTMLElement): void {
+  const body = section(box, '④-2b 해루질 놀이 바로 시작 (필드에서)');
+  const opts = document.createElement('div');
+  Object.assign(opts.style, { display: 'flex', gap: '10px', fontSize: '10px', color: '#8faabf', marginBottom: '4px' });
+  const mkChk = (label: string, on: boolean): HTMLInputElement => {
+    const l = document.createElement('label');
+    const c = document.createElement('input');
+    c.type = 'checkbox'; c.checked = on;
+    l.appendChild(c); l.appendChild(document.createTextNode(` ${label}`));
+    opts.appendChild(l);
+    return c;
+  };
+  const under = mkChk('물속(얕은 물)', false);
+  const keep = mkChk('이기면 가방에', true);
+  body.appendChild(opts);
+  const status = document.createElement('div');
+  Object.assign(status.style, { fontSize: '10px', color: '#ffb45a', minHeight: '12px', marginBottom: '3px' });
+  body.appendChild(status);
+  const search = searchInput(body, '갯것 · 놀이 이름 검색…(예: 갯강구 · 떼기)');
+  const list = listBox(body, 170);
+  const renderList = (): void => {
+    list.textContent = '';
+    const q = search.value.trim();
+    for (const c of SHORE_CREATURE_DATABASE) {
+      const kind = FORAGE_GAME_LABEL[forageGameKindOf(c)];
+      if (q && !c.nameKo.includes(q) && !kind.includes(q)) continue;
+      const row = listRow(list, `${c.nameKo} · ${kind}`, `${c.id}`);
+      const sel = document.createElement('select');
+      Object.assign(sel.style, { background: '#0e1c2d', color: '#e8f4fd', border: '1px solid #2a5a8a', fontSize: '10px', maxWidth: '64px' });
+      for (const tl of creatureTools(c)) {
+        const o = document.createElement('option');
+        o.value = tl; o.textContent = FORAGE_TOOL_LABEL[tl];
+        sel.appendChild(o);
+      }
+      row.appendChild(sel);
+      smallBtn(row, '시작', (b) => {
+        const run = DevHooks.playForageGame;
+        if (!run) { status.textContent = '필드에 있을 때만 열 수 있습니다'; flash(b, '필드 아님'); return; }
+        const err = run(c.id, sel.value as ForageTool, under.checked, keep.checked);
+        if (err) { status.textContent = err; flash(b, '실패'); return; }
+        status.textContent = '';
+        toggle();   // 콘솔을 접는다 — 놀이 창이 보이게
+      }, true);
     }
   };
   search.oninput = renderList;

@@ -83,6 +83,8 @@ export class ForageGamePanel extends DraggablePanel {
   /** 225차 — 사진 도트 판 그림인가(머리 왼쪽) · 필드 도트 16px 대비 배율 · 마지막으로 본 방향 */
   private boardArt = false;
   private imgBase = 1;
+  /** 288차 — 개체 크기 배율(미리 굴린 크기 — 큰 꽃게는 크게) */
+  private sizeMul = 1;
   private lastFaceRight = false;
   private readonly boardTop: number;
   private readonly pebbles: { x: number; y: number; r: number; c: number }[] = [];
@@ -101,7 +103,7 @@ export class ForageGamePanel extends DraggablePanel {
   private graceMs = 0;
 
   constructor(
-    scene: Phaser.Scene, creature: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean },
+    scene: Phaser.Scene, creature: ShoreCreature, tool: ForageTool, opts: { dex: number; underwater: boolean; sizeMul?: number },
     onEnd: (s: ForageGameState) => void, onClose: () => void,
   ) {
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
@@ -118,6 +120,7 @@ export class ForageGamePanel extends DraggablePanel {
     this.rng = rng;
     this.onEnd = onEnd;
     this.underwater = opts.underwater;
+    this.sizeMul = opts.sizeMul ?? 1;   // 288차 — 이 녀석의 크기(그 종 보통 크기 = 1)
     this.boardTop = this.contentTop + 12;
     for (let i = 0; i < 14; i++) {
       this.pebbles.push({ x: BX + this.rng() * BW, y: this.boardTop + this.rng() * BOARD_H, r: 1.5 + this.rng() * 3, c: this.rng() });
@@ -369,7 +372,7 @@ export class ForageGamePanel extends DraggablePanel {
       return;
     }
     // 도트가 뭉개지지 않게 1배 이상이면 0.5 단위로 맞춘다
-    const k = scale * this.imgBase;
+    const k = scale * this.imgBase * this.sizeMul;
     this.img.setPosition(x, y).setScale(k >= 1 ? Math.round(k * 2) / 2 : k).setAngle(angle);
     if (this.boardArt) this.img.setFlipX(faceRight === true);   // 판 그림은 머리가 왼쪽 — 오른쪽으로 달리면 뒤집는다
     if (tint !== undefined) this.img.setTint(tint); else this.img.clearTint();

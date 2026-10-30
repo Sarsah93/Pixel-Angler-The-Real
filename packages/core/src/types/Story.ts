@@ -62,7 +62,7 @@ export type StoryLicenseId =
   | 'marine_tourism';    // 해양관광업 등록
 
 export type LegalFlag =
-  | 'undersize'          // LAW_SIZE_SEASON — 금지체장 미만
+  | 'undersize'          // LAW_SIZE_SEASON — 금지체장 이하
   | 'closed_season'      // LAW_SIZE_SEASON — 금어기
   | 'restricted_gear'    // LAW_NONFISHER_GEAR — 비어업인 미허용 어구
   | 'village_fishery';   // LAW_VILLAGE_FISHERY — 마을어업권 대상종 무단 채취

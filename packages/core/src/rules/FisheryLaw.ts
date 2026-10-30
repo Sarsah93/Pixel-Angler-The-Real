@@ -63,7 +63,7 @@ export const FISHERY_LAW_RULES: FisheryLawRule[] = [
   {
     id: 'LAW_SIZE_SEASON',
     titleKo: '금지체장 · 금어기', titleEn: 'Minimum size · closed season',
-    textKo: '금지체장 미만 개체와 금어기 어종은 잡을 수 없습니다. 랜딩 순간 판정되며 보관 대신 방생만 됩니다.',
+    textKo: '금지체장 이하 개체와 금어기 어종은 잡을 수 없습니다. 랜딩 순간 판정되며 보관 대신 방생만 됩니다.',
     textEn: 'Undersized fish and species in closed season may not be taken. Judged at landing — release is the only option.',
     basisKo: '수산자원관리법 시행령 · 고시', basisEn: 'Enforcement decree and notices',
     whenKo: '랜딩 직후', whenEn: 'Right after landing',
@@ -175,7 +175,7 @@ export function canKeep(provenance: CatchProvenance): LawVerdict {
   if (provenance.legalFlags.length === 0) return OK;
   const f = provenance.legalFlags[0];
   const why: Record<LegalFlag, [string, string]> = {
-    undersize: ['금지체장 미만 개체는 보관할 수 없습니다.', 'Undersized fish cannot be kept.'],
+    undersize: ['금지체장 이하 개체는 보관할 수 없습니다.', 'Undersized fish cannot be kept.'],
     closed_season: ['금어기 어종은 보관할 수 없습니다.', 'Fish in closed season cannot be kept.'],
     restricted_gear: ['허용되지 않은 어구로 잡은 것은 보관할 수 없습니다.', 'Catch taken with restricted gear cannot be kept.'],
     village_fishery: ['마을어업권 구역에서 무단 채취한 것은 보관할 수 없습니다.', 'Seafood taken from a village fishery cannot be kept.'],
@@ -230,8 +230,9 @@ export function landingLegalFlags(input: {
   restrictedGear?: boolean; villageFishery?: boolean;
 }): LegalFlag[] {
   const out: LegalFlag[] = [];
-  if (input.legalMinCm && input.lengthCm < input.legalMinCm) out.push('undersize');
-  else if (input.legalMinWeightG && input.weightG !== undefined && input.weightG < input.legalMinWeightG) out.push('undersize');
+  // 288차 — 금지체장 · 금지체중은 「이하」(법 그대로)
+  if (input.legalMinCm && input.lengthCm <= input.legalMinCm) out.push('undersize');
+  else if (input.legalMinWeightG && input.weightG !== undefined && input.weightG <= input.legalMinWeightG) out.push('undersize');
   const closed = input.closedSeasons && input.closedSeasons.length > 0
     ? isClosedOn(input.closedSeasons, input.month, input.day)
     : (input.closedMonths?.includes(input.month) ?? false);

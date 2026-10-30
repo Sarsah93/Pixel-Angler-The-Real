@@ -64,7 +64,7 @@ describe('ClosedSeason 227차', () => {
     expect(legalRegionOf('gangwon_sokcho')).toBeNull();
   });
 
-  it('대문어 600g 미만은 금지체중으로 방류 대상', () => {
+  it('대문어 600g 이하는 금지체중으로 방류 대상(288 — 「이하」)', () => {
     const ctx: SpawnContext = {
       depthZ: 20, zMax: 25, region: 'gangwon_sokcho', tidePhase: 7, month: 3, day: 10,
       baitKey: 'lure', inReef: true, isNight: true, speciesFilter: ['giant_octopus'],
@@ -73,8 +73,8 @@ describe('ClosedSeason 227차', () => {
     for (let i = 0; i < 400; i++) {
       const f = spawnFish(ctx);
       if (f.speciesId !== 'giant_octopus') continue;
-      expect(f.isUndersized).toBe(f.weightG < 600);
-      if (f.weightG < 600) light++;
+      expect(f.isUndersized).toBe(f.weightG <= 600);
+      if (f.weightG <= 600) light++;
     }
     expect(light).toBeGreaterThan(0);
   });

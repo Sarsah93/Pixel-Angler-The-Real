@@ -17,6 +17,8 @@
  *  - 이야기 진행 · 세이브에는 손대지 않는다 — 브라우저 저장소(`tra_dev_all_regions`)에만 남겨 새로 고쳐도 유지한다.
  */
 
+import type { ForageTool } from '@tra/core';
+
 /** 276차 — dev 「모든 지역 열기」를 기억하는 브라우저 저장소 키(세이브 데이터가 아니다) */
 const ALL_REGIONS_KEY = 'tra_dev_all_regions';
 
@@ -51,3 +53,12 @@ export function setAllRegionsOpen(on: boolean): void {
     else localStorage.removeItem(ALL_REGIONS_KEY);
   } catch { /* 저장소가 막혀 있으면 이번 세션만 */ }
 }
+
+/**
+ * 288차 — dev 콘솔(F10)이 지금 서 있는 필드 씬에 맡기는 일. 필드 씬이 create에서 걸고 shutdown에서 푼다(필드가 없으면 비어 있다).
+ * 사용자 「해루질 미니게임 버그/에러 없는 지, 실검증을 dev 모드에서 곧바로 해볼 수 있도록 … 갯강구 미니게임 시작하기, 거북손 시작하기 등」.
+ */
+export const DevHooks: {
+  /** 해루질 손놀림 놀이를 곧바로 연다(스팟 · 물때 · 도구 보유 조건 없이). 못 열면 까닭 글을 돌려준다 */
+  playForageGame?: (creatureId: string, tool: ForageTool | undefined, underwater: boolean, keepCatch: boolean) => string | null;
+} = {};

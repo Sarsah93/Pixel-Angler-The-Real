@@ -277,7 +277,7 @@ const fishLegalTraits = (id) => {
   const closed = o.closedSeasons?.length ? core.formatSeasons(o.closedSeasons)
     : o.closedMonths?.length ? MONTHS(o.closedMonths) : '없음';
   const out = [['금어기', closed]];
-  if (o.legalMinWeightG) out.push(['금지 체중', `${o.legalMinWeightG} g 미만 방류`]);
+  if (o.legalMinWeightG) out.push(['금지 체중', `${o.legalMinWeightG} g 이하 방류`]);
   return out;
 };
 
@@ -309,20 +309,28 @@ for (const f of core.FISH_DATABASE) {
       ['제철', MONTHS(f.peakSeasonMonths)],
       ['주야', f.isNocturnal ? `야행성 (야간 입질 +${f.nightBiteBonus ?? 0}%)` : '주행성'],
       ['난이도', '★'.repeat(Math.max(1, f.difficulty ?? 1))],
-      ['금지 체장', f.minLegalSizeCm ? `${f.minLegalSizeCm} cm 미만 방류` : '없음'],
+      ['금지 체장', f.minLegalSizeCm ? `${f.minLegalSizeCm} cm 이하 방류` : '없음'],
       // 227차 — 금어기 · 금지체중은 스폰 오라클이 정본(날짜 구간이 있으면 그쪽)
       ...fishLegalTraits(f.id),
       ['선호 미끼', (f.preferredBaits ?? []).map((b) => BAIT_CATEGORY_KO[b] ?? b).join(', ') || '—'],
     ],
   });
 }
-const jejuRuleKo = (s) => {
-  const r = core.resolveLegal(s, 'jeju');
-  const parts = [];
-  parts.push(r.closedSeasons.length ? `금어기 ${core.formatSeasons(r.closedSeasons)}` : '금어기 없음');
-  if (r.minLegalSizeCm) parts.push(`${r.minLegalSizeCm} cm 미만 방류`);
-  return parts.join(' · ');
+// 288차 — 허가는 사람 말로(옛 판은 `shore_hunting_advanced` 같은 id를 그대로 찍었다 — R1)
+const shoreLicenseKo = (t) => (t ? core.getLicenseByType(t)?.nameKo ?? '허가 필요' : '없음');
+// 288차 — 시 · 도 고시(지역 키 5). 이름 · 대표 지역(규정 판정용 지역 id)
+const LEGAL_REGION_KO = { jeju: ['제주', 'jeju'], ulleung: ['울릉 · 독도', 'ulleungdo'], gyeongnam: ['경남', 'gyeongnam_geoje'], jeonnam: ['전남', 'jeonnam_yeosu'], incheon: ['인천', 'incheon'] };
+const SIZE_AXIS_KO = {
+  shell_length: '각장', shell_height: '각고', shell_width: '각폭', carapace_width: '갑폭', carapace_length: '두흉갑장',
+  test_diameter: '껍데기 지름', body_length: '몸길이', total_length: '전장', mantle_length: '몸통 길이',
 };
+const regionalRulesKo = (s) => Object.keys(s.regional ?? {}).map((k) => {
+  const [label, rid] = LEGAL_REGION_KO[k] ?? [k, k];
+  const r = core.resolveLegal(s, rid);
+  const parts = [r.closedSeasons.length ? `금어기 ${core.formatSeasons(r.closedSeasons)}` : '금어기 없음'];
+  if (r.minLegalSizeCm) parts.push(`${r.minLegalSizeCm} cm 이하 방류`);
+  return `${label} — ${parts.join(' · ')}`;
+}).join(' / ');
 for (const s of core.SHORE_CREATURE_DATABASE) {
   const [group, subgroup] = SHORE_GROUP[s.category] ?? ['other', s.category];
   // 170차 — 같은 생물이 어종 DB와 채집 DB에 둘 다 있으면(돌문어) **카드를 두 장 만들지 않는다**.
@@ -332,7 +340,7 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
   if (dup) {
     dup.source = `${dup.source} · 채집 (해루질)`;
     for (const t of [['채집 시간대', s.discoveryTime === 'night' ? '야간' : s.discoveryTime === 'day' ? '주간' : '주·야간'],
-                     ['채집 허가', s.requiredLicense ?? '없음']]) {
+                     ['채집 허가', shoreLicenseKo(s.requiredLicense)]]) {
       if (!dup.traits.some((x) => x[0] === t[0])) dup.traits.push(t);
     }
     continue;
@@ -350,12 +358,14 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
       ['서식 지형', (s.habitatSpotTypes ?? []).map((t) => SPOT_KO[t] ?? t).join('·') || '—'],
       ['채집 시간대', s.discoveryTime === 'night' ? '야간' : s.discoveryTime === 'day' ? '주간' : '주·야간'],
       ['조명 요건', s.minLampLumens ? `헤드랜턴 ${s.minLampLumens} lm 이상` : '불필요'],
-      ['금지 체장', s.minLegalSizeCm ? `${s.minLegalSizeCm} cm 미만 방류` : '없음'],
+      ['금지 체장', s.minLegalSizeCm ? `${s.minLegalSizeCm} cm 이하 방류` : '없음'],
+      // 288차 — 종마다 재는 축 · 크기 분포(그림도 잡은 크기대로 커지고 작아진다)
+      ...(s.size ? [['크기', `${SIZE_AXIS_KO[s.size.axis] ?? '크기'} ${s.size.minCm}~${s.size.maxCm} cm (보통 ${s.size.meanCm} cm)`]] : []),
       ['일일 채취 한도', s.dailyLimitG ? `${(s.dailyLimitG / 1000).toFixed(1)} kg` : '없음'],
-      // 227차 — 날짜 단위 금어기(국가 기본) + 제주 별도 규정
+      // 227차 — 날짜 단위 금어기(국가 기본) · 288차 — 시 · 도 고시 전부(제주 · 울릉 · 경남 · 전남 · 인천)
       ['금어기', core.formatSeasons(core.resolveLegal(s).closedSeasons) || '없음'],
-      ...(s.regional?.jeju ? [['제주 규정', jejuRuleKo(s)]] : []),
-      ['필요 허가', s.requiredLicense ?? '없음'],
+      ...(Object.keys(s.regional ?? {}).length ? [['지역 규정', regionalRulesKo(s)]] : []),
+      ['필요 허가', shoreLicenseKo(s.requiredLicense)],
       ['미끼 활용', s.canBeUsedAsBait ? '가능' : '불가'],
       ['사는 모양', BEHAVIOR_KO[core.forageBehaviorOf(s)] ?? '—'],
       ['들어가는 곳', (s.spotKinds ?? []).includes('shallows') ? ((s.spotKinds ?? []).length === 1 ? '얕은 물(장화)만' : '뭍 · 얕은 물(장화)') : '뭍(갯바위 · 안벽)'],
@@ -700,6 +710,18 @@ const rules = [
       ['거절 = 실패', '곁가지 의뢰는 받는 자리에서 끝내 거절할 수 있다 — 실패로 닫혀 다시 오지 않고, 다음 이야기는 그대로 열린다'],
       ['일지 요약', '지나온 장면 · 고른 말마다 한두 문장이 일지(J) 편 상세에 1인칭으로 남는다'],
       ['해녀의 딸', '서귀포항에서 바람에게서 받는다(그 땅에서만) — 해솔에게 말 걸기 → 물 빠질 때 제주 물가에서 갯것 셋 → 캔 것을 어머니 부순덕께 보여 드리기 · 선수급으로 수영한다고 하면 담배 한 갑 · 바람 우호도 +0.25(여자 주인공이면 「내가 신뢰하는 여자에겐」 — 287)'],
+    ],
+  },
+  {
+    id: 'forage_law_size', round: 288, hidden: false, title: '해루질 규정 · 크기',
+    lede: '갯것마다 재는 자리와 크기가 다르다. 잡은 크기대로 그림이 커지고 작아지며, 법정 크기 「이하」는 그 자리에서 놓아준다. 지역마다 고시가 따로 있으면 그 지역 규정이 앞선다.',
+    rows: [
+      ['재는 자리', '조개 · 전복은 각장, 소라는 각고, 꽃게는 두흉갑장, 성게는 껍데기 지름, 낙지 · 문어는 몸통 길이 — 법정 크기도 같은 자리로 잰다'],
+      ['크기', '종마다 보통 크기가 있고 그 둘레로 흩어진다 — 바지락은 손가락 마디만 하고(보통 3.7cm), 전복은 손바닥만 하다(보통 9cm) · 무게는 크기에서 나온다'],
+      ['그림 크기', '놀이 판과 가방 상세 창의 그림이 잡은 크기대로 달라진다 — 보통 크기가 기준, 작으면 0.8배까지 · 크면 1.35배까지'],
+      ['법정 크기', '금지체장은 「이하」다 — 딱 그 크기도 미달이라 놓아준다(낚시로 잡은 물고기도 같다 · 금지체중도 「이하」)'],
+      ['지역 규정', '제주 · 울릉 · 독도 · 경남 · 전남 · 인천 고시가 그 지역에서 국가 기준을 대신한다 — 제주 전복 10cm · 울릉 소라 7cm(6.1~7.31) · 경남 낙지 6.16~7.31 · 전남 · 인천 낙지 6.21~7.20 · 경남 · 전남 참문어 5.24~7.8'],
+      ['성게 두 종', '둥근성게(동해에 많은 짙은 보랏빛 성게)와 보라성게(남해 · 제주 · 동해 남부 — 길고 검은 가시) — 둘 다 가시가 길고 날카롭다 · 국가 금지체장은 없고 강원 마을어장에서는 보호종이다'],
     ],
   },
   {

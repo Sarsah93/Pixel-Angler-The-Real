@@ -153,6 +153,22 @@ export interface CharOutfit {
 export interface CharConfig {
   look: CharAppearance;
   outfit: CharOutfit;
+  /**
+   * 288차 — 주인공 나이(만 나이 · 살). 정본 = 22세(`PLAYER_CANON_AGE` — `.agents/PLAYER_SCENARIO.md` §0 「한여름(22)」 ·
+   * 이야기 본문 「내가 스물둘이라는 게」). 사용자 지시 「캐릭터 나이를 구체적으로 추가 지정하자 … 그 이후 생성 시 나이 커스터마이징」 —
+   * 지금은 캐릭터 만들기에서 정하지 않고 정본 값으로 둔다. 없으면(구세이브 · 인물 그림) `playerAgeOf`가 정본 값을 돌려준다.
+   * 나이에 따른 얼굴(흰머리 · 수염 · 주름) · 호칭은 이 값을 읽는다(다음 차수).
+   */
+  age?: number;
+}
+
+/** 288차 — 주인공 정본 나이(살) */
+export const PLAYER_CANON_AGE = 22;
+
+/** 288차 — 주인공 나이(없으면 정본 22세) */
+export function playerAgeOf(cfg: Pick<CharConfig, 'age'> | undefined | null): number {
+  const a = cfg?.age;
+  return typeof a === 'number' && Number.isFinite(a) && a > 0 ? Math.round(a) : PLAYER_CANON_AGE;
 }
 
 export function defaultAppearance(sex: CharSex = 'm'): CharAppearance {

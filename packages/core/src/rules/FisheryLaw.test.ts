@@ -24,6 +24,11 @@ describe('FisheryLaw §3-5', () => {
     const flags = landingLegalFlags({ lengthCm: 20, legalMinCm: 25, month: 6 });
     expect(canKeep(rodProvenance('busan', 20, 0, flags)).allowed).toBe(false);
   });
+  it('T4b 금지체장 「이하」 — 딱 그 크기도 못 가진다 · 0.1cm 넘으면 가진다(288)', () => {
+    expect(landingLegalFlags({ lengthCm: 25, legalMinCm: 25, month: 6 })).toContain('undersize');
+    expect(landingLegalFlags({ lengthCm: 25.1, legalMinCm: 25, month: 6 })).not.toContain('undersize');
+    expect(landingLegalFlags({ lengthCm: 40, weightG: 600, legalMinWeightG: 600, month: 3 })).toContain('undersize');
+  });
   it('T5 상점 구매 → 되팔기 허용', () => {
     expect(canSell(provenanceOf('bought', 'busan'), []).allowed).toBe(true);
   });

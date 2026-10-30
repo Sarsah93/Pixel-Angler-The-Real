@@ -191,7 +191,8 @@ export function computeFeedingActivity(input: FeedingTimeInput): FeedingActivity
 /** 지역 ID → 피딩 지역 프로필 (동해권 판정) */
 export function feedingRegionProfileOf(regionId: string): FeedingRegionProfile {
   if (regionId.includes('sokcho') || regionId.includes('gangwon')
-    || regionId.includes('pohang') || regionId.includes('ulleung') || regionId.includes('dokdo')) {
+    || regionId.includes('pohang') || regionId.includes('ulleung') || regionId.includes('dokdo')
+    || regionId.includes('ulsan')) {   // 288차 — 울산도 동해(입질 감사 F16)
     return 'east_sea';
   }
   // 205차 — 부산(남해 동부) — 지금은 기본과 같은 비중이지만 지역 판정이 갈리는 자리(조사 보고서 §5)

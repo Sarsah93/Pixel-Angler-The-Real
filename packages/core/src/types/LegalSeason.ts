@@ -16,8 +16,11 @@ export interface ClosedSeason {
   to: MonthDay;
 }
 
-/** 지역 규정 묶음 키 — 지금은 제주만 다르다(전복 · 소라 · 오분자기) */
-export type LegalRegionKey = 'jeju';
+/**
+ * 지역 규정 묶음 키 — 제주(전복 · 소라 · 오분자기) · 288차 경남(거제 — 낙지 · 참문어) · 전남(여수 — 낙지 · 참문어) ·
+ * 인천(낙지) · 울릉(울릉도 · 독도 — 소라). 부산 · 울산 · 경북 · 충남(안흥 · 만리포는 가로림만 · 근소만 밖) · 강원은 국가 기준.
+ */
+export type LegalRegionKey = 'jeju' | 'gyeongnam' | 'jeonnam' | 'incheon' | 'ulleung';
 
 /** 지역이 기본(국가) 규정을 덮어쓰는 값. 지정한 필드만 바뀐다 */
 export interface RegionalLegalRule {
