@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-30 290차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-30 291차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-30 290차) — 전 편 대본(받는 자리 · 끝내는 자리 주고받기) · 호칭 「OOO 씨」 통일**
+**최근 변경 (2026-10-30 291차) — 맵 확장 영향 ①: 출장 나온 사람 · 만나는 자리 · 안내 화살표(인물이 지금 있는 곳)**
+
+- 의뢰인이 있는 189편 중 76편은 의뢰인이 편의 지역에 없다(대본은 「너도 감천 왔냐」) → 받을 수 있는 · 진행 중인 동안 그 지역 출장 자리(`STORY_GUEST_ANCHORS` 9곳)에 나온다.
+- 편마다 받는 · 끝내는 자리 · 대화 목표 = `here` · `home` · `any`(63편 대본 전문 분류 · `QUEST_MEETING` 42편 · core `rules/QuestMeeting.ts`) · 판정은 `questsForNpc` 한 곳.
+- 안내 화살표 = 그 사람이 지금 있는 곳(`npcWhere`) · 그 지역에서만 만나는 단계는 `meetRegion`. 검증: core 459 · 하네스 r291 12/12 · r290 15/15.
+  상세: [291차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-291-guest-npcs-meeting-places.md).
+
+**이전 변경 (2026-10-30 290차) — 전 편 대본(받는 자리 · 끝내는 자리 주고받기) · 호칭 「OOO 씨」 통일**
 
 - 사용자 「호칭은 'OOO씨'로 통일하고 나머지 190편 대본 진행해줘」 → 의뢰인이 있는 189편 받는 · 끝내는 자리 대본(대화 396 · 대사 7,450 · 31묶음 · 10갈래 병렬 · 지침 `.agents/inputs/290_talk_brief.md`).
 - 옛 답 묶기(`TalkEndDef.offer` · `end.complete` · 조건대로 말 숨김 · 우호도 겹침 막기) · 덮개 검사 `talkCoverageIssues` · 호칭 검사 `rules/PlayerAddress.ts` · `{player} 씨`(번역 뒤 이름).
@@ -333,14 +340,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 존재 가중은 후보를 거른 뒤에 곱한다(드물게 ≠ 없음) · 해양기상 Mock은 수온 · 안개에 쓰지 않는다(`liveMarine`) · 적수온 정정 5 · 살오징어 · 미끼 셋 · 캔 갯것 미끼 · 풍랑 통제.
 - 검증: core 438 · 하네스 9/9 · 3/3 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개 · main `7453cda` · 96차 배포(gh-pages `4d79deb`).
   상세: [289차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md).
-
-**이전 변경 (2026-10-30 288차) — 주인공 나이 22세 · 해루질 규정 · 종별 크기 · 크기대로 그림 · dev 해루질 놀이 바로 시작 · 입질 연결성 점검**
-
-- 사용자 「캐릭터 나이를 구체적으로 추가 지정하자」 → `CharConfig.age`(정본 `PLAYER_CANON_AGE` 22 · 옛 세이브 22) · 호칭 방식은 사용자 결정 대기(백로그 D).
-- 해루질: 금지체장 「이하」(낚시 물고기 · 금지체중도) · 지역 키 5 · 둥근성게 · 보라성게 정정 · 21종 크기 분포(`ShoreCreatureSize`) · 크기대로 그림 · 옛 세이브 칸 이름 이행 · F10 「④-2b 해루질 놀이 바로 시작」.
-- 입질 감사 30건(달 · 수온 · 바다 항 없음) · 결함 7 고침(여 위 찌 = 미끼 아래 바닥 · KST · `isNightNow` · 후보 0 = 입질 없음 · 지역 낚시지수 · KOSIS 별칭 · 울산 동해) · 결정 D1~D6 = 백로그 DD.
-- 검증: core 423 · 하네스 4/4 · 6/6 · 이름 이행 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
-  상세: [288차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md).
 
 ---
 

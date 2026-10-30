@@ -184,6 +184,9 @@
   `build_region_maps.build_seamless`가 패치 뒤에 `bridge_osm_pinches`를 건다(물 모서리 한 칸 · 멱등). **seamless.json을 굽고 나서 손본 지역(속초 — `author_sokcho_coast.py` · `author_yeonggeumjeong.py`)은
   `build_region_maps`로 다시 굽지 않는다** — 손본 1,640칸이 terrain.png 상태로 돌아간다. 그런 지역은 `tools/fix_walk_pinches.py <지역>`로 제자리에서 고친다.
   빌더를 돌리면 `public/data/*/pois.json`이 압축 한 줄로 다시 쓰인다(내용 같음 — 커밋 전에 되돌린다).
+- **할 일 화살표의 인물 대상은 「그 사람이 지금 있는 곳」**(291 · `StoryStore.npcWhere`) — 집 자리 + 출장(`questGuestsIn`).
+  할 일의 지역(`q.region`)을 먼저 답하던 옛 규칙은 의뢰인이 속초에만 사는 다른 지역 편 76편에서 「안내 없음」 · 「엉뚱한 지역」을 냈다.
+  그 지역에서만 만나는 단계(`meetRegion`)는 눈앞에 그 사람이 있어도 가리키지 않는다. 출장 인물은 600ms마다 맞추되 창 · 장면 · 실내 중에는 바꾸지 않는다(`syncStoryGuests`).
 - **할 일 화살표는 둘이다(267)** — 메인(노랑 · 반지름 46) · 서브(파랑 · 54) · 지도 핀(하늘 · 60)이 각자 고리를 갖는다. `buildTrackerEntry(pick, true).pos`를 둘 다 받아
   `questTargetPos` · `questSubTargetPos`에 넣는다 — 한쪽만 채우던 옛 규칙(메인이 있으면 서브는 줄만)으로 돌아가지 않는다. 거리 글은 `nudgeGuideLabel`이 서로 피한다.
 - **전체 지도 · 가이드 하네스는 `__TOUR`로**(267) — `import('/src/ui/GuideTour.ts')`는 HMR 분화로 게임과 다른 인스턴스라 `active`가 늘 null이고,

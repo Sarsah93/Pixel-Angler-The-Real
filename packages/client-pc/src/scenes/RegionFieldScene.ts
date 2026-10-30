@@ -7149,12 +7149,16 @@ export class RegionFieldScene extends Phaser.Scene {
     switch (t.kind) {
       case 'npc': {
         if (!t.npcId) return null;
-        const n = this.storyNpcs.find((s) => s.def.npcId === t.npcId);
+        // 291차 — 그 지역에서만 만나는 단계면 다른 지역의 그 사람은 가리키지 않는다(속초의 도현수 ≠ 부산에서 받는 편)
+        const must = t.meetRegion;
+        const mustArea = must ? STORY_GUEST_ANCHORS.find((a) => a.regionId === must)?.dataRegion : undefined;
+        const n = !must || (must === this.region && (!mustArea || mustArea === this.seamlessDef?.dataRegion))
+          ? this.storyNpcs.find((s) => s.def.npcId === t.npcId) : undefined;
         if (n) return { x: n.x, y: n.y - 12, label: names.npcName(t.npcId) };
         // 178차 — 이 지역에 서 있지 않으면 어느 지역으로 가야 하는지 알려준다.
         // 291차 — **그 사람이 지금 있는 곳**(집 자리 · 출장)을 본다. 구: 할 일의 지역을 먼저 가리켜, 의뢰인이 속초에만 서 있는
         //  다른 지역 편 76편이 「같은 지역인데 안내 없음」 · 「엉뚱한 지역」이 됐다. 추적 중인 할 일의 지역에 그 사람이 있으면 그것이 먼저다.
-        const where = StoryStore.npcWhere(t.npcId, t.regionId);
+        const where = must ? { regionId: must, dataRegion: mustArea } : StoryStore.npcWhere(t.npcId, t.regionId);
         if (!where) return null;
         // 263차 — 같은 지역의 다른 데이터 지역(부산 백운포 ↔ 감천 등)이면 그 출조 구역 이름으로 안내한다
         if (where.regionId === this.region && where.dataRegion && where.dataRegion !== this.seamlessDef?.dataRegion) {
@@ -7243,16 +7247,17 @@ export class RegionFieldScene extends Phaser.Scene {
     let target: QuestGuideTarget; let objective: string; let howTo: string;
     let stepTrigger: StoryFieldTrigger | undefined;
     if (kind === 'offer') {
-      target = { kind: 'npc', npcId: q.giver, regionId: q.region };
+      target = { kind: 'npc', npcId: q.giver, regionId: q.region, meetRegion: StoryStore.meetRegionFor(q, 'offer') };
       objective = `새 할 일 — ${names.npcName(q.giver)}에게 말을 건다`;
       howTo = `${names.npcName(q.giver)}에게 다가가 [F] → 「내가 도와줄 수 있는 게 있을까요?」`;
     } else if (idx === null) {
-      target = q.giver ? { kind: 'npc', npcId: q.giver, regionId: q.region } : { kind: 'none' };
+      target = q.giver ? { kind: 'npc', npcId: q.giver, regionId: q.region, meetRegion: StoryStore.meetRegionFor(q, 'complete') } : { kind: 'none' };
       objective = q.giver ? `${names.npcName(q.giver)}에게 돌아가 보고한다` : '할 일을 마쳤다 — 일지(J)에서 확인';
       howTo = q.giver ? `${names.npcName(q.giver)}에게 [F]` : '';
     } else {
       const o = q.objectives[idx];
       target = objectiveTarget(q, o);
+      if (target.kind === 'npc' && (o.kind === 'talk' || o.kind === 'deliverFree')) target.meetRegion = StoryStore.meetRegionFor(q, idx);
       const tgt = StoryStore.objectiveTarget(o);
       const cur = Math.min(tgt, o.actionKey
         ? StoryStore.actionStep(q.id, idx)

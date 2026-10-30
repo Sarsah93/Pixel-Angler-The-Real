@@ -89,13 +89,20 @@
   → **287 진행 중 물음(목표마다 물음 · 내 답 · 조언 — 자문자답 · 진행 나레이션 삭제 · 189편) · 바람 「여자에겐」 · dev 갯것 · 작물 지급 · 지역 도착 목표 받는 순간 셈**
   → **288 주인공 나이 22세(데이터) · 해루질 규정(「이하」 · 지역 키 5 · 성게 정정) · 종별 크기 · 크기대로 그림 · dev 해루질 놀이 바로 시작 · 입질 연결성 점검(결함 7)**
   → **289 입질 B 단계(바다 · 철 · 수온 존재 가중 · 드문 하한 · 새 미끼 셋 · 풍랑 통제 · 살오징어) · main 반영 · 96차 배포**
-  → **290 전 편 대본(받는 · 끝내는 자리 주고받기 189편 · 대화 396) · 호칭 「OOO 씨」 통일(`{player} 씨` · 검사 `PlayerAddress`) · 옛 답 묶기 · (2) 옛 답 글 호칭 · 데이터 어긋남 넷(네 살 사진 18년 · M3-08 겨울)**.
+  → **290 전 편 대본(받는 · 끝내는 자리 주고받기 189편 · 대화 396) · 호칭 「OOO 씨」 통일(`{player} 씨` · 검사 `PlayerAddress`) · 옛 답 묶기 · (2) 옛 답 글 호칭 · 데이터 어긋남 넷(네 살 사진 18년 · M3-08 겨울)**
+  → **291 출장 나온 사람(의뢰인이 편의 지역에 없는 76편 · 출장 자리 9) · 만나는 자리(here · home · any) · 안내 화살표 = 그 사람이 지금 있는 곳**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **291차**: **맵 확장 영향 ① — 출장 나온 사람 · 만나는 자리 · 안내 화살표** —
+  사용자 「이 부분들 먼저 정리하고, 다음 차수 시작하자」(290(2) 뒤) → 의뢰인이 있는 189편 중 76편은 의뢰인이 편의 지역에 살지 않는다(대본은 「너도 감천 왔냐」 · 대화는 속초에서 일어났고 화살표는 「안내 없음」 · 엉뚱한 지역) →
+  core `rules/QuestMeeting.ts`(`questGuestsIn` · `meetStageOpenIn` · `npcRegionNow`) · `db-schema/StoryMeeting.ts`(`QUEST_MEETING` 42편 — 63편 대본 전문 분류: 받는 자리 here 29 · home 9 · any 23 · 끝내는 30 · 3 · 28 · 대화 목표 16 · 2 · 12) ·
+  client 출장 자리 `STORY_GUEST_ANCHORS` 9곳(이야기 인물 곁 · 비켜 서는 9칸이 모두 땅) · `syncStoryGuests`(600ms · 창 · 장면 · 실내 중엔 그대로) · `questsForNpc` 받는 · 끝내는 자리 판정 · 안내 = `npcWhere` · `meetRegion` ·
+  검증 = core 459 · 하네스 r291 12/12(부산 출장 도현수 받기 → 진행 → 끝 → 돌아감 · 속초 안내 「부산」 · home 편 M2-01) · r290 15/15 · 빌드 3/3 · 루트 typecheck 4/4.
+  **다음 = 사용자 결정(편 지역 ↔ 대본 어긋남 5 · 속초 쏠림 · 지역 활동) · 실플레이 확인 · 살아 있는 미끼**. 상세 `docs/wiki/03-WORKLOG/2026-10-30-291-guest-npcs-meeting-places.md`.
 - **290차**: **전 편 대본 · 호칭 「OOO 씨」** —
   사용자 「호칭은 'OOO씨'로 통일하고 나머지 190편 대본 진행해줘」 → 의뢰인이 있는 189편 받는 자리 · 끝내는 자리를 주고받는 장면으로(대화 396 · 단계 1,617 · 대사 7,450 · 주인공 2,083 ·
   31묶음 `StoryTalk<이야기>.ts` · 10갈래 병렬 · 지침 `.agents/inputs/290_talk_brief.md` · 문맥 `tools/story_talk_context.mjs`) · 옛 254 갈래(N02 · N03 · N19 · N24 · M2-09)는 구조 그대로 대본 꼴로 ·
@@ -103,7 +110,7 @@
   호칭(`rules/PlayerAddress.ts` — 주인공 → 이름 씨 · 인물 → `{player} 씨`(번역 뒤 `fillPlayerName`) · 나이 · 성별 · 직함 부름말 금지 · 검사기 `--strict`) ·
   대본 밖(일지 서두 · 목표 줄 · 진행 중 내 답 반말 33 → 해요체 · 물어보기 물음 · 주제 · 컷씬 속말 · 탁새벽 「아저씨」) ·
   검증 = check_talks --all --strict 오류 0 · core 447. **290(2)** = 옛 답 글 호칭 약 320곳(필드 장면 속말 5줄 포함) · 데이터 어긋남 넷(네 살 사진 18년 전 — 아버지 배는 22년 전 그대로 · M3-08 겨울 + 조행록 6장 · M4-03 밤 · M4-11 · N03-5 신분 앞당김) · core 452 · 아티팩트 4개.
-  **다음 = 291 맵 확장 영향(의뢰인이 편의 지역에 없는 76편 · 안내 화살표) · 사용자 실플레이 확인 · 살아 있는 미끼**. 상세 `docs/wiki/03-WORKLOG/2026-10-30-290-talk-scripts-all-honorific.md`.
+  **다음 = 291 맵 확장 영향** ✅291. 상세 `docs/wiki/03-WORKLOG/2026-10-30-290-talk-scripts-all-honorific.md`.
 - **289차**: **입질 B 단계 — 바다 · 철 · 수온 · 새 미끼 · 풍랑 통제 · 살오징어** —
   사용자 「추천대로 추가해주고, main 반영 및 재배포, wiki 업데이트도 해줘」(288 감사 D1~D6) →
   core `rules/SpeciesPresence.ts`(`seaOf` · 바다 가중 56종 `SPECIES_SEA_WEIGHT` · 연안 평년 수온 `SST_CLIMATOLOGY_C` · 계절 · 수온 · 바다 · 이야기 어종 하한 — `TUNING.presence`) ·
@@ -112,15 +119,6 @@
   직판장 미끼 셋(옥수수 · 성게 · 조개살) · 캔 갯것 미끼(`FORAGE_BAIT_KEY`) · 풍랑 통제(`rodFishingClosure` 3m · 14m/s) · Mock 해양기상 버림(`liveMarine`) · 시세 띠 「수온 약」 · 보일링 빈도 × 존재 ·
   검증 = 계절 분포 차 0 → 53~69 % · 지역 0 → 30~43 % · core 438 · 하네스 9/9 · 3/3 · pageerror 0 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개 · main 빨리 감기 · 96차 배포.
   **다음 = 사용자 결정(호칭 방식) → 나머지 190편 대본 → 290 맵 확장 영향 · 살아 있는 미끼**. 상세 `docs/wiki/03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md`.
-- **288차**: **주인공 나이 · 해루질 규정 · 종별 크기 · dev 해루질 놀이 · 입질 연결성 점검** —
-  사용자 「캐릭터 나이를 구체적으로 추가 지정하자」 · 「호칭 (형/형님/언니/누나/누님 등) … 아니면 'OOO씨'로 통일 … 어떻게 생각해?」 · 「해루질 규제 · 입질 점검 진행」 →
-  core `CharConfig.age`(`PLAYER_CANON_AGE` 22 · 옛 세이브 22 · 만들기 화면 「22세」) · 금지체장 · 금지체중 「이하」(채집 · 야간 해루질 · 낚시 — 위키 허가 이름 · 갯것 크기 · 지역 규정) · 지역 키 5(`legalRegionOf` — 울릉 소라 · 경남 · 전남 · 인천 낙지 · 경남 · 전남 참문어) ·
-  둥근성게(*Mesocentrotus nudus*) · 보라성게(*Heliocidaris crassispina*) 정정 · 옛 세이브 칸 이름 이행(`FORAGE_NAME_MIGRATION`) · 21종 크기 분포(`ShoreCreatureSize` · `rollForageSizeCm` · `forageWeightG`) ·
-  크기대로 그림(`forageImageSizeScale` — 판 · 상세 창 · 판을 열 때 크기를 먼저 굴림) · F10 「④-2b 해루질 놀이 바로 시작」(`DevHooks.playForageGame`) ·
-  입질 감사 30건(달 효과 0 % · 수온 미사용 · 지역 KOSIS뿐 — 원문 `.agents/inputs/288_bite_audit.md`) · 결함 7 고침(F07 여 위 찌 · F13 · F14 KST · 밤 · F26 후보 0 · F06 지역 낚시지수 · F04 · F05 KOSIS · F16 울산 · F23) ·
-  검증 = core 423 · 하네스 4/4(132판) · 6/6 · 이름 이행 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. main · 배포는 하지 않았다(작업 브랜치만).
-  하모니 PR #13 · #14 · #15 검토 · 병합(main `80dd59c`) · main CI 실패 원인(core 시험 파일 타입 2건)은 작업 브랜치에서 고침 — 브랜치를 main에 넣어야 CI 초록.
-  **다음 = 사용자 결정(호칭 방식 · 입질 하한 D1 · D2~D6 — 백로그 DD) → 나머지 190편 대본 → 289 맵 확장 영향**. 상세 `docs/wiki/03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md`.
 
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
@@ -225,15 +223,15 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main `7453cda` · 실행 25 · 정적 2,121(소스맵 0) · 기동 9.9초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-10-30 사용자 지시로 작업 브랜치에 빨리 감기했다(289차 · main CI 초록).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 88 = 290(2)**(옛 답 글 호칭 · 네 살 사진 · M3-08 겨울 · 87 = 290 · 86 = 289)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 89 = 291**(시스템 「출장 나온 사람 · 만나는 자리」 · 88 = 290(2) · 87 = 290)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 129파일 = 심리스 99 + 구 맵 30 · 파일 413).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 34 = 290(2)차 · 추천 순서 1 = 291 맵 확장 영향) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 35 = 290(2)차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 33 = 290(2)차 기준 · 문법은 258차) · 위키(위 줄 — 88 = 290(2)).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 35 = 291차 · 추천 순서 1 = 맵 확장 영향 ② 사용자 결정) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 36 = 291차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 34 = 291차 기준 · 문법은 258차) · 위키(위 줄 — 89 = 291).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

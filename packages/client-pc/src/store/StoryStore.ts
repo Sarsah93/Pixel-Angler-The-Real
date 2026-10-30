@@ -30,7 +30,7 @@ import {
   offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, talkNode, talkGateOk, talkVisibleChoices, talkAnswerRef,
   endingById, endingsOfArc, endingArcOfQuest, npcShopTerms, npcAffinityCap, npcEndingRole,
   type TalkCtx, type StoryTalkDef, type TalkChoiceDef, type TalkEndDef, type NpcShopTerms, type StoryEndingDef,
-  questGuestsIn, meetStageOpenIn, npcRegionNow, type MeetingCtx, type QuestGuest,
+  questGuestsIn, meetStageOpenIn, npcRegionNow, meetPlaceOf, type MeetingCtx, type QuestGuest,
 } from '@tra/core';
 import { npcPlacedIn, npcHomeRegions, STORY_GUEST_ANCHORS, STORY_NPC_PLACEMENTS } from '../data/StoryNpcs.js';
 import {
@@ -522,6 +522,16 @@ class StoryStoreManager {
       allObjectivesDone: (q) => this.allObjectivesDone(q),
       objectiveOpen: (q, i) => this.isActive(q.id) && this.objectiveReachable(q, i) && !this.objectiveDone(q, i),
     };
+  }
+
+  /**
+   * 291차 — 이 편 이 단계를 반드시 만나야 하는 지역(만나는 자리 `here` · 그 사람이 편의 지역에 살지 않을 때). 아니면 undefined.
+   * `stage` = 'offer' · 'complete' · 대화 목표 번호.
+   */
+  meetRegionFor(q: StoryQuestDef, stage: 'offer' | 'complete' | number): string | undefined {
+    const npc = typeof stage === 'number' ? (q.objectives[stage]?.npcId ?? q.giver) : q.giver;
+    if (!npc || npcPlacedIn(npc, q.region)) return undefined;
+    return meetPlaceOf(q.id, stage) === 'here' ? q.region : undefined;
   }
 
   /** 291차 — 이 지역에 출장 나와 있는 인물(집 자리가 이 지역에 없는 의뢰인 · 대화 상대) */

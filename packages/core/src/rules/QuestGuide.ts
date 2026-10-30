@@ -21,6 +21,11 @@ export interface QuestGuideTarget {
   /** 상점 종류 힌트 — 'any' = 아무 상점 / 'daily' 생활용품점 / 'market' 직판장 / 'mart' 식자재마트 */
   shopHint?: 'any' | 'daily' | 'market' | 'mart';
   itemId?: string;
+  /**
+   * 291차 — 이 단계는 이 지역에서만 만난다(`MeetPlace` `here`). 다른 지역에서는 눈앞에 그 사람이 있어도 가리키지 않고 이 지역을 안내한다
+   * (예: 속초에 사는 도현수 — 「너도 감천 왔냐」 편은 부산에서만 받는다).
+   */
+  meetRegion?: string;
 }
 
 export interface GuideNames {
