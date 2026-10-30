@@ -558,7 +558,7 @@ export class StoryCinematicPanel extends Phaser.GameObjects.Container {
 /**
  * 235차 — M7-04 「사진 속 천막」의 가족사진(절차 픽셀 · 64×44 논리 픽셀을 ×4로 그린다).
  * 프롤로그에서 받은 16px 아이콘(`it_photo`)과 같은 구도를 크게 — 하늘 · 바다 · 줄무늬 천막 좌판 ·
- * 천막 아래 머릿수건을 쓴 젊은 상인(22년 전의 정옥선) · 앞쪽에 부모와 네 살의 나. 낡은 인화지 색감.
+ * 천막 아래 머릿수건을 쓴 젊은 상인(18년 전의 정옥선) · 앞쪽에 부모와 네 살의 나. 낡은 인화지 색감.
  * 원점 = 사진 가운데.
  */
 function drawFamilyPhoto(g: Phaser.GameObjects.Graphics): void {
@@ -588,7 +588,7 @@ function drawFamilyPhoto(g: Phaser.GameObjects.Graphics): void {
   px(14, 3, 1, 5, 0x1f3a5a); px(33, 3, 1, 5, 0x1f3a5a);
   // 기둥
   px(7, 16, 1, 18, 0x4a3a2a); px(40, 16, 1, 18, 0x4a3a2a);
-  // 천막 아래 — 머릿수건을 쓴 젊은 상인(22년 전)
+  // 천막 아래 — 머릿수건을 쓴 젊은 상인(18년 전)
   px(23, 18, 4, 1, 0xe8d8b0);   // 수건
   px(23, 19, 4, 3, 0xe8b890);   // 얼굴
   px(22, 22, 6, 6, 0x6a8a5a);   // 앞치마 위 옷

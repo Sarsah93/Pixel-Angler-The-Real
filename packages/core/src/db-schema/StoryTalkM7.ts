@@ -402,17 +402,17 @@ export const TALKS_M7: StoryTalkDef[] = [
         act(O, 'silence'),
         line(O, '그 천막, 내 거다.', 'That tent is mine.'),
         line(P, '…네?', '...Sorry?'),
-        line(O, '만복상회. 22년 전. 그 천막 앞에 서 있는 꼬맹이가 너야.', 'Manbok Store. Twenty-two years ago. The little one standing in front of that tent is you.'),
+        line(O, '만복상회. 18년 전. 그 천막 앞에 서 있는 꼬맹이가 너야.', 'Manbok Store. Eighteen years ago. The little one standing in front of that tent is you.'),
       ], {
         choices: [
-          opt('how', '22년 전에 저를 보셨다고요?', 'You saw me twenty-two years ago?', {
-            say: ['22년 전에 저를 보셨다고요? 어떻게 기억하세요?', 'You saw me twenty-two years ago? How can you remember?'], next: 'how' }),
+          opt('how', '18년 전에 저를 보셨다고요?', 'You saw me eighteen years ago?', {
+            say: ['18년 전에 저를 보셨다고요? 어떻게 기억하세요?', 'You saw me eighteen years ago? How can you remember?'], next: 'how' }),
           opt('why', '…왜 이제야 말씀하세요?', '...Why tell me only now?', { next: 'why' }),
           opt('slow', '천천히 말씀해 주세요', 'Please, tell me slowly', {
             say: ['…천천히 말씀해 주세요.', '...Please, tell me slowly.'], next: 'slow' }),
         ],
-        note: ['정옥선 씨가 조행록에 끼워져 있던 내 네 살 사진을 한참 들여다보더니, 사진 속 천막이 자기 것이라고 했다. 22년 전 만복상회 천막 앞에 서 있던 꼬맹이가 나였다.',
-          "Okseon looked at my photo from age four — the one tucked into the log — for a long time, then said the tent in it was hers. The little one standing in front of the Manbok Store tent twenty-two years ago was me."],
+        note: ['정옥선 씨가 조행록에 끼워져 있던 내 네 살 사진을 한참 들여다보더니, 사진 속 천막이 자기 것이라고 했다. 18년 전 만복상회 천막 앞에 서 있던 꼬맹이가 나였다.',
+          "Okseon looked at my photo from age four — the one tucked into the log — for a long time, then said the tent in it was hers. The little one standing in front of the Manbok Store tent eighteen years ago was me."],
       }),
       how: scene([
         line(O, '좌판 하는 사람은 얼굴을 안 잊는다.', 'People who run a stall never forget a face.'),
@@ -473,7 +473,7 @@ export const TALKS_M7: StoryTalkDef[] = [
         line(O, '실습생이라고 배낭 하나 메고 내 좌판 앞에 섰을 때, 얼굴 보자마자 알았다.', "When you turned up at my stall as a trainee with one backpack, I knew the moment I saw your face."),
         line(P, '그래서 첫날 그렇게 말씀하셨던 거예요? 울 거면 얼음부터 나르고 울라고.', 'Is that why you said it on the first day? If you\'re going to cry, carry the ice first, then cry.'),
         line(O, '…그래서 얼음부터 나르라고 한 거야.', "...That's why I told you to carry the ice first."),
-        line(O, '22년 전 그 애가 온 줄 알았으니까.', 'Because I knew the child from twenty-two years ago had come back.'),
+        line(O, '18년 전 그 애가 온 줄 알았으니까.', 'Because I knew the child from eighteen years ago had come back.'),
       ], {
         choices: [
           opt('knew', '처음부터 아셨군요', 'You knew from the start', {
@@ -487,8 +487,8 @@ export const TALKS_M7: StoryTalkDef[] = [
           opt('spot', '네 살 때 서 있던 데서 올렸어요', 'I caught it where I stood at four', {
             say: ['그 자리에서 도다리를 올렸어요. 네 살 때 서 있던 데서요.', 'I brought up the flounder from that spot. Where I stood when I was four.'], next: 'spot' }),
         ],
-        note: ['정옥선 씨는 내가 실습생으로 좌판 앞에 섰던 날, 얼굴을 보자마자 22년 전 그 아이인 줄 알았다고 했다. 첫날 얼음부터 나르라고 한 까닭이 그것이었다.',
-          "Okseon said that the day I turned up at her stall as a trainee, she knew at once I was the child from twenty-two years ago. That was why she told me to carry the ice first."],
+        note: ['정옥선 씨는 내가 실습생으로 좌판 앞에 섰던 날, 얼굴을 보자마자 18년 전 그 아이인 줄 알았다고 했다. 첫날 얼음부터 나르라고 한 까닭이 그것이었다.',
+          "Okseon said that the day I turned up at her stall as a trainee, she knew at once I was the child from eighteen years ago. That was why she told me to carry the ice first."],
       }),
       knew: scene([
         line(O, '…알았지. 말 안 했지.', "...I knew. I didn't say."),
@@ -502,7 +502,7 @@ export const TALKS_M7: StoryTalkDef[] = [
       spot: scene([
         line(O, '…그 자리에서.', '...From that spot.'),
         act(O, 'silence'),
-        line(O, '22년 동안 그 자리를 몇 번이나 봤는지 모른다. 이제 거기 서 있는 게 꼬맹이가 아니라 어부구나.', "I can't count how many times I've looked at that spot in twenty-two years. Now the one standing there isn't a little child — it's a fisher."),
+        line(O, '18년 동안 그 자리를 몇 번이나 봤는지 모른다. 이제 거기 서 있는 게 꼬맹이가 아니라 어부구나.', "I can't count how many times I've looked at that spot in eighteen years. Now the one standing there isn't a little child — it's a fisher."),
       ], {
         end: endTalk({ complete: 'same_spot', lineKo: '잘 왔다. 정말 잘 왔다.', lineEn: "You did well to come. You really did." }),
         note: ['네 살 때 서 있던 자리에서 도다리를 올렸다고 했다. 정옥선 씨는 한참 말이 없다가, 이제 거기 서 있는 게 꼬맹이가 아니라 어부라고 했다. 잘 왔다고.',

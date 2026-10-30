@@ -9,6 +9,9 @@ import { STORY_TALKS } from '../db-schema/StoryTalks.js';
 import { STORY_QUESTS } from '../db-schema/StoryQuestDatabase.js';
 import { progressAskOf } from '../db-schema/StoryProgressAsk.js';
 import { INQUIRY_NODES } from '../db-schema/StoryInquiry.js';
+import { choicesFor } from '../db-schema/StoryChoices.js';
+import { narrativeOf } from '../db-schema/StoryNarrative.js';
+import { STORY_NARRATIVE_EN } from '../db-schema/StoryNarrativeEn.js';
 
 describe('290 호칭 — 부름말 찾기', () => {
   it('부르는 꼴 · 가리키는 꼴 · 자기 집안', () => {
@@ -69,11 +72,73 @@ describe('290 대본 — 무결성 · 덮개 · 호칭', () => {
     for (const n of INQUIRY_NODES) for (const a of playerAddressIssues(n.askKo)) bad.push(`${n.id} 물음 「${a.word}」`);
     expect(bad).toEqual([]);
   });
+  it('옛 답 문구(고를 말)에도 주인공의 나이 · 성별 · 직함 부름말이 없다', () => {
+    const bad: string[] = [];
+    for (const q of STORY_QUESTS) {
+      const s = choicesFor(q);
+      for (const c of [...s.offer, ...s.complete]) {
+        for (const a of playerAddressIssues(c.labelKo)) bad.push(`${q.id}/${c.id} 「${a.word}」`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
   it('끝이 묶인 옛 답 — 받는 자리 offer · 끝내는 자리 complete', () => {
     const offer = STORY_TALKS.find((t) => t.at === 'offer')!;
     const done = STORY_TALKS.find((t) => t.at === 'complete')!;
     expect(talkAnswerRef(offer, { accept: true, offer: 'x' })).toEqual({ stage: 'offer', id: 'x' });
     expect(talkAnswerRef(done, { complete: 'y' })).toEqual({ stage: 'complete', id: 'y' });
     expect(talkAnswerRef(done, { accept: true, offer: 'x' })).toBeUndefined();
+  });
+});
+
+/** 편 하나에 걸린 글 전부(제목 · 소개 · 목표 줄 · 옛 나레이션 · 옛 답 · 대본 · 진행 중 물음) */
+function questTexts(id: string): string[] {
+  const out: string[] = [];
+  const walk = (o: unknown): void => {
+    if (typeof o === 'string') out.push(o);
+    else if (Array.isArray(o)) o.forEach(walk);
+    else if (o && typeof o === 'object') Object.values(o).forEach(walk);
+  };
+  const q = STORY_QUESTS.find((x) => x.id === id)!;
+  walk([q.titleKo, q.titleEn, q.descKo, q.descEn, q.objectives]);
+  walk(narrativeOf(id));
+  walk(STORY_NARRATIVE_EN[id]);
+  walk(choicesFor(q));
+  for (const t of STORY_TALKS) if (t.questId === id) walk(t.nodes);
+  q.objectives.forEach((_, i) => walk(progressAskOf(id, i)));
+  return out;
+}
+
+describe('290(2) 데이터 어긋남', () => {
+  it('M3-08 「겨울 참돔」 — 목표도 겨울', () => {
+    const q = STORY_QUESTS.find((x) => x.id === 'M3-08')!;
+    expect(q.objectives[0].season).toEqual(['winter']);
+    expect(q.objectives[0].labelKo).toContain('겨울');
+  });
+  it('M4-03 「지세포의 밤」 — 목표 줄이 낮을 말하지 않는다', () => {
+    const q = STORY_QUESTS.find((x) => x.id === 'M4-03')!;
+    expect(q.objectives[0].labelKo).not.toMatch(/주간|낮/);
+    expect(q.objectives[0].labelKo).toContain('밤');
+  });
+  it('네 살 사진은 18년 전(주인공 22세) — 「22년」은 아버지 배에만', () => {
+    for (const id of ['M7-04', 'M7-08', 'N22-8']) {
+      expect(questTexts(id).filter((s) => /22년|twenty-two years/i.test(s))).toEqual([]);
+    }
+    expect(questTexts('M7-04').some((s) => s.includes('18년'))).toBe(true);
+  });
+  it('강두철의 신분(조합장) · 초보 행세는 N03-2 전에 닿는 편에 나오지 않는다', () => {
+    const byId = new Map(STORY_QUESTS.map((q) => [q.id, q]));
+    const before = (id: string, seen = new Set<string>()): Set<string> => {
+      for (const p of byId.get(id)?.prereq ?? []) if (!seen.has(p)) { seen.add(p); before(p, seen); }
+      return seen;
+    };
+    const bad: string[] = [];
+    for (const q of STORY_QUESTS) {
+      if (q.id === 'N03-2' || before(q.id).has('N03-2')) continue;
+      for (const s of questTexts(q.id)) {
+        if (/조합장|chairman|Mr\. President|척하던|초보 행세|playing beginner|pretended he could not/i.test(s)) bad.push(`${q.id}: ${s.slice(0, 60)}`);
+      }
+    }
+    expect(bad).toEqual([]);
   });
 });

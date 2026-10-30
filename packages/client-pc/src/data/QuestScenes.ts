@@ -130,7 +130,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
   },
 
   // M7-04 ② 정옥선과 네 살 사진을 함께 본다 — 235차: 가족사진을 **실제로 꺼내** 건네고, 화면 가운데 크게 펼친다.
-  //  사진 속 천막 아래에 머릿수건을 쓴 젊은 상인이 서 있다(22년 전의 정옥선). 사진을 안 들고 왔으면 목표는 닫히지 않는다.
+  //  사진 속 천막 아래에 머릿수건을 쓴 젊은 상인이 서 있다(18년 전의 정옥선). 사진을 안 들고 왔으면 목표는 닫히지 않는다.
   'M7-04#1': (q, idx, ctx) => {
     const base = generatedScene(q, idx, ctx);
     const held = ctx.has ? ctx.has('quest_family_photo') : true;
@@ -162,10 +162,10 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
         { kind: 'wait', ms: 900 },
         { kind: 'say', who: 'npc', bubble: '...', text: '…그 천막, 내 거다.', textEn: '…That tent is mine.' },
         { kind: 'emote', who: 'player', emote: 'surprise', ms: 800 },
-        { kind: 'say', who: 'npc', bubble: '...', text: '22년 전. 네가 거기 서 있었어. 저 손 잡고.', textEn: 'Twenty-two years ago. You stood right there. Holding those hands.' },
+        { kind: 'say', who: 'npc', bubble: '...', text: '18년 전. 네가 거기 서 있었어. 저 손 잡고.', textEn: 'Eighteen years ago. You stood right there. Holding those hands.' },
         { kind: 'photo', show: false },
         { kind: 'say', who: 'npc', bubble: '...', text: '울 거면 얼음부터 나르고 울라고 했지. 그 말이 왜 그렇게 빨리 나왔는지, 이제 알겠냐.', textEn: 'I told you to haul the ice first if you were going to cry. Now you know why it came out so fast.' },
-        { kind: 'say', who: 'player', thought: true, text: '정옥선 씨가 나를 처음 본 날이 22년 전이었다. 나는 몰랐고, 정옥선 씨는 알았다.', textEn: 'The first time she saw me was twenty-two years ago. I did not know. She did.' },
+        { kind: 'say', who: 'player', thought: true, text: '정옥선 씨가 나를 처음 본 날이 18년 전이었다. 나는 몰랐고, 정옥선 씨는 알았다.', textEn: 'The first time she saw me was eighteen years ago. I did not know. She did.' },
         { kind: 'give', from: 'npc', to: 'player', item: 'photo', ms: 800 },
       ],
     };

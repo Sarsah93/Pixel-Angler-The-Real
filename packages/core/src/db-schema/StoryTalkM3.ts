@@ -963,7 +963,7 @@ export const TALKS_M3: StoryTalkDef[] = [
         line(G, '참돔 잡으러 간다.', "We're going after red seabream."),
         line(P, '이번엔 뭘로 해요? 지그요?', 'With what this time? Jigs?'),
         line(G, '타이라바다.', 'Tai-rubber.'),
-        line(G, '바닥 찍고 천천히 감아. 참돔은 새벽이나 저녁에 문다.', 'Touch bottom and reel slowly. Red seabream bite at dawn or at dusk.'),
+        line(G, '겨울 참돔은 깊이 붙어 있다. 바닥 찍고 천천히 감아. 새벽이나 저녁에 문다.', 'Winter seabream hold deep. Touch bottom and reel slowly. They bite at dawn or at dusk.'),
         line(P, '대물도 나오나요?', 'Do big ones come up?'),
         line(G, '나온다. 걸리면 드랙 믿어.', 'They do. If one hooks, trust the drag.'),
         line(G, '대는…', 'The rod...', { act: 'peer' }),
@@ -977,8 +977,8 @@ export const TALKS_M3: StoryTalkDef[] = [
           opt('limit', '한계가 있다니요? 제 대 말씀이세요?', 'Limits? You mean my rod?', {
             say: ['대는 한계가 있다니요? 제 대 말씀이세요?', 'A rod has its limits? Do you mean my rod?'], next: 'limit' }),
         ],
-        note: ['고만석 씨가 새벽이나 저녁에 타이라바로 참돔을 노린다며, 바닥 찍고 천천히 감고 대물이 걸리면 드랙을 믿으라고 했다. 내 대를 보더니 대는 한계가 있다고 덧붙였다.',
-          'Go Manseok said we would go after red seabream with tai-rubbers at dawn or dusk — touch bottom, reel slowly, trust the drag on a big one. Looking at my rod, he added that a rod has its limits.'],
+        note: ['고만석 씨가 깊이 붙은 겨울 참돔을 새벽이나 저녁에 타이라바로 노린다며, 바닥 찍고 천천히 감고 대물이 걸리면 드랙을 믿으라고 했다. 내 대를 보더니 대는 한계가 있다고 덧붙였다.',
+          'Go Manseok said we would go after winter seabream, holding deep, with tai-rubbers at dawn or dusk — touch bottom, reel slowly, trust the drag on a big one. Looking at my rod, he added that a rod has its limits.'],
       }),
       father: scene([
         line(G, '…그 대로 하겠다면 말리진 않는다.', "...If you want to use that rod, I won't stop you."),
