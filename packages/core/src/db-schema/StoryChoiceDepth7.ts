@@ -66,7 +66,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.05, flag: 'choice.n19_1_asked_rest' }),
       d('why_not_you', '직접 가져다드리시면 안 됩니까? 가까운데요.', "Couldn't you take it yourself? It's close.",
         '…가깝지. 가까워서 못 가는 데도 있다. (대를 깎던 칼을 내려놓았다가 다시 든다.)\n\n묻지 마라. 늙은이 일은 늙은이가 안다. 심부름꾼은 심부름만 하면 돼. 그게 너한테도 편하다.',
-        "…It is close. Some places you can't go because they're close. (He sets down the carving knife, then picks it up again.)\n\nDon't ask. Old people's business is for old people. An errand boy just runs the errand. That's easier for you too.",
+        "…It is close. Some places you can't go because they're close. (He sets down the carving knife, then picks it up again.)\n\nDon't ask. Old people's business is for old people. An errand runner just runs the errand. That's easier for you too.",
         { affinity: -0.01, flag: 'choice.n19_1_asked_why' }),
       d('if_asked', '누가 놓고 갔냐고 물으시면 뭐라고 합니까?', 'If she asks who left it, what do I say?',
         '…주웠다고 해라. (말해 놓고 고개를 젓는다.) 아니다, 그건 거짓말이지.\n\n그냥 놓고 나와. 묻기 전에. 대답 못 할 말은 처음부터 안 듣는 게 낫다. 그래야 너도 거짓말을 안 하지.',
@@ -81,7 +81,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       relay_true: [
-        '……그랬어? 그랬구나. (한동안 말이 없다. 그날 저녁 할머니 좌판에 새 받침이 하나 더 놓였다.)\n\n마디를 쓸어 봤으면 결이 맞았단 얘기다. 대나무는 손에 걸리면 그 자리에서 내려놓게 돼. 안 내려놨으면 됐다.',
+        '……그랬어? 그랬구나. (한동안 말이 없다. 그날 저녁 정옥선 씨 좌판에 새 받침이 하나 더 놓였다.)\n\n마디를 쓸어 봤으면 결이 맞았단 얘기다. 대나무는 손에 걸리면 그 자리에서 내려놓게 돼. 안 내려놨으면 됐다.',
         "……She did? I see. (He says nothing for a time. That evening a new rest appeared on her stall.)\n\nIf she ran her hand over the nodes, the grain was right. Bamboo that snags the hand gets put down on the spot. If she didn't put it down, that's enough.",
       ],
       relay_soft: [
@@ -132,7 +132,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
   // ── N19-8 「첫물」 · 정옥선 ──
   'N19-8': {
     offer: [
-      d('promise_first', '첫물은 할머니께 드리겠습니다. 제일 좋은 걸로요.', "The first picking is yours. I'll bring the best of it.",
+      d('promise_first', '첫물은 정옥선 씨께 드리겠습니다. 제일 좋은 걸로요.', "The first picking is yours. I'll bring the best of it.",
         '제일 좋은 거 고르지 마. 처음 딴 거. 그게 첫물이다. (바구니 귀퉁이를 손바닥으로 비워 둔다.)\n\n좋고 나쁜 건 맛보는 사람이 정해. 너는 그냥 따서 가져와. 고르다 보면 남 주기 아까워진다.',
         "Don't pick the best. The first one you pick. That's the first picking. (She clears a corner of the basket with her palm.)\n\nThe one tasting decides good or bad. You just pick it and bring it. Start choosing and you'll begrudge giving it away.",
         { affinity: 0.05 }),
@@ -212,7 +212,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         '…식으면 데워 먹으면 되지. 그래도 빨리 가. (반찬통 뚜껑을 한 번 더 눌러 닫는다.)\n\n문 앞에 두고 와. 얼굴 볼 거 없다. 앓는 사람은 남한테 앓는 얼굴 보이는 거 싫어해.',
         "…If it goes cold he can heat it up. Still, go quickly. (She presses the lid down once more.)\n\nLeave it at the door. No need to see his face. Sick people don't like being seen sick.",
         { affinity: 0.06 }),
-      d('ask_who', '탁 씨라면, 죽간 공방 노인장 말씀이십니까?', 'Tak — you mean the old man at the bamboo workshop?',
+      d('ask_who', '탁 씨라면, 죽간 공방 탁만수 씨 말씀이십니까?', 'Tak — you mean Mansu at the bamboo workshop?',
         '이 항구에 탁 씨가 둘이냐. 대 깎는 그 노인. (시선을 반찬통에 둔 채 말한다.)\n\n좌판에 도는 말이 그렇다더라. 기침을 한다고. 공방 문 앞에 두기만 하면 돼. 안에 들어갈 거 없다.',
         "How many Taks do you think this harbour has? The old man who carves rods. (She says it with her eyes on the container.)\n\nThat's the word going round the stalls. Coughing, they say. Just leave it at the workshop door. No need to go in.",
         { affinity: 0.03, flag: 'choice.n19_2_asked_who' }),
@@ -243,7 +243,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
       ],
       refuse_read: [
         '…똑똑한 애구나. (좌판 앉을 때 내 자리가 하나 생겼다.)\n\n두 사람 일이라. 그래, 맞는 말이다. 그 말 할 줄 아는 애한테는 다음 심부름도 맡길 수 있어.',
-        "…A clever kid. (I get a seat at the stall.)\n\nBetween the two of us, you said. Yes, that's right. Someone who knows to say that, I can trust with the next errand too.",
+        "…A clever one. (I get a seat at the stall.)\n\nBetween the two of us, you said. Yes, that's right. Someone who knows to say that, I can trust with the next errand too.",
       ],
     },
   },
@@ -385,7 +385,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         '늘 같은 때. 얼음 들어오고 좌판 정리할 무렵. (말해 놓고 얼음 상자만 괜히 툭툭 친다.)\n\n…내가 그걸 어떻게 아냐고는 묻지 마라. 좌판에 앉아 있으면 다 보인다. 보이는 걸 어떡해.',
         "Always the same time. When the ice comes in and I'm tidying the stall. (Having said it, she taps the ice box for no reason.)\n\n…Don't ask how I know. Sit at a stall and you see everything. What can I do if I see it.",
         { affinity: 0.04, flag: 'choice.n19_4_asked_when' }),
-      d('you_ask', '할머니가 먼저 앉으시라고 하시면 되지 않습니까?', "Couldn't you just ask him to sit, yourself?",
+      d('you_ask', '정옥선 씨가 먼저 앉으시라고 하시면 되지 않습니까?', "Couldn't you just ask him to sit, yourself?",
         '그게 되면 너한테 말하겠냐. (얼음 상자 모서리를 손바닥으로 문지른다.)\n\n…못 하니까 그렇지. 말이 목에서 안 나와. 그러니 네가 좀 해. 아니다. 네가 좀 해.',
         "If I could, would I be telling you? (She rubs the corner of the ice box with her palm.)\n\n…I can't, that's why. The words won't come out of my throat. So you do it. No, never mind. You do it.",
         { affinity: -0.01, flag: 'choice.n19_4_pushed' }),
@@ -515,7 +515,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         '…그럼 또 심부름이지. 이번엔 안 된다. (고개를 천천히 젓는다.)\n\n두 번은 자네 손으로 보냈다. 세 번째까지 남의 손으로 보내면 나는 영영 이 복도에 서 있을 거다. 문만 열어 다오.',
         "…Then it's another errand. Not this time. (He slowly shakes his head.)\n\nTwice I sent it with your hands. If the third goes by someone else's hands too, I'll be standing in this corridor forever. Just open the door.",
         { affinity: 0.07, flag: 'choice.n19_5_offered_carry' }),
-      d('does_she_know', '할머니는 노인장이 오신 걸 아십니까?', "Does she know you're here?",
+      d('does_she_know', '정옥선 씨는 탁만수 씨가 오신 걸 아십니까?', "Does she know you're here?",
         '모른다. 알면… 모르겠다. 들어오라고 할지 나가라고 할지. (복도 끝 창 쪽을 본다.)\n\n그래서 여태 서 있는 거다. 모르는 채로 서 있는 게 들어가서 아는 것보다 쉬우니까. …쉬운 쪽만 골랐지, 늘.',
         "She doesn't. If she did… I don't know. Whether she'd say come in or get out. (He looks towards the window at the end of the corridor.)\n\nThat's why I'm still standing here. Standing here not knowing is easier than going in and finding out. …I always picked the easy way.",
         { affinity: 0.03, flag: 'choice.n19_5_asked_know' }),
@@ -595,7 +595,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         '요양 끝났다. 앉아 있는 건 된다더라. 병실에 앉으나 좌판에 앉으나 앉는 건 같아. (좌판 냄새를 깊이 들이마신다.)\n\n그런데 냄새가 다르다. 여기가 낫지. 얼음 냄새, 바다 냄새. 사람은 냄새 나는 데서 살아야 한다.',
         "My recovery's done. They say sitting is fine. Sitting in a ward or at the stall, it's still sitting. (She breathes in the smell of the stall deeply.)\n\nBut the smell's different. Here's better. Ice, the sea. People ought to live where things smell of something.",
         { affinity: 0.04, flag: 'choice.n19_6_asked_health' }),
-      d('who_said', '탁 노인께서 오신다고 하셨습니까? 직접요?', "Old Tak said he's coming? Himself?",
+      d('who_said', '탁만수 씨께서 오신다고 하셨습니까? 직접요?', "Mansu said he's coming? Himself?",
         '…온다더라. 누가 전했는지는 묻지 마라. 이 좌판엔 말이 바람보다 빨리 돈다. (팔걸이를 손끝으로 두드린다.)\n\n온다고 했으면 오는 사람이다. 오십 년을 안 오다가도 온다고 하면 와. 그러니 자리부터 만들어.',
         "…He's coming, they say. Don't ask who passed it on. Word goes round this stall faster than the wind. (She drums her fingertips on the armrest.)\n\nIf he says he'll come, he comes. Even after fifty years of not coming, once he says it, he comes. So make the place first.",
         { affinity: 0.03, flag: 'choice.n19_6_asked_who' }),
@@ -605,14 +605,14 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.02, flag: 'choice.n19_6_joked' }),
     ],
     completeAdd: [
-      d('stall_words', '좌판 일, 할머니 말로 한 번 더 배우고 싶습니다.', "I'd like to learn the stall work from you once more, in your words.",
+      d('stall_words', '좌판 일, 정옥선 씨 말로 한 번 더 배우고 싶습니다.', "I'd like to learn the stall work from you once more, in your words.",
         '말로? 그래, 손은 이제 네 거니까. (휠체어 등받이에 기댄다.)\n\n얼음 먼저, 그다음 진열, 값은 마지막. 처음에 가르친 그대로다. 그 순서만 안 잊으면 이 좌판은 안 망해. (손가락을 하나씩 접으며 다시 일러 준다.)',
         "In words? All right, the hands are yours now. (She leans back in the wheelchair.)\n\nIce first, then the display, price last. Exactly what I taught you at the start. Don't forget that order and this stall won't go under. (She counts each one off on her fingers again.)",
         { proficiency: { category: 'economy', xp: 30 }, affinity: 0.06 }),
     ],
     completeReply: {
       saw: [
-        '…봤어? 그래, 봐라. 오십 년이다. (할머니가 웃는다. 노인도.)\n\n숨길 나이도 지났다. 오십 년 숨겼으면 됐지. …그래도 동네방네 떠들지는 마라. 그 사람 얼굴 빨개지는 거 못 본다.',
+        '…봤어? 그래, 봐라. 오십 년이다. (정옥선 씨가 웃는다. 노인도.)\n\n숨길 나이도 지났다. 오십 년 숨겼으면 됐지. …그래도 동네방네 떠들지는 마라. 그 사람 얼굴 빨개지는 거 못 본다.',
         "…You saw? Fine, look. It's fifty years. (She laughs. So does he.)\n\nWe're past the age for hiding. Fifty years of hiding is plenty. …Still, don't go telling the whole harbour. I can't bear watching his face go red.",
       ],
       pay: [
@@ -720,7 +720,7 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
         '네! 한 화면에 둘이요. 제 구독자가 그쪽을 보고, 그쪽 구독자가… 아, 그쪽은 구독자가 없죠. (웃는다.)\n\n그러니까 제 쪽에서 그쪽을 소개하는 거예요. 속초 바다랑 같이. 그 동네는 그 동네 사람이 보여 주는 게 제일 좋거든요.',
         "Yes! Two people on one screen. My subscribers see you, and your subscribers… oh, you don't have any. (She laughs.)\n\nSo I introduce you on my side. Along with the Sokcho sea. A place looks best when someone from there shows it.",
         { affinity: 0.04, flag: 'choice.n20_3_asked_collab' }),
-      d('ask_permission', '좌판은 할머니께 먼저 여쭤야 합니다. 허락 없이는 안 됩니다.', 'We ask the grandmother at the stall first. Not without her say-so.',
+      d('ask_permission', '좌판은 정옥선 씨께 먼저 여쭤야 합니다. 허락 없이는 안 됩니다.', 'We ask Okseon at the stall first. Not without her say-so.',
         '당연하죠! 그래서 허락 받는다고 했잖아요. (두 손을 모은다.)\n\n같이 가서 여쭤봐 주세요. 제가 혼자 가면 삼각대 든 수상한 사람이에요. 그쪽이 옆에 있으면 덜 수상하겠죠.',
         "Of course! That's why I said with permission. (She presses her hands together.)\n\nCome and ask her with me. If I go alone, I'm a suspicious stranger with a tripod. With you beside me, I'll look less suspicious.",
         { affinity: 0.06, flag: 'choice.n20_3_permission_first' }),
@@ -737,8 +737,8 @@ export const CHOICE_DEPTH_7: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       keep_cut: [
-        '네! 그 컷이 메인이에요! (할머니가 영상에서 자기를 보고 웃었다는 걸 나중에 들었다.)\n\n할머니가 카메라를 한 번도 안 보셨어요. 그래서 좋았어요. 카메라 안 보는 사람이 제일 잘 나오거든요.',
-        "Yes! That cut is the thumbnail! (I heard later that the stall grandmother saw herself in it and laughed.)\n\nShe never once looked at the camera. That's why it was good. People who don't look at the camera come out best.",
+        '네! 그 컷이 메인이에요! (정옥선 씨가 영상에서 자기를 보고 웃었다는 걸 나중에 들었다.)\n\n할머니가 카메라를 한 번도 안 보셨어요. 그래서 좋았어요. 카메라 안 보는 사람이 제일 잘 나오거든요.',
+        "Yes! That cut is the thumbnail! (I heard later that Okseon saw herself in it and laughed.)\n\nShe never once looked at the camera. That's why it was good. People who don't look at the camera come out best.",
       ],
       pay: [
         '이번엔 진짜 있어요! 구독자 천 넘었어요! (봉투가 처음으로 봉투답다.)\n\n속초 편을 제일 많이 봤대요. 그쪽 동네 덕이에요. 봉투에 동네 몫도 들어 있다고 생각해 주세요.',
