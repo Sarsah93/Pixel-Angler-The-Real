@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 31 — 288차 기준(§06 「288차 결정」 · 「288차 확인」 · §07 288 ✅). 30 = 287 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 32 — 288차 기준(해양생물 DB 규정 · 크기 · 스폰 오라클 입질 문맥 · dev 해루질 놀이 · 주인공 나이). 31 = 287 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 30 — 288차 기준 · 채비 문법은 258차(「288차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 85 — 288차(시스템 「해루질 규정 · 크기」 · 갯것 카드 크기 · 지역 규정 · 허가 이름). 84 = 287 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 32 — 289차 기준(§01 입질 행 · §06 「289차 결정」(288 D1~D6 추천대로) · §07 289 ✅). 31 = 288 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 33 — 289차 기준(「바다 · 철 · 수온 존재 가중」 · 「풍랑 통제」 · 스폰 오라클 · 해양생물 DB 갯것 미끼). 32 = 288 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 31 — 289차 기준 · 채비 문법은 258차(「289차 기준」 줄 · 미끼 칸은 캔 갯것도 받는다) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 86 — 289차(시스템 「바다 · 철 · 수온 · 풍랑 · 새 미끼」 · 어종 카드 「사는 바다」 · 살오징어 · 미끼 셋). 85 = 288 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -23,10 +23,10 @@
 
 | 아티팩트 | 고칠 것 |
 |---|---|
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 85 — 288차(시스템 「해루질 규정 · 크기」 · 갯것 카드 크기 · 지역 규정 · 허가 이름). 84 = 287 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 32 — 288차 기준(해양생물 DB 규정 · 크기 · 스폰 오라클 입질 문맥 · dev 해루질 놀이 · 주인공 나이). 31 = 287 |
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 31 — 288차 기준(§06 「288차 결정」 · 「288차 확인」 · §07 288 ✅). 30 = 287 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 30 — 288차 기준 · 채비 문법은 258차(「288차 기준」 줄) |
+| 전체 위키 | 생성기를 다시 돌려 발행(바뀐 그림만 `files`) — 절차는 CLAUDE.md 「타일맵 · 배포」. **지도 탭(264)**: 지형 · 가게 자리 · 인물 자리가 바뀐 지역은 `node tools/capture_wiki_maps.cjs <폴더> <지역>`(dev 서버)으로 다시 찍고 `node tools/dump_wiki_map_data.mjs` → 생성기 → 그 지역 `maps/<지역>/*.webp`만 `files`로. 파일 수(상한 511)는 `tools/wiki_img/used.txt` 줄 수 + 지도 파일 + 1로 센다 |
+| 구현 라이브러리 | `DATA` 항목의 상태(`ok · part · todo`) · 차수(`w`) · 설명 · 수치, 머리 숫자(`HEAD`), 바닥 줄, 첫 줄의 「N차 기준 · 날짜」 |
+| 남은 과업 설계 | §01 현황 표 · §03 농장 단계 · §04 무대 · §05 수동 목표 수 · §06 사용자 대기 큐 · §07 착수 순서 · 머리 「N차 기준」 |
+| 채비 모딩 순서도 | `RigTree.childrenOf`가 바뀌었으면 `nodes` · `edges` · `kits` · 규칙 카드 · 경로 예시 · 「바뀐 것」 상자. 그대로면 첫 문단의 「N차 기준」만 |
 
 ### 머리 숫자 실측(구현 라이브러리)
 

@@ -323,7 +323,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 
 - 사용자 「추천대로 추가해주고, main 반영 및 재배포, wiki 업데이트도 해줘」(288 감사 D1~D6) → core `rules/SpeciesPresence.ts`(바다 가중 · 연안 평년 수온 · 계절 · 수온 · 이야기 하한) · `presenceBiteRate`.
 - 존재 가중은 후보를 거른 뒤에 곱한다(드물게 ≠ 없음) · 해양기상 Mock은 수온 · 안개에 쓰지 않는다(`liveMarine`) · 적수온 정정 5 · 살오징어 · 미끼 셋 · 캔 갯것 미끼 · 풍랑 통제.
-- 검증: core 438 · 하네스 9/9 · 3/3 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개 · main 빨리 감기 · 96차 배포.
+- 검증: core 438 · 하네스 9/9 · 3/3 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개 · main `7453cda` · 96차 배포(gh-pages `4d79deb`).
   상세: [289차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md).
 
 **이전 변경 (2026-10-30 288차) — 주인공 나이 22세 · 해루질 규정 · 종별 크기 · 크기대로 그림 · dev 해루질 놀이 바로 시작 · 입질 연결성 점검**

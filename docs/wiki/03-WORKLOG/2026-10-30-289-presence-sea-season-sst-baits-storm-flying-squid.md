@@ -5,7 +5,7 @@
 | **날짜** | 2026-10-30 |
 | **시스템** | `낚시` `해루질` `데이터` `경제` `에셋` `위키` `배포` |
 | **트리거** | 288차 입질 감사의 설계 결정 D1~D6 — 사용자 「추천대로 추가해주고, main 반영 및 재배포, wiki 업데이트도 해줘」 |
-| **커밋** | 작업 브랜치 → main 빨리 감기 · 96차 배포(아래 §8) |
+| **커밋** | `7453cda`(작업 브랜치) → main 빨리 감기 · 96차 배포 gh-pages `4d79deb`(아래 §8) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 438 |
 
 ---
@@ -99,4 +99,9 @@
 - [x] `04-BACKLOG.md`(DD 닫음 · D 질문 두 줄 정리 · livefish 새 줄)
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 스킬 `add-species`
-- [x] 아티팩트 4개 · main 빨리 감기 · 96차 배포(아래 갱신)
+- [x] 아티팩트 4개 — 남은 과업 설계 Version 32 · 구현 라이브러리 33 · 채비 모딩 순서도 31 · 위키 86(주소 `docs/artifacts/README.md`)
+- [x] main 빨리 감기 `7453cda` · main 확인 CI(verify) 초록
+- [x] 96차 배포 — Actions 「테스트 배포」 실행 25 · gh-pages `4d79deb` · 정적 2,121(소스맵 0) · 지도 0
+
+  gh-pages 브랜치를 로컬(`/Pixel-Angler-The-Real/`)로 띄워 확인: 기동 9.9초 · 텍스처 1,513 · 살오징어 그림 · 풍랑 통제 · 미끼 셋 실림 ·
+  dev 갯것 메뉴 없음(배포본) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0.
