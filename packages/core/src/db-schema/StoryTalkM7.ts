@@ -9,7 +9,7 @@
  *  - 석독구(12 · 등대지기 손자) — 들뜬 반말 · 「~래」 · 「근데」 · 조사단 대학생을 「형들」이라 부른다.
  *  - 정옥선(71 · 만복상회 · 병실 → 요양 · 휠체어) — 짧은 반말 · 「앉아」 · 속정은 말 대신 몸짓.
  *  - 탁새벽(12 · 탁만수의 손자) — 반말 · 으쓱 · 「어른들은 왜 …」.
- * 주인공은 어른에게 존댓말, 열두 살 둘에게는 반말(옛 답 · 진행 중 물음과 같은 결). 부를 때는 이름 + 씨(어린이에게는 부르지 않는다).
+ * 주인공은 늘 존댓말(해요체) — 열두 살 둘에게도(아이들은 반말). 부를 때는 이름 + 씨(꼭 필요할 때만 — 대개 부르지 않는다).
  * 표시: 새 표시는 없다 — 옛 받는 답 · 보상 답의 표시(choice.m7_…)는 묶인 답이 남긴다.
  */
 
@@ -273,22 +273,22 @@ export const TALKS_M7: StoryTalkDef[] = [
     nodes: {
       start: scene([
         line(K, '왔다! 들었어? 열일곱 번째 장이래.', "You're here! Did you hear? It's the seventeenth page.", { act: 'look_up' }),
-        line(P, '열일곱 번째 장?', 'The seventeenth page?'),
+        line(P, '열일곱 번째 장이요?', 'The seventeenth page?'),
         line(K, '조행록 말이야. 조사단 형들이 그랬어. 마지막 칸이 돌돔이래.', 'Of the fishing log. The survey guys said so. The last box is a striped beakfish.'),
-        line(P, '돌돔이라… 쉬운 고기는 아닌데.', "A striped beakfish... that's not an easy fish."),
+        line(P, '돌돔이라… 쉬운 고기는 아닌데요.', "A striped beakfish... that's not an easy fish."),
         line(K, '그래서 내가 있잖아. 나는 사진 찍을게. 계측하고 놔 주면 돼.', "That's why I'm here. I'll take the photo. You measure it and let it go."),
-        line(P, '그러면?', 'And then?'),
+        line(P, '그러면요?', 'And then?'),
         line(K, '그러면 끝이래. 열일곱 장이 다 차는 거래.', "Then it's done, they said. All seventeen pages full."),
         line(P, '(끝이라…)', '(Done...)'),
         line(K, '돌돔은 더울 때 와. 여름부터 가을까지. 갯바위 틈에 숨어 있어.', 'Beakfish come when it\'s warm. Summer through autumn. They hide in the cracks of the rocks.'),
       ], {
         choices: [
-          opt('photo', '좋아. 사진은 네가 맡아', "Good. You're on photos", {
-            say: ['좋아. 사진은 네가 맡아라. 계측은 내가 하지.', "Good. You're in charge of the photo. I'll do the measuring."], next: 'photo' }),
-          opt('ask_end', '끝이라고 누가 그래?', 'Who says it\'s the end?', {
-            say: ['끝이라고 누가 그래? 조행록이 끝나는 거야?', 'Who says it\'s the end? Does the log just end?'], next: 'ask_end' }),
-          opt('shake', '마지막 장이라니까 손이 떨린다', 'Last page — my hands are shaking', {
-            say: ['마지막 장이라니까 손이 떨린다.', 'Hearing it\'s the last page, my hands are shaking.'], next: 'shake' }),
+          opt('photo', '좋아요. 사진은 맡길게요', "Good. You're on photos", {
+            say: ['좋아요. 사진은 맡길게요. 계측은 제가 할게요.', "Good. You're in charge of the photo. I'll do the measuring."], next: 'photo' }),
+          opt('ask_end', '끝이라고 누가 그래요?', 'Who says it\'s the end?', {
+            say: ['끝이라고 누가 그래요? 조행록이 끝나는 거예요?', 'Who says it\'s the end? Does the log just end?'], next: 'ask_end' }),
+          opt('shake', '마지막 장이라니까 손이 떨려요', 'Last page — my hands are shaking', {
+            say: ['마지막 장이라니까 손이 떨려요.', 'Hearing it\'s the last page, my hands are shaking.'], next: 'shake' }),
         ],
         note: ['석독구가 조행록 열일곱 번째 장이 돌돔이라고 알려 줬다. 자기가 사진을 찍을 테니 계측하고 놓아주면, 그걸로 열일곱 장이 다 찬다고 했다.',
           'Dokgu told me the seventeenth page of the log is a striped beakfish. He would take the photo; if I measured it and let it go, all seventeen pages would be full.'],
@@ -299,10 +299,10 @@ export const TALKS_M7: StoryTalkDef[] = [
         line(K, '(카메라 끈을 손목에 두 번 감는다.)', '(He wraps the camera strap twice around his wrist.)'),
       ], {
         choices: [
-          opt('go', '알았다. 갯바위로 가자', 'Got it. To the rocks', {
+          opt('go', '알겠어요. 갯바위로 가요', 'Got it. To the rocks', {
             end: endTalk({ accept: true, offer: 'you_photo' }) }),
-          opt('ice', '사진 잘 나오면 아이스크림 사 줄게', "Good photo, and I'll buy you ice cream", {
-            say: ['사진 잘 나오면 아이스크림 사 줄게.', "If the photo turns out well, I'll buy you ice cream."], next: 'ice' }),
+          opt('ice', '사진 잘 나오면 아이스크림 사 줄게요', "Good photo, and I'll buy you ice cream", {
+            say: ['사진 잘 나오면 아이스크림 사 줄게요.', "If the photo turns out well, I'll buy you ice cream."], next: 'ice' }),
         ],
         note: ['사진은 석독구에게 맡기고 계측은 내가 하기로 했다. 돌돔은 두 번 안 올라오니 한 번에 잘 재야 한다고 했다.',
           "Dokgu would take the photo and I would measure. A beakfish won't come up twice, he said, so I had to get it right the first time."],
@@ -320,7 +320,7 @@ export const TALKS_M7: StoryTalkDef[] = [
         line(K, '조사단 형들이 그랬어. 열일곱 장 채우면 완성이래.', 'The survey guys said so. Fill seventeen pages and it\'s complete.'),
         line(K, '근데 완성이면 끝이야? 나는 잘 모르겠어. 공책은 다 쓰면 새 공책 사잖아.', "But is complete the same as the end? I don't know. When you fill a notebook you buy a new one."),
         line(K, '어떻게 생각해?', 'What do you think?', { act: 'peer' }),
-        line(P, '…글쎄.', '...I wonder.'),
+        line(P, '…글쎄요.', '...I wonder.'),
         line(K, '아니, 일단 돌돔부터 잡자.', 'No — let\'s catch the beakfish first.'),
       ], {
         end: endTalk({ accept: true, offer: 'ask_end' }),
@@ -331,7 +331,7 @@ export const TALKS_M7: StoryTalkDef[] = [
         line(K, '떨면 안 돼! 아니, 떨어도 돼. 사진은 내가 안 흔들리게 찍을게.', "You can't shake! No — it's fine to shake. I'll keep the photo from blurring."),
         line(K, '손 떨리는 건 마지막이라서 그런 거지? 그럼 마지막 아니라고 생각해. 그냥 돌돔 한 마리야.', "Your hands shake because it's the last one, right? Then pretend it isn't. It's just one beakfish."),
         line(K, '나는 그렇게 생각하면 안 떨려.', "That's what I do, and then I don't shake."),
-        line(P, '…그래. 돌돔 한 마리.', '...Right. Just one beakfish.'),
+        line(P, '…그래요. 돌돔 한 마리.', '...Right. Just one beakfish.'),
       ], {
         end: endTalk({ accept: true, offer: 'hands_shake' }),
         note: ['마지막 장이라 손이 떨린다고 했다. 석독구는 마지막이 아니라 그냥 돌돔 한 마리라고 생각하라고 했다. 그러면 안 떨린다고.',
@@ -346,24 +346,24 @@ export const TALKS_M7: StoryTalkDef[] = [
     nodes: {
       start: scene([
         line(K, '찍었어! 놨어! 열일곱 장!', 'Got the photo! Let it go! Seventeen pages!'),
-        line(P, '그래. 다 찼다.', "Yeah. It's full."),
+        line(P, '네. 다 찼어요.', "Yeah. It's full."),
         line(K, '…왜 울어?', "...Why are you crying?", { act: 'peer' }),
-        line(P, '안 울어.', "I'm not crying."),
+        line(P, '안 울어요.', "I'm not crying."),
         line(K, '아니야? 안 울어? …알았어.', "You're not? Not crying? ...Okay."),
         line(K, '사진 봐. 줄무늬 진짜 선명하게 나왔어.', 'Look at the photo. The stripes came out really sharp.'),
       ], {
         choices: [
-          opt('opened', '닫은 게 아니라 연 거다', "I didn't close it — I opened it", {
-            say: ['닫은 게 아니라 연 거다. 조행록은.', "I didn't close it. I opened it. The log, I mean."], next: 'opened' }),
-          opt('photo', '네가 찍은 사진이 마지막 장이다', 'Your photo is the last page', {
-            say: ['네가 찍은 사진이 마지막 장이다.', 'The photo you took is the last page.'],
+          opt('opened', '닫은 게 아니라 연 거예요', "I didn't close it — I opened it", {
+            say: ['닫은 게 아니라 연 거예요. 조행록은요.', "I didn't close it. I opened it. The log, I mean."], next: 'opened' }),
+          opt('photo', '찍어 준 사진이 마지막 장이에요', 'Your photo is the last page', {
+            say: ['찍어 준 사진이 마지막 장이에요.', 'The photo you took is the last page.'],
             end: endTalk({ complete: 'dokgu',
               lineKo: '진짜? 내 사진이? 그럼 이거 흔들리면 안 되는데. …안 흔들렸지? 나 이거 평생 자랑할 거야. 할아버지한테도, 조사단 형들한테도.',
               lineEn: "Really? My photo? Then it can't be blurry. ...It isn't, right? I'm going to brag about this my whole life. To Grandpa, and to the survey guys too." }),
             note: ['석독구가 찍은 사진이 마지막 장이라고 했다. 아이는 카메라를 꼭 쥐고, 평생 자랑하겠다고 했다. 자기 할아버지인 석대양 씨한테도.',
               'I told Dokgu his photo was the last page. He clutched the camera and said he would brag about it his whole life — to his grandfather Daeyang too.'] }),
-          opt('release', '놓아주는 손은 네가 제일 좋더라', 'You were best at letting it go', {
-            say: ['놓아주는 손은 네가 제일 좋더라.', 'You had the best hands for letting it go.'],
+          opt('release', '놓아주는 손은 석독구 씨가 제일 좋던데요', 'You were best at letting it go', {
+            say: ['놓아주는 손은 석독구 씨가 제일 좋던데요.', 'You had the best hands for letting it go.'],
             end: endTalk({ complete: 'good_release',
               lineKo: '…진짜? 돌돔이 꼬리로 물 튀기고 갔어. 내 얼굴에. 그건 사진 안 찍었는데, 안 찍어도 기억날 것 같아. 그건 그냥 내 거야.',
               lineEn: "...Really? The beakfish splashed me with its tail as it went. Right in the face. I didn't get a photo of that, but I think I'll remember it anyway. That one's just mine." }),
@@ -376,7 +376,7 @@ export const TALKS_M7: StoryTalkDef[] = [
       opened: scene([
         line(K, '…어른들은 이상한 말을 해. 그래도 멋있어.', '...Grown-ups say weird things. It sounds cool, though.'),
         line(K, '그럼… 마지막 장에 내 이름 적어도 돼?', 'Then... can I write my name on the last page?'),
-        line(P, '그래. 적어.', 'Sure. Write it.'),
+        line(P, '그럼요. 적어요.', 'Sure. Write it.'),
       ], {
         end: endTalk({ complete: 'opened', lineKo: '진짜? 크게 쓸 거야. 아니, 작게. 아니, 그냥 잘 쓸게.', lineEn: "Really? I'll write it big. No, small. No — I'll just write it nicely." }),
         note: ['조행록은 닫은 게 아니라 연 거라고 했다. 석독구는 어른들은 이상한 말을 한다면서도, 마지막 장에 자기 이름을 적어도 되느냐고 물었다. 된다고 했다.',
@@ -765,22 +765,22 @@ export const TALKS_M7: StoryTalkDef[] = [
     nodes: {
       start: scene([
         line(S, '왔어? 이거 봐. 대야.', "You're here? Look at this. It's the rod.", { act: 'look_up' }),
-        line(P, '이건… 아버지 대?', "This is... my father's rod?"),
+        line(P, '이건… 아버지 대예요?', "This is... my father's rod?"),
         line(S, '응. 부러진 마디에 새 대나무 이었어.', 'Yeah. I joined new bamboo onto the broken section.'),
         line(S, '할아버지가 손 놓고 내가 마무리했어.', 'Grandpa let go of it, and I finished it.'),
-        line(P, '마지막 마디는 네가 깎은 거야?', 'You carved the last section yourself?'),
+        line(P, '마지막 마디는 직접 깎은 거예요?', 'You carved the last section yourself?'),
         line(S, '응. 이걸로 던져. 독도에서.', 'Yeah. Cast with it. At Dokdo.'),
-        line(P, '독도 어디서?', 'Where at Dokdo?'),
+        line(P, '독도 어디서요?', 'Where at Dokdo?'),
         line(S, '조사선 다니던 데 있잖아. 거기 이제 아무나 던져도 된대. 영영.', 'You know where the survey boat used to go? Anyone can cast there now. For good.'),
         line(S, '거기서 한 번. 마지막으로.', 'Cast there once. The last one.'),
       ], {
         choices: [
-          opt('take', '받을게. 독도에서 꼭 던지마', "I'll take it. I'll cast it at Dokdo", {
-            say: ['받을게. 네가 이은 마디, 독도에서 꼭 던지마.', "I'll take it. The section you joined — I'll cast it at Dokdo, I promise."], next: 'take' }),
-          opt('grandpa', '탁만수 씨가 손을 놓으셨다고?', 'Mansu let go of it?', {
-            say: ['탁만수 씨가 손을 놓으셨다고? 무슨 일 있으셨어?', 'Mansu let go of it? Did something happen to him?'], next: 'grandpa' }),
-          opt('retire', '마지막이라니, 나 은퇴시키려고?', 'The last one? Trying to retire me?', {
-            say: ['마지막이라니, 너 나 은퇴시키려는 거냐?', 'The last one? Are you trying to retire me?'], next: 'retire' }),
+          opt('take', '받을게요. 독도에서 꼭 던질게요', "I'll take it. I'll cast it at Dokdo", {
+            say: ['받을게요. 이어 준 마디, 독도에서 꼭 던질게요.', "I'll take it. The section you joined — I'll cast it at Dokdo, I promise."], next: 'take' }),
+          opt('grandpa', '탁만수 씨가 손을 놓으셨다고요?', 'Mansu let go of it?', {
+            say: ['탁만수 씨가 손을 놓으셨다고요? 무슨 일 있으셨어요?', 'Mansu let go of it? Did something happen to him?'], next: 'grandpa' }),
+          opt('retire', '마지막이라니, 저 은퇴시키려고요?', 'The last one? Trying to retire me?', {
+            say: ['마지막이라니, 저 은퇴시키려는 거예요?', 'The last one? Are you trying to retire me?'], next: 'retire' }),
         ],
         note: ['탁새벽이 아버지의 릴대를 내밀었다. 부러진 마디에 새 대나무를 잇고, 마지막 마디는 자기가 깎았다고 했다. 이제 누구나 던질 수 있게 된 독도 조사선 해역에서, 이 대로 마지막으로 던지라고 했다.',
           "Saebyeok held out my father's reel rod. He had joined new bamboo onto the broken section and carved the last part himself. Cast it once more, he said — the last one — in the Dokdo survey waters, now open to everyone."],
@@ -791,10 +791,10 @@ export const TALKS_M7: StoryTalkDef[] = [
         line(S, '이음새는 안 부러져. 내가 백 번은 휘어 봤어. 반은 할아버지 거고 반은 내 거야.', "The joint won't break. I've bent it a hundred times. Half of it's Grandpa's, half of it's mine."),
       ], {
         choices: [
-          opt('ok', '알았어. 세게 던질게', "Got it. I'll cast hard", {
+          opt('ok', '알겠어요. 세게 던질게요', "Got it. I'll cast hard", {
             end: endTalk({ accept: true, offer: 'take_rod' }) }),
-          opt('breaks', '아버지 대를… 부러지면 어떡하지', "My father's rod... what if it breaks?", {
-            say: ['아버지 대를 독도에서 던진다니… 부러지면 어떡하지.', "Casting my father's rod at Dokdo... what if it breaks?"], next: 'breaks' }),
+          opt('breaks', '아버지 대를… 부러지면 어떡하죠', "My father's rod... what if it breaks?", {
+            say: ['아버지 대를 독도에서 던진다니… 부러지면 어떡하죠.', "Casting my father's rod at Dokdo... what if it breaks?"], next: 'breaks' }),
         ],
         note: ['대를 두 손으로 받았다. 던질 때 마디 쪽은 보지 말라고, 이음새는 백 번은 휘어 봤으니 안 부러진다고 했다. 반은 탁만수 씨 것이고 반은 자기 것이라고.',
           "I took the rod in both hands. Don't look at the joint when you cast, he said; he'd bent it a hundred times and it wouldn't break. Half of it was his grandfather's, half his."],
@@ -812,7 +812,7 @@ export const TALKS_M7: StoryTalkDef[] = [
       grandpa: scene([
         line(S, '그런 거 아니야. 할아버지가 그랬어. 이건 네가 끝내야 하는 대라고.', "It's nothing like that. Grandpa said this is a rod I have to finish."),
         line(S, '마지막 마디 앞에서 칼을 나한테 줬어. 그러고는 뒤에 앉아서 보기만 했어.', 'At the last section he gave me the knife. Then he just sat behind me and watched.'),
-        line(P, '그랬구나.', 'I see.'),
+        line(P, '그랬군요.', 'I see.'),
         line(S, '손을 놓은 게 아니라 나한테 넘긴 거야. 할아버지는 그렇게 말 안 했지만.', "He didn't let go. He handed it to me. Not that Grandpa said so."),
       ], {
         end: endTalk({ accept: true, offer: 'ask_grandpa' }),
@@ -837,19 +837,19 @@ export const TALKS_M7: StoryTalkDef[] = [
     nodes: {
       start: scene([
         line(S, '…올라왔어.', '...It came up.'),
-        line(P, '올라왔다.', 'It did.'),
+        line(P, '올라왔어요.', 'It did.'),
         line(S, '그 대로. 내가 이은 마디로.', 'With that rod. With the section I joined.'),
         line(S, '안 부러졌지? 봐, 이음새 그대로야.', "It didn't break, right? Look, the joint's just the same.", { act: 'peer' }),
-        line(P, '끝까지 버텼어.', 'It held all the way.'),
+        line(P, '끝까지 버텼어요.', 'It held all the way.'),
         line(S, '근데… 이거 내 대야, {player} 씨 대야?', "But... is this my rod, or yours, {player}?"),
       ], {
         choices: [
-          opt('yours', '네 대다. 네가 이었으니까', "It's yours. You joined it", {
-            say: ['네 대다. 네가 이었으니까.', "It's your rod. You're the one who joined it."], next: 'yours' }),
-          opt('ours', '우리 대다', "It's ours", {
-            say: ['우리 대다. 아버지가 시작하고, 탁만수 씨가 봐 주고, 네가 이었으니.', "It's ours. My father started it, Mansu looked after it, and you joined it."], next: 'ours' }),
-          opt('no_species', '종은 안 적을게', "I won't write down the species", {
-            say: ['종은 안 적을게. 이건 조사가 아니라 낚시니까.', "I won't write down the species. This was fishing, not a survey."],
+          opt('yours', '탁새벽 씨 대예요. 직접 이었으니까요', "It's yours. You joined it", {
+            say: ['탁새벽 씨 대예요. 직접 이었으니까요.', "It's your rod. You're the one who joined it."], next: 'yours' }),
+          opt('ours', '우리 대예요', "It's ours", {
+            say: ['우리 대예요. 아버지가 시작하고, 탁만수 씨가 봐 주고, 탁새벽 씨가 이었으니까요.', "It's ours. My father started it, Mansu looked after it, and you joined it."], next: 'ours' }),
+          opt('no_species', '종은 안 적을게요', "I won't write down the species", {
+            say: ['종은 안 적을게요. 이건 조사가 아니라 낚시니까요.', "I won't write down the species. This was fishing, not a survey."],
             end: endTalk({ complete: 'no_species',
               lineKo: '…응. 적지 마. 적으면 숫자가 돼. 나도 대 깎을 때 몇 번째인지 안 세. 오늘 올라온 건 그냥 오늘 거야.',
               lineEn: "...Yeah. Don't. If you write it, it turns into a number. I don't count which rod I'm on when I carve, either. What came up today is just today's." }),
@@ -864,7 +864,7 @@ export const TALKS_M7: StoryTalkDef[] = [
         line(S, '내 대는 따로 있어. 내가 처음부터 깎은 거.', 'My rod is a different one. One I carved from the very start.'),
       ], {
         end: endTalk({ complete: 'yours', lineKo: '그게 내 대야.', lineEn: "That one's my rod." }),
-        note: ['네가 이었으니 네 대라고 했다. 탁새벽은 고개를 저으며, 이건 아버지 대고 자기 대는 처음부터 자기가 깎은 거라고 했다.',
+        note: ['직접 이었으니 탁새벽의 대라고 했다. 탁새벽은 고개를 저으며, 이건 아버지 대고 자기 대는 처음부터 자기가 깎은 거라고 했다.',
           "I said it was his rod because he joined it. Saebyeok shook his head: this was my father's rod, and his own was the one he carved from the start."],
       }),
       ours: scene([

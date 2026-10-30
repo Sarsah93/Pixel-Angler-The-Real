@@ -10,10 +10,14 @@ import {
 import { STORY_TALKS } from '../db-schema/StoryTalks.js';
 import { STORY_ENDINGS } from '../db-schema/StoryEndings.js';
 import { STORY_ARCS } from '../db-schema/StoryArcs.js';
+import type { TalkNodeDef } from '../types/Story.js';
 
 const ctx = (flags: string[] = [], aff: Record<string, number> = {}): TalkCtx => ({
   hasFlag: (k) => flags.includes(k), affinity: (n) => aff[n] ?? 0,
 });
+
+/** 290차 — 대본 장면이면 박자 대사를 이어 붙인 글(옛 꼴이면 lineKo) */
+const nodeText = (n: TalkNodeDef): string => [n.lineKo, ...(n.beats ?? []).map((b) => (b.kind === 'line' ? b.ko : ''))].join('\n');
 
 describe('254차 — 이어지는 대화', () => {
   it('무결성 검사가 깨끗하다', () => {
@@ -46,10 +50,10 @@ describe('254차 — 이어지는 대화', () => {
     const notBad = start.choices.find((c) => c.id === 'not_bad')!;
     expect(notBad.affinity?.mun_pilgu).toBeLessThan(0);
     const side = talkNode(t, notBad.next!)!;
-    expect(side.lineKo).toContain('누구 편을 드는 거냐');
+    expect(nodeText(side)).toContain('누구 편을 드는 거냐');
     const same = side.choices.find((c) => c.labelKo === '둘 다 같은 사람인 것 같습니다.')!;
     const noHelp = talkNode(t, same.next!)!;
-    expect(noHelp.lineKo).toContain('도울 생각이 없는 거지');
+    expect(nodeText(noHelp)).toContain('도울 생각이 없는 거지');
     const labels = noHelp.choices.map((c) => c.labelKo);
     expect(labels).toContain('그건 아닙니다만…');
     const tell = noHelp.choices.find((c) => c.id === 'ask_him')!;
@@ -68,7 +72,7 @@ describe('254차 — 이어지는 대화', () => {
     for (const id of ['tell_truth', 'provoke']) {
       const c = start.choices.find((x) => x.id === id)!;
       expect(c.affinity?.cha_yeongbae).toBeLessThan(0);
-      expect(talkNode(t, c.next!)!.lineKo).toContain('너도 매한가지로구나');
+      expect(nodeText(talkNode(t, c.next!)!)).toContain('너도 매한가지로구나');
     }
   });
 

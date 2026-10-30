@@ -2,7 +2,7 @@
  * @file StoryProgressAsk6.ts
  * @description 287차 — 진행 중 물음(목표마다 물음 · 내 답 · 조언) — 도현수 · 서하린 · 송기백 · 고해나 · 모태조 편.
  *
- * 도현수에게 하는 내 답은 그동안의 말투(반말 · 「-다」 맺음)를 따른다 — 같은 또래 맞수라 존댓말이 오히려 어색하다.
+ * 도현수에게 하는 내 답은 해요체다(290 — 주인공은 늘 존댓말 · 「도현수 씨」 · 옛 「-다」 맺음을 옮겼다).
  * N13-3은 송기백의 일을 마감기가 대신 말한 편이지만, 진행 중 물음은 의뢰인 송기백의 말이다(부탁하지 않는 노인).
  */
 import { pa } from './StoryProgressAskKit.js';
@@ -12,84 +12,84 @@ export const PROGRESS_ASKS_6: Record<string, ProgressAskDef[]> = {
   // ── 도현수 ──
   'M1-04': [
     pa(['사이소에서 대는 샀어?', 'Did you get a rod at Saiso?'],
-      ['…아직 못 샀다. 이제 가 보려던 참이다.', '...Not yet. I was just about to go.'],
+      ['…아직 못 샀어요. 이제 가 보려던 참이에요.', '...Not yet. I was just about to go.'],
       ['만 원 남짓한 릴대면 충분해. 구멍치기는 부러져도 안 아까운 대로 하는 거야.', "A reel rod for about ten thousand won is plenty. Hole fishing is for a rod you won't miss if it snaps."]),   // 0 — 사이소 저가 릴대
     pa(['틈에서 한 마리라도 올렸어?', 'Pulled even one out of the gaps?'],
-      ['…아직 빈손이다.', '...Still empty-handed.'],
+      ['…아직 빈손이에요.', '...Still empty-handed.'],
       ['멀리 던질 필요 없어. 틈 바로 아래로 내리고, 물면 버티지 말고 바로 들어. 구멍으로 파고들면 끝이야.', "No need to cast far. Drop it straight down the gap, and when it bites, lift right away. Once it digs into the hole, it's over."]),   // 1 — 테트라포드 틈 한 마리
   ],
   'M1-05': [
     pa(['아버지 대로 두 마리, 채웠어?', "Two on your father's rod yet?"],
-      ['…아직 거기까지는 못 갔다.', "...I'm not there yet."],
+      ['…아직 거기까지는 못 갔어요.', "...I'm not there yet."],
       ['초릿대가 크게 휘는 걸 보고 세 번째에 채. 한 마리는 운이어도, 두 마리는 실력이야.', 'Watch for the tip to bend hard, and strike on the third. One fish can be luck. Two is skill.']),   // 0 — 아버지 릴대로 두 마리
   ],
   'M2-03': [
     pa(['감성돔 40 넘는 거, 올렸어?', 'Landed a seabream over forty yet?'],
-      ['…아직이다. 그 크기는 쉽게 안 나온다.', "...Not yet. They don't come that size easily."],
+      ['…아직이에요. 그 크기는 쉽게 안 나오네요.', "...Not yet. They don't come that size easily."],
       ['겨울 감성돔은 바닥에 붙어서 잘 안 움직여. 찌 수심 더 주고, 밑걸림 나면 당기지 말고 줄을 풀어 줘.', "Winter seabream hug the bottom and barely move. Give the float more depth, and when you snag, don't yank. Give it line."]),   // 0 — 겨울 감천 감성돔 40cm
   ],
   'M4-10': [
     pa(['긴 뱃길에 쓸 보급, 다 만들어 놨어?', 'Got the stores made for the long run?'],
-      ['…아직 다 못 만들었다.', '...Not all of them yet.'],
+      ['…아직 다 못 만들었어요.', '...Not all of them yet.'],
       ['제주 가는 길엔 중간에 들를 데가 마땅치 않아. 넉넉하게 만들어 둬. 남는 건 아까운 게 아니라 보험이야.', "There's nowhere decent to stop on the way to Jeju. Make plenty. What's left over isn't waste, it's insurance."]),   // 0 — 장거리 보급 세 점
     pa(['연료 계산은 끝났어. 기상은 봤어?', "The fuel's worked out. Have you read the weather?"],
-      ['…하늘은 조금 더 보고 말하겠다.', "...I'll watch the sky a bit longer, then tell you."],
+      ['…하늘은 조금 더 보고 말할게요.', "...I'll watch the sky a bit longer, then tell you."],
       ['그래. 둘 다 숫자만 보면 하늘은 아무도 안 봐. 바람이랑 너울, 둘 다 보고 와.', 'Fine. If we both stare at numbers, nobody watches the sky. Check the wind and the swell, both of them.']),   // 1 — 출항 준비(이 자리 대화)
   ],
   'N18-1': [
     pa(['내 옆자리에서 한 마리, 걸었어?', 'Hooked one from the spot next to me?'],
-      ['…아직. 옆자리가 생각보다 어렵다.', "...Not yet. The spot next to you is harder than it looks."],
+      ['…아직요. 옆자리가 생각보다 어렵네요.', "...Not yet. The spot next to you is harder than it looks."],
       ['다른 자리에서 낚은 건 안 쳐. 여기 내 옆에서 던져. 어깨 힘 빼고, 손목으로.', "Fish from other spots don't count. Cast from right here beside me. Loosen your shoulder. Use the wrist."]),   // 0 — 도현수 옆자리 한 마리
     pa(['누가 어떻게 걸었는지, 지금 맞춰 볼래?', 'Want to go over who hooked what, and how, right now?'],
-      ['…그건 조금 있다가 하겠다.', "...I'll do that a bit later."],
+      ['…그건 조금 있다가 할게요.', "...I'll do that a bit later."],
       ['그래. 크기도 순서도 안 쳐. 던지는 거랑 거는 거, 그것만 본다.', "Fine. Size and order don't count. I'm only looking at the cast and the hook-set."]),   // 1 — 결과 확인(이 자리 대화)
   ],
   'N18-2': [
     pa(['네 물건 두 건, 위판에 올렸어?', 'Put two of your lots up at the auction?'],
-      ['…아직 다 올리지 못했다.', '...Not both yet.'],
+      ['…아직 다 올리지 못했어요.', '...Not both yet.'],
       ['네 물건 값 매겨지는 걸 뒷줄에서 봐. 앞줄에 서면 숫자만 보이고 숨부터 막혀.', 'Watch your own catch get priced from the back row. Stand at the front and all you see are numbers, and you stop breathing.']),   // 0 — 위판 2건
     pa(['낙찰가 읽을 준비는 됐어?', 'Ready to read the hammer prices?'],
-      ['…아직 낙찰 목록도 제대로 못 봤다.', "...I haven't even had a proper look at the results yet."],
+      ['…아직 낙찰 목록도 제대로 못 봤어요.', "...I haven't even had a proper look at the results yet."],
       ['숫자만 보지 말고 손을 봐. 누가 먼저 드는지, 몇 번 망설이는지 보면 값이 어디서 멈출지 보여.', 'Don\'t just watch the numbers, watch the hands. Who raises first, how often they hesitate. Then you can see where the price will stop.']),   // 1 — 낙찰가 함께 읽기(방식 고르기)
   ],
   'N18-3': [
     pa(['노인들이 말한 그 고기, 만나 봤어?', 'Met the fish the old folks talked about?'],
-      ['…그 고기는 아직 못 만났다.', "...Haven't come across it yet."],
+      ['…그 고기는 아직 못 만났어요.', "...Haven't come across it yet."],
       ['걸리면 바로 놔줘. 듣기만 하고 잡아 가면 거짓말이야. 놓아주는 데까지가 채록이야.', 'If you hook one, let it go right away. Listening and then keeping it would be a lie. Letting it go is part of the record.']),   // 0 — 그 종을 만나 놓아주기
     pa(['노인들 얘기, 받아 적을 준비는 됐어?', "Ready to write down what the old folks say?"],
-      ['…아직 준비가 덜 됐다.', "...I'm not quite ready yet."],
+      ['…아직 준비가 덜 됐어요.', "...I'm not quite ready yet."],
       ['노인들 앞에선 말 끊지 말고 고개만 끄덕여. 둘이 다르게 들은 데가 제일 중요한 데야.', "In front of the old folks, don't cut in. Just nod. The places where we heard it differently are what matter most."]),   // 1 — 구술 채록 1건(방식 고르기)
   ],
   'N18-4': [
     pa(['배값 보탤 위판, 네 건 다 올렸어?', 'Put up all four lots toward the boat?'],
-      ['…아직 다 채우지 못했다.', '...Not all four yet.'],
+      ['…아직 다 채우지 못했어요.', '...Not all four yet.'],
       ['배값은 한 번에 안 모여. 물건 들어오는 대로 꾸준히 올려. 숫자는 내가 맞춰 볼게.', "Boat money doesn't come in one go. Keep putting lots up as the catch comes in. I'll do the sums."]),   // 0 — 위판 4건
     pa(['선체 검수는 다 했어?', 'Done with the hull inspection?'],
-      ['…아직 선체를 제대로 못 봤다.', "...I haven't had a proper look at the hull yet."],
+      ['…아직 선체를 제대로 못 봤어요.', "...I haven't had a proper look at the hull yet."],
       ['칠을 새로 바른 데부터 의심해. 두드려서 소리가 낮은 데가 있으면 거기야. 기관실 안도 들여다보고.', 'Suspect the fresh paint first. Tap it, and if one spot sounds lower, that\'s the place. Look inside the engine room too.']),   // 1 — 선체 검수(방식 고르기)
   ],
   'N18-5': [
     pa(['조간대 표본 세 점, 다 모았어?', 'Got all three tideline samples?'],
-      ['…아직 다 못 모았다.', '...Not all of them yet.'],
+      ['…아직 다 못 모았어요.', '...Not all of them yet.'],
       ['물 빠질 때 갯바위로 가. 거기 뭐가 사는지 손에 쥐여 줘야 다들 고개를 들어.', "Go out on the rocks when the tide's out. You have to put what lives there in their hands before anyone looks up."]),   // 0 — 조간대 표본 3점
     pa(['자료는 어떻게 나눠서 정리할지 정했어?', 'Decided how we split up the papers?'],
-      ['…그건 아직 못 정했다.', "...I haven't decided that yet."],
+      ['…그건 아직 못 정했어요.', "...I haven't decided that yet."],
       ['찬성은 네가, 반대는 내가 맡자. 어느 쪽이든 상대 말을 끝까지 읽고 나서 손 드는 거야.', 'You take the case for, I\'ll take against. Whichever side, you read the other one to the end before you raise your hand.']),   // 1 — 찬반 자료 정리(방식 고르기)
   ],
   'N18-6': [
     pa(['원산지 적어서 세 건, 올렸어?', 'Put up three lots with the origin written on?'],
-      ['…아직이다. 올릴 물건부터 마련하는 중이다.', "...Not yet. I'm still getting together what to put up."],
+      ['…아직이에요. 올릴 물건부터 마련하는 중이에요.', "...Not yet. I'm still getting together what to put up."],
       ['네가 직접 마련한 걸로만 올려. 남을 잡으려면 내 것부터 깨끗해야지.', "Only put up what you got yourself. If you're going to catch others out, your own has to be clean first."]),   // 0 — 원산지 위판 3건
     pa(['위반 한 건, 증거는 잡았어?', 'Got evidence on that violation?'],
-      ['…아직 증거를 못 찾았다.', "...I haven't found the evidence yet."],
+      ['…아직 증거를 못 찾았어요.', "...I haven't found the evidence yet."],
       ['라벨은 위에서부터 읽지 마. 원산지 칸부터 봐. 그 칸만 종이 결이 다르면 덧붙인 거야.', "Don't read a label from the top. Look at the origin box first. If only that box has a different paper grain, it's been stuck over."]),   // 1 — 표기 위반 확인(방식 고르기)
   ],
   'N18-7': [
     pa(['재개관식 비품 세 개, 다 만들었어?', 'Made all three fittings for the reopening?'],
-      ['…만드는 중이다. 조금만 더 걸린다.', "...Working on them. It'll take a little longer."],
+      ['…만드는 중이에요. 조금만 더 걸려요.', "...Working on them. It'll take a little longer."],
       ['비품은 네 몫이야. 할 수 있는 만큼 만들어 와. 모자라면 내가 남아서 채울게.', "The fittings are yours. Make what you can. If we're short, I'll stay behind and make up the rest."]),   // 0 — 비품 3점
     pa(['재개관식 준비는 다 끝냈어?', 'All done setting up for the reopening?'],
-      ['…아직 다 끝내지 못했다.', '...Not finished yet.'],
+      ['…아직 다 끝내지 못했어요.', '...Not finished yet.'],
       ['문에 붙은 준비 목록부터 봐. 그다음에 하나씩 놔. 의자는 세지 마, 세면 더 무거워.', "Start with the checklist taped to the door. Then set things out one by one. Don't count the chairs. Counting makes them heavier."]),   // 1 — 재개관식 준비(방식 고르기)
   ],
 

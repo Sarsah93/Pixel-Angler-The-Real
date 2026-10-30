@@ -5,7 +5,7 @@
  * 말투:
  *  - 하늬 — 해요체 · 짧고 다정하다(「거친 게 정상이에요」). 주인공도 해요체.
  *  - 남궁현 — 짧은 반말(「~나?」 · 「규정대로」). 주인공은 합니다체.
- *  - 석독구 — 열두 살 반말 · 으스댄다. 주인공은 다른 자리처럼 해라체(「알았다」 · 「올렸다」)로 받는다.
+ *  - 석독구 — 열두 살 반말 · 으스댄다. 주인공은 해요체로 받는다(290 — 주인공은 늘 존댓말 · 할아버지는 「석대양 씨」).
  *  - 오세라 — 해요체 · 말수가 적다. 주인공은 합니다체.
  */
 import { pa } from './StoryProgressAskKit.js';
@@ -183,35 +183,35 @@ export const PROGRESS_ASKS_2: Record<string, ProgressAskDef[]> = {
   // ── 석독구 ──
   'M7-03': [
     pa(['사진 찍을 준비 다 됐어. 돌돔은 아직이야?', "I'm all set for the photo. Still no beakperch?"],
-      ['…아직 못 올렸다. 돌돔은 역시 쉽지 않다.', "...Not yet. Beakperch really don't come easy."],
+      ['…아직 못 올렸어요. 돌돔은 역시 쉽지 않네요.', "...Not yet. Beakperch really don't come easy."],
       ['돌돔은 여름이랑 가을에 독도 갯바위 밑에 있어. 이빨이 세서 미끼를 다 갉아 먹으니까 빨리 챔질해야 해.',
         "In summer and autumn they're under the rocks at Dokdo. Their teeth are strong and they strip your bait, so strike fast."]),   // 0 — 독도 돌돔 계측 · 방류
   ],
   'N16-1': [
     pa(['나는 벌써 셋 다 채웠는데, 아직이야?', "I've already got my three. You're still going?"],
-      ['…아직이다. 미끼부터 다시 찾아봐야겠다.', "...Still going. I'd better find bait again first."],
+      ['…아직이에요. 미끼부터 다시 찾아봐야겠어요.', "...Still going. I'd better find bait again first."],
       ['사 온 미끼 쓰면 반칙이야. 힌트는 하나만 줄게. 갯바위에 다 있어. 더 알려 주면 내가 지잖아.',
         "Shop bait is cheating. One hint, that's all: it's all on the rocks. Any more and I'd lose."]),   // 0 — 청볼락 3마리
   ],
   'N16-2': [
     pa(['등대 밑에서 한 마리 해 봤어?', 'Caught one below the lighthouse yet?'],
-      ['…아직 등대 밑에선 못 던져 봤다.', "...I haven't cast down there yet."],
+      ['…아직 등대 밑에선 못 던져 봤어요.', "...I haven't cast down there yet."],
       ['등대 밑은 물이 돌아. 채비가 무거우면 바닥에 박히니까 가볍게 해.',
         'The water swirls under the lighthouse. A heavy rig digs into the bottom, so go light.']),   // 0 — 등대 밑에서 1마리
     pa(['편지, 할아버지한테 갖다 줬어?', 'Did you give Grandpa the letter?'],
-      ['…아직 너희 할아버지는 못 뵈었다.', "...I haven't seen your grandfather yet."],
+      ['…아직 석대양 씨는 못 뵈었어요.', "...I haven't seen your grandfather yet."],
       ['등대까지 걸어서 가야 돼. 배 없어. 오르막이 기니까 물 챙기고, 접은 데는 펴지 마.',
         "You have to walk up to the lighthouse — there's no boat. The climb's long, so take water. And don't unfold it."]),   // 1 — 편지를 전한다(석대양)
   ],
   'N16-3': [
     pa(['내 자 들고 기다리는데, 돌돔 언제 올라와?', "I'm standing here with my rule. When's the beakperch coming up?"],
-      ['…아직 입질이 없다.', '...No bites yet.'],
+      ['…아직 입질이 없어요.', '...No bites yet.'],
       ['자 대기 전에 손부터 적셔. 마른 손으로 만지면 돌돔이 아파. 재고 나면 바로 놔.',
         "Wet your hands before the rule goes on — dry hands hurt the fish. Once it's measured, let it go straight away."]),   // 0 — 돌돔 계측 후 방류
   ],
   'N16-4': [
     pa(['내 제자랑 같이 재고 놓는 거, 아직이야?', 'Measuring and releasing with my apprentice — not done yet?'],
-      ['…아직이다. 수업이 꽤 길다.', "...Not yet. The lesson's running long."],
+      ['…아직이에요. 수업이 꽤 길어요.', "...Not yet. The lesson's running long."],
       ['길어도 돼. 고기보다 미끄러운 데가 먼저야. 젖은 데는 안 딛고, 물 들어오면 먼저 나오는 거야. 옆에서 보기만 해.',
         "Long's fine. Slippery spots come before fish. Don't step on the wet bits, and get out first when the water comes in. You just watch."]),   // 0 — 독구와 2마리 계측 · 방류
   ],

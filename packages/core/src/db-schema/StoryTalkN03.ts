@@ -472,4 +472,360 @@ export const TALKS_N03: StoryTalkDef[] = [
       }),
     },
   },
+
+  // ═══════════════════════════════════════════
+  // 290차 — N03-2 「조합장님」 받는 자리(강두철 · 부산 교육장). 들켰다 — 「계속 가르쳐 줄 건가」(대답은 전갱이 뒤에)
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_2_offer', questId: 'N03-2', at: 'offer', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line('', '(부산 품질관리 교육장. 강사가 맨 앞줄 노인을 「조합장님」이라고 부른다. 방파제의 그 노인이다.)', '(The quality-control course in Busan. The instructor addresses the old man in the front row as Chairman. It is the old man from the breakwater.)'),
+        line(P, '(…조합장? 방파제에서 채비 못 묶던 그분이?)', "(...Chairman? The man who couldn't tie a rig on the breakwater?)"),
+        line('', '(교육이 끝나자 노인이 먼저 다가온다.)', '(When the session ends, the old man comes over first.)'),
+        line(K, '…들켰네.', "...Found out, then."),
+        line(P, '강두철 씨…', 'Ducheol...'),
+        line(K, '조합장이야. 미안하네.', "I'm the chairman. I'm sorry."),
+        line(P, '…', '...'),
+        line(K, '그래도 자네가 앉아 준 방파제는 진짜였어.', 'Still, that breakwater where you sat with me was real.'),
+        line(K, '계속 가르쳐 줄 건가.', 'Will you keep teaching me?'),
+      ], {
+        choices: [
+          opt('answer_fishing', '대답은 낚시하면서 드릴게요', "I'll give you my answer while we fish", {
+            say: ['대답은 낚시하면서 드릴게요. 전갱이부터 잡으시죠.', "I'll answer while we fish. Let's catch some horse mackerel first."], next: 'fishing' }),
+          opt('ask_coop', '수협 조합장 말씀이세요?', 'You mean chairman of the fisheries co-op?', {
+            say: ['조합장이시면… 수협 조합장 말씀이세요?', 'Chairman... you mean of the fisheries co-op?'], next: 'coop' }),
+          opt('why_pretend', '왜 초보인 척하셨어요?', 'Why did you pretend to be a beginner?', {
+            say: ['왜 초보인 척하셨어요? 저를 시험하신 겁니까?', 'Why did you pretend to be a beginner? Were you testing me?'], next: 'pretend' }),
+          opt('hurt', '솔직히 좀 서운합니다', "Honestly, I'm a little hurt", {
+            say: ['솔직히 좀 서운합니다. 저만 모르고 있었네요.', "Honestly, I'm a little hurt. I was the only one who didn't know."], next: 'hurt' }),
+        ],
+        note: ['부산 교육장 맨 앞줄에 방파제의 그 노인이 앉아 있었다. 강사가 그를 조합장님이라고 불렀다. 강두철 씨는 먼저 다가와 들켰다며 미안하다고, 그래도 내가 앉아 준 방파제는 진짜였다고 했다. 계속 가르쳐 줄 거냐고 물었다.',
+          "In the front row of the Busan course sat the old man from the breakwater, and the instructor called him Chairman. Kang Ducheol came over first: found out, he said, and sorry — but the breakwater where I sat with him was real. Would I keep teaching him?"],
+      }),
+      fishing: scene([
+        act(K, 'laugh'),
+        line(K, '허허, 그게 좋겠네. 교육장 앞바다에 전갱이가 붙는다더군.', 'Ha, that would be best. They say horse mackerel come in off the course.'),
+        line(K, '…아니, 붙어. 이제 아는 척해도 되겠지.', "...No — they do. I suppose I can stop pretending not to know."),
+        line(P, '두 마리쯤 올리면 대답이 나오겠죠.', "Two or so, and I'll have an answer."),
+        line(K, '천천히 생각하게. 대답 재촉하는 조합장은 표결도 재촉하는 법이야.', "Take your time. A chairman who rushes answers rushes votes too."),
+      ], {
+        end: endTalk({ accept: true, offer: 'answer_fishing', lineKo: '나는 그런 사람은 되기 싫어.', lineEn: "I don't want to be that kind of man." }),
+        note: ['대답은 낚시하면서 하겠다고 했다. 강두철 씨는 교육장 앞바다에 전갱이가 붙는다더니, 이제 아는 척해도 되겠다며 멋쩍게 웃었다. 천천히 생각하라고.', "I said I'd answer while we fished. Kang Ducheol said the horse mackerel come in off the course — then, sheepishly, that he could stop pretending not to know. Take your time, he said."],
+      }),
+      coop: scene([
+        line(K, '그래. 이 바닷가 어촌계들이 모인 수협의 조합장이야. 위판장도 수협이 열지.', 'Yes. Chairman of the fisheries co-op that the village co-ops along this coast belong to. The auction floor is run by the co-op too.'),
+        line('', '(명함을 꺼냈다가 도로 넣는다.)', '(He takes out a business card, then puts it back.)'),
+        line(P, '그런 분이 방파제에서…', 'And someone like that, on the breakwater...'),
+        line(K, '매듭 못 묶는 척을 했으니 할 말이 없네. 그래도 그날 자네가 풀어 준 십 분은 진짜였어. 그건 믿어 주게.', "Pretended he couldn't tie a knot. I've nothing to say for myself. But the ten minutes you spent untangling it that day were real. Believe that much."),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_coop', lineKo: '대답은 전갱이 낚으면서 천천히 하고.', lineEn: 'Give me your answer slowly, while you catch the horse mackerel.' }),
+        note: ['수협 조합장이냐고 물었다. 이 바닷가 어촌계들이 모인 수협의 조합장이고 위판장도 수협이 연다고 했다. 명함을 꺼냈다가 도로 넣었다. 그날 내가 풀어 준 십 분은 진짜였다고.', "I asked if he meant the fisheries co-op. Yes — chairman of the co-op the coast's village co-ops belong to; the auction floor is theirs too. He took out a card and put it back. The ten minutes I spent untangling that day were real, he said."],
+      }),
+      pretend: scene([
+        line(K, '시험은 무슨.', 'Testing? Hardly.', { act: 'shake_head' }),
+        line(K, '조합장이라고 하면 다들 허리부터 굽혀. 채비를 물어도 정답 대신 듣기 좋은 말을 하지.', "Say chairman and everyone bows first. Ask about a rig and you get what you'd like to hear instead of the right answer."),
+        line(P, '…그날 지나가던 분이 인사하던 게 그래서였군요.', '...So that was why the man passing by bowed that day.'),
+        line(K, '그날 자네는 내가 누군지 몰랐고, 그래서 진짜로 가르쳐 줬어. 그게 듣고 싶었어. 미안하네.', "That day you didn't know who I was, so you taught me for real. That's what I wanted to hear. I'm sorry."),
+      ], {
+        end: endTalk({ accept: true, offer: 'why_pretend', lineKo: '대답은 전갱이 두 마리 올린 다음에 들려주게.', lineEn: 'Let me hear your answer once you have landed two horse mackerel.' }),
+        note: ['왜 초보인 척했느냐고, 시험이었느냐고 물었다. 조합장이라고 하면 다들 허리부터 굽히고 듣기 좋은 말만 한다고 했다. 그날 나는 그가 누군지 몰랐기에 진짜로 가르쳐 주었고, 그게 듣고 싶었다고.', "I asked why he'd pretended — was it a test? Say chairman and everyone bows and tells you what you want to hear, he said. That day I hadn't known who he was, so I taught him for real. That was what he'd wanted."],
+      }),
+      hurt: scene([
+        line(K, '서운할 만하지. 화를 내도 할 말이 없네.', "You've every right. If you got angry I'd have nothing to say."),
+        line('', '(모자를 벗어 손에 쥔다.)', '(He takes off his cap and holds it in his hands.)'),
+        line(P, '…', '...'),
+        line(K, '대답은 천천히 하게. 전갱이 두 마리 낚는 동안 생각해 보고.', 'Take your time answering. Think it over while you catch two horse mackerel.'),
+        line(K, '거리를 두겠다 해도 그건 자네 몫이야.', 'If you decide to keep your distance, that is yours to decide.'),
+      ], {
+        end: endTalk({ accept: true, offer: 'hurt', lineKo: '나는 그 대답을 받을 자격밖에 없네.', lineEn: 'All I have the right to do is receive that answer.' }),
+        note: ['솔직히 서운하다고 했다. 강두철 씨는 모자를 벗어 손에 쥐고, 화를 내도 할 말이 없다고 했다. 거리를 두겠다 해도 그건 내 몫이라고.', "I said honestly I was hurt. Kang Ducheol took off his cap and held it — if I got angry, he'd have nothing to say. Keeping my distance would be my call."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // N03-2 「조합장님」 — 진행 중: 교육장에서 재회(목표 1). 계속 가르친다 · 거리를 둔다 · 속인 것을 따진다
+  //   문간에 동명항 어촌계 사람들과 도현수가 있다 — 여기서 한 말은 항구로 그대로 간다
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_2_reveal', questId: 'N03-2', at: 'objective', objectiveIndex: 1, npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line('', '(교육이 끝난 교육장. 맨 앞줄 책상에 「조합장」 명패가 놓여 있다. 노인이 그 명패를 손바닥으로 덮고 앉아 있다.)', '(The course is over and the room has emptied. On the front-row desk sits a name plate that reads Chairman. The old man sits with his palm laid over it.)'),
+        line('', '(문간에서는 동명항 어촌계 사람 몇이 이쪽을 힐끔거린다. 도현수도 그 사이에 있다.)', '(In the doorway a few people from the Dongmyeong fishing co-op keep glancing this way. Do Hyeonsu is among them.)'),
+        line(K, '전갱이는 올렸나.', 'Did you land the horse mackerel?'),
+        line(P, '네. 두 마리요.', 'Yes. Two.'),
+        line(K, '…그래, 자네는 늘 할 일부터 하지.', '...Of course. You always do the job first.'),
+        line(K, '이제 아까 그 대답을 듣고 싶네. 계속 가르쳐 줄 건가, 아니면 이제 거리를 둘 건가.', "Now I'd like that answer. Will you keep teaching me, or keep your distance from now on?"),
+      ], {
+        choices: [
+          opt('keep_teaching', '방파제에선 강두철 씨가 제 학생입니다. 명패는 여기 두고 오세요.', "On the breakwater you're my student. Leave the name plate here when you come.",
+            { stance: 'giver', aff: { [K]: 0.06, coop: 0.02, hyeonsu: -0.02 }, flags: ['choice.n03_kept_teaching'], next: 'teach_on',
+              note: ['방파제에선 그가 내 학생이라고 했다. 명패는 두고 오라고.', 'I told him that on the breakwater he was my student — leave the name plate behind.'] }),
+          opt('keep_distance', '속이신 건 속이신 겁니다. 당분간은 거리를 두겠습니다.', "A deception is a deception. I'll keep my distance for a while.",
+            { stance: 'self', aff: { [K]: -0.06, hyeonsu: 0.01 }, flags: ['choice.n03_kept_distance'], next: 'distance',
+              note: ['속인 건 속인 거라고, 당분간 거리를 두겠다고 했다.', 'I said a deception is a deception, and that I would keep my distance for a while.'] }),
+          opt('call_out', '그날 엉킨 실도, 첫 입질에 놀라시던 것도 다 연기였습니까?', 'The tangled line that day, the surprise at your first bite. Was all of it an act?',
+            { stance: 'other', aff: { [K]: -0.08, coop: -0.03, hyeonsu: 0.03 }, flags: ['choice.n03_called_out'], next: 'called',
+              note: ['그날 엉킨 실도, 첫 입질에 놀라던 것도 다 연기였느냐고 따졌다.', 'I demanded to know whether the tangled line and his surprise at the first bite had all been an act.'] }),
+          opt('knew_doubts', '사실 짐작은 하고 있었습니다. 보통 초보가 아니셨으니까요.', 'To be honest, I already had my suspicions. You were no ordinary beginner.',
+            { stance: 'mid', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_had_doubts' }, next: 'knew' }),
+        ],
+        note: ['교육이 끝난 교육장에서 강두철 씨가 「조합장」 명패를 손바닥으로 덮고 앉아 있었다. 문간에서 어촌계 사람들과 도현수 씨가 지켜보았다. 그는 계속 가르쳐 줄 건지, 거리를 둘 건지 물었다.',
+          "In the emptied classroom Kang Ducheol sat with his palm over the Chairman name plate, while co-op people and Do Hyeonsu watched from the doorway. Would I keep teaching him, he asked, or keep my distance?"],
+      }),
+      teach_on: scene([
+        line('', '(명패에서 손을 뗀다.)', '(He lifts his hand from the name plate.)'),
+        act(K, 'silence'),
+        line(K, '…허. 그 말 듣고 싶었네.', '...Ha. I wanted to hear that.'),
+        line(K, '조합장 자리에 앉으면 다들 내게 답을 가져와. 질문을 가져오는 사람은 없지.', "Sit in the chairman's seat and everyone brings you answers. Nobody brings questions."),
+        line('', '(문간에서 누군가 휘파람을 분다. 도현수가 고개를 돌린다.)', '(Someone in the doorway whistles. Do Hyeonsu turns his head away.)'),
+        line(K, '그래, 선생님. 다음 숙제는 뭔가.', "All right, teacher. What's the next assignment?"),
+      ], {
+        choices: [
+          opt('homework', '다음엔 매듭을 일부러 엉키게 하지 마시고 그냥 오세요.', "Next time, don't tangle your knot on purpose. Just come as you are.",
+            { stance: 'giver', aff: { [K]: 0.02 }, end: endTalk({
+              lineKo: '허허! 숙제가 어렵구먼. 엉키게 하는 게 더 쉬운데. (명패를 가방에 넣는다.) 알겠네. 다음엔 이름 달고 가지. 방파제에서 보세.',
+              lineEn: "Ha! That's a hard assignment. Tangling is the easy part. (He puts the name plate in his bag.) Very well. Next time I'll come under my own name. See you on the breakwater." }) }),
+          opt('patient_again', '그날처럼 천천히 하겠습니다. 강두철 씨도 급할 게 없으시잖아요.', "I'll take it slowly, like that day. You've nothing to hurry for either, have you?",
+            { stance: 'mid', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_patient' }, end: endTalk({
+              lineKo: '(웃음이 번진다.) 그날 내가 그랬지. 급할 게 없는 사람이라고. …사실 평생 급했어. 방파제에서만 안 급했지.',
+              lineEn: "(A smile spreads across his face.) I did say that, that day. A man with nothing to hurry for. ...The truth is I've been in a hurry all my life. Only on the breakwater was I not." }) }),
+          opt('let_him_again', '이번엔 숨기지 말고 직접 묶으세요. 제가 보겠습니다.', "This time, don't hide it. Tie it yourself. I'll watch.",
+            { stance: 'mid', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_let_him' }, end: endTalk({
+              lineKo: '(손을 내려다본다.) 그날 손이 먼저 나가서 혼났지. 허허. 이제 숨길 것도 없으니 내가 묶고 자네가 보게. 틀리면 혼내고.',
+              lineEn: "(He looks down at his hands.) That day my hands ran ahead of me and I got a fright. Ha. Nothing left to hide now, so I'll tie and you watch. Scold me if I get it wrong." }) }),
+        ],
+        note: ['강두철 씨는 명패에서 손을 떼고 한참 나를 봤다. 그 말이 듣고 싶었다고, 조합장 자리엔 답만 오고 질문은 안 온다고 했다. 다음 숙제는 뭐냐고 물었다.', "Kang Ducheol lifted his hand from the name plate and looked at me a long time. He'd wanted to hear that — the chairman's seat gets answers, never questions. What was the next assignment, he asked."],
+      }),
+      distance: scene([
+        line(K, '…그럴 만하지.', '...Fair enough.', { act: 'nod' }),
+        line(K, '속인 건 나니까 거리는 자네가 정하게.', "I'm the one who deceived you, so you set the distance."),
+        line(P, '…', '...'),
+        line(K, '그래도 방파제에서 인사는 하세.', "But let's still say hello on the breakwater."),
+        line('', '(문간의 어촌계 사람들이 슬그머니 흩어진다.)', '(The co-op people in the doorway quietly drift away.)'),
+        line(K, '늙은이가 그것까지 잃으면 너무 많이 잃는 거라.', "If an old man loses that too, he's lost too much."),
+      ], {
+        choices: [
+          opt('hello_ok', '인사는 드리겠습니다. 그 이상은 아직입니다.', "I'll say hello. Anything more, not yet.",
+            { stance: 'mid', aff: { [K]: 0.02 }, end: endTalk({
+              lineKo: '그거면 됐네. 아직이라는 말이 있잖나. (명패를 가방에 넣는다.) 아직이 끝나는 날엔, 처음부터 내 이름으로 앉겠네. 초보 행세 없이.',
+              lineEn: "That's enough. There's a not yet in it, after all. (He puts the name plate in his bag.) On the day not yet ends, I'll sit down under my own name from the start. No beginner act." }) }),
+          opt('chairman_only', '조합장 자리에 인사드릴 일이 있으면 드리겠습니다.', "If there's ever reason to greet the chairman's seat, I'll greet it.",
+            { stance: 'self', aff: { [K]: -0.03 }, end: endTalk({
+              lineKo: '(조합장 자리, 하는 말에 어깨가 조금 내려간다.) …그래. 조합장으로 인사받는 건 익숙하네. 그게 늘 문제였지.',
+              lineEn: "(At the words chairman's seat his shoulders sink a little.) ...Right. Being greeted as chairman, I'm used to that. That was always the trouble." }) }),
+          opt('both_hurried', '저도 그날 실을 칼로 끊었지요. 둘 다 서둘렀나 봅니다.', "I cut your line with a knife that day, remember. Maybe we both rushed.",
+            { stance: 'mid', aff: { [K]: 0.02 }, requires: { flag: 'choice.n03_impatient' }, end: endTalk({
+              lineKo: '(쓴웃음을 짓는다.) 자네는 실을 끊었고 나는 사람을 속였지. 무게가 다르네. 그래도 그 말은 고맙게 듣겠네.',
+              lineEn: "(He smiles wryly.) You cut a line and I deceived a person. They don't weigh the same. Still, I'm grateful to hear it." }) }),
+        ],
+        note: ['강두철 씨는 서운한 기색을 숨기지 않고 고개를 끄덕였다. 거리는 내가 정하라고, 그래도 방파제에서 인사는 하자고 했다. 문간의 어촌계 사람들이 슬그머니 흩어졌다.', "Kang Ducheol nodded, not hiding that it stung. I should set the distance, he said — but let's still say hello on the breakwater. The co-op people in the doorway quietly drifted off."],
+      }),
+      called: scene([
+        act(K, 'silence'),
+        line(K, '…실은 일부러 엉켰지. 그건 연기야. 미안하네.', '...The line, I tangled on purpose. That was an act. I\'m sorry.'),
+        line(P, '…역시 그랬군요.', '...I thought so.'),
+        line(K, '그런데 자네가 풀어 주던 십 분, 그건 연기가 아니었어.', 'But the ten minutes you spent working it loose, that was no act.'),
+        line(K, '늙은이가 그 십 분을 사려고 연기를 한 거야.', 'The old man put on the act to buy those ten minutes.'),
+        line('', '(문간의 어촌계 사람들이 웅성거린다. 도현수만 웃지 않고 이쪽을 본다.)', "(The co-op people in the doorway start murmuring. Only Do Hyeonsu doesn't laugh, and keeps watching.)"),
+      ], {
+        choices: [
+          opt('that_ten', '그 십 분이 진짜였다면, 그걸로 됐습니다.', 'If those ten minutes were real, that will do.',
+            { stance: 'mid', aff: { [K]: 0.03 }, end: endTalk({
+              lineKo: '(오래 나를 본다.) …따질 건 따지고 받을 건 받는군. 조합장 앞에서 그러는 사람은 드물어. 고맙네, 선생님.',
+              lineEn: "(He looks at me a long time.) ...You call out what needs calling out and accept what can be accepted. Few people do that in front of a chairman. Thank you, teacher." }) }),
+          opt('buying_time', '사람 시간을 사신다니, 그게 더 무섭습니다.', "Buying people's time. That frightens me more.",
+            { stance: 'other', aff: { [K]: -0.04, coop: -0.02 }, end: endTalk({
+              lineKo: '(고개를 끄덕인다.) …그 말이 맞아. 조합장 자리가 그래. 사람 시간을 사는 자리지. 자네 대답은 들었네. 무겁게 듣겠네.',
+              lineEn: "(He nods.) ...You're right. That's what the chairman's seat is. A seat that buys people's time. I've heard your answer. I'll take it to heart." }) }),
+          opt('why_me', '왜 하필 저였습니까?', 'Why me, of all people?',
+            { stance: 'mid', end: endTalk({
+              lineKo: '엉킨 줄 든 늙은이 옆에 앉은 게 자네 하나였으니까. (명패를 뒤집어 놓는다.) 나머지는 다 지나갔어. 지나간 사람을 탓하진 않네. 앉아 준 게 고마운 거지.',
+              lineEn: "Because you were the only one who sat down beside an old man holding a tangled line. (He turns the name plate face down.) Everyone else walked past. I don't blame them for walking past. I'm grateful someone sat." }) }),
+        ],
+        note: ['강두철 씨는 실을 일부러 엉켰다고, 그건 연기였다고 털어놓았다. 하지만 내가 풀어 주던 십 분은 연기가 아니었다고, 그 십 분을 사려고 연기를 한 거라고 했다.', "Kang Ducheol admitted he had tangled the line on purpose — that part was an act. But the ten minutes I spent untangling it were not; he had put on the act to buy them."],
+      }),
+      knew: scene([
+        act(K, 'laugh'),
+        line(K, '들켰던 거로군. 그런데도 끝까지 가르쳐 줬어? 모르는 척하고?', "So I'd been found out. And you kept teaching me anyway? Pretending not to know?"),
+        line(P, '…네.', '...Yes.'),
+        line(K, '그게 더 고맙네. 늙은이 연기를 연기로 받아 준 거니까.', "That makes me more grateful still. You played along with an old man's act."),
+        line(K, '이제 어쩔 텐가. 계속 받아 줄 텐가.', 'So what now? Will you keep playing along?'),
+      ], {
+        choices: [
+          opt('both_stop', '이제 둘 다 연기는 그만하죠. 방파제에서 진짜로 가르쳐 드리겠습니다.', "Let's both drop the act now. On the breakwater I'll teach you for real.",
+            { stance: 'giver', aff: { [K]: 0.03, coop: 0.01 }, flags: ['choice.n03_kept_teaching'], end: endTalk({
+              lineKo: '허허, 진짜로라. 그럼 나도 진짜 초보부터 다시 하지. (명패를 가방 깊숙이 넣는다.) 방파제에서 보세, 선생님.',
+              lineEn: "Ha, for real. Then I'll start again as a real beginner. (He pushes the name plate deep into his bag.) See you on the breakwater, teacher." }) }),
+          opt('distance_anyway', '알면서 가르친 건 저고, 속이신 건 강두철 씨입니다. 당분간 거리를 두겠습니다.', "I taught knowing, but you're the one who deceived. I'll keep my distance for a while.",
+            { stance: 'self', aff: { [K]: -0.04 }, flags: ['choice.n03_kept_distance'], end: endTalk({
+              lineKo: '(웃음을 거둔다.) …그렇지. 알고 받아 준 것과 속인 것은 다르지. 거리는 자네가 정하게. 인사만은 받아 주고.',
+              lineEn: "(His laugh fades.) ...True. Playing along knowingly and deceiving aren't the same. You set the distance. Just keep answering my hello." }) }),
+        ],
+        note: ['짐작은 하고 있었다고 했더니, 강두철 씨가 처음으로 시원하게 웃었다. 알면서도 끝까지 가르쳐 준 게 더 고맙다고, 이제 어쩔 거냐고 물었다.', "When I said I'd had my suspicions, Kang Ducheol laughed freely for the first time. That I'd kept teaching him knowing made him more grateful still. So what now, he asked."],
+      }),
+    },
+  },
+
+  // 290차 — N03-2 끝내는 자리(강두철). 「선생은 선생이야. 조합장이 아니라」 — 교육장에서 한 대답이 고를 말을 가린다
+  {
+    id: 'n03_2_done', questId: 'N03-2', at: 'complete', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '아까 한 대답, 잘 들었네.', 'I heard your answer earlier. Clearly.'),
+        line(P, '…', '...'),
+        line(K, '선생은 선생이야. 조합장이 아니라.', 'A teacher is a teacher. Not a chairman.'),
+        line(P, '그럼 이제 조합장이라고 불러야 하나요?', 'So should I be calling you chairman now?'),
+        line(K, '이름이면 되지. 지금까지처럼.', 'My name will do. Same as before.', { act: 'shake_head' }),
+        line(P, '…강두철 씨.', '...Ducheol.'),
+        line(K, '허허, 그거면 됐네.', "Ha. That's all I need."),
+      ], {
+        choices: [
+          opt('teach_on', '조합장이든 뭐든, 방파제에선 제 학생입니다', 'Chairman or not, on the breakwater you are my student', {
+            say: ['조합장이든 뭐든, 방파제에선 강두철 씨가 제 학생입니다.', "Chairman or not, on the breakwater you're my student."],
+            requires: { notFlag: 'choice.n03_kept_distance' },
+            end: endTalk({ complete: 'teach_on', lineKo: '…허. 그럼 숙제는 계속 받겠네. 조합장이 채비를 배운다고 소문이 좀 돌겠지만, 늙은이는 상관없어.',
+              lineEn: "...Ha. Then I'll keep taking assignments. Word will get round that the chairman is learning to rig, but this old man doesn't mind." }),
+            note: ['방파제에선 여전히 그가 내 학생이라고 했다. 수협 조합장이 내 채비를 배운다는 소문이 항구에 돌기 시작했다.', 'I said that on the breakwater he was still my student. Word began going round the harbour that the co-op chairman was learning rigs from me.'] }),
+          opt('distance', '속이신 건 속이신 겁니다. 거리를 두겠습니다', 'A deception is a deception. I will keep my distance', {
+            requires: { notFlag: 'choice.n03_kept_teaching' },
+            end: endTalk({ complete: 'distance', lineKo: '…알겠네. 그 거리, 늙은이가 천천히 걸어서 좁혀 보지. 서두르진 않겠네.',
+              lineEn: "...Understood. That distance — the old man will try to close it on foot, slowly. I won't rush." }),
+            note: ['속인 건 속인 거라며 거리를 두겠다고 했다. 인사는 한다. 그 이상은 아직.', 'I said a deception was a deception and kept my distance. We would say hello. Nothing more, yet.'] }),
+          opt('joke', '초보 연기가 너무 완벽하셨어요', 'Your beginner act was far too perfect', {
+            say: ['초보 연기가 너무 완벽하셨어요. 배우 하셔도 되겠습니다.', 'Your beginner act was far too perfect. You could have been an actor.'], next: 'joke' }),
+          opt('market_eye', '이번엔 강두철 씨가 가르쳐 주세요', 'This time, you teach me', {
+            say: ['이번엔 강두철 씨가 가르쳐 주세요. 위판장 보는 눈부터요.', 'This time, you teach me. Starting with how to read an auction floor.'],
+            end: endTalk({ complete: 'market_eye', lineKo: '허허, 선생이 학생한테 배우겠다? 좋네. 경매 전에 상자부터 보게. 얼음이 어떻게 덮였는지, 고기가 어느 쪽으로 누웠는지. 중매인들은 그걸로 값을 매겨. 말은 그다음이야.',
+              lineEn: "Ha, the teacher wants to learn from the student? Good. Before the auction, look at the crates. How the ice is laid, which way the fish are lying. That's how the brokers set prices. Talk comes after." }),
+            note: ['이번엔 그가 가르쳐 달라고 했다. 위판장 보는 눈부터. 강두철 씨는 교육장 창밖의 위판장을 가리키며, 경매 전에 상자부터 보라고 했다.', 'I asked him to teach me this time — how to read an auction floor. Pointing out the window at the auction hall, Kang Ducheol said to look at the crates before the bidding.'] }),
+        ],
+        note: ['강두철 씨는 내 대답을 잘 들었다며, 선생은 선생이지 조합장이 아니라고 했다. 이제 조합장이라고 불러야 하느냐고 묻자, 지금까지처럼 이름이면 된다고 했다.', "Kang Ducheol said he'd heard my answer: a teacher is a teacher, not a chairman. When I asked if I should call him chairman now, he said his name would do, as before."],
+      }),
+      joke: scene([
+        act(K, 'laugh'),
+        line(K, '허허. 매듭 푸는 연기가 제일 어려웠어. 손이 저절로 풀려고 해서 혼났네.', 'Ha. Acting out the knot was the hardest part. My hands kept trying to untie it on their own.'),
+        line(P, '…역시요.', '...I knew it.'),
+        line('', '(웃음이 터진다. 그러고는 수첩을 찢어 소개장을 하나 써 준다.)', '(He bursts out laughing. Then he tears a page from his notebook and writes me a letter of introduction.)'),
+      ], {
+        end: endTalk({ complete: 'joke', lineKo: '그 소개장은 연기 값이 아니라 웃어 준 값이야. 화낼 자리에서 웃어 주는 사람은 귀하거든.',
+          lineEn: "That letter isn't payment for the act. It's for laughing. People who laugh where they could get angry are rare." }),
+        note: ['초보 연기가 너무 완벽했다고 했다. 강두철 씨는 매듭 푸는 연기가 제일 어려웠다며 웃음을 터뜨리고 소개장을 하나 써 주었다. 화낼 자리에서 웃어 준 값이라고.', "I said his beginner act had been too perfect. The knot was the hardest to fake, Kang Ducheol laughed, and wrote me a letter of introduction — payment for laughing where I could have been angry."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // 290차 — N03-6 「조합장과 선장」 받는 자리(강두철). 고만석과 서른 해 전 같은 배 — 가운데 앉아 달라
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_6_offer', questId: 'N03-6', at: 'offer', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '방어진 간다고 들었네.', "I hear you're going to Bangeojin."),
+        line(P, '네. 울산 쪽에 가 보려고요.', 'Yes. I thought I would head out Ulsan way.'),
+        line(K, '나도 가지.', "I'll come too."),
+        line(P, '강두철 씨도요?', 'You too?'),
+        line(K, '고만석이라고, 거기서 낚싯배 하는 친구가 있어.', "There's a friend of mine there who runs a fishing boat. Go Manseok."),
+        line(K, '서른 해 전에 같은 배를 탔지.', 'Thirty years ago we sailed on the same boat.', { act: 'look_sea' }),
+        line(P, '서른 해 전에요…', 'Thirty years ago...'),
+        line(K, '옛 얘기 들어 줄 텐가.', 'Will you listen to some old stories?'),
+      ], {
+        choices: [
+          opt('sit_between', '들을게요. 두 분 이야기라면 끝까지요', "I'll listen. If it's the two of you, all the way through", {
+            next: 'between' }),
+          opt('ask_boat', '어떤 배를 같이 타셨는데요?', 'What boat did you sail on together?', {
+            say: ['고만석 씨요? 어떤 배를 같이 타셨는데요?', 'Go Manseok? What boat did you sail on together?'], next: 'boat' }),
+          opt('long_time', '오랜만에 만나시는 거예요?', 'Has it been a long time since you met?', {
+            say: ['오랜만에 만나시는 거예요? 그동안 연락은 하셨고요?', 'Has it been long since you saw each other? Have you kept in touch?'], next: 'long' }),
+          opt('uproar', '직접 가시면 방어진이 발칵 뒤집히겠는데요', 'Bangeojin will be in uproar if you turn up in person', {
+            next: 'uproar' }),
+        ],
+        note: ['강두철 씨가 방어진에 같이 가겠다고 했다. 거기서 낚싯배를 하는 고만석이라는 친구와 서른 해 전 같은 배를 탔다고. 옛 이야기를 들어 달라고 했다.',
+          "Kang Ducheol said he'd come to Bangeojin too. A friend of his there, Go Manseok, runs a fishing boat — they'd sailed on the same boat thirty years ago. Would I listen to their old stories?"],
+      }),
+      between: scene([
+        line(K, '고맙네. 그 친구는 말이 없어. 나는 말이 많고.', "Thank you. He's a man of few words. I talk a lot."),
+        act(K, 'laugh'),
+        line(K, '둘이 앉으면 하나도 안 맞지.', "Sit the two of us down and nothing matches."),
+        line(P, '그럼 저는요?', 'And me?'),
+        line(K, '자네가 가운데 앉아 줘야 해. 둘이 마주 보면 옛날 생각에 말이 막혀.', "You'll have to sit between us. Face to face, we'd get choked up thinking of the old days."),
+      ], {
+        end: endTalk({ accept: true, offer: 'sit_between', lineKo: '사이에 누가 있으면 말이 좀 돌아가지.', lineEn: 'With someone in between, the words flow a bit.' }),
+        note: ['두 사람 이야기를 끝까지 듣겠다고 했다. 강두철 씨는 그 친구는 말이 없고 자기는 말이 많다며, 둘이 마주 보면 말이 막히니 가운데 앉아 달라고 했다.', "I said I'd listen to them both, all the way through. His friend says little and he says a lot, Kang Ducheol said — face to face they'd choke up, so would I sit between them."],
+      }),
+      boat: scene([
+        line(K, '…배 얘기는 그 친구랑 같이 있을 때 하지.', "...The boat — we'll talk about it when he's there.", { act: 'look_sea' }),
+        line(K, '혼자 하면 내 쪽 얘기만 되거든.', "If I tell it alone, it's only my side."),
+        line(P, '…', '...'),
+        line(K, '서른 해야. 손에는 남았는데 입에는 잘 안 붙어.', "Thirty years. It stayed in the hands, but it doesn't come easily to the mouth."),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_boat', lineKo: '가 보면 알게 될 거야. 둘 다 말보다 손을 먼저 볼 테니.', lineEn: "You'll see when we get there. We'll both look at each other's hands before we speak." }),
+        note: ['어떤 배를 같이 탔느냐고 물었다. 강두철 씨는 바다 쪽을 보며, 배 얘기는 그 친구와 같이 있을 때 하겠다고 했다. 서른 해가 손에는 남았는데 입에는 잘 안 붙는다고.', "I asked what boat they'd shared. Looking out to sea, Kang Ducheol said he'd talk about it when his friend was there. Thirty years had stayed in his hands but didn't come easily to his mouth."],
+      }),
+      long: scene([
+        line(K, '오랜만이지. 얼마나 됐는지는… 세다가 그만뒀네.', "It's been a while. How long... I gave up counting.", { act: 'look_away' }),
+        line(P, '연락도 안 하셨어요?', "You didn't keep in touch?"),
+        line(K, '바다 사람은 헤어질 때 인사를 잘 안 해. 또 볼 줄 알고.', "Sea people don't say goodbye when they part. They think they'll meet again."),
+        line(K, '그러다 세월이 가.', 'And then the years go by.'),
+      ], {
+        end: endTalk({ accept: true, offer: 'long_time', lineKo: '그러니 이번엔 자네가 가운데서 인사 좀 시켜 주게.', lineEn: 'So this time, you stand between us and get us to say hello.' }),
+        note: ['오랜만에 만나는 거냐고 물었다. 얼마나 됐는지 세다가 그만뒀다고 했다. 바다 사람은 또 볼 줄 알고 헤어질 때 인사를 잘 안 한다고, 그러다 세월이 간다고.', "I asked if it had been long. He'd given up counting, he said. Sea people don't say goodbye, thinking they'll meet again — and then the years go by."],
+      }),
+      uproar: scene([
+        act(K, 'laugh'),
+        line(K, '허허, 그래서 조합장으로 안 가. 그냥 강두철이로 가지.', "Ha, that's why I won't go as chairman. Just as Kang Ducheol."),
+        line('', '(모자를 깊이 눌러써 보인다.)', '(He pulls his cap down low to show me.)'),
+        line(P, '…그걸로 될까요?', '...Will that work?'),
+        line(K, '그 친구 앞에서는 직함이 소용없어. 서른 해 전에 한 배에 탄 사이야.', "In front of him a title is useless. We were on one boat thirty years ago."),
+      ], {
+        end: endTalk({ accept: true, offer: 'uproar', lineKo: '거기선 나도 그냥 두철이지. 가세, 방어진으로.', lineEn: "There, I'm just Ducheol. Let's go — to Bangeojin." }),
+        note: ['직접 가면 방어진이 뒤집히겠다고 했더니, 강두철 씨는 조합장 말고 그냥 강두철로 간다며 모자를 깊이 눌러썼다. 그 친구 앞에서는 직함이 소용없다고.', "When I said Bangeojin would be in uproar, Kang Ducheol pulled his cap down low — he'd go as plain Kang Ducheol, not the chairman. A title meant nothing in front of that friend."],
+      }),
+    },
+  },
+
+  // N03-6 — 끝내는 자리(강두철). 배 이름은 둘 다 말하지 않았다
+  {
+    id: 'n03_6_done', questId: 'N03-6', at: 'complete', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '…배 이름은 안 말했지. 둘 다.', "...Neither of us said the boat's name."),
+        line(P, '네. 끝까지요.', 'No. Not once.'),
+        line(K, '그건 그 배에 탄 사람들 거니까.', 'That belongs to the people who sailed on her.', { act: 'look_sea' }),
+        line(P, '두 분, 인사 대신 서로 손을 보시더라고요.', "Instead of greeting, you two looked at each other's hands."),
+        line(K, '손에 남은 게 말보다 많은 사람들이라.', "We're people with more left in our hands than in our words."),
+      ], {
+        choices: [
+          opt('listen', '배 이름은 묻지 않겠습니다', "I won't ask the boat's name", {
+            end: endTalk({ complete: 'listen', lineKo: '…자네가 그렇게 말할 줄 알았네. 묻지 않는 것도 듣는 거야. 그 친구가 오늘 자네를 오래 봤어. 말 없는 사람이 오래 보면 그건 마음에 들었다는 뜻이네.',
+              lineEn: "...I knew you'd say that. Not asking is listening too. He looked at you a long time today. When a quiet man looks at you long, it means he likes you." }),
+            note: ['배 이름은 묻지 않겠다고 했다. 두 노인이 방어진과 속초 양쪽에서 나를 자기들 자리에 앉혔다.', "I said I wouldn't ask the boat's name. From then on the two old men, in Bangeojin and in Sokcho both, made room for me at their tables."] }),
+          opt('lesson', '손으로 말하는 거, 저는 아직 못 읽어요', "I can't yet read what you two say with your hands", {
+            say: ['두 분이 손으로 말하는 거, 저는 아직 못 읽습니다. 가르쳐 주십시오.', "I still can't read what you two say with your hands. Please teach me."],
+            end: endTalk({ complete: 'lesson', lineKo: '손이 말하려면 서른 해가 걸려. 그래도 보는 법은 있지. 굳은살을 봐. 어디가 두꺼운지 보면 그 사람이 뭘 오래 쥐었는지 나와. 내 손은 요즘 펜 자리가 제일 두껍지. 허허.',
+              lineEn: "It takes thirty years for hands to talk. But there's a way to look. Check the calluses. Where they're thickest shows what a man has held longest. Mine are thickest where the pen goes, these days. Ha." }),
+            note: ['손으로 말하는 걸 가르쳐 달라고 했다. 굳은살을 보라고, 어디가 두꺼운지 보면 그 사람이 뭘 오래 쥐었는지 나온다고 했다.', 'I asked him to teach me to read hands. Look at the calluses, he said — where they are thickest shows what a man has held longest.'] }),
+          opt('pay', '울산까지 온 여비는 주십시오', "I'll take my fare to Ulsan", {
+            end: endTalk({ complete: 'pay', lineKo: '그러세. 조합장 출장비에서. 오늘은 출장 맞아. 옛 동료 만나는 것도 조합 일이지. 바다 사람끼리 이어 주는 게 조합이 하는 일이니까. 떳떳한 돈이야.',
+              lineEn: "Very well. From the chairman's travel budget. Today was a business trip, sure enough. Meeting an old shipmate is co-op work too. Connecting sea people is what a co-op does. It's honest money." }),
+            note: ['여비를 받았다. 조합 도장이 찍힌 봉투였다.', 'I took my fare, in an envelope stamped with the co-op seal.'] }),
+          opt('write_down', '배 이름은 빼고 조행록에 적어도 될까요?', 'May I write it in my log, leaving out the boat\'s name?', {
+            say: ['두 분 이야기, 배 이름은 빼고 조행록에 적어도 될까요?', "May I write your story in my log — leaving out the boat's name?"], aff: { go_manseok: 0.02 }, next: 'write' }),
+        ],
+        note: ['방어진에서 두 노인은 끝내 배 이름을 말하지 않았다. 인사 대신 서로의 손을 봤다. 강두철 씨는 그 이름은 그 배에 탄 사람들 거라고 했다.', "In Bangeojin the two old men never said the boat's name. They looked at each other's hands instead of greeting. That name belonged to the people who sailed on her, Kang Ducheol said."],
+      }),
+      write: scene([
+        act(K, 'silence'),
+        line(K, '…적게. 배 이름만 빼고.', "...Write it. Just leave out the boat's name.", { act: 'nod' }),
+        line(P, '네.', 'I will.'),
+        line(K, '그 친구 이름을 앞에 적어. 나는 뒤면 돼.', 'Put his name first. Mine can go after.'),
+      ], {
+        end: endTalk({ complete: 'write_down', lineKo: '직함 붙은 이름이 앞에 서면 이야기가 무거워져.', lineEn: 'Put a name with a title in front and the story gets heavy.' }),
+        note: ['두 사람 이야기를 배 이름만 빼고 조행록에 적어도 되느냐고 물었다. 강두철 씨는 한참 말이 없다가 고개를 끄덕였다. 고만석 씨 이름을 앞에 적으라고.', "I asked whether I could write their story in my log, leaving out the boat's name. After a long silence Kang Ducheol nodded — and told me to put Go Manseok's name first."],
+      }),
+    },
+  },
 ];

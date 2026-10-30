@@ -1,6 +1,7 @@
 /**
  * @file StoryProgressAsk3.ts
  * @description 287차 — 진행 중 물음(목표마다 물음 · 내 답 · 조언) — 강두철 · 채수림 · 탁새벽 · 단철호 · 마감기 · 정우미 편.
+ *   290차 — 탁새벽(열두 살)에게 하는 내 답도 해요체로 옮겼다(주인공은 늘 존댓말).
  */
 import { pa } from './StoryProgressAskKit.js';
 import type { ProgressAskDef } from '../types/Story.js';
@@ -131,33 +132,33 @@ export const PROGRESS_ASKS_3: Record<string, ProgressAskDef[]> = {
   // ── 탁새벽 ──
   'M4-08': [
     pa(['파도 속 농어, 올렸어?', 'Got the sea bass out of the surf yet?'],
-      ['…아직 못 올렸다.', '...Not yet.'],
+      ['…아직 못 올렸어요.', '...Not yet.'],
       ['밤에 파도 하얗게 부서지는 데 있잖아. 그 안쪽 말고 딱 그 자리에 넣어. 농어는 거기서 먹이 기다려.', "At night, where the waves break white. Not inside it, right on that line. That's where the sea bass wait for food."]), // 0 — 포말대 야간 농어
   ],
   'M7-07': [
     pa(['독도에서 그 대로 한 마리 올렸어?', 'Did you land one at Dokdo with that rod?'],
-      ['…아직, 그 대로는 못 올렸다.', "...Not with that rod, not yet."],
+      ['…아직, 그 대로는 못 올렸어요.', "...Not with that rod, not yet."],
       ['독도 조사 해역 열렸잖아. 거기 가서 던져. 할아버지가 손 놓고 내가 마무리한 대니까 안 부러져.', "The Dokdo survey waters are open. Go cast there. Grandpa let go and I finished it, so it won't break."]), // 0 — 유품 릴대로 독도에서
   ],
   'N02-3': [
     pa(['돌무덤의 주인, 잡았어?', 'Did you catch the Lord of the Rock Pile?'],
-      ['…아직 그놈은 못 만났다.', "...Haven't met that one yet."],
+      ['…아직 그놈은 못 만났어요.', "...Haven't met that one yet."],
       ['바닥으로 박힐 때 드랙 조여. 거기서 풀어 주면 돌에 감겨. 내 대 안 부러지니까 걱정하지 말고.', "When it dives for the bottom, tighten the drag. Give it line there and it wraps the rocks. My rod won't break, so don't worry."]), // 0 — 대구 80cm+
   ],
   'N02-4': [
     pa(['나랑 같이 대 손보는 거, 다 했어?', 'Did we finish working on the rod together?'],
-      ['…아직 다 못 했다.', '...Not all of it yet.'],
+      ['…아직 다 못 했어요.', '...Not all of it yet.'],
       ['이음새는 한 번에 안 없어져. 한 번 손보고 나서 한 번 더 봐야 해. 대충 하면 독도에서 부러져.', "The joint won't disappear in one go. Work it once, then go over it again. Do it sloppy and it snaps at Dokdo."]), // 0 — 대를 손본다 2회
     pa(['이 대, 이제 받을래?', 'Will you take the rod now?'],
-      ['…조금 있다가 받으러 오겠다.', "...I'll come back for it in a bit."],
+      ['…조금 있다가 받으러 올게요.', "...I'll come back for it in a bit."],
       ['응, 여기 둘게. 이음새 안 보이지. 독도에서 던질 대니까 꼭 받아 가.', "Okay, I'll keep it here. You can't see the joint, right. It's the rod you'll cast at Dokdo, so make sure you take it."]), // 1 — 되살린 릴대를 받는다
   ],
   'N02-6': [
     pa(['속초 공방엔 들렀어?', 'Have you been back to the Sokcho workshop?'],
-      ['…아직 공방엔 못 들렀다.', "...Haven't made it to the workshop yet."],
+      ['…아직 공방엔 못 들렀어요.', "...Haven't made it to the workshop yet."],
       ['밤 되기 전에만 가 있으면 돼. 내 대로 밤에 한 마리 낚는 거니까.', 'Just get there before dark. The fish has to come up on my rod, at night.']), // 0 — 속초 공방으로
     pa(['내 대로 한 마리 낚았어?', 'Did you catch one with my rod?'],
-      ['…아직 못 낚았다.', "...Not yet."],
+      ['…아직 못 낚았어요.', "...Not yet."],
       ['얇아도 대야. 초릿대가 살아 있어서 작은 입질도 다 보여. 밤에 끝을 잘 봐.', "Thin is still a rod. The tip's alive, so it shows even the small bites. Keep your eyes on it at night."]), // 1 — 새벽의 대로 1마리
   ],
 

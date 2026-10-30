@@ -810,7 +810,7 @@ class StoryStoreManager {
       return { ok: true, next: c.next, moved };
     }
     const end = c.end ?? {};
-    const ok = this.talkEnd(t, q, end);
+    const ok = this.talkEnd(t, q, end, c.affinity?.[q.giver] !== undefined);
     if (ok) delete this.talkAt[t.id]; else this.talkAt[t.id] = nodeId;
     const ending = ok && t.at === 'complete' ? this.endingOfQuestRun : undefined;
     this.endingOfQuestRun = undefined;
@@ -910,13 +910,13 @@ class StoryStoreManager {
   private endingOfQuestRun: StoryEndingDef | undefined;
 
   /** 대화의 끝 — 대화가 열린 자리마다 할 일 */
-  private talkEnd(t: StoryTalkDef, q: StoryQuestDef, end: TalkEndDef): boolean {
+  private talkEnd(t: StoryTalkDef, q: StoryQuestDef, end: TalkEndDef, choiceMovedGiver = false): boolean {
     switch (t.at) {
       case 'offer':
         if (end.fail && q.kind === 'sub') { this.failOffer(q); return true; }   // 286차 — 끝내 거절 = 실패
         // 290차 — 옛 받는 답에 묶였으면 그 답으로(결과 · 기록 · 미루기 규칙이 그대로 — `accept`가 미루는 답도 처리한다)
-        if (end.decline && q.kind === 'sub') { if (end.offer) return this.accept(q.id, end.offer, true); this.declineOffer(q); return true; }
-        return this.accept(q.id, end.offer, true);
+        if (end.decline && q.kind === 'sub') { if (end.offer) return this.accept(q.id, end.offer, true, choiceMovedGiver); this.declineOffer(q); return true; }
+        return this.accept(q.id, end.offer, true, choiceMovedGiver);
       case 'objective':
         if (t.objectiveIndex === undefined || this.objectiveDone(q, t.objectiveIndex)) return false;
         this.event({ kind: 'scene', questId: q.id, objectiveIndex: t.objectiveIndex });
@@ -1005,7 +1005,7 @@ class StoryStoreManager {
   }
 
   // ── 진행 ──
-  accept(id: string, choiceId?: string, fromTalk = false): boolean {
+  accept(id: string, choiceId?: string, fromTalk = false, keepTalkAffinity = false): boolean {
     const q = getStoryQuest(id);
     if (!q || this.status(q) !== 'available') return false;
     // 140차 — 우호도 게이트. 254차 — 받는 자리 대화가 「받는다」로 끝났으면 다시 묻지 않는다
@@ -1013,9 +1013,11 @@ class StoryStoreManager {
     if (!fromTalk && q.kind === 'sub' && q.giver && !canOfferSubQuest(this.affinityOf(q.giver))) return false;
     const c = choiceId ? this.visibleChoices(q, 'offer').find((x) => x.id === choiceId) : undefined;
     // 141차 — 거절 답: once = 영구 소멸 · event = 쿨다운 · standard = 다음 대화에 다시
-    if (c?.outcome.decline) {
+    // 290차 — 대본의 고른 말이 의뢰인 마음을 스스로 움직였으면 묶인 옛 답의 의뢰인 우호도는 겹쳐 더하지 않는다(고른 말이 이긴다)
+    const outcome = c && keepTalkAffinity ? { ...c.outcome, affinity: undefined } : c?.outcome;
+    if (c && outcome?.decline) {
       this.choices[id] = { ...this.choices[id], offer: c.id };
-      this.applyOutcome(q, c.outcome);
+      this.applyOutcome(q, outcome);
       if (q.offerPolicy === 'once') this.declined.add(id);
       else if (q.offerPolicy === 'event') this.offerCooldown[id] = this.day + (q.event?.cooldownDays ?? 30);
       this.lastAction = 'declined';
@@ -1058,7 +1060,7 @@ class StoryStoreManager {
     if (okseonGift) this.giveOkseonGift(okseonGift);
     this.lastAction = 'accepted';
     // 140차 — 발주 톤 선택지(우호도 미세 차이)
-    if (c) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, c.outcome); }
+    if (c && outcome) { this.choices[id] = { ...this.choices[id], offer: c.id }; this.applyOutcome(q, outcome); }
     // 상태형 목표는 수락 즉시 평가 (레벨·재화·이미 보유한 면허)
     this.evaluateStateful(q);
     this.host?.markDirty();

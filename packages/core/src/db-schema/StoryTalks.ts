@@ -17,16 +17,46 @@
  *     몸짓은 괄호 · 긴 대사는 빈 줄로 단락 · 한 · 영 단락 수 같게 · 이모지 · 내부 id · 개발 용어(우호도 · 퀘스트 …) 금지.
  *     주인공의 말(라벨)은 실제로 입으로 하는 말 — 8~45자 · 몸짓만 하는 답은 괄호로.
  *  5. 스포일러 금지(R2) — 그 편보다 뒤에 밝혀질 사실을 앞당기지 않는다.
+ *
+ * 290차 — 의뢰인이 있는 편은 모두 받는 자리 · 끝내는 자리 대본(주고받는 장면)을 갖는다. 묶음 파일 = 이야기마다 하나(`StoryTalk<이야기>.ts`).
+ *  지침 `.agents/inputs/290_talk_brief.md` · 덮개 검사 `talkCoverageIssues` · 호칭 「OOO 씨」(`rules/PlayerAddress.ts`).
  */
 
 import type { StoryTalkDef } from '../types/Story.js';
-import { TALKS_N24 } from './StoryTalkN24.js';
-import { TALKS_N19 } from './StoryTalkN19.js';
+import { TALKS_M1 } from './StoryTalkM1.js';
+import { TALKS_M2 } from './StoryTalkM2.js';
+import { TALKS_M3 } from './StoryTalkM3.js';
+import { TALKS_M4 } from './StoryTalkM4.js';
+import { TALKS_M5 } from './StoryTalkM5.js';
+import { TALKS_M6 } from './StoryTalkM6.js';
+import { TALKS_M7 } from './StoryTalkM7.js';
+import { TALKS_N01 } from './StoryTalkN01.js';
 import { TALKS_N02 } from './StoryTalkN02.js';
 import { TALKS_N03 } from './StoryTalkN03.js';
-import { TALKS_M2 } from './StoryTalkM2.js';
-import { TALKS_N01 } from './StoryTalkN01.js';
+import { TALKS_N04 } from './StoryTalkN04.js';
+import { TALKS_N05 } from './StoryTalkN05.js';
+import { TALKS_N06 } from './StoryTalkN06.js';
+import { TALKS_N07 } from './StoryTalkN07.js';
+import { TALKS_N08 } from './StoryTalkN08.js';
+import { TALKS_N09 } from './StoryTalkN09.js';
+import { TALKS_N10 } from './StoryTalkN10.js';
+import { TALKS_N11 } from './StoryTalkN11.js';
+import { TALKS_N12 } from './StoryTalkN12.js';
+import { TALKS_N13 } from './StoryTalkN13.js';
+import { TALKS_N14 } from './StoryTalkN14.js';
+import { TALKS_N15 } from './StoryTalkN15.js';
+import { TALKS_N16 } from './StoryTalkN16.js';
+import { TALKS_N17 } from './StoryTalkN17.js';
+import { TALKS_N18 } from './StoryTalkN18.js';
+import { TALKS_N19 } from './StoryTalkN19.js';
+import { TALKS_N20 } from './StoryTalkN20.js';
+import { TALKS_N21 } from './StoryTalkN21.js';
+import { TALKS_N22 } from './StoryTalkN22.js';
+import { TALKS_N23 } from './StoryTalkN23.js';
+import { TALKS_N24 } from './StoryTalkN24.js';
 
 export const STORY_TALKS: readonly StoryTalkDef[] = [
-  ...TALKS_N24, ...TALKS_N19, ...TALKS_N02, ...TALKS_N03, ...TALKS_M2, ...TALKS_N01,
+  ...TALKS_M1, ...TALKS_M2, ...TALKS_M3, ...TALKS_M4, ...TALKS_M5, ...TALKS_M6, ...TALKS_M7,
+  ...TALKS_N01, ...TALKS_N02, ...TALKS_N03, ...TALKS_N04, ...TALKS_N05, ...TALKS_N06, ...TALKS_N07, ...TALKS_N08, ...TALKS_N09, ...TALKS_N10, ...TALKS_N11, ...TALKS_N12,
+  ...TALKS_N13, ...TALKS_N14, ...TALKS_N15, ...TALKS_N16, ...TALKS_N17, ...TALKS_N18, ...TALKS_N19, ...TALKS_N20, ...TALKS_N21, ...TALKS_N22, ...TALKS_N23, ...TALKS_N24,
 ];
