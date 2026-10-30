@@ -280,6 +280,13 @@ interface SaveData {
 
 const SAVE_VERSION = 1;
 const SAVE_KEY = 'tra_save_v1';
+
+/** 세이브로 읽을 수 있는 최소 구조 — player 객체와 가방(inventory)이 있어야 한다 */
+function isSaveShape(v: unknown): v is SaveData {
+  const p = (v as { player?: { inventory?: unknown } } | null)?.player;
+  return !!p && typeof p === 'object' && !!p.inventory && typeof p.inventory === 'object';
+}
+
 /** 슬롯 저장 키 (1~3) */
 const SLOT_KEY = (slot: number): string => `tra_save_slot_${slot}`;
 export const SAVE_SLOT_COUNT = 3;
@@ -1904,6 +1911,7 @@ export class GameStateManager {
       const raw = localStorage.getItem(SLOT_KEY(slot));
       if (!raw) return { exists: false };
       const parsed = JSON.parse(raw) as SaveData;
+      if (!isSaveShape(parsed)) return { exists: false };
       return {
         exists: true,
         nickname: parsed.player?.nickname ?? '이름없는꾼',
@@ -1935,6 +1943,9 @@ export class GameStateManager {
   private parseSaveData(raw: string): SaveData | null {
     try {
       const parsed = JSON.parse(raw) as SaveData;
+      // 하모니 — 구조가 깨진 세이브(`{}` · `[]` · player 없음)는 잘린 JSON과 같이 취급한다.
+      //  통과시키면 슬롯은 멀쩡해 보이는데 이어하기에서 던지고 GameState가 비어 버린다
+      if (!isSaveShape(parsed)) return null;
 
       // Date 복원
       if (parsed.player) {
