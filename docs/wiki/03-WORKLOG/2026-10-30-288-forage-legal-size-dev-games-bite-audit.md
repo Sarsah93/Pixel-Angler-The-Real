@@ -5,7 +5,7 @@
 | **날짜** | 2026-10-30 |
 | **시스템** | `해루질` `낚시` `데이터` `캐릭터` `dev` `세이브` |
 | **트리거** | 사용자 285 메시지의 288 항목 셋 + 288 착수 메시지(주인공 나이 · 호칭 의견) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck`(main · 배포 없음) |
+| **커밋** | `efbafc3`(작업 브랜치 `claude/project-review-task-planning-yopbck` — main · 배포 없음) |
 | **빌드·타입체크** | 3/3 · 0 오류 · core 시험 423 |
 
 ---
