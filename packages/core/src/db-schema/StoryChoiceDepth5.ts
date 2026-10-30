@@ -47,7 +47,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     completeReply: {
       lesson: [
         '오빠! 이분 제자 하래요! (나기범이 말없이 고개를 끄덕인다. 채비 정리가 손에 익는다.)\n\n봤죠? 끄덕였어요. 오빠는 좋으면 말 대신 고개를 끄덕여요. 오늘 저한테는 한 번도 안 했는데! (조금 억울한 얼굴이다.) 엉킨 채비는 배 위에서 풀지 말고 통째로 바꾸래요. 배 시간은 아깝대요.',
-        "Oppa! He wants to be your apprentice! (Na Gibeom nods without a word. Rig-keeping settles into my hands.)\n\nSee? He nodded. When he likes something he nods instead of talking. He didn't nod at me once today! (She looks a little wronged.) If a rig tangles on the boat, don't untangle it, swap the whole thing, he says. Boat time is too precious.",
+        "Oppa! This one wants to be your apprentice! (Na Gibeom nods without a word. Rig-keeping settles into my hands.)\n\nSee? He nodded. When he likes something he nods instead of talking. He didn't nod at me once today! (She looks a little wronged.) If a rig tangles on the boat, don't untangle it, swap the whole thing, he says. Boat time is too precious.",
       ],
       pay: [
         '있어요! 조회수 100당 100원… 아, 지금은 제가 낼게요. (지갑을 꺼낸다.)\n\n사실 채널로는 아직 한 푼도 못 벌어요. 구독자가 모자라서요. 그래도 같이 고생했으면 나눠야죠. 그게 맞는 것 같아요.',
@@ -106,11 +106,11 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   'N05-3': {
     offer: [
       d('listen_first', '뭐라고 할지는 다 듣고 나서 하자. 오징어 하면서.', "I'll say my piece after I've heard all of it. Over some squid.",
-        '…네. 그게 좋아요. 말은 제가 잘 못하니까, 던지면서 할게요. (에기 두 개를 꺼내 하나를 내민다.)\n\n무늬오징어 두 마리만 나란히 올려요. 그동안 다 말할게요. 다 듣고 나서, 형 생각 말해 줘요.',
+        '…네. 그게 좋아요. 말은 제가 잘 못하니까, 던지면서 할게요. (에기 두 개를 꺼내 하나를 내민다.)\n\n무늬오징어 두 마리만 나란히 올려요. 그동안 다 말할게요. 다 듣고 나서, 그쪽 생각 말해 줘요.',
         "…Okay. That's better. I'm not good with words, so I'll talk while we cast. (He takes out two egi and holds one out.)\n\nLet's bring up two bigfin squid side by side. I'll tell you all of it while we do. When you've heard it, tell me what you think.",
         { affinity: 0.06, flag: 'choice.n05_3_listened_first' }),
-      d('ask_harin', '하린이는 왜 아무 말도 안 하는 건데?', "Why isn't Harin saying anything?",
-        '…모르겠어요. 말리면 제가 안 들을 걸 알고, 도우면 제가 미안해할 걸 알아서요. 아마. (에기를 만지작거린다.)\n\n하린이는 원래 말이 많아요. 근데 이번엔 조용해요. 그게 더 무서워요. 그래서 형한테 묻는 거예요. 오징어 낚으면서 들어 줘요.',
+      d('ask_harin', '하린 씨는 왜 아무 말도 안 하는 건데?', "Why isn't Harin saying anything?",
+        '…모르겠어요. 말리면 제가 안 들을 걸 알고, 도우면 제가 미안해할 걸 알아서요. 아마. (에기를 만지작거린다.)\n\n하린이는 원래 말이 많아요. 근데 이번엔 조용해요. 그게 더 무서워요. 그래서 그쪽한테 묻는 거예요. 오징어 낚으면서 들어 줘요.',
         "…I don't know. She knows I won't listen if she stops me, and that I'll feel bad if she helps. Probably. (He fiddles with the egi.)\n\nShe usually talks a lot. This time she's quiet. That's scarier. So I'm asking you. Hear me out while we catch some squid.",
         { affinity: 0.03, flag: 'choice.n05_3_asked_harin' }),
       d('ask_plan', '회사는 정리했고? 가게는 어떻게 하려고.', "Have you sorted things at work? What about the shop?",
@@ -118,27 +118,27 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "I've already told them at work. The shop stays open. No customers, but I'm not putting the knife down. (He talks faster than usual. He's practised this.)\n\nI've done the sums. It doesn't add up. I'm doing it anyway. I'll tell you the rest while we fish. Two bigfin squid, side by side.",
         { affinity: 0.02, flag: 'choice.n05_3_asked_plan' }),
       d('celebrate', '퇴사 기념 낚시냐? 그럼 오징어는 내가 먼저 잡는다.', "A resignation fishing trip, is it? Then I'm landing the first squid.",
-        '…기념이요? (입꼬리가 조금 올라간다.) 그렇게 말해 준 사람은 형이 처음이에요.\n\n먼저 잡아요. 저는 오늘 손이 좀 무거워요. 두 마리 나란히 올리면서 얘기해요. 축하는 그다음에 해 줘요.',
+        '…기념이요? (입꼬리가 조금 올라간다.) 그렇게 말해 준 사람은 그쪽이 처음이에요.\n\n먼저 잡아요. 저는 오늘 손이 좀 무거워요. 두 마리 나란히 올리면서 얘기해요. 축하는 그다음에 해 줘요.',
         "…A celebration? (The corner of his mouth lifts a little.) You're the first person who's put it that way.\n\nGo ahead and catch first. My hands are a bit heavy today. We'll talk while we bring up two side by side. Celebrate after that.",
         { affinity: 0.04 }),
     ],
     completeAdd: [
       d('sell_squid', '오징어 두 마리 값은 받을게. 가게 물건으로 써.', "I'll take the price of those two squid. Use them as stock for the shop.",
-        '…네. 가게 첫 물건이에요. 형이 낚은 거. (봉투를 내민다. 회사 이름이 찍힌 봉투다.)\n\n값은 제대로 쳐 줄게요. 이제 저도 장사하는 사람이니까요. 손님 오면 이 오징어부터 낼게요. 형이 낚은 거라고 말하면서요.',
+        '…네. 가게 첫 물건이에요. 그쪽이 낚은 거. (봉투를 내민다. 회사 이름이 찍힌 봉투다.)\n\n값은 제대로 쳐 줄게요. 이제 저도 장사하는 사람이니까요. 손님 오면 이 오징어부터 낼게요. 그쪽이 낚은 거라고 말하면서요.',
         "…Okay. My shop's first stock. Squid you caught. (He holds out an envelope. It has his company's name printed on it.)\n\nI'll pay a proper price. I'm a shopkeeper now. When a customer comes, this squid goes out first. And I'll tell them you caught it.",
         { payMult: 0.9, affinity: 0.02, flag: 'choice.n05_3_sold_squid' }),
     ],
     completeReply: {
       support: [
-        '…형. (하린이 그 말을 듣고 카메라를 다시 들었다. 이번엔 기범을 찍기 위해.)\n\n…하린이 카메라가 이쪽을 보네요. 저는 늘 등 돌리고 있었는데. (이번엔 돌아앉지 않는다.) 형이 그렇게 말해 줘서요. 낚시로 살 수 있다고. 그 말 오래 갖고 있을게요. 칼 쥘 때마다요.',
-        "…Hyeong. (Harin heard it and picked the camera up again. To film Gibeom this time.)\n\n…Her camera's pointing this way. I always kept my back to it. (This time he doesn't turn away.) Because you said it. That I can live off fishing. I'll keep those words a long time. Every time I pick up the knife.",
+        '… (하린이 그 말을 듣고 카메라를 다시 들었다. 이번엔 기범을 찍기 위해.)\n\n…하린이 카메라가 이쪽을 보네요. 저는 늘 등 돌리고 있었는데. (이번엔 돌아앉지 않는다.) 그쪽이 그렇게 말해 줘서요. 낚시로 살 수 있다고. 그 말 오래 갖고 있을게요. 칼 쥘 때마다요.',
+        "… (Harin heard it and picked the camera up again. To film Gibeom this time.)\n\n…Her camera's pointing this way. I always kept my back to it. (This time he doesn't turn away.) Because you said it. That I can live off fishing. I'll keep those words a long time. Every time I pick up the knife.",
       ],
       caution: [
         '…생각했어요. 천 번. (그래도 웃는다. 말려 준 사람이 있어서.)\n\n말려 주는 사람이 있으니까 오히려 알겠어요. 제가 이걸 얼마나 하고 싶은지. 천한 번째로 생각해도 답은 같아요. …그래도 고마워요. 말려 줘서.',
         "…I have thought. A thousand times. (He smiles anyway. Because somebody tried to stop him.)\n\nWith someone trying to stop me, I can tell how much I want this. Think it a thousand and one times, the answer's the same. …Thanks, though. For trying.",
       ],
       lesson: [
-        '…네. 이건 퇴사 기념. (회 뜨는 각도가 한 번 더 달라진다.)\n\n무늬오징어는 껍질부터 벗겨요. 지느러미 쪽을 잡고 한 번에요. 끊기면 처음부터 다시 해야 돼요. 회사에서는 이런 거 아무도 안 물어봤어요. 형은 물어보네요.',
+        '…네. 이건 퇴사 기념. (회 뜨는 각도가 한 번 더 달라진다.)\n\n무늬오징어는 껍질부터 벗겨요. 지느러미 쪽을 잡고 한 번에요. 끊기면 처음부터 다시 해야 돼요. 회사에서는 이런 거 아무도 안 물어봤어요. 그쪽은 물어보네요.',
         "…Sure. Call it a resignation special. (The angle of my slicing changes once more.)\n\nWith bigfin squid you peel the skin first. Grip it at the fin end and do it in one pull. If it tears, you start over. Nobody at the company ever asked me about this. You do.",
       ],
     },
@@ -190,35 +190,35 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   'N05-5': {
     offer: [
       d('sign_up', '첫 예약 손님이 너희라니. 명부에 이름부터 써.', "My first booking is you two. Names on the passenger list first.",
-        '…네. 쓸게요. 하린이가 먼저 쓴대요. (하린이 펜을 뺏어 들고 크게 쓴다. 나기범은 그 아래에 작게 쓴다.)\n\n신분증도 챙겨 왔어요. 배 타려면 필요하잖아요. 형 배니까 더 제대로 하고 싶었어요. 이제 나가요, 바다.',
+        '…네. 쓸게요. 하린이가 먼저 쓴대요. (하린이 펜을 뺏어 들고 크게 쓴다. 나기범은 그 아래에 작게 쓴다.)\n\n신분증도 챙겨 왔어요. 배 타려면 필요하잖아요. 그쪽 배니까 더 제대로 하고 싶었어요. 이제 나가요, 바다.',
         "…Okay. We'll sign. Harin wants to go first. (Harin snatches the pen and writes big. Na Gibeom writes small underneath.)\n\nWe brought ID too. You need it to board. It's your boat, so we wanted to do it properly. Let's go out. To sea.",
         { affinity: 0.06 }),
       d('offer_free', '친구한테 돈 받기는 좀 그렇다. 이번엔 그냥 타.', "Taking money from friends feels wrong. Ride free this time.",
-        '…안 돼요. 그럼 저희가 손님이 아니잖아요. (하린이 옆에서 고개를 세게 젓는다.)\n\n공짜로 태우면 형 배가 그냥 친구 배가 돼요. 저희는 선장님 배를 타고 싶어요. 정가 받아요. 그래야 다음에도 예약하죠.',
+        '…안 돼요. 그럼 저희가 손님이 아니잖아요. (하린이 옆에서 고개를 세게 젓는다.)\n\n공짜로 태우면 그쪽 배가 그냥 친구 배가 돼요. 저희는 선장님 배를 타고 싶어요. 정가 받아요. 그래야 다음에도 예약하죠.',
         "…No. Then we're not customers. (Beside him, Harin shakes her head hard.)\n\nIf you take us for free, your boat's just a friend's boat. We want to ride a skipper's boat. Charge the list price. That's how we get to book again.",
         { affinity: 0.02, flag: 'choice.n05_5_offered_free' }),
       d('ask_camera', '카메라는 물어본다고? 뭘 물어볼 건데?', "You'll ask about the camera? Ask what?",
-        '…하린이가 질문을 적어 왔어요. 찍어도 되는지, 얼굴이 나와도 되는지, 다른 손님이 있으면 그분들한테도요. (하린이 수첩을 펼쳐 보인다. 동의서 묶음이다.)\n\n그 동의서, 첫 서명이 형이었잖아요. 이번엔 형 배에서 저희가 받아요. 출항 전에 다 받을게요.',
+        '…하린이가 질문을 적어 왔어요. 찍어도 되는지, 얼굴이 나와도 되는지, 다른 손님이 있으면 그분들한테도요. (하린이 수첩을 펼쳐 보인다. 동의서 묶음이다.)\n\n그 동의서, 첫 서명이 그쪽이었잖아요. 이번엔 그쪽 배에서 저희가 받아요. 출항 전에 다 받을게요.',
         "…Harin wrote her questions down. Whether she can film, whether faces can show, and the same for any other guests. (Harin opens a notebook. It's a stack of consent forms.)\n\nYours was the first signature on that form, remember. This time we collect them on your boat. We'll have them all before we cast off.",
         { affinity: 0.04, flag: 'choice.n05_5_asked_camera' }),
-      d('no_jumping', '하린이 이번엔 배 위에서 안 뛰겠지?', "Harin's not going to run on deck this time, right?",
-        '…세 번 뛴 거 기억하시네요. (하린이 얼굴을 가린다.) 이번엔 제가 옆에 붙어 있을게요.\n\n선상 매너는 그때 다 배웠어요. 형도요. 오늘은 형이 선장이니까 형 말 들을게요. 그게 셋째 매너였잖아요. 출항해요.',
+      d('no_jumping', '하린 씨는 이번엔 배 위에서 안 뛰겠지?', "Harin's not going to run on deck this time, right?",
+        '…세 번 뛴 거 기억하시네요. (하린이 얼굴을 가린다.) 이번엔 제가 옆에 붙어 있을게요.\n\n선상 매너는 그때 다 배웠어요. 그쪽도요. 오늘은 그쪽이 선장이니까 선장 말 들을게요. 그게 셋째 매너였잖아요. 출항해요.',
         "…You remember her running three times. (Harin hides her face.) I'll stick right beside her this time.\n\nWe all learned boat manners that day. You too. Today you're the skipper, so we listen to you. That was the third rule, remember. Let's cast off.",
         { affinity: 0.03 }),
     ],
     completeAdd: [
       d('rate_me', '손님으로 타 보니 어땠어? 배 모는 거, 거친 데 말해 줘.', "How was it as a guest? Tell me where my handling was rough.",
-        '…거친 데는 없었어요. 하나만요. 회 뜰 때 뱃머리를 바람 쪽으로 세워 주면 더 좋아요. 흔들림이 앞뒤로만 와요. (손으로 뱃머리 방향을 그려 보인다. 배를 세우는 감이 잡힌다.)\n\n손님이 칼 쓸 때 배가 옆으로 구르면 무서워요. 형은 손님한테 그걸 물어보는 선장이네요. 좋은 선장이에요.',
+        '…거친 데는 없었어요. 하나만요. 회 뜰 때 뱃머리를 바람 쪽으로 세워 주면 더 좋아요. 흔들림이 앞뒤로만 와요. (손으로 뱃머리 방향을 그려 보인다. 배를 세우는 감이 잡힌다.)\n\n손님이 칼 쓸 때 배가 옆으로 구르면 무서워요. 그쪽은 손님한테 그걸 물어보는 선장이네요. 좋은 선장이에요.',
         "…Nothing was rough. Just one thing. When someone's slicing, put the bow into the wind. Then she only pitches fore and aft. (He traces the line of the bow with his hand. I get a feel for holding the boat.)\n\nIf the boat rolls sideways while a guest has a knife out, it's frightening. You're a skipper who asks guests about that. A good one.",
         { proficiency: { category: 'driving', xp: 30 }, affinity: 0.04 }),
     ],
     completeReply: {
       full: [
-        '그게 맞아요. (두 사람이 후기 첫 줄을 쓴다. 별 다섯.)\n\n…처음 배 탔던 날 기억나요. 하린이랑 형이랑 저. 그때는 다른 분이 선장이었죠. 이제는 형이에요. 그래서 정가 내고 싶었어요. 선장한테는 정가를 내는 거니까요.',
+        '그게 맞아요. (두 사람이 후기 첫 줄을 쓴다. 별 다섯.)\n\n…처음 배 탔던 날 기억나요. 하린이랑 그쪽이랑 저. 그때는 다른 분이 선장이었죠. 이제는 그쪽이에요. 그래서 정가 내고 싶었어요. 선장한테는 정가를 내는 거니까요.',
         "That's right. (The two of them write the first review. Five stars.)\n\n…I remember the first time we went out. Harin, you and me. Someone else was the skipper back then. Now it's you. That's why we wanted to pay full price. You pay a skipper full price.",
       ],
       lesson: [
-        '배 위 회는 각도가 달라요. 파도에 맞춰요. (선상 손질이 몸에 붙는다.)\n\n배가 내려앉을 때 칼을 당기고, 올라올 때는 쉬어요. 거꾸로 하면 손을 베요. 그리고 형 배는 흔들림이 순해요. 칼 쓰기 좋은 배예요. 선장이 그렇게 몰아서요.',
+        '배 위 회는 각도가 달라요. 파도에 맞춰요. (선상 손질이 몸에 붙는다.)\n\n배가 내려앉을 때 칼을 당기고, 올라올 때는 쉬어요. 거꾸로 하면 손을 베요. 그리고 그쪽 배는 흔들림이 순해요. 칼 쓰기 좋은 배예요. 선장이 그렇게 몰아서요.',
         "Cutting afloat takes a different angle. You match the swell. (Shipboard butchery settles into my body.)\n\nPull the knife as the boat settles, rest as she rises. Do it the other way round and you cut your hand. And your boat rolls gently. She's a good boat for a knife. Because of how her skipper handles her.",
       ],
       pay: [
@@ -232,20 +232,20 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   'N06-1': {
     offer: [
       d('why_stay', '농구부가 아닌 걸 알았는데 왜 안 나왔어?', "You found out it wasn't basketball. Why didn't you quit?",
-        '그게… 선배들이 이상하게 좋아요. 그리고 미노우라는 거 봤는데, 물고기처럼 헤엄쳐요. 진짜로요. (농구공을 옆구리에 낀 채 미노우를 꺼내 보인다.)\n\n그래서 한 마리만 잡아 보고 정하려고요. 농어요. 형이 같이 잡아 주면, 계속할지 말지 알 것 같아요.',
+        '그게… 선배들이 이상하게 좋아요. 그리고 미노우라는 거 봤는데, 물고기처럼 헤엄쳐요. 진짜로요. (농구공을 옆구리에 낀 채 미노우를 꺼내 보인다.)\n\n그래서 한 마리만 잡아 보고 정하려고요. 농어요. 같이 잡아 주면, 계속할지 말지 알 것 같아요.',
         "Well… the seniors are weirdly great. And I saw this thing called a minnow, and it swims like a real fish. Honestly. (With the basketball tucked under his arm, he pulls out a minnow to show me.)\n\nSo I want to catch just one and then decide. A sea bass. If you catch one with me, I think I'll know whether to keep going.",
         { affinity: 0.04, flag: 'choice.n06_1_asked_why_stay' }),
       d('bigger_than_ball', '농어는 말이야, 그 농구공보다 클 수도 있어.', "A sea bass, you know, can be bigger than that basketball.",
-        '진짜요? 이 공보다요? (공을 두 손으로 들어 크기를 가늠해 본다.)\n\n그럼 이 공 계속 들고 다녀야겠네요. 잡으면 대 보게요. 선배가 미노우를 수면에서 긋는 거래요. 형, 긋는 게 뭔지도 가르쳐 주세요.',
-        "Really? Bigger than this? (He holds the ball up in both hands, sizing it.)\n\nThen I'd better keep carrying it. So I can hold it up against one. A senior said you cut the minnow across the surface. Show me what cutting means too, hyeong.",
+        '진짜요? 이 공보다요? (공을 두 손으로 들어 크기를 가늠해 본다.)\n\n그럼 이 공 계속 들고 다녀야겠네요. 잡으면 대 보게요. 선배가 미노우를 수면에서 긋는 거래요. 긋는 게 뭔지도 가르쳐 주세요.',
+        "Really? Bigger than this? (He holds the ball up in both hands, sizing it.)\n\nThen I'd better keep carrying it. So I can hold it up against one. A senior said you cut the minnow across the surface. Show me what cutting means too.",
         { affinity: 0.03 }),
       d('first_bass', '좋아, 같이 잡자. 첫 농어는 오래 기억에 남는다.', "All right, let's catch one. You remember your first sea bass a long time.",
-        '오래요? 형도 기억나요? 형 첫 농어요. (눈이 반짝인다.)\n\n…아, 지금 말 안 해 줘도 돼요. 제가 잡고 나서 들을래요. 그래야 비교하죠. 가요, 방파제로!',
+        '오래요? 기억나요? 첫 농어요. (눈이 반짝인다.)\n\n…아, 지금 말 안 해 줘도 돼요. 제가 잡고 나서 들을래요. 그래야 비교하죠. 가요, 방파제로!',
         "A long time? Do you remember yours? Your first sea bass? (His eyes light up.)\n\n…Ah, you don't have to tell me now. I'll hear it after I've caught mine. So I can compare. Let's go, to the breakwater!",
         { affinity: 0.05 }),
       d('leave_ball', '농구공은 두고 가자. 방파제에서 굴러가면 못 찾아.', "Leave the basketball. If it rolls off the breakwater, it's gone.",
-        '안 돼요! 이거 있어야 마음이 편해요. (공을 꼭 껴안는다.)\n\n안 굴리게 조심할게요. 가방 끈으로 묶어 둘게요. 그럼 됐죠? 농어 잡으러 가요, 형. 공은 구경만 할 거예요.',
-        "No way! I feel better with it. (He hugs the ball tight.)\n\nI'll be careful it doesn't roll. I'll tie it down with my bag strap. Okay? Let's go catch a sea bass, hyeong. The ball's just watching.",
+        '안 돼요! 이거 있어야 마음이 편해요. (공을 꼭 껴안는다.)\n\n안 굴리게 조심할게요. 가방 끈으로 묶어 둘게요. 그럼 됐죠? 농어 잡으러 가요. 공은 구경만 할 거예요.',
+        "No way! I feel better with it. (He hugs the ball tight.)\n\nI'll be careful it doesn't roll. I'll tie it down with my bag strap. Okay? Let's go catch a sea bass. The ball's just watching.",
         { affinity: 0.01 }),
     ],
     completeAdd: [
@@ -256,16 +256,16 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       lesson: [
-        '형이 저한테요? 네! (초보의 눈으로 다시 본 루어 액션이 새롭다.)\n\n저는 그냥 신기해서 보는 거예요. 선배들 손목이 다 달라요. 누구는 짧게 툭툭, 누구는 길게 쭉. 근데 다 물어요. 그게 제일 신기해요.',
+        '저한테요? 네! (초보의 눈으로 다시 본 루어 액션이 새롭다.)\n\n저는 그냥 신기해서 보는 거예요. 선배들 손목이 다 달라요. 누구는 짧게 툭툭, 누구는 길게 쭉. 근데 다 물어요. 그게 제일 신기해요.',
         "You? From me? Yes! (Lure action looks new again through a beginner's eyes.)\n\nI only watch because it's all so strange. Every senior's wrist is different. One goes short, tap tap. Another goes long and smooth. And they all get bites. That's the strangest part.",
       ],
       pay: [
-        '있어요! 회비… 라면 살 돈이지만요. (동전을 모아 준다.)\n\n원래 이거 오늘 저녁 동아리방 라면 값이에요. 근데 형이 농어 잡게 해 줬으니까요. 오늘은 라면 대신 농어 먹으면 돼요. 선배들이 회 뜰 줄 안대요.',
+        '있어요! 회비… 라면 살 돈이지만요. (동전을 모아 준다.)\n\n원래 이거 오늘 저녁 동아리방 라면 값이에요. 근데 농어 잡게 해 줬으니까요. 오늘은 라면 대신 농어 먹으면 돼요. 선배들이 회 뜰 줄 안대요.',
         "There is! Dues… enough for ramyeon, anyway. (He gathers up coins for me.)\n\nThis was supposed to be tonight's ramyeon money in the club room. But you got me a sea bass. So tonight we eat sea bass instead. The seniors say they can slice it.",
       ],
       decline: [
-        '형… 형은 이제 우리 동아리 명예 회원이에요! (해양대 앞에서 인사받는 어른이 됐다.)\n\n명예 회원이 뭔지는 저도 몰라요. 방금 제가 만들었어요. 선배들한테 말하면 아마 된다고 할 거예요. 다들 형 좋아해요. 농어 잡게 해 준 사람이니까요.',
-        "Hyeong… you're an honorary member of our club now! (I've become an adult people greet outside the maritime college.)\n\nI don't actually know what an honorary member is. I just made it up. If I tell the seniors they'll probably say yes. Everyone likes you. You're the one who got me a sea bass.",
+        '…이제 우리 동아리 명예 회원이에요! (해양대 앞에서 인사받는 어른이 됐다.)\n\n명예 회원이 뭔지는 저도 몰라요. 방금 제가 만들었어요. 선배들한테 말하면 아마 된다고 할 거예요. 다들 좋아해요. 농어 잡게 해 준 사람이니까요.',
+        "…You're an honorary member of our club now! (I've become an adult people greet outside the maritime college.)\n\nI don't actually know what an honorary member is. I just made it up. If I tell the seniors they'll probably say yes. Everyone likes you. You're the one who got me a sea bass.",
       ],
     },
   },
@@ -545,7 +545,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.04 }),
     ],
     completeAdd: [
-      d('noticed', '승객 사연, 선장님도 다 듣고 계셨지요?', "You heard every word of that passenger's story too, didn't you?",
+      d('noticed', '승객 사연, 고만석 씨도 다 듣고 계셨지요?', "You heard every word of that passenger's story too, didn't you?",
         '…안 들었다. (안 들었다는 얼굴이 아니다.)\n\n배 위에서 한 말은 바다에 두고 내리는 거다. 들었어도 못 들은 거야. 너도 그렇게 해. 그게 이 배 규칙이다. 지키면 승객이 또 탄다.',
         "…Didn't hear a thing. (It isn't the face of a man who didn't hear.)\n\nWhat's said on a boat gets left at sea when you step off. Even if you heard it, you didn't. You do the same. That's this boat's rule. Keep it and the passengers come back.",
         { affinity: 0.06, flag: 'choice.n08_1_noticed_listening' }),
@@ -569,7 +569,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   // ── N08-2 「해나의 칼」 · 고해나 ──
   'N08-2': {
     offer: [
-      d('ask_why', '왜 아버님 밥상입니까? 무슨 날입니까?', "Why your father's table? Is it a special day?",
+      d('ask_why', '왜 아버지 밥상입니까? 무슨 날입니까?', "Why your father's table? Is it a special day?",
         '무슨 날은 아니에요. 아빠가 제 요리학교를 반대하거든요. 말로는 못 이겨요. 아빠는 말을 안 하니까. (웃는데 눈은 진지하다.)\n\n그래서 칼로 말해 보려고요. 겨울 방어 한 마리. 제가 뜬 회를 아빠가 어떻게 먹는지 보면 대답이 나올 거예요.',
         "It's not a special day. Dad's against me going to cooking school. I can't win with words. He doesn't use any. (She smiles, but her eyes are serious.)\n\nSo I'm going to try saying it with a knife. One winter yellowtail. When I see how he eats the sashimi I cut, I'll have my answer.",
         { affinity: 0.04, flag: 'choice.n08_2_asked_why' }),
@@ -612,10 +612,10 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   'N09-1': {
     offer: [
       d('worry', '다친 데는 없습니까? 갯바위는 젖은 데가 제일 미끄럽습니다.', "Are you hurt? Wet rock is the slipperiest.",
-        '없어요! 손목이 좀 놀란 것 같은데 괜찮아요. (손목을 돌려 보인다. 멀쩡하다.)\n\n젖은 데가 미끄러운 건 알았는데, 초록색 낀 데가 더 미끄러운 건 몰랐어요. 이제 아저씨 발 디딘 데만 따라 밟을게요. 같이 한 마리만 낚아요!',
+        '없어요! 손목이 좀 놀란 것 같은데 괜찮아요. (손목을 돌려 보인다. 멀쩡하다.)\n\n젖은 데가 미끄러운 건 알았는데, 초록색 낀 데가 더 미끄러운 건 몰랐어요. 이제 발 디딘 데만 따라 밟을게요. 같이 한 마리만 낚아요!',
         "Nope! My wrist got a fright, but it's fine. (She rolls her wrist to show me. Not a scratch on it.)\n\nI knew wet rock was slippery, but I didn't know the green slimy bits were worse. From now on I'll only step where you step. Let's catch just one together!",
         { affinity: 0.05 }),
-      d('ask_fly', '언니 아버님 털바늘을, 왜 봄 씨가 들고 있습니까?', "Why are you the one carrying your sister's father's fly?",
+      d('ask_fly', '그 털바늘을, 왜 봄 씨가 들고 있습니까?', "Why are you the one carrying that fly?",
         '…그게, 얘기가 좀 길어요. (털바늘을 손바닥에 꼭 쥔다.)\n\n언니 얘기는 낚시하면서 할게요. 한 번에 하면 제가 울 것 같아서요. 일단 한 마리만 같이 낚아요. 이 바늘로는 말고요. 이건 아까워서 못 던져요.',
         "…It's, um, a long story. (She closes her hand tight around the fly.)\n\nI'll tell you about my sister while we fish. If I tell it all at once I think I'll cry. Let's just catch one together first. Not with this hook, though. It's too precious to throw.",
         { affinity: 0.03, flag: 'choice.n09_1_asked_fly' }),
@@ -624,7 +624,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "When I wake up, the first thing I think is what am I going to cook today. Before bed too. I chop things in my dreams. (She pulls a small board and a knife sheath out of her bag. She brought them all the way onto the rocks.)\n\nThat's why I'm here. I want to cook something straight out of the sea. Let's catch just one together. When we do, I'll make something right there.",
         { affinity: 0.04, flag: 'choice.n09_1_asked_cooking' }),
       d('passing_by', '저는 그냥 지나가던 길이었는데요.', "I was only passing by, you know.",
-        '지나가던 길이 제일 좋아요! 저도 지나가다 미끄러졌어요. (아무렇지 않게 웃는다.)\n\n그러니까 지나가는 김에 한 마리만요. 붙잡아 줬으니까 이제 아저씨는 제 생명의 은인이에요. 은인이랑 낚시하는 건 처음이에요.',
+        '지나가던 길이 제일 좋아요! 저도 지나가다 미끄러졌어요. (아무렇지 않게 웃는다.)\n\n그러니까 지나가는 김에 한 마리만요. 붙잡아 줬으니까 이제 제 생명의 은인이에요. 은인이랑 낚시하는 건 처음이에요.',
         "Passing by is the best! I was passing by when I slipped, too. (She laughs like it's nothing.)\n\nSo while you're passing, just one fish. You caught me, so now you're the saviour of my life. I've never fished with a saviour before.",
         { affinity: 0.02 }),
     ],
@@ -636,7 +636,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     ],
     completeReply: {
       lesson: [
-        '네! 같이 배워요! (미끄러운 바위를 읽는 눈이 생긴다.)\n\n마른 데는 하얗고, 초록색 낀 데는 미끄럽고, 제일 무서운 건 까만 데래요. 젖어서 반짝이는 데요. 아까 저 거기 밟았어요. 이제 안 밟아요. 아저씨도요.',
+        '네! 같이 배워요! (미끄러운 바위를 읽는 눈이 생긴다.)\n\n마른 데는 하얗고, 초록색 낀 데는 미끄럽고, 제일 무서운 건 까만 데래요. 젖어서 반짝이는 데요. 아까 저 거기 밟았어요. 이제 안 밟아요. 그쪽도요.',
         "Yes! Let's learn together! (I get an eye for reading slick rock.)\n\nDry rock is white, green slimy rock is slippery, and the scariest is the black. The bits that shine wet. That's what I stepped on earlier. Not anymore. You too.",
       ],
       pay: [
@@ -654,15 +654,15 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   'N09-2': {
     offer: [
       d('accept', '손질이라면 맡겨 주십시오. 두 마리, 깨끗하게 하겠습니다.', "Leave the dressing to me. Two fish, done clean.",
-        '깨끗하게요! 그 말 좋아요. 언니도 들었을 거예요. (물가에 선 이수연 쪽을 본다. 대답은 없다. 대신 낚싯대가 한 번 휜다.)\n\n봐요, 벌써 하나 걸었어요. 언니는 대답을 손으로 해요. 도마는 두 개예요. 하나는 아저씨 거, 하나는 제 거.',
+        '깨끗하게요! 그 말 좋아요. 언니도 들었을 거예요. (물가에 선 이수연 쪽을 본다. 대답은 없다. 대신 낚싯대가 한 번 휜다.)\n\n봐요, 벌써 하나 걸었어요. 언니는 대답을 손으로 해요. 도마는 두 개예요. 하나는 그쪽 거, 하나는 제 거.',
         "Clean! I like that. My sister will have heard. (She looks over at Lee Suyeon standing at the water's edge. No answer. Instead, her rod bends once.)\n\nSee, she's already hooked one. She answers with her hands. There are two boards. One's yours, one's mine.",
         { affinity: 0.05 }),
       d('ask_suyeon', '수연 씨가 직접 낚습니까? 말이 없다던 분이요.', "Suyeon fishes herself? The one you said doesn't talk?",
-        '말은 없어도 낚시는 저보다 훨씬 잘해요. 손이 정확해요. (조금 부러운 얼굴이다.)\n\n언니는 잡는 거, 저는 해 먹는 거. 그 사이가 손질이에요. 아저씨가 그 사이를 맡아 주면 돼요. 두 마리요.',
+        '말은 없어도 낚시는 저보다 훨씬 잘해요. 손이 정확해요. (조금 부러운 얼굴이다.)\n\n언니는 잡는 거, 저는 해 먹는 거. 그 사이가 손질이에요. 그 사이를 맡아 주면 돼요. 두 마리요.',
         "She doesn't talk, but she fishes way better than me. Her hands are precise. (She looks a little envious.)\n\nShe catches, I cook. Dressing is the bit in between. You take the in-between. Two fish.",
         { affinity: 0.04, flag: 'choice.n09_2_asked_suyeon' }),
       d('ask_dressing', '손질이 요리를 그렇게나 바꿉니까?', "Does dressing really change the cooking that much?",
-        '완전요! 비늘 하나 남으면 식감이 망가지고, 피를 덜 빼면 비려요. 뼈에 살을 남기면 그만큼 버리는 거고요. (손가락을 하나씩 접는다.)\n\n좋은 손질은 요리사 일을 반으로 줄여 줘요. 그래서 아저씨가 필요해요. 오늘 증명할게요. 접시로요.',
+        '완전요! 비늘 하나 남으면 식감이 망가지고, 피를 덜 빼면 비려요. 뼈에 살을 남기면 그만큼 버리는 거고요. (손가락을 하나씩 접는다.)\n\n좋은 손질은 요리사 일을 반으로 줄여 줘요. 그래서 그쪽이 필요해요. 오늘 증명할게요. 접시로요.',
         "Totally! Leave one scale and the texture's ruined. Don't bleed it enough and it smells fishy. Leave meat on the bone and that's that much thrown away. (She counts on her fingers.)\n\nGood dressing halves the cook's work. That's why I need you. I'll prove it today. With a plate.",
         { affinity: 0.03, flag: 'choice.n09_2_asked_dressing' }),
       d('unsure', '제 손질이 요리에 쓸 만큼 되는지 모르겠습니다.', "I'm not sure my dressing is good enough for cooking.",
@@ -672,7 +672,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     ],
     completeAdd: [
       d('bone_soup', '손질 값 대신, 남은 뼈로 국이나 끓여 주십시오.', "Instead of paying for the dressing, make a soup from the bones.",
-        '국이요? 맑은 탕이요! (뼈를 들어 불빛에 비춰 본다.) 뼈에 살 남은 게 하나도 없네요. 그래도 국물은 나와요. 뼈만으로도요.\n\n셋이 나눠 먹어요. 아저씨 손질 값은 국 한 그릇이에요. (그날 저녁 구룡포 골목에 맑은 탕 냄새가 퍼졌다. 사람들이 손질한 사람이 누구냐고 묻는다.)',
+        '국이요? 맑은 탕이요! (뼈를 들어 불빛에 비춰 본다.) 뼈에 살 남은 게 하나도 없네요. 그래도 국물은 나와요. 뼈만으로도요.\n\n셋이 나눠 먹어요. 손질 값은 국 한 그릇이에요. (그날 저녁 구룡포 골목에 맑은 탕 냄새가 퍼졌다. 사람들이 손질한 사람이 누구냐고 묻는다.)',
         "Soup? A clear broth! (She holds the bones up to the light.) There's not a scrap of meat left on these. But they'll still make stock. Bones alone will.\n\nWe'll share it, the three of us. Your fee for the dressing is one bowl of soup. (That evening the smell of clear broth drifts down the Guryongpo alleys. People ask who did the dressing.)",
         { affinity: 0.06, harborRep: 2 }),
     ],
@@ -682,7 +682,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "…My sister smiled. Just now. Did you see? (For the first time, Suyeon looks straight at me.)\n\nI don't get to see her smile often either. No sound, just the corners of her mouth. I think it's because you called it the price of a meal. You counted it as a meal, not a job.",
       ],
       lesson: [
-        '맞아요! 배 쪽 살을 남겨야 해요! (손질 등급이 오른다.)\n\n뱃살은 기름이 제일 많아서, 굽든 조리든 맛이 거기서 나와요. 근데 손질할 때 제일 많이 버려지는 데도 거기예요. 아깝잖아요. 이제 아저씨는 안 버리겠네요.',
+        '맞아요! 배 쪽 살을 남겨야 해요! (손질 등급이 오른다.)\n\n뱃살은 기름이 제일 많아서, 굽든 조리든 맛이 거기서 나와요. 근데 손질할 때 제일 많이 버려지는 데도 거기예요. 아깝잖아요. 이제 안 버리겠네요.',
         "Yes! You have to leave the belly meat! (My butchery grade rises.)\n\nThe belly has the most fat, so grilled or braised, that's where the flavour comes from. And it's the part that gets thrown out most when people dress fish. Such a waste. You won't be throwing it out now.",
       ],
       pay: [
@@ -696,7 +696,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   'N09-3': {
     offer: [
       d('accept', '감아 보겠습니다. 사진 그대로, 한 올도 빼지 않고요.', "I'll tie it. Exactly like the photo, not a thread left out.",
-        '…네. (사진을 내민다. 모서리가 닳아 있다.) 이거요. 아빠가 감던 거.\n\n(옆에서 봄이 눈을 크게 뜬다. 언니가 이만큼 말하는 건 드문 일인 모양이다.) …참돔 한 마리면 돼요. 그 바늘로요.',
+        '…네. (사진을 내민다. 모서리가 닳아 있다.) 이거요. 아빠가 감던 거.\n\n(옆에서 봄이 눈을 크게 뜬다. 수연이 이만큼 말하는 건 드문 일인 모양이다.) …참돔 한 마리면 돼요. 그 바늘로요.',
         "…Okay. (She holds out the photo. Its corners are worn.) This. The one Dad used to tie.\n\n(Beside her, Bom's eyes go wide. Her sister saying this much seems to be rare.) …One red seabream is enough. On that hook.",
         { affinity: 0.05 }),
       d('ask_pattern', '사진 속 바늘, 무슨 깃털로 감은 겁니까?', "The fly in the photo — what feathers is it tied with?",
@@ -707,13 +707,13 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         '…네. (고개를 한 번 끄덕인다. 짧은 대답인데 그 대답까지 오래 걸렸다.)\n\n봄이가 상 차릴 거예요. 저는 수저 놓을게요. 셋이요. 그러니까 참돔 한 마리, 꼭요.',
         "…Yes. (She nods once. A short answer, but it took her a long time to give it.)\n\nBom will cook. I'll set the spoons. Three. So one red seabream. Please.",
         { affinity: 0.06, flag: 'choice.n09_3_asked_seat' }),
-      d('unsure', '아버님 바늘을 제 손으로 감아도 될지 모르겠습니다.', "I'm not sure my hands should be the ones tying your father's fly.",
+      d('unsure', '아버지 바늘을 제 손으로 감아도 될지 모르겠습니다.', "I'm not sure my hands should be the ones tying your father's fly.",
         '…괜찮아요. 누군가는 감아야 해요. (짧게 말하고 입을 다문다.)\n\n봄이가 그러는데, 손이 정확한 사람이래요. 저도 봤어요. 도마 위에서. 그러니까 감아 줘요. 참돔 한 마리.',
         "…It's okay. Somebody has to tie it. (She says it briefly and closes her mouth.)\n\nBom says your hands are precise. I saw it too. On the board. So please tie it. One red seabream.",
         { affinity: 0.03 }),
     ],
     completeAdd: [
-      d('enough_word', '바늘 값은 됐습니다. 아버님 바늘이 맞다는 그 말이면 충분합니다.', "No charge for the flies. Hearing it's your father's hook is enough.",
+      d('enough_word', '바늘 값은 됐습니다. 아버지 바늘이 맞다는 그 말이면 충분합니다.', "No charge for the flies. Hearing it's your father's hook is enough.",
         '…네. (한참 있다가 한 번 더 말한다.) 아빠 바늘 맞아요. 두 번 말해도 맞아요.\n\n(봄이 웃다가 운다. 수연은 털바늘 상자를 내 쪽으로 조금 민다. 열어 봐도 된다는 뜻이다. 그 뒤로 구룡포 부두 사람들이 나를 알아본다.)',
         "…Yes. (After a long while she says it once more.) It's Dad's hook. Twice over, it is.\n\n(Bom laughs, then cries. Suyeon pushes the fly box a little toward me. It means I may open it. After that, the people on the Guryongpo docks know my face.)",
         { affinity: 0.1, harborRep: 2 }),
@@ -763,7 +763,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
     completeReply: {
       lesson: [
         '오빠, 이분이 봤대요! (나기범이 처음으로 돌아앉아 칼을 잡는 법을 보여 준다.)\n\n방금 돌아앉은 거 봤어요? 방송 중에요! (화면을 확인한다. 다행히 손만 찍혔다.) 오빠는 칼을 짧게 잡아요. 뼈를 따라갈 땐 손목 말고 팔꿈치로 민대요. 저는 아직 무슨 말인지 모르겠어요.',
-        "Oppa, he was watching! (For the first time Na Gibeom turns round and shows me how to hold the knife.)\n\nDid you see him turn round? On air! (She checks the screen. Luckily only his hands made it in.) He holds the knife short. Along the bone he pushes from the elbow, not the wrist, he says. I still don't get what that means.",
+        "Oppa, this one was watching! (For the first time Na Gibeom turns round and shows me how to hold the knife.)\n\nDid you see him turn round? On air! (She checks the screen. Luckily only his hands made it in.) He holds the knife short. Along the bone he pushes from the elbow, not the wrist, he says. I still don't get what that means.",
       ],
       pay: [
         '네… 시청자 다섯 명분… (진지하게 계산한다.)\n\n…계산대로 드리면 그쪽이 손해예요. 다섯 명이 한 시간 본 값이면 커피 한 잔도 안 돼요. 그러니까 계산 말고 제 지갑 사정대로 드릴게요. 손질 값은 손질 값이니까요.',
@@ -788,11 +788,11 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "A sashimi place. A small one with just a counter. (He straightens the empty stools one by one.)\n\nI change the tank water every day. Even with no customers. Doing that much makes it feel like a shop. If you cut some sashimi, we'll eat it ourselves. First day of trade.",
         { affinity: 0.03, flag: 'choice.n05_7_asked_shop' }),
       d('hesitate', '남의 가게에서 제가 칼을 잡아도 되겠습니까?', "Is it all right for me to take up a knife in someone else's shop?",
-        '…남의 가게 아니에요. 오늘은요. (새 앞치마 하나를 내민다.)\n\n손님이 없어서 제 칼도 요즘 쉬었어요. 형이 잡아 주면 칼도 반가워할 거예요. 수조에 있는 걸로 떠 줘요.',
+        '…남의 가게 아니에요. 오늘은요. (새 앞치마 하나를 내민다.)\n\n손님이 없어서 제 칼도 요즘 쉬었어요. 그쪽이 잡아 주면 칼도 반가워할 거예요. 수조에 있는 걸로 떠 줘요.',
         "…It's not someone else's shop. Not today. (He holds out a new apron.)\n\nWith no customers, my knife's been resting lately. If you take it up, the knife will be glad. Cut from what's in the tank.",
         { affinity: 0.02 }),
       d('ask_harin', '하린 씨는 왜 카메라 대신 설거지를 합니까?', "Why is Harin washing dishes instead of filming?",
-        '…모르겠어요. 아침부터 저래요. 찍을 게 없대요. (주방 쪽에서 물소리가 난다. 그릇은 이미 다 깨끗하다.)\n\n저는 그게 더 고마워요. 말은 안 했어요. 형이 회 뜨면 하린이도 와서 앉을 거예요. 그때 같이 먹어요.',
+        '…모르겠어요. 아침부터 저래요. 찍을 게 없대요. (주방 쪽에서 물소리가 난다. 그릇은 이미 다 깨끗하다.)\n\n저는 그게 더 고마워요. 말은 안 했어요. 회 뜨면 하린이도 와서 앉을 거예요. 그때 같이 먹어요.',
         "…No idea. She's been like that since morning. Says there's nothing to film. (Water runs in the kitchen. The dishes are already all clean.)\n\nI'm more grateful for that. I haven't told her. When you cut the sashimi, she'll come and sit too. We'll eat together then.",
         { affinity: 0.04, flag: 'choice.n05_7_asked_harin' }),
     ],
@@ -812,8 +812,8 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         "…Yes. It's my first sale. (My name goes on the first line of the ledger.)\n\nStrange. Money's going out, and she calls it my first sale. Harin told me to write it that way. Sashimi got cut, so the shop did some work, she says. …I still don't really get it.",
       ],
       decline: [
-        '…첫 손님. (하린이 결국 사진 한 장을 찍었다. 카운터 셋.)\n\n하린이가 안 찍는다더니 찍었네요. 괜찮아요. 올리는 사진은 아니래요. 가게 벽에 붙인대요. 첫 손님 자리에요. …형 자리예요.',
-        "…First customer. (Harin took a photo in the end. Three at the counter.)\n\nShe said she wouldn't film, and then she took one. That's fine. It's not for posting, she says. It goes on the shop wall. Where the first customer sits. …That's your seat, hyeong.",
+        '…첫 손님. (하린이 결국 사진 한 장을 찍었다. 카운터 셋.)\n\n하린이가 안 찍는다더니 찍었네요. 괜찮아요. 올리는 사진은 아니래요. 가게 벽에 붙인대요. 첫 손님 자리에요. …그쪽 자리예요.',
+        "…First customer. (Harin took a photo in the end. Three at the counter.)\n\nShe said she wouldn't film, and then she took one. That's fine. It's not for posting, she says. It goes on the shop wall. Where the first customer sits. …That's your seat.",
       ],
     },
   },
@@ -825,7 +825,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         '둘 다 하면 안 돼요? (웃는다.) 칼도 키도 다 아빠 배에서 본 거예요.\n\n그리고… 아빠가 키를 못 잡는 날이 언젠가 오잖아요. 그날 누가 잡아요. 요즘 그 생각이 자꾸 나요. 그러니까 한 항차만요.',
         "Can't I do both? (She laughs.) The knife and the wheel, I saw both on Dad's boat.\n\nAnd… someday there'll be a day Dad can't take the wheel. Who takes it then? I keep thinking about that lately. So just one trip.",
         { affinity: 0.03, flag: 'choice.n08_3_asked_why' }),
-      d('ask_secret', '선장님이 아실 거라면서, 왜 몰래 하십니까?', "If your father will know anyway, why do it behind his back?",
+      d('ask_secret', '고만석 씨가 아실 거라면서, 왜 몰래 하십니까?', "If your father will know anyway, why do it behind his back?",
         '알아도 모른 척하는 게 아빠 방식이에요. 대놓고 하면 아빠는 말려야 하잖아요. 선장이니까. (조타실 쪽을 힐끔 본다.)\n\n몰래 하면 아빠는 안 본 걸로 할 수 있어요. 그게 아빠가 허락하는 방법이에요. 이상하죠. 그래서 한 항차만 옆에 있어 줘요.',
         "Knowing and pretending not to is Dad's way. If I did it openly, he'd have to stop me. He's the skipper. (She glances toward the wheelhouse.)\n\nIf I do it behind his back, he can act like he never saw. That's how he says yes. Strange, right? So stay beside me for one trip.",
         { affinity: 0.04, flag: 'choice.n08_3_asked_secret' }),
@@ -863,7 +863,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
   // ── N09-4 「구룡포의 봄」 · 이수연 (식당 이름은 끝낼 때 처음 나온다 — 받는 자리에서는 말하지 않는다) ──
   'N09-4': {
     offer: [
-      d('ask_boat', '아버님 배를 파셨다니… 괜찮으십니까?', "You sold your father's boat… are you all right?",
+      d('ask_boat', '아버지 배를 파셨다니… 괜찮으십니까?', "You sold your father's boat… are you all right?",
         '…모르겠어요. (대답하기 전에 오래 바다를 본다.) 묶어 두기만 하는 것보다는 나아요.\n\n그 돈으로 부엌을 해요. 봄이 말대로요. 첫 상은 아빠 칼로 차리고 싶어요. 손질해 줘요.',
         "…I don't know. (She looks at the sea a long time before answering.) It's better than leaving it tied up.\n\nWe're making a kitchen with the money. Like Bom said. I want the first table set with Dad's knife. Please dress the fish.",
         { affinity: 0.03, flag: 'choice.n09_4_asked_boat' }),
@@ -871,7 +871,7 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         '…네. 봄이는 요리, 저는… 아직 몰라요. 봄이가 그러는데, 저는 생선 고르는 거래요. (고개를 조금 끄덕인다. 마음에 드는 모양이다.)\n\n개업 상에는 원물 한 마리가 올라가야 한대요. 그건 부탁해요. 아빠 칼로요.',
         "…Yes. Bom cooks, and me… I don't know yet. Bom says my job is picking the fish. (She nods slightly. She seems to like that.)\n\nShe says the opening table needs a whole fish on it. That part I'm asking you for. With Dad's knife.",
         { affinity: 0.04, flag: 'choice.n09_4_asked_restaurant' }),
-      d('unsure', '아버님 칼을 제가 써도 되겠습니까?', "Is it all right for me to use your father's knife?",
+      d('unsure', '아버지 칼을 제가 써도 되겠습니까?', "Is it all right for me to use your father's knife?",
         '…써야 해요. 서랍에만 있으면 칼이 아니에요. (천에 싼 칼을 내민다. 손잡이가 닳아 반들거린다.)\n\n저는 아직 손이 떨려요. 그래서 부탁해요. 첫 상은 그 칼로요.',
         "…It has to be used. Kept in a drawer, it isn't a knife. (She holds out a knife wrapped in cloth. The handle is worn smooth.)\n\nMy hands still shake. That's why I'm asking. The first table, with that knife.",
         { affinity: 0.03 }),
@@ -917,15 +917,15 @@ export const CHOICE_DEPTH_5: Record<string, ChoiceDepthEntry> = {
         '명예 회원이잖아. 그리고 동아리 사람이 아니라서야. 우리끼리 붙으면 다 아는 수라 재미없어. (웃는다. 광기가 조금 보인다.)\n\n밖에서 온 사람한테 지면 그게 진짜 졸업이야. 이기면 더 좋고. 봐주지 마. 두 마리.',
         "You're an honorary member. And it's because you're not in the club. Against each other we know every trick, it's boring. (He grins. A little of the madness shows.)\n\nLose to someone from outside and that's a real graduation. Win, even better. Don't go easy. Two fish.",
         { affinity: 0.04, flag: 'choice.n06_4_asked_why_me' }),
-      d('hosu_ball', '호수는 아직도 농구공을 들고 다닙니까?', "Hosu still carries that basketball around?",
+      d('hosu_ball', '호수 씨는 아직도 농구공을 들고 다닙니까?', "Hosu still carries that basketball around?",
         '다녀. 이제 아무도 안 말려. 해산하는 날에도 들고 올 거야. (한숨인지 웃음인지 모를 소리를 낸다.)\n\n호수 말로는 그 공을 옆에 두면 잘 잡힌대. 미신이지. 근데 실측해 보니 틀린 말도 아니더라. 대결 날 공 굴러가면 네가 주워.',
         "He does. Nobody stops him anymore. He'll bring it on the day we disband too. (He makes a noise that could be a sigh or a laugh.)\n\nHosu says fish bite better with the ball beside you. Superstition. But I measured it, and it's not entirely wrong. If the ball rolls off on match day, you fetch it.",
         { affinity: 0.03 }),
     ],
     completeAdd: [
-      d('give_hosu', '제 몫은 호수한테 주십시오. 그 녀석은 계속 던질 겁니다.', "Give my share to Hosu. He'll keep on casting.",
-        '…호수한테? (농구공을 든 고호수를 본다.) 그래. 저 녀석은 계속 던지겠지. 공은 안 내려놓고.\n\n네 몫이었으니 네 손으로 줘. 내가 주면 졸업 선물이고, 네가 주면 형이 주는 거야. (고호수가 농구공을 떨어뜨릴 뻔한다. 부산 방파제에 그 얘기가 돈다.)',
-        "…To Hosu? (He looks at Go Hosu, basketball in hand.) Right. That kid will keep casting. Without ever putting the ball down.\n\nIt was your share, so give it with your own hands. From me it's a graduation present. From you it's from a big brother. (Go Hosu nearly drops the basketball. The story goes round the Busan breakwaters.)",
+      d('give_hosu', '제 몫은 호수 씨한테 주십시오. 그분은 계속 던질 겁니다.', "Give my share to Hosu. He'll keep on casting.",
+        '…호수한테? (농구공을 든 고호수를 본다.) 그래. 저 녀석은 계속 던지겠지. 공은 안 내려놓고.\n\n네 몫이었으니 네 손으로 줘. 내가 주면 졸업 선물이고, 네가 주면 같이 던진 사람이 주는 거야. (고호수가 농구공을 떨어뜨릴 뻔한다. 부산 방파제에 그 얘기가 돈다.)',
+        "…To Hosu? (He looks at Go Hosu, basketball in hand.) Right. That kid will keep casting. Without ever putting the ball down.\n\nIt was your share, so give it with your own hands. From me it's a graduation present. From you it's from someone who fished beside him. (Go Hosu nearly drops the basketball. The story goes round the Busan breakwaters.)",
         { affinity: 0.06, harborRep: 2, affinityOther: [{ npcId: 'go_hosu', delta: 0.1 }], flag: 'choice.n06_4_gave_hosu' }),
     ],
     completeReply: {
