@@ -735,7 +735,7 @@ export const TALKS_N03: StoryTalkDef[] = [
       ], {
         choices: [
           opt('sit_between', '들을게요. 두 분 이야기라면 끝까지요', "I'll listen. If it's the two of you, all the way through", {
-            next: 'between' }),
+            aff: { go_manseok: 0.02 }, next: 'between' }),
           opt('ask_boat', '어떤 배를 같이 타셨는데요?', 'What boat did you sail on together?', {
             say: ['고만석 씨요? 어떤 배를 같이 타셨는데요?', 'Go Manseok? What boat did you sail on together?'], next: 'boat' }),
           opt('long_time', '오랜만에 만나시는 거예요?', 'Has it been a long time since you met?', {
@@ -825,6 +825,544 @@ export const TALKS_N03: StoryTalkDef[] = [
       ], {
         end: endTalk({ complete: 'write_down', lineKo: '직함 붙은 이름이 앞에 서면 이야기가 무거워져.', lineEn: 'Put a name with a title in front and the story gets heavy.' }),
         note: ['두 사람 이야기를 배 이름만 빼고 조행록에 적어도 되느냐고 물었다. 강두철 씨는 한참 말이 없다가 고개를 끄덕였다. 고만석 씨 이름을 앞에 적으라고.', "I asked whether I could write their story in my log, leaving out the boat's name. After a long silence Kang Ducheol nodded — and told me to put Go Manseok's name first."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // 290차 — N03-3 「도장」 받는 자리(강두철 · 제주). 총회 표결 — 「나는 개입 안 하네」 · 위판 실적
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_3_offer', questId: 'N03-3', at: 'offer', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '왔나, 선생.', "There you are, teacher."),
+        line(P, '제주까지 어쩐 일이세요?', 'What brings you all the way to Jeju?'),
+        line(K, '총회가 다가와서. 어촌계 표결이 있지.', "The general meeting's coming up. There'll be a co-op vote."),
+        line(P, '표결이요?', 'A vote?'),
+        line(K, '표결 전에 말해 두려고. 나는 개입 안 하네. 조합장이 손대면 표결이 아니야.', "I wanted to say this before it happens. I won't interfere. If the chairman lays a hand on it, it isn't a vote."),
+        line('', '(허리춤의 도장 주머니를 손바닥으로 한 번 누른다.)', '(He presses a palm once against the seal pouch at his belt.)'),
+        line(K, '내 선생이 알아서 하겠지.', 'My teacher will handle it.'),
+        line(P, '제가요?', 'Me?'),
+        line(K, '총회는 말 잘하는 사람보다 바다에 자주 나간 사람 말을 더 들어. 표결 전까지 위판 세 건쯤은 쌓아 두게.', "A general meeting listens to the one who's been out to sea most, not the best talker. Get about three lots consigned at auction before the vote."),
+      ], {
+        choices: [
+          opt('my_vote', '어느 쪽에 손을 들지는 제가 정하겠습니다', "Which way I raise my hand, I'll decide myself", {
+            say: ['알겠습니다. 어느 쪽에 손을 들지는 제가 정하겠습니다.', "Understood. Which way I raise my hand, I'll decide myself."], next: 'my_vote' }),
+          opt('ask_seal', '그 도장으로 뭘 하시는데요?', 'What do you use that seal for?', {
+            next: 'seal' }),
+          opt('why_not', '조합장이 표결에 끼면 왜 안 되는 겁니까?', 'Why is it wrong for the chairman to take part in the vote?', {
+            next: 'why_not' }),
+          opt('just_tell', '한마디 해 주시면 편할 텐데요', 'It would be easier if you just said a word', {
+            say: ['솔직히 한마디 해 주시면 편할 텐데요. 어느 쪽이 맞습니까?', 'Honestly, it would be easier if you just said a word. Which side is right?'], next: 'just_tell' }),
+        ],
+        note: ['제주에서 강두철 씨를 만났다. 총회 어촌계 표결을 앞두고, 자기는 개입하지 않겠다고 미리 말해 두었다. 조합장이 손대면 표결이 아니라고. 표결 전까지 위판 세 건쯤은 쌓아 두라고 했다.',
+          "I met Kang Ducheol in Jeju. Ahead of the co-op vote at the general meeting, he told me in advance that he wouldn't interfere — a vote the chairman touches is no vote. I should get about three lots consigned at auction before then."],
+      }),
+      my_vote: scene([
+        line(K, '그거면 돼. 내가 바라는 건 그것뿐이야.', "That's all I need. That's all I want.", { act: 'nod' }),
+        line('', '(도장 주머니를 꺼냈다가 다시 넣는다.)', '(He takes the seal pouch out, then puts it back.)'),
+        line(P, '위판은요?', 'And the auction lots?'),
+        line(K, '그건 내가 도와줄 수 없는 일이야. 자네 손으로 쌓게.', "That's something I can't help with. Build them up with your own hands."),
+      ], {
+        end: endTalk({ accept: true, offer: 'my_vote' }),
+        note: ['어느 쪽에 손을 들지는 내가 정하겠다고 했다. 강두철 씨는 그거면 된다고, 위판 실적은 자기가 도와줄 수 없으니 내 손으로 쌓으라고 했다.', "I said I'd decide for myself which way to raise my hand. That was all he wanted, Kang Ducheol said — the auction record he couldn't help with; I had to build it myself."],
+      }),
+      seal: scene([
+        line(K, '조합 일 마무리는 다 이걸로 하지. 서류 맨 끝에 이게 찍혀야 일이 끝나.', 'Every piece of co-op business ends with this. A job is only done once this is stamped at the bottom of the paper.'),
+        line('', '(인주가 마른 도장을 손바닥에 굴린다.)', '(He rolls the seal, its ink long dried, in his palm.)'),
+        line(P, '그럼 엄청 중요한 거네요.', 'Then it matters a great deal.'),
+        line(K, '그래서 무서운 거야. 이게 찍히면 반대한 사람 말도 다 덮여.', "That's what makes it frightening. Once this is stamped, even the words of those who objected are covered over."),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_seal', lineKo: '이번 표결엔 안 찍어. 찍지 않는 도장도 있는 법이야.', lineEn: "I won't stamp anything for this vote. There's such a thing as a seal you don't use." }),
+        note: ['그 도장으로 뭘 하느냐고 물었다. 조합 일은 다 이걸로 마무리한다고, 이게 찍히면 반대한 사람 말도 다 덮인다고 했다. 이번 표결엔 안 찍겠다고.', "I asked what the seal was for. All co-op business ends with it, he said — and once it's stamped, even the objections are covered over. He wouldn't stamp anything for this vote."],
+      }),
+      why_not: scene([
+        line(K, '어촌계는 마을이 바다를 나눠 쓰는 자리야. 수협은 그 위에서 돈과 위판을 맡고.', "A village co-op is where a village shares out its sea. The fisheries co-op sits above that, handling money and auctions."),
+        line(P, '위에 있는 사람이…', 'And if the one above...'),
+        line(K, '손을 얹으면 아래 사람들 손은 못 올라가.', "...lays a hand on it, the hands below can't rise."),
+        line(K, '찬성이든 반대든 자기 손으로 들어야 표야. 내가 한마디 하면 그건 내 표가 돼.', "For or against, a vote is a hand you raise yourself. If I say one word, it becomes my vote."),
+      ], {
+        end: endTalk({ accept: true, offer: 'why_not', lineKo: '그러니 입 다무는 게 내 일이지. 자네 일은 표결 전까지 실적 쌓는 거고.', lineEn: "So keeping quiet is my job. Yours is building your record before the vote." }),
+        note: ['조합장이 표결에 끼면 왜 안 되느냐고 물었다. 위에 있는 사람이 손을 얹으면 아래 사람들 손은 못 올라간다고 했다. 자기 손으로 들어야 표라고.', "I asked why the chairman shouldn't take part. If the one above lays a hand on it, the hands below can't rise, he said. A vote is a hand you raise yourself."],
+      }),
+      just_tell: scene([
+        line(K, '그 질문에 대답하는 순간 나는 조합장이 되고 자네는 학생이 돼.', "The moment I answer that, I become the chairman and you become the student.", { act: 'shake_head' }),
+        line(P, '…우리 사이가 거꾸로 가는 거네요.', '...Our places would turn around.'),
+        line(K, '그렇지. 편한 길은 늘 남한테 묻는 길이야.', "That's it. The easy road is always asking someone else."),
+        line(K, '자네는 선생이잖나. 선생은 어려운 길로 가는 사람이야.', "You're the teacher, aren't you? A teacher takes the hard road."),
+      ], {
+        end: endTalk({ accept: true, offer: 'just_tell', lineKo: '우선 위판장부터 다녀오게.', lineEn: 'Go to the auction floor first.' }),
+        note: ['한마디 해 주면 편하겠다고 했더니, 강두철 씨는 고개를 저었다. 그 질문에 답하는 순간 자기는 조합장이 되고 나는 학생이 된다고. 선생은 어려운 길로 가는 사람이라고.', "When I said a word from him would make it easier, Kang Ducheol shook his head. Answer that and he'd become the chairman and I the student. A teacher takes the hard road, he said."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // N03-3 「도장」 — 진행 중: 표결 전 대화(목표 1). 총회장 안에서 계장이 의자를 놓으며 다 듣는다
+  //   표를 부탁한다 · 개입하지 말라고 한다 · 남의 손을 묻는다 — 교육장에서 남긴 말이 열린다
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_3_vote', questId: 'N03-3', at: 'objective', objectiveIndex: 1, npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line('', '(총회 전날 밤, 총회장 앞 계단. 안에서 계장이 의자를 놓는 소리가 들린다. 노인이 도장 주머니를 손바닥에 올려놓고 앉아 있다.)', '(The night before the general meeting, on the steps outside the hall. From inside comes the sound of the chief setting out chairs. The old man sits with his seal pouch on his palm.)'),
+        line(K, '내일이 표결이지.', "Tomorrow's the vote."),
+        line(P, '네.', 'Yes.'),
+        line(K, '한 번 더 말해 두려고 왔네. 나는 개입 안 해. 조합장이 어촌계 표결에 손대면 그건 표결이 아니야.', "I came to say it once more. I won't interfere. If a chairman lays a hand on a co-op vote, it isn't a vote any more."),
+        line('', '(도장을 꺼내 보이고는 찍지 않고 다시 넣는다.)', '(He takes out the seal to show me, then puts it back without stamping anything.)'),
+        line(K, '내 선생이 알아서 하겠지.', 'My teacher will handle it.'),
+      ], {
+        choices: [
+          opt('ask_vote', '마을 사람들 생각해서라도 한마디만 거들어 주시면 안 됩니까?', "For the village's sake, couldn't you put in just one word?",
+            { stance: 'other', aff: { [K]: -0.05, coop: -0.04 }, flags: ['choice.n03_asked_favor'], next: 'refuse',
+              note: ['마을 사람들 생각해서라도 한마디만 거들어 달라고 했다.', "I asked him to put in just one word, for the village's sake."] }),
+          opt('dont_interfere', '그 말씀이 맞습니다. 도장은 넣어 두세요. 손은 제가 듭니다.', "You're right. Keep the seal put away. I'll raise my own hand.",
+            { stance: 'giver', aff: { [K]: 0.05, coop: 0.03 }, next: 'trust',
+              note: ['도장은 넣어 두시라고, 손은 내가 들겠다고 했다.', 'I told him to keep the seal put away — I would raise my own hand.'] }),
+          opt('ask_someone', '도현수 씨는 어느 쪽에 손을 들까요?', 'Which way do you think Hyeonsu will raise his hand?',
+            { stance: 'mid', next: 'someone' }),
+          opt('as_student', '선생 표결에 학생이 끼면 반칙이지요. 가만히 계세요.', "A student meddling in his teacher's vote would be cheating. Sit tight.",
+            { stance: 'giver', aff: { [K]: 0.03, coop: 0.01 }, requires: { flag: 'choice.n03_kept_teaching' }, end: endTalk({
+              lineKo: '허허! 그래, 학생은 가만히 있겠네. (도장 주머니를 가슴 주머니 깊숙이 넣는다.) 내일은 맨 뒷줄에 앉아서 선생님 손만 보고 있겠어.',
+              lineEn: "Ha! Right, the student will sit tight. (He pushes the seal pouch deep into his breast pocket.) Tomorrow I'll sit in the back row and watch nothing but my teacher's hand." }) }),
+        ],
+        note: ['총회 전날 밤, 총회장 앞 계단에 강두철 씨가 도장 주머니를 들고 앉아 있었다. 안에서 계장이 의자를 놓고 있었다. 그는 한 번 더, 개입하지 않겠다고 했다. 도장을 꺼내 보이고는 찍지 않고 다시 넣었다.',
+          "The night before the meeting, Kang Ducheol sat on the hall steps holding his seal pouch while the chief set out chairs inside. He said once more that he wouldn't interfere, took out the seal to show me, and put it back unstamped."],
+      }),
+      refuse: scene([
+        line(K, '그 말은 못 들은 걸로 하겠네.', "I'll pretend I didn't hear that.", { act: 'shake_head' }),
+        line(K, '내가 한마디 하면 그건 마을 표가 아니라 내 표가 돼.', "If I say one word, it stops being the village's vote and becomes mine."),
+        line('', '(총회장 안에서 의자 놓는 소리가 멈춘다.)', '(Inside the hall, the sound of chairs being set out stops.)'),
+        line(P, '…', '...'),
+        line(K, '마을을 생각한다면 더 그러면 안 되지. 마을 손은 마을이 드는 거야.', "If you're thinking of the village, that's all the more reason not to. The village raises its own hands."),
+      ], {
+        choices: [
+          opt('withdraw', '제가 잘못 말씀드렸습니다. 제 손으로 하겠습니다.', "I shouldn't have said that. I'll do it with my own hand.",
+            { stance: 'mid', aff: { [K]: 0.03, coop: 0.02 }, end: endTalk({
+              lineKo: '(어깨를 툭 친다.) 그래. 그 말이면 됐네. 내일 자네 손이 어느 쪽으로 가든, 자네 손이면 된 거야.',
+              lineEn: "(He claps me on the shoulder.) Right. That's all I needed to hear. Whichever way your hand goes tomorrow, as long as it's your own hand, it's right." }) }),
+          opt('but_why', '아는 사람을 돕는 게 왜 잘못입니까?', "What's wrong with helping someone you know?",
+            { stance: 'self', aff: { [K]: -0.02 }, end: endTalk({
+              lineKo: '조합장이 아는 사람을 도우면 그게 제일 위험한 일이야. 모르는 사람들 손이 다 내려가거든. (일어선다.) 내일 보세. 나는 맨 뒷줄에 있겠네.',
+              lineEn: "When a chairman helps people he knows, that's the most dangerous thing there is. Every hand belonging to people he doesn't know goes down. (He stands.) See you tomorrow. I'll be in the back row." }) }),
+        ],
+        note: ['강두철 씨가 처음 보는 단호한 얼굴로 고개를 저었다. 못 들은 걸로 하겠다고, 자기가 한마디 하면 마을 표가 아니라 자기 표가 된다고 했다. 총회장 안에서 의자 소리가 멈췄다.', "Kang Ducheol shook his head with a firmness I'd never seen. He'd pretend he hadn't heard — one word from him and it would be his vote, not the village's. Inside the hall the chairs went quiet."],
+      }),
+      trust: scene([
+        act(K, 'laugh'),
+        line(K, '그 말 들으려고 왔네.', "That's what I came to hear."),
+        line('', '(도장 주머니 끈을 꽉 묶는다.)', '(He pulls the cord of the seal pouch tight.)'),
+        line(K, '…사실은 반쯤은 시험이었어. 늙은이가 아직도 시험을 하네.', "...Truth is, it was half a test. This old man is still setting tests."),
+        line('', '(총회장 안에서 계장이 헛기침을 한다. 다 들은 모양이다.)', '(Inside the hall the chief clears his throat. He seems to have heard every word.)'),
+      ], {
+        choices: [
+          opt('passed', '시험이면, 붙은 겁니까?', 'If it was a test, did I pass?',
+            { stance: 'mid', aff: { [K]: 0.02 }, end: endTalk({
+              lineKo: '붙고 말고가 어딨나. 내일 자네 손이 어느 쪽으로 가든, 자네 손으로 들면 붙은 거야.',
+              lineEn: "There's no pass or fail. Whichever way your hand goes tomorrow, if you raise it yourself, you've passed." }) }),
+          opt('no_tests', '이제 시험은 그만하시죠. 교육장에서 충분했습니다.', "Enough tests now. The training course was plenty.",
+            { stance: 'other', aff: { [K]: 0.02, coop: 0.01 }, requires: { flag: 'choice.n03_called_out' }, end: endTalk({
+              lineKo: '(웃음을 거둔다.) …맞아. 자네한테는 그만해야지. 미안하네. 이게 마지막이야. (도장 주머니를 내 쪽으로 내밀려다 도로 넣는다.) 이건 표결 끝나고.',
+              lineEn: "(His laugh fades.) ...You're right. With you, I ought to stop. I'm sorry. This is the last one. (He starts to hold the seal pouch out to me, then puts it away again.) This can wait till after the vote." }) }),
+          opt('distance_right', '거리를 두길 잘했다 싶습니다. 오늘 같은 날 떳떳하니까요.', "I'm glad I kept my distance. On a day like this, my hands are clean.",
+            { stance: 'self', aff: { [K]: 0.02 }, requires: { flag: 'choice.n03_kept_distance' }, end: endTalk({
+              lineKo: '(쓴웃음을 짓는다.) 그래. 자네 거리가 오늘은 자네를 지키는군. 늙은이도 그 거리 덕을 보네. 내일 떳떳하게 들게.',
+              lineEn: "(He smiles wryly.) True. Today your distance is what protects you. The old man benefits from it too. Raise your hand with a clear conscience tomorrow." }) }),
+        ],
+        note: ['도장은 넣어 두시라고 하자, 강두철 씨는 그 말을 들으려고 왔다며 도장 주머니 끈을 꽉 묶었다. 반쯤은 시험이었다고 털어놓았다. 안에서 계장이 헛기침을 했다.', "When I told him to keep the seal away, Kang Ducheol said that was what he'd come to hear and pulled the pouch cord tight. It had been half a test, he admitted. Inside, the chief cleared his throat."],
+      }),
+      someone: scene([
+        line(K, '그 친구 손은 그 친구 거야. 계장 손자라고 계장 손을 드는 것도 아니고.', "That young man's hand is his own. Being the chief's grandson doesn't mean he raises the chief's hand.", { act: 'shake_head' }),
+        line(P, '…그렇겠죠.', "...I suppose not."),
+        line(K, '남의 손이 궁금하면 자네 손이 아직 안 정해진 거지.', "If you're curious about other people's hands, it means yours isn't settled yet."),
+        act(K, 'laugh'),
+        line(K, '내 말 틀렸나.', 'Am I wrong?'),
+      ], {
+        choices: [
+          opt('not_decided', '맞습니다. 아직 못 정했습니다.', "You're right. I haven't decided yet.",
+            { stance: 'self', end: endTalk({
+              lineKo: '그럼 오늘 밤은 바다를 보게. 사람 얼굴은 내일 보고. (일어선다.) 표결은 결국 바다 때문에 하는 거니까.',
+              lineEn: "Then tonight, look at the sea. Look at people's faces tomorrow. (He stands.) In the end, the vote is for the sea's sake." }) }),
+          opt('hope_same', '도현수 씨가 같은 쪽이면 좋겠다 싶어서요.', "I just hope Hyeonsu ends up on the same side.",
+            { stance: 'other', aff: { [K]: 0.01 }, end: endTalk({
+              lineKo: '(빙그레 웃는다.) 그 말은 나 말고 그 친구한테 하게. 내일 말고, 오늘 밤에. 젊은 손끼리는 그게 빨라.',
+              lineEn: "(He smiles.) Say that to him, not to me. Not tomorrow. Tonight. Between young hands, that's quicker." }) }),
+          opt('ask_chief', '그럼 어촌계장 손도 그분 거겠지요.', "Then the co-op chief's hand is his own too, I suppose.",
+            { stance: 'mid', aff: { coop: 0.02 }, end: endTalk({
+              lineKo: '허허, 그렇지. 그 양반이 지금 안에서 의자를 놓는 것도 그래서야. 자기 손으로 자리를 만드는 거지. (안쪽에서 의자 소리가 잠깐 멈췄다가 다시 난다.)',
+              lineEn: "Ha, that's right. That's why he's in there setting out chairs right now. He makes the seats with his own hands. (Inside, the sound of chairs stops for a moment, then starts again.)" }) }),
+        ],
+        note: ['도현수 씨는 어느 쪽에 손을 들지 물었다. 강두철 씨는 그 친구 손은 그 친구 거라고, 남의 손이 궁금하면 내 손이 아직 안 정해진 거라고 했다.', "I asked which way Do Hyeonsu would vote. His hand was his own, Kang Ducheol said — if I was curious about other people's hands, mine wasn't settled yet."],
+      }),
+    },
+  },
+
+  // 290차 — N03-3 끝내는 자리(강두철). 표결이 끝났다 · 찍지 않은 도장
+  {
+    id: 'n03_3_done', questId: 'N03-3', at: 'complete', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '…표결 끝났나.', '...Is the vote over?'),
+        line(P, '네. 제 손으로 들었습니다.', 'Yes. I raised my own hand.'),
+        line(K, '잘했어. 어느 쪽이든.', 'Well done. Whichever way.', { act: 'nod' }),
+        line(P, '어느 쪽이었는지는 안 물으세요?', "You won't ask which way?"),
+        line(K, '안 물어. 그게 내 일이야.', "I won't. That's my job."),
+        line('', '(도장 주머니를 꺼내 손바닥에 올린다.)', '(He takes out the seal pouch and rests it on his palm.)'),
+        line(K, '개입 안 한 도장, 여기 있네.', "Here it is — the seal that didn't interfere."),
+      ], {
+        choices: [
+          opt('respect', '개입하지 않은 도장이 더 무거웠습니다', 'The seal that stayed out of it weighed more', {
+            say: ['개입하지 않는 도장. 그게 더 무거웠습니다.', 'A seal that stays out of it. That weighed more.'], next: 'respect' }),
+          opt('lesson', '어촌계를 보는 눈, 배우고 싶습니다', 'I want to learn how to see a village co-op', {
+            say: ['조합장으로서 어촌계를 보는 눈, 배우고 싶습니다.', 'I want to learn how a chairman looks at a village co-op.'],
+            end: endTalk({ complete: 'lesson', lineKo: '멀리서 보는 거야. 가까이 가면 개입이 돼. 위판 숫자를 봐. 어느 어종이 줄고 어느 배가 쉬는지. 숫자를 읽고 나서 사람을 만나게. 순서가 바뀌면 휘둘려.',
+              lineEn: "From a distance. Go close and it becomes interference. Look at the auction numbers. Which species are falling off, which boats are idle. Read the numbers, then meet the people. Get the order wrong and you get pushed around." }),
+            note: ['어촌계를 보는 눈을 배우고 싶다고 했다. 멀리서 보라고, 위판 숫자를 먼저 읽고 사람을 만나라고 했다. 순서가 바뀌면 휘둘린다고.', 'I asked to learn how to see a village co-op. From a distance, he said — read the auction numbers first, then meet the people. Get the order wrong and you get pushed around.'] }),
+          opt('pay', '선생 노릇 값은 받겠습니다', "I'll take a teacher's fee", {
+            end: endTalk({ complete: 'pay', lineKo: '그러세. 조합장 사비야. 표결 앞두고 조합 봉투가 오가면 말이 나. 내 주머니에서 나간 거니 걱정 말고 받게. 선생 대접은 원래 사비로 하는 거야.',
+              lineEn: "Very well. From the chairman's own pocket. Co-op envelopes changing hands around a vote would set tongues wagging. This came out of my pocket, so take it and don't worry. You treat a teacher out of your own money." }),
+            note: ['선생 노릇 값을 받았다. 봉투가 두꺼웠다. 조합 돈이 아니라 그의 사비였다.', "I took the teacher's fee. The envelope was thick — his own money, not the co-op's."] }),
+          opt('asked_side', '강두철 씨는 어느 쪽에 손을 드셨을지, 궁금합니다', 'I still wonder which way you would have raised your hand', {
+            end: endTalk({ complete: 'asked_side', lineKo: '허허, 그건 도장이랑 같이 넣어 두게. 내가 말하면 자네가 든 손이 맞았는지 재게 되잖나. 재지 마. 자네 손은 자네 거였어. 그거면 표결은 제 할 일을 한 거야.',
+              lineEn: "Ha, put that away with the seal. If I told you, you'd start measuring whether your hand was right. Don't measure. Your hand was yours. That means the vote did its job." }),
+            note: ['그는 어느 쪽에 손을 들었을지 궁금하다고 했다. 강두철 씨는 끝내 대답하지 않았다. 내 손은 내 것이었으니 재지 말라고.', 'I said I still wondered which way he would have voted. Kang Ducheol never answered. My hand had been mine, he said — don\'t measure it.'] }),
+        ],
+        note: ['표결이 끝났다. 내 손으로 들었다고 하자, 강두철 씨는 어느 쪽이든 잘했다며 어느 쪽이었는지는 묻지 않았다. 개입 안 한 도장을 꺼내 손바닥에 올렸다.', "The vote was over. When I said I'd raised my own hand, Kang Ducheol said well done, whichever way, and didn't ask which. He took out the seal that hadn't interfered and rested it on his palm."],
+      }),
+      respect: scene([
+        line(K, '무거워야지.', 'It ought to be heavy.'),
+        line('', '(도장을 건넨다. 찍지 않은 채. 기념이라며.)', '(He hands me the seal. Unstamped. As a keepsake, he says.)'),
+        line(P, '이걸 저한테요?', 'You\'re giving this to me?'),
+        line(K, '찍는 건 쉬워. 손목 한 번이면 돼. 안 찍고 기다리는 게 어렵지.', "Stamping is easy. One flick of the wrist. Not stamping and waiting is the hard part."),
+      ], {
+        end: endTalk({ complete: 'respect', lineKo: '그 도장 볼 때마다 기억하게. 힘이 있을 때 안 쓰는 것도 힘이라는 걸.', lineEn: 'Every time you look at that seal, remember: not using power when you have it is power too.' }),
+        note: ['개입하지 않은 도장이 더 무거웠다고 했다. 강두철 씨는 찍지 않은 채 그 도장을 내게 건넸다. 힘이 있을 때 안 쓰는 것도 힘이라는 걸 기억하라고.', "I said the seal that stayed out of it weighed more. Kang Ducheol handed it to me, unstamped — remember that not using power when you have it is power too."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // 290차 — N03-7 「조합장의 출장」 받는 자리(강두철 · 인천). 이번엔 초보 행세 없이 뒤에 선다
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_7_offer', questId: 'N03-7', at: 'offer', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '인천 바닥은 사람이 많지.', 'Lots of people on the Incheon docks, eh?'),
+        line(P, '강두철 씨? 여기까지 어떻게…', 'Ducheol? How did you end up here...'),
+        line(K, '이번엔 뒤에 서 있겠네.', "This time I'll stand behind you."),
+        line(P, '뒤에요?', 'Behind me?'),
+        line(K, '유통 경로 하나. 자네가 설명해 봐. 어디서 잡혀서 어디서 팔리는지.', "One distribution route. You explain it. Where it's caught, and where it's sold."),
+        line(P, '제가 설명을요?', 'I explain it?'),
+        line(K, '위판 몇 건 내면서 끝까지 따라가 보면 보일 거야. 네 건쯤.', "Consign a few lots at auction and follow them to the end, and you'll see. Four or so."),
+        line(K, '나는 듣기만 하지.', "I'll only listen."),
+      ], {
+        choices: [
+          opt('try_explain', '해 보겠습니다. 틀리면 말씀해 주세요', "I'll try. Tell me if I get it wrong", {
+            next: 'try' }),
+          opt('ask_route', '어디서부터 어디까지를 말씀하시는 겁니까?', 'From where to where do you mean?', {
+            say: ['유통 경로라면 어디서부터 어디까지를 말씀하시는 겁니까?', 'A distribution route — from where to where do you mean?'], next: 'route' }),
+          opt('no_act', '이번엔 왜 초보 행세를 안 하세요?', "Why aren't you playing the beginner this time?", {
+            next: 'no_act' }),
+          opt('nervous', '강두철 씨 앞에서 설명이라니, 긴장되는데요', 'Explaining in front of you makes me nervous', {
+            next: 'nervous' }),
+        ],
+        note: ['인천 유통 현장에 강두철 씨가 나타났다. 이번엔 초보 행세 없이, 내 뒤에 서서 듣기만 하겠다고 했다. 위판 네 건쯤 내고 끝까지 따라가 본 뒤, 유통 경로 하나를 설명해 보라고.',
+          "Kang Ducheol turned up on the Incheon distribution docks. No beginner act this time — he'd stand behind me and only listen. Consign about four lots at auction, follow them to the end, and then explain one route to him."],
+      }),
+      try: scene([
+        line(K, '말 안 하네. 오늘은 듣기만 한다고 했잖나.', "I won't say anything. I told you, today I only listen."),
+        line('', '(팔짱을 끼고 한 걸음 뒤로 물러선다.)', '(He folds his arms and steps back a pace.)'),
+        line(P, '그럼 틀린 건 어떻게 알아요?', 'Then how will I know if I got it wrong?'),
+        line(K, '설명하다 보면 막히는 데가 있어. 거기가 틀린 데야.', "As you explain, you'll get stuck somewhere. That's where it's wrong."),
+      ], {
+        end: endTalk({ accept: true, offer: 'try_explain', lineKo: '막히면 처음부터 다시 하게. 어디서 잡혔는지부터.', lineEn: "When you get stuck, start over. From where it was caught." }),
+        note: ['틀리면 말해 달라고 했더니, 강두철 씨는 오늘은 듣기만 한다며 팔짱을 끼고 물러섰다. 설명하다 막히는 데가 틀린 데라고.', 'When I asked him to correct me, Kang Ducheol folded his arms and stepped back — today he only listened. Wherever I got stuck would be where I was wrong.'],
+      }),
+      route: scene([
+        line(K, '바다에서 밥상까지.', 'From the sea to the dinner table.'),
+        line(P, '밥상까지요?', 'To the table?'),
+        line(K, '배에서 내린 상자가 위판장을 지나고, 중매인 손을 거쳐 도매로, 소매로 가서 누군가의 접시에 오르기까지.', "A crate off a boat goes through the auction floor, through a broker's hands, to wholesale, to retail, until it lands on someone's plate."),
+        line(K, '그 사이에 얼음이 몇 번 갈리고 값이 몇 번 붙는지 말해 보게.', 'Tell me how many times the ice is changed and how many times a price is added along the way.'),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_route', lineKo: '인천은 사람이 많아서 경로도 길어. 그래서 여기서 하자는 거야.', lineEn: "Incheon has lots of people, so the routes are long. That's why we're doing it here." }),
+        note: ['어디서부터 어디까지냐고 물었다. 바다에서 밥상까지라고 했다. 위판장, 중매인, 도매, 소매를 지나 접시에 오르기까지 얼음이 몇 번 갈리고 값이 몇 번 붙는지 말해 보라고.', "I asked from where to where. From the sea to the table, he said — through the auction floor, brokers, wholesale and retail onto a plate. Tell him how often the ice is changed and how often a price is added."],
+      }),
+      no_act: scene([
+        act(K, 'laugh'),
+        line(K, '허허, 들킨 지가 언젠데.', 'Ha, I was found out ages ago.'),
+        line(K, '그리고 오늘은 배우러 온 게 아니야. 보러 온 거지.', "Besides, today I didn't come to learn. I came to watch."),
+        line('', '(뒷짐을 진다.)', '(He clasps his hands behind his back.)'),
+        line(P, '보러요?', 'To watch?'),
+        line(K, '선생이 얼마나 컸는지 보는 건 학생의 특권이야.', "Seeing how much the teacher has grown is the student's privilege."),
+      ], {
+        end: endTalk({ accept: true, offer: 'no_act', lineKo: '그 특권 좀 쓰겠네. 뒤에서 조용히.', lineEn: "I'll use that privilege. Quietly, from behind." }),
+        note: ['이번엔 왜 초보 행세를 안 하느냐고 물었다. 들킨 지가 언젠데, 하고 웃더니 오늘은 배우러 온 게 아니라 선생이 얼마나 컸는지 보러 왔다고 했다.', "I asked why he wasn't playing the beginner. He'd been found out ages ago, he laughed — today he hadn't come to learn but to see how much his teacher had grown."],
+      }),
+      nervous: scene([
+        line(K, '그러니 뒤에 서 있겠다는 거야. 얼굴 보면 더 떨려.', "That's why I'll stand behind you. Seeing my face would make it worse."),
+        line('', '(등을 돌려 보인다.)', '(He turns his back to show me.)'),
+        line(K, '됐나? 이제 안 보이지.', "Better? Now you can't see me."),
+        line(P, '…그래도 떨려요.', "...I'm still nervous."),
+        line(K, '긴장하는 건 좋은 거야. 아무렇지 않으면 대충 하거든.', "Being nervous is good. If you don't care, you do a sloppy job."),
+      ], {
+        end: endTalk({ accept: true, offer: 'nervous', lineKo: '처음 방파제에서 내 실 풀어 줄 때도 십 분 걸렸지. 그래도 다 풀었잖나.', lineEn: 'That first day on the breakwater it took you ten minutes to untangle my line. But you got it all loose, didn\'t you?' }),
+        note: ['그 앞에서 설명하려니 긴장된다고 했다. 강두철 씨는 그래서 뒤에 서 있겠다며 등을 돌려 보였다. 긴장하는 건 좋은 거라고, 처음 방파제에서도 십 분 걸렸지만 다 풀었다고.', "I said explaining in front of him made me nervous. That was why he'd stand behind me, Kang Ducheol said, turning his back. Nerves are good — on the breakwater it took me ten minutes, but I got it all loose."],
+      }),
+    },
+  },
+
+  // N03-7 — 끝내는 자리(강두철). 「선생이 다 컸네」
+  {
+    id: 'n03_7_done', questId: 'N03-7', at: 'complete', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(P, '…그래서 이 상자가 마지막엔 누군가의 접시에 오르는 거예요.', "...And that's how this crate ends up on someone's plate."),
+        act(K, 'silence'),
+        line('', '(노인은 고개를 끄덕이지도 젓지도 않는다.)', "(The old man neither nods nor shakes his head.)"),
+        line(K, '…선생이 다 컸네.', '...My teacher has grown up.'),
+        line(P, '틀린 데는 없었어요?', "Did I get anything wrong?"),
+        line(K, '조합장이 배우는 날이 왔어.', 'The day has come for the chairman to learn.'),
+      ], {
+        choices: [
+          opt('grown', '다 컸다는 말, 강두철 씨한테 듣고 싶었습니다', 'I wanted to hear you say I had grown', {
+            next: 'grown' }),
+          opt('lesson', '제 설명에서 틀린 데를 짚어 주십시오', 'Please point out where my explanation went wrong', {
+            end: endTalk({ complete: 'lesson', lineKo: '틀린 데 없어. 순서만. 소비자부터 거꾸로 가면 더 잘 보여. 접시 위 값에서 하나씩 빼 보게. 소매 몫, 도매 몫, 얼음과 기름값. 끝에 남는 게 어부 몫이야.',
+              lineEn: "Nothing wrong. Just the order. Go backwards from the buyer and you'll see it better. Take the price on the plate and subtract one by one. Retail's share, wholesale's share, ice and fuel. What's left at the end is the fisher's share." }),
+            note: ['틀린 데를 짚어 달라고 했다. 틀린 데는 없고 순서만이라고, 접시 위 값에서 하나씩 빼 보면 끝에 남는 게 어부 몫이라고 했다. 그게 얼마나 작은지 알면 위판장에서 함부로 값을 못 깎는다고.', "I asked him to point out my mistakes. None, he said — only the order. Subtract from the price on the plate and what's left is the fisher's share. Know how small it is, and you won't haggle carelessly at auction."] }),
+          opt('pay', '인천 강의료는 받겠습니다', "I'll take a lecture fee for Incheon", {
+            end: endTalk({ complete: 'pay', lineKo: '강의료! 허허. 조합장 사비로. 오늘 강의는 그 값을 하고도 남았어. 인천 바닥 중매인들도 저렇게는 설명 못 해. 받게. 학생이 내는 수업료야.',
+              lineEn: "A lecture fee! Ha. From the chairman's own pocket. Today's lecture was worth that and more. Even the Incheon brokers couldn't explain it like that. Take it. It's the student's tuition." }),
+            note: ['강의료를 받았다. 봉투가 두꺼웠다.', 'I took a lecture fee. The envelope was thick.'] }),
+          opt('asked_origin', '이 길을 처음에 누구한테 배우셨어요?', 'Who first taught you this road?', {
+            say: ['강두철 씨는 이 길을 처음에 누구한테 배우셨습니까?', 'Who first taught you this road?'],
+            end: endTalk({ complete: 'asked_origin', lineKo: '허허, 그건 서른 해 묵은 얘기라 꺼내면 해가 지네. 하나만 말하지. 누구한테 배웠는지보다 몇 번 틀렸는지가 중요해. 나는 많이 틀렸어. 자네는 오늘 한 번도 안 틀렸고.',
+              lineEn: "Ha, that's thirty years old — tell it and the sun goes down. I'll say one thing. How many times you got it wrong matters more than who taught you. I got it wrong plenty. You didn't once today." }),
+            note: ['이 길을 누구한테 처음 배웠느냐고 물었다. 서른 해 묵은 얘기라며 손을 저었다. 누구한테 배웠는지보다 몇 번 틀렸는지가 중요하다고.', "I asked who had first taught him this road. A thirty-year-old story, he said, waving it off — what matters is how many times you got it wrong, not who taught you."] }),
+        ],
+        note: ['유통 경로 하나를 처음부터 끝까지 설명해 보였다. 강두철 씨는 고개를 끄덕이지도 젓지도 않고 다 듣더니, 선생이 다 컸다고 했다. 조합장이 배우는 날이 왔다고.', "I explained one route from start to finish. Kang Ducheol heard it all without nodding or shaking his head, then said his teacher had grown up — the day had come for the chairman to learn."],
+      }),
+      grown: scene([
+        line(K, '…자네.', '...You.'),
+        act(K, 'silence'),
+        line(K, '선생이 다 크면 학생은 물러날 때를 알아야 하는 법이야.', "When the teacher is grown, the student has to know when to step back."),
+        line(P, '물러나시다니요?', 'Step back?'),
+        line(K, '…아직 정한 건 없네.', "...Nothing's decided yet."),
+      ], {
+        end: endTalk({ complete: 'grown', lineKo: '속초에 가서 마저 하지. 오늘은 인천 바람이나 쐬고.', lineEn: "We'll finish this in Sokcho. Today, let's just enjoy the Incheon breeze." }),
+        note: ['다 컸다는 말을 그에게 듣고 싶었다고 했다. 강두철 씨는 한참 말이 없다가, 선생이 다 크면 학생은 물러날 때를 알아야 한다고 했다. 아직 정한 건 없다고, 속초에 가서 마저 하자고.', "I said I'd wanted to hear that from him. After a long silence Kang Ducheol said that when the teacher is grown, the student must know when to step back. Nothing was decided yet, he said — we'd finish in Sokcho."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // 290차 — N03-4 「스승의 날」 받는 자리(강두철 · 속초). 은퇴 · 명부 1번 · 2층 자재 · 그리고 엉킨 채비
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_4_offer', questId: 'N03-4', at: 'offer', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line(K, '왔나, 선생님.', "You're here, teacher."),
+        line(P, '네. 무슨 일 있으세요?', 'Yes. Is something up?'),
+        line(K, '은퇴하네.', "I'm retiring."),
+        line(P, '네? 은퇴요?', 'What? Retiring?'),
+        line(K, '조합원 명부 1번은 비워 뒀어. 자네 자리야.', "I've left line one of the member roll empty. It's your place."),
+        line(P, '…', '...'),
+        line(K, '2층 고칠 자재는 조합에서 대지. 창고에 들여놨으니 자네 손으로 세 가지쯤 만들어 보게.', "The co-op will supply the materials to fix up your second floor. They're in the storehouse — make about three things with your own hands."),
+        line(K, '그리고… 이 채비 좀.', 'And... this rig.'),
+        line('', '(엉킨 실뭉치를 내민다. 처음 만난 날처럼.)', '(He holds out a tangled ball of line. Just like the day we met.)'),
+        line(K, '엉켰네.', "It's tangled."),
+      ], {
+        choices: [
+          opt('like_first_day', '그 채비부터 풀어 드릴게요. 처음 그날처럼요', "I'll untangle it first. Like that first day", {
+            say: ['그 채비부터 풀어 드리겠습니다. 처음 그날처럼요.', "I'll untangle that rig first. Just like that first day."], next: 'first_day' }),
+          opt('ask_number_one', '명부 1번이요? 무슨 자리입니까?', 'Line one of the roll? What place is that?', {
+            next: 'number_one' }),
+          opt('really_retire', '정말 은퇴하세요? 아직 정정하신데요', "Are you really retiring? You're still hale", {
+            next: 'retire' }),
+          opt('act_again', '또 엉키셨어요? 이번에도 연기 아니시죠?', "Tangled again? It's not an act this time too, is it?", {
+            next: 'act_again' }),
+        ],
+        note: ['강두철 씨가 은퇴한다고 했다. 조합원 명부 1번은 내 자리로 비워 뒀다고, 2층 고칠 자재는 조합에서 대니 세 가지쯤 만들어 보라고 했다. 그러고는 처음 만난 날처럼 엉킨 채비를 내밀었다.',
+          "Kang Ducheol said he was retiring. He'd left line one of the member roll empty for me, and the co-op would supply materials for my second floor — I should make about three things. Then, just like the day we met, he held out a tangled rig."],
+      }),
+      first_day: scene([
+        act(K, 'laugh'),
+        line(K, '그날처럼. 십 분이면 되겠지?', "Like that day. Ten minutes should do it?"),
+        line('', '(실뭉치를 내미는 손이 이번엔 조금 떨린다.)', '(This time the hand holding out the tangle trembles a little.)'),
+        line(K, '천천히 하게. 마지막 수업은 길게 하는 게 좋아.', 'Take your time. A last lesson is best long.'),
+        line(P, '마지막 수업이요…', 'The last lesson...'),
+      ], {
+        end: endTalk({ accept: true, offer: 'like_first_day', lineKo: '자재는 실 풀고 나서 보게. 2층에 쓸 거, 자네 손으로 만들어.', lineEn: "Look at the materials after the line. Whatever goes on your second floor, make it with your own hands." }),
+        note: ['처음 그날처럼 채비부터 풀어 드리겠다고 했다. 실뭉치를 내미는 그의 손이 이번엔 조금 떨렸다. 마지막 수업은 길게 하는 게 좋다고 했다.', "I said I'd untangle the rig first, like that first day. This time the hand holding it out trembled a little. A last lesson is best long, he said."],
+      }),
+      number_one: scene([
+        line(K, '조합원 명부 맨 첫 줄이야. 조합장 자리가 아니라 그냥 1번 조합원.', "The very first line of the member roll. Not the chairman's seat — just member number one."),
+        line('', '(명부를 펴려다 덮는다.)', '(He starts to open the roll, then closes it.)'),
+        line(P, '그 줄이 왜 중요한데요?', 'Why does that line matter?'),
+        line(K, '그 줄에 누가 서는지 보면 조합이 어디로 가는지 보여. 그래서 비워 뒀어.', "Who stands on that line shows where the co-op is heading. That's why I left it empty."),
+        line(K, '자네가 서 주면 좋겠다는 건… 늙은이 욕심이지.', "Wanting you to stand there is... just an old man's greed."),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_number_one', lineKo: '자, 그 얘긴 됐고 이 채비부터 봐 주게.', lineEn: "Now, enough of that. Have a look at this rig first." }),
+        note: ['명부 1번이 무슨 자리냐고 물었다. 조합장 자리가 아니라 그냥 1번 조합원이라고, 그 줄에 누가 서는지 보면 조합이 어디로 가는지 보인다고 했다. 내가 서 주면 좋겠다는 건 늙은이 욕심이라고.', "I asked what line one meant. Not the chairman's seat, just member number one — who stands there shows where the co-op is heading. Wanting me there was an old man's greed, he said."],
+      }),
+      retire: scene([
+        act(K, 'laugh'),
+        line(K, '정정할 때 내려와야 해. 힘 빠져서 내려오면 다들 붙잡고 싶어 하지 않거든.', "You step down while you're hale. Step down once your strength has gone and nobody wants to hold you back."),
+        line(P, '그럼 이제 뭐 하실 거예요?', 'So what will you do now?'),
+        line(K, '바다에 앉아 볼 생각이야. 조합장 말고 그냥 낚시꾼으로.', "I mean to sit by the sea. Not as a chairman — just as an angler."),
+        line(K, '선생님한테 배운 거 써먹어야지. 아직 매듭은 엉키지만.', "I'd better put what my teacher taught me to use. Though my knots still tangle."),
+      ], {
+        end: endTalk({ accept: true, offer: 'really_retire' }),
+        note: ['정말 은퇴하느냐고, 아직 정정하지 않느냐고 했다. 정정할 때 내려와야 한다고 웃었다. 이제 조합장 말고 그냥 낚시꾼으로 바다에 앉아 보겠다고, 아직 매듭은 엉키지만.', "I asked if he was really retiring, hale as he was. You step down while you're hale, he laughed. Now he'd sit by the sea as an angler, not a chairman — though his knots still tangled."],
+      }),
+      act_again: scene([
+        act(K, 'laugh'),
+        line(K, '허허! 이번엔 안 들킬 줄 알았는데.', "Ha! I thought I'd get away with it this time."),
+        line('', '(실뭉치를 들어 보인다. 엉킨 모양이 너무 반듯하다.)', '(He holds up the ball. It is tangled far too neatly.)'),
+        line(P, '…엄청 반듯하게 엉켰네요.', "...That's a very tidy tangle."),
+        line(K, '마지막 수업은 처음처럼 하고 싶었어.', 'I wanted the last lesson to be like the first.'),
+      ], {
+        end: endTalk({ accept: true, offer: 'act_again', lineKo: '늙은이 고집이니 한 번만 봐주게. 십 분이면 되지?', lineEn: "It's an old man's stubbornness, so humour me just once. Ten minutes, yes?" }),
+        note: ['또 연기 아니냐고 물었더니, 강두철 씨는 이번엔 안 들킬 줄 알았다며 웃었다. 엉킨 모양이 너무 반듯했다. 마지막 수업은 처음처럼 하고 싶었다고.', "When I asked if it was an act again, Kang Ducheol laughed — he'd thought he'd get away with it. The tangle was far too neat. He'd wanted the last lesson to be like the first."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // N03-4 「스승의 날」 — 끝내는 자리(강두철) · 결말은 정본 하나(`n03_roll`). 비워 둔 명부 1번 앞에서 앞의 말을 기억한다
+  // ═══════════════════════════════════════════
+  {
+    id: 'n03_4_done', questId: 'N03-4', at: 'complete', npcId: K, start: 'start',
+    nodes: {
+      start: scene([
+        line('', '(방파제 끝, 처음 만난 그 자리. 노인이 방금 풀어 준 실을 손가락에 감았다 풀었다 한다.)', '(The end of the breakwater, the very spot where we first met. The old man winds the line I just freed around his finger, then unwinds it.)'),
+        line(K, '풀었네. 십 분. 그날이랑 똑같아.', 'Loose. Ten minutes. Same as that day.'),
+        line(P, '그날처럼 천천히 했어요.', 'I took it slowly, like that day.'),
+        line(K, '마지막 수업이었어, 선생님.', 'That was the last lesson, teacher.'),
+        line('', '(가슴 주머니에서 얇은 명부를 꺼내 첫 장을 편다. 1번 칸이 비어 있다.)', '(From his breast pocket he takes a thin member roll and opens it to the first page. Line one is empty.)'),
+        line(K, '오늘이 스승의 날이야. 늙은이가 선생님한테 드릴 게 이것뿐이네.', "Today's Teachers' Day. This is all an old man has to give his teacher."),
+      ], {
+        choices: [
+          opt('sign_roll', '그 칸, 제가 채워도 되겠습니까?', 'May I be the one to fill that line?',
+            { stance: 'giver', aff: { [K]: 0.04, coop: 0.01 }, next: 'roll' }),
+          opt('elders_decide', '명부 1번은 어촌계 어른들이 정하셔야지요.', 'Line one of the roll should be for the co-op elders to decide.',
+            { stance: 'other', aff: { [K]: -0.02, coop: 0.03 }, next: 'elders' }),
+          opt('tangle_joke', '이번에도 일부러 엉키게 하신 거죠?', 'You tangled it on purpose again this time, didn\'t you?',
+            { stance: 'mid', next: 'half_act' }),
+          opt('remember', '처음 이 자리에서 뵌 날이 생각납니다.', 'I keep thinking of the day I first met you, right here.',
+            { stance: 'mid', aff: { [K]: 0.02 }, next: 'memory' }),
+        ],
+        note: ['처음 만난 방파제 끝에서 마지막 채비를 풀었다. 십 분, 그날과 똑같았다. 강두철 씨는 마지막 수업이었다며 명부의 첫 장을 폈다. 1번 칸이 비어 있었다. 오늘이 스승의 날이라고 했다.', "At the end of the breakwater where we first met, I untangled the last rig. Ten minutes, same as that day. Kang Ducheol called it the last lesson and opened the roll to its first page. Line one was empty. Today was Teachers' Day, he said."],
+      }),
+      roll: scene([
+        line(K, '되고말고. 그래서 비워 둔 거야.', "Of course you may. That's why I left it empty."),
+        line('', '(펜을 내민다.)', '(He holds out a pen.)'),
+        line(K, '조합장 자리가 아니야. 그냥 1번 조합원. 맨 앞에 서는 자리가 아니라 맨 먼저 손을 보태는 자리지.', "It isn't the chairman's seat. Just member number one. Not the place at the front of the line, but the first hand to help."),
+        line(P, '…', '...'),
+        line(K, '쓰기 전에 하나만 묻세. 처음 이 방파제에서, 자네는 왜 내 옆에 앉았나.', 'Before you write, one question. That first day on this breakwater, why did you sit down beside me?'),
+      ], {
+        choices: [
+          opt('just_because', '엉킨 줄이 있으면 풀어야지요. 그게 다였습니다.', "If a line's tangled, you untangle it. That was all.",
+            { stance: 'mid', aff: { [K]: 0.02 }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(허허 웃는다.) 그게 다라. 그 별것 아닌 게 늙은이 남은 날을 바꿨네. (내 이름이 1번 칸에 적힌다.) 무거우면 천천히 들게. 혼자 들지 말고.',
+              lineEn: "(He laughs.) That was all. That little nothing changed the rest of an old man's days. (My name goes into line one.) If it's heavy, lift it slowly. Not alone." }),
+              note: ['엉킨 줄이 있으면 풀어야 한다고, 그게 다였다고 했다. 내 이름이 명부 1번 칸에 적혔다.', 'If a line is tangled, you untangle it — that was all, I said. My name went into line one of the roll.'] }),
+          opt('patient_why', '급할 게 없다고 하셔서요. 저도 그날은 급할 게 없었습니다.', 'You said you had nothing to hurry for. That day, neither did I.',
+            { stance: 'giver', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_patient' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(웃음이 번진다.) 둘 다 급할 게 없는 척을 했지. 나는 평생 급했고, 자네는 앞날이 급했을 텐데. (내 이름이 1번 칸에 적힌다.) 그 척이 오늘까지 왔네.',
+              lineEn: "(A smile spreads across his face.) We both pretended we had nothing to hurry for. I'd been in a hurry all my life, and you must have been in a hurry about your future. (My name goes into line one.) And that pretending has brought us all the way to today." }) }),
+          opt('let_him_why', '강두철 씨 손으로 풀게 해 드리고 싶었습니다. 결국 손이 다 아셨지만요.', 'I wanted you to work it loose with your own hands. Though your hands knew it all along.',
+            { stance: 'mid', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_let_him' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '허허! 그날 손이 먼저 나가서 혼났지. (내 이름이 1번 칸에 적힌다.) 남의 손을 믿고 기다려 주는 사람. 1번 칸은 그런 사람 자리야.',
+              lineEn: "Ha! My hands ran ahead of me that day and gave me a fright. (My name goes into line one.) Someone who trusts another man's hands and waits for them. That's who line one is for." }) }),
+          opt('impatient_why', '솔직히 그날은 빨리 끝내고 싶었습니다. 칼까지 댔지요.', 'Honestly, that day I wanted it over quickly. I even took a knife to it.',
+            { stance: 'self', aff: { [K]: 0.02 }, requires: { flag: 'choice.n03_impatient' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(크게 웃는다.) 알지. 한 시간 감은 걸 칼 한 번에. 그 소리를 아직 기억해. (내 이름이 1번 칸에 적힌다.) 그런 사람이 오늘은 십 분을 다 썼어. 그래서 1번이야.',
+              lineEn: "(He laughs out loud.) I know. An hour's winding, gone in one stroke. I still remember the sound. (My name goes into line one.) And today that same person spent the full ten minutes. That's why you're number one." }) }),
+        ],
+        note: ['그 칸을 내가 채워도 되느냐고 물었다. 되고말고, 그래서 비워 둔 거라며 펜을 내밀었다. 맨 먼저 손을 보태는 자리라고. 쓰기 전에, 처음 그날 왜 옆에 앉았느냐고 물었다.', "I asked whether I might fill that line. Of course — that's why it was empty, he said, holding out a pen. The first hand to help. But before I wrote, he asked why I had sat beside him that first day."],
+      }),
+      elders: scene([
+        act(K, 'laugh'),
+        line(K, '그 말 할 줄 알았네. 어촌계엔 내가 벌써 물었어.', "I knew you'd say that. I've already asked the co-op."),
+        line(P, '뭐라고 하시던가요?', 'What did they say?'),
+        line(K, '계장이 그러더군. 그 친구면 됐다고.', 'The chief said: if it\'s that one, that\'s fine by us.'),
+        line('', '(명부를 덮지 않고 든 채로 있다.)', '(He keeps the roll open in his hands.)'),
+        line(K, '그래도 싫으면 비워 두지. 비어 있는 것도 자리야.', "Still, if you'd rather not, I'll leave it empty. An empty line is a place too."),
+      ], {
+        choices: [
+          opt('then_sign', '어른들 뜻이 그렇다면 쓰겠습니다.', "If that's what the elders want, I'll write it.",
+            { stance: 'giver', aff: { [K]: 0.03, coop: 0.02 }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(펜을 내민다. 내 이름이 1번 칸에 적힌다.) 1번은 맨 앞에 서는 자리가 아니야. 맨 먼저 손을 보태는 자리지. 그걸 잊지 않으면 이름이 자네를 지켜 줄 거네.',
+              lineEn: "(He holds out the pen. My name goes into line one.) Number one isn't the place at the front. It's the first hand to help. Remember that and the name will look after you." }) }),
+          opt('keep_empty', '비워 두시죠. 제 손으로 채울 수 있을 때 쓰겠습니다.', "Leave it empty. I'll write in it when my own hands have earned it.",
+            { stance: 'self', aff: { [K]: -0.02 }, end: endTalk({ complete: 'lesson', ending: 'n03_roll',
+              lineKo: '(명부를 접는다.) …그것도 답이야. 비워 둔 채로 들고 다니지. 대신 이건 가져가게. (줄 두 가닥으로 매듭 하나를 천천히 꼬아 보인다.) 당겨도 안 풀리고, 풀려고 마음먹으면 한 번에 풀리는 매듭이야. 그 칸을 채우는 날도 그렇게 오겠지.',
+              lineEn: "(He folds the roll shut.) ...That's an answer too. I'll carry it around empty. But take this instead. (With two strands of line he slowly twists a knot to show me.) A knot that won't give when you pull, and comes loose all at once when you mean it to. The day you fill that line will come the same way." }) }),
+          opt('favor_shame', '표결 전에 거들어 달라던 사람이 1번을 써도 되겠습니까?', 'The one who asked you to put in a word before the vote, writing in line one?',
+            { stance: 'self', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_asked_favor' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(펜을 내민다.) 그걸 아직 부끄러워하니까 쓰는 거야. 부끄러운 줄 아는 손이 맨 먼저 보태는 손이 되거든.',
+              lineEn: "(He holds out the pen.) It's because you're still ashamed of that, that you should write it. A hand that knows shame becomes the first hand to help." }) }),
+        ],
+        note: ['명부 1번은 어촌계 어른들이 정해야 한다고 했다. 강두철 씨는 이미 물었다며, 계장이 그 친구면 됐다고 했다고 전했다. 그래도 싫으면 비워 두겠다고, 비어 있는 것도 자리라고.', "I said line one was for the co-op elders to decide. He'd already asked, Kang Ducheol said — the chief had said if it was me, that was fine. Still, if I'd rather not, he would leave it empty. An empty line is a place too."],
+      }),
+      half_act: scene([
+        act(K, 'laugh'),
+        line(K, '들켰나. 반은 연기고 반은 진짜야.', 'Caught me? Half act, half real.'),
+        line(K, '이제는 손이 정말로 엉켜. 늙었거든.', "My hands really do tangle now. I've grown old."),
+        line(P, '…', '...'),
+        line(K, '마지막 수업은 처음처럼 하고 싶었어. 다음부턴 초보 행세 안 해. 그냥 초보로 앉을 거야. 은퇴한 늙은이니까.', "I wanted the last lesson to be like the first. From now on, no beginner act. I'll just sit down as a beginner. A retired old man, after all."),
+      ], {
+        choices: [
+          opt('my_boat', '은퇴하시면 제 배 손님으로 모시겠습니다. 정가로요.', "When you retire, I'll take you out on my boat as a passenger. Full fare.",
+            { stance: 'giver', aff: { [K]: 0.03 }, end: endTalk({ complete: 'passenger', ending: 'n03_roll',
+              lineKo: '허허, 정가라. 깎아 달라고 하면 안 되겠군. (웃다가 눈가를 손등으로 훔친다.) 그날 내 채비는 내가 묶겠네. 엉키면… 그땐 선생님이 풀어 주고.',
+              lineEn: "Ha, full fare. I suppose I mustn't ask for a discount. (He laughs, then wipes his eyes with the back of his hand.) That day I'll tie my own rig. If it tangles... then my teacher can work it loose." }) }),
+          opt('teach_last', '그럼 마지막으로 강두철 씨 매듭 하나 배우겠습니다.', "Then for the last lesson, I'll learn one of your knots.",
+            { stance: 'mid', aff: { [K]: 0.02 }, end: endTalk({ complete: 'lesson', ending: 'n03_roll',
+              lineKo: '(줄 두 가닥을 꺼내 천천히 꼰다. 이번엔 손을 숨기지 않는다.) 조합장 매듭이야. 붙잡을 때와 놓을 때를 아는 매듭이지. 이제 나는 놓는 쪽만 하면 돼.',
+              lineEn: "(He takes out two strands and twists them slowly. This time he doesn't hide his hands.) The chairman's knot. A knot that knows when to hold and when to let go. All I have left now is the letting go." }) }),
+          opt('fee', '마지막 수업이니 수업료는 받겠습니다.', "Since it's the last lesson, I'll take my fee.",
+            { stance: 'self', aff: { [K]: -0.02 }, end: endTalk({ complete: 'pay', ending: 'n03_roll',
+              lineKo: '허허, 그러세. 은퇴금에서 떼 주지. (두꺼운 봉투를 웃으며 내민다.) 선생님 수업료는 제값을 쳐야지. 마지막이라고 거르면 순서가 안 맞아.',
+              lineEn: "Ha, of course. I'll take it out of my retirement money. (Smiling, he holds out a thick envelope.) A teacher's fee should be paid in full. Skipping it because it's the last would put things out of order." }) }),
+          opt('student_done', '방파제에선 강두철 씨가 제 학생이었지요. 마지막 수업까지 잘 들으셨습니다.', 'On the breakwater you were my student. You listened well, right to the last lesson.',
+            { stance: 'giver', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_kept_teaching' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(허리를 펴고 앉는다. 학생처럼.) 고맙습니다, 선생님. (명부를 내밀며 웃는다.) 학생이 선생님 이름을 1번에 적어도 되겠나. 오늘은 스승의 날이니까.',
+              lineEn: "(He straightens his back and sits up, like a student.) Thank you, teacher. (He holds out the roll, smiling.) May the student write his teacher's name in line one? It's Teachers' Day, after all." }) }),
+        ],
+        note: ['이번에도 일부러 엉켰느냐고 물었다. 반은 연기고 반은 진짜라고, 이제는 손이 정말로 엉킨다고 했다. 다음부턴 초보 행세 없이 그냥 초보로 앉겠다고, 은퇴한 늙은이니까.', "I asked if he'd tangled it on purpose again. Half act, half real — his hands really do tangle now, he said. From now on no beginner act; he'd just sit down as a beginner. A retired old man."],
+      }),
+      memory: scene([
+        line('', '(실을 감던 손이 멈춘다.)', '(The hand winding the line stops.)'),
+        line(K, '나도 그래. 늙은이가 연기를 하다 진짜가 됐지.', 'So do I. An old man started out acting and ended up meaning it.'),
+        line(P, '…', '...'),
+        line(K, '그동안 자네가 나한테 한 말, 하나도 안 잊었네. 좋은 말도 아픈 말도.', "I haven't forgotten a single thing you said to me all this time. The kind words and the painful ones."),
+        line('', '(명부를 무릎에 올려놓는다.)', '(He rests the roll on his knee.)'),
+        line(K, '오늘은 어떤 말을 해 주겠나.', 'What will you say to me today?'),
+      ], {
+        choices: [
+          opt('thank_you', '고마웠습니다. 가르치면서 제가 더 배웠습니다.', 'Thank you. Teaching you, I learned more than you did.',
+            { stance: 'giver', aff: { [K]: 0.03 }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '가르치는 쪽이 더 배우지. 늘 그래. (명부와 펜을 내 쪽으로 민다.) 오늘부터는 이 칸이 자네한테 그걸 가르칠 거야. 써 넣게.',
+              lineEn: "The one teaching learns more. Always. (He pushes the roll and the pen toward me.) From today, this line will teach you that. Write it in." }) }),
+          opt('called_out_cb', '교육장에서 따졌던 날, 그 십 분은 저한테도 진짜였습니다.', 'The day I called you out at the course, those ten minutes were real for me too.',
+            { stance: 'mid', aff: { [K]: 0.05 }, requires: { flag: 'choice.n03_called_out' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(오래 말이 없다가 웃는다.) 그날 자네가 따져 줘서 내가 살았네. 아무도 조합장한테 따지지 않거든. (펜을 내민다.) 그러니 1번은 자네야. 따질 줄 아는 사람.',
+              lineEn: "(He's silent a long while, then smiles.) Your calling me out that day saved me. Nobody ever calls a chairman out. (He holds out the pen.) So number one is you. Someone who knows how to call things out." }) }),
+          opt('distance_cb', '거리를 두겠다고 했던 날이 있었지요. 오늘은 옆에 앉겠습니다.', "There was a day I said I'd keep my distance. Today I'll sit beside you.",
+            { stance: 'mid', aff: { [K]: 0.05 }, requires: { flag: 'choice.n03_kept_distance' }, end: endTalk({ complete: 'passenger', ending: 'n03_roll',
+              lineKo: '(처음 그날처럼 엉덩이를 들썩여 자리를 내준다.) …그 거리가 끝나는 날을 기다렸네. 앉게. 은퇴하면 자네 배에 손님으로 타겠어. 정가로. 이번엔 내 이름으로.',
+              lineEn: "(Just like that first day, he shifts over to make room.) ...I've been waiting for the day that distance ended. Sit. Once I retire I'll ride your boat as a passenger. Full fare. Under my own name this time." }) }),
+          opt('seal_cb', '주신 도장, 아직 찍지 않은 채로 갖고 있습니다.', 'The seal you gave me. I still have it, never stamped.',
+            { stance: 'giver', aff: { [K]: 0.03 }, requires: { flag: 'choice.n03_seal' }, end: endTalk({ complete: 'number_one', ending: 'n03_roll',
+              lineKo: '(허허 웃는다.) 찍지 마. 평생. (명부를 내민다.) 대신 여기엔 자네 이름을 써. 이건 도장 말고 손으로 쓰는 거야.',
+              lineEn: "(He laughs.) Don't stamp it. Ever. (He holds out the roll.) Write your name here instead. This one you write by hand, not with a seal." }) }),
+        ],
+        note: ['처음 이 자리에서 만난 날이 생각난다고 했다. 강두철 씨는 자기도 그렇다고, 연기를 하다 진짜가 됐다고 했다. 그동안 내가 한 말을 하나도 안 잊었다며, 오늘은 어떤 말을 해 주겠느냐고 물었다.', "I said I kept thinking of the day we first met here. So did he, Kang Ducheol said — he'd started out acting and ended up meaning it. He hadn't forgotten a single thing I'd said. What would I say to him today?"],
       }),
     },
   },

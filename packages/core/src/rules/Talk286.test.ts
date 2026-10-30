@@ -89,7 +89,8 @@ describe('286차 — 대본 검사', () => {
 describe('286차 — 「해녀의 딸」 시범', () => {
   it('대본 넷이 깨끗하다', () => {
     expect(validateTalks(TALKS_N01)).toEqual([]);
-    expect(TALKS_N01.map((t) => t.id)).toEqual(['n01_5_offer', 'n01_5_haesol', 'n01_5_sundeok', 'n01_5_complete']);
+    // 290차 — N01 묶음에 다른 편 대본이 더해졌다. 시범 편의 대본 넷은 그대로
+    expect(TALKS_N01.filter((t) => t.questId === 'N01-5').map((t) => t.id)).toEqual(['n01_5_offer', 'n01_5_haesol', 'n01_5_sundeok', 'n01_5_complete']);
   });
 
   it('편은 딸 → 제주 갯것 셋 → 어머니 순서 · 받는 자리는 제주에서만', () => {
@@ -120,7 +121,8 @@ describe('286차 — 「해녀의 딸」 시범', () => {
   it('끝내는 자리의 답은 편의 보상 답(가르침 · 품삯 · 사양)과 맞물린다', () => {
     const t = completeTalkOf('N01-5')!;
     const ends = Object.values(t.nodes).map((n) => n.end?.complete).filter(Boolean).sort();
-    expect(ends).toEqual(['decline', 'lesson', 'pay']);
+    // 290차 — 빠져 있던 보상 답 「딸은 어떻게 하기로 했나」(asked_daughter)까지 넷 모두
+    expect(ends).toEqual(['asked_daughter', 'decline', 'lesson', 'pay']);
   });
 
   it('대사 · 지문 · 일지 문장이 영어 사전에 들어간다', () => {

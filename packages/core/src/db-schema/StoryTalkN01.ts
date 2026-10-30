@@ -15,6 +15,14 @@
  * 인물: 바람(떠돌이 조사 · 「자네」 · 「~지」 · 「~군그래」) · 부순덕(58 · 서귀포 해녀 · 허리를 다쳐 쉬는 중 · 무뚝뚝 · 제주 말씨 조금)
  *   · 강해솔(24 · 부순덕의 딸 · 처음엔 경계 · 존댓말 · 어머니 자리를 잇고 싶다).
  * 표시: choice.n01_5_wanted_dive(물속에 같이 들어가겠다고 했다) · choice.n01_5_tell_mom(어머니께 알리자고 했다) · choice.n01_5_kept_secret(아직 말하지 않기로).
+ *
+ * 290차 — 호칭 「OOO 씨」(`.agents/inputs/290_talk_brief.md`): 시범의 주인공 말 「아저씨」 → 「바람 씨」 · 「누님」 → 「그분」(일지도 「바람 씨」).
+ *   시범에 옛 답 둘을 더 묶었다 — 받는 자리 「물질이랑 해루질은 뭐가 다른데요?」(`ask_border` · 표시 `choice.n01_5_asked_border`) ·
+ *   끝내는 자리 「해솔 씨, 결국 어떻게 하기로 했을까요?」(`asked_daughter`). 나머지 여섯 편(N01-1 ~ 4 · 6 · 7)의 받는 · 끝내는 자리를 새로 썼다.
+ *   바람의 말투: 짧게 끊는 반말 · 하게체(「자네」 · 「~지」 · 「~게」 · 「그거면 됐어」 · 「바람이 좋은 쪽으로 불었네」). 담배는 드물게
+ *   (N01-1 끝 · N01-3 받기 · N01-5). 첫 편에서 이름을 묻고 「바람」이라고만 듣는다 — 마지막 편(이름)이 그 일을 기억한다.
+ *   옛 받는 답의 표시는 받는 끝을 그 답에 묶어 남긴다(`offer` — choice.n01_1_asked_grandma · asked_size · n01_2_asked_why · n01_3_asked_gwamegi ·
+ *   why_not_you · n01_4_asked_accident · n01_6_asked_bag · n01_7_asked_families · asked_place).
  */
 
 import type { StoryTalkDef } from '../types/Story.js';
