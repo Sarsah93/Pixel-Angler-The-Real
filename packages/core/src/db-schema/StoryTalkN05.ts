@@ -500,7 +500,7 @@ export const TALKS_N05: StoryTalkDef[] = [
         note: ['서하린 씨는 카메라를 꺼 둔 전갱이 밤 이후로 생각이 바뀌었다고 했다.', "Harin said she'd been rethinking things since the camera-off night of the horse mackerel."],
       }),
       cold: scene([
-        line(H, '물어요! 겨울엔 바위 틈 바닥에 숨어 있대요. 그래서 끌 때는 아주 느리게요.', "They bite! In winter they hide down on the bottom between the rocks. So you drag really slowly."),
+        line(H, '물어요! 겨울엔 깊은 데 바위 틈에서 잘 안 나온대요. 코앞까지 가져다줘야 한대요.', "They bite! In winter they don't like leaving the deep cracks in the rocks. You have to bring it right to their nose."),
         line(H, '춥긴 해요. 그러니까 오래 안 있을 거예요. 한 마리 올리면 바로 따뜻한 데 가요. 그 대신 한 마리는 꼭이에요.', "It's cold, though. So we won't stay long. Land one and we go somewhere warm. But that one fish is a must."),
       ], {
         end: endTalk({ accept: true, offer: 'cold_night' }),
@@ -764,8 +764,8 @@ export const TALKS_N05: StoryTalkDef[] = [
         choices: [
           opt('slowly', '그럼 천천히 해 볼게요', "Then I'll take it slowly", {
             end: endTalk({ accept: true, offer: 'nervous',
-              lineKo: '네, 천천히요. 생선은 이미 잡혔으니까 도망 안 가요.',
-              lineEn: "Yes, slowly. The fish has already been caught — it isn't going anywhere." }),
+              lineKo: '네, 천천히요. 셋 다 기다려 줄 거예요.',
+              lineEn: "Yes, slowly. All three of them will wait." }),
             note: ['카메라 앞에서 손이 떨릴 것 같다고 했다. 서하린 씨는 보는 사람 셋 중 둘이 여기 있다며, 떨리는 것도 진짜라 더 좋다고 했다.',
               "I said my hands would shake on camera. Harin pointed out two of the three viewers were right here — and shaking was real, which she liked better."] }),
           opt('hands_only', '얼굴은 빼고 손만 나오게 해 주세요', 'Leave my face out — just my hands', {

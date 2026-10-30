@@ -49,13 +49,13 @@ export const TALKS_N04: StoryTalkDef[] = [
       }),
       count: scene([
         line(N, '와, 진짜요? 오늘 손님 첫 번째예요!', "Whoa, really? You're my first catch today!", { act: 'look_up' }),
-        line(N, '사비키는 살살 흔들어야 돼요. 세게 흔들면 학꽁치가 놀라서 도망가요.', "You have to wiggle the sabiki gently. Shake it hard and the halfbeak get scared off."),
-        line(P, '살살이요. 알겠어요.', 'Gently. Got it.'),
+        line(N, '사비키는 세게 흔들면 안 돼요. 학꽁치가 놀라서 다 흩어져요. 손목으로만 까딱까딱.', "Don't shake the sabiki hard. The halfbeak get spooked and scatter. Just a little flick of the wrist."),
+        line(P, '손목으로만요. 알겠어요.', 'Just the wrist. Got it.'),
         line(N, '두 마리만 잡으면 바로 구워요!', "Two fish and we grill them straight away!"),
       ], {
         end: endTalk({ accept: true, offer: 'count_me_in' }),
-        note: ['같이 낚겠다고 하자 배누리 씨는 오늘 첫 손님이라며 좋아했다. 사비키는 살살 흔들어야 학꽁치가 도망가지 않는다고 했다.',
-          "When I said I'd join in, Nuri lit up — I was her first catch of the day. She said to wiggle the sabiki gently or the halfbeak would bolt."],
+        note: ['같이 낚겠다고 하자 배누리 씨는 오늘 첫 손님이라며 좋아했다. 사비키는 세게 흔들면 학꽁치가 흩어지니 손목으로만 까딱이라고 했다.',
+          "When I said I'd join in, Nuri lit up — I was her first catch of the day. Shake the sabiki hard and the halfbeak scatter, she said; just flick the wrist."],
       }),
       club: scene([
         line(N, '있죠! 청초고 방파제부. 제가 부장이에요.', "There is! The Cheongcho High breakwater club. I'm the captain."),
@@ -71,7 +71,7 @@ export const TALKS_N04: StoryTalkDef[] = [
       }),
       novice: scene([
         line(N, '괜찮아요! 처음엔 다 그래요.', "That's fine! Everyone starts somewhere."),
-        line(N, '학꽁치는 물 위쪽에 떠다니니까 채비를 깊이 안 내려도 돼요.', "Halfbeak swim near the top, so you don't need to drop the rig deep."),
+        line(N, '학꽁치는 수면 가까이 다녀요. 채비를 바닥까지 안 보내도 돼요.', "Halfbeak cruise close to the surface. No need to send the rig to the bottom."),
         line(P, '그래도 못 잡으면요?', 'And if I still catch nothing?'),
         line(N, '그럼 굽는 담당 하시면 돼요. 그것도 중요한 일이에요, 진짜로. 탄 거 먹고 싶은 사람은 없거든요.', "Then you're on grilling duty. That's important too, honestly. Nobody wants to eat burnt fish."),
       ], {
@@ -198,7 +198,7 @@ export const TALKS_N04: StoryTalkDef[] = [
       }),
       go: scene([
         line(N, '역시! 모자 챙기세요, 새벽은 진짜 추워요.', "I knew it! Bring a hat — dawns are freezing."),
-        line(N, '그리고 작전이 있어요. 방파제 끝에서는 진주한테 말 걸지 말고, 옆에서 낚기만 하세요.', "And there's a plan. At the end of the breakwater, don't talk to Jinju — just fish beside her."),
+        line(N, '그리고 작전이 있어요. 진주 옆에 가면, 말은 한마디도 하지 마세요. 그냥 같이 던지기만요.', "And there's a plan. When you get next to Jinju, don't say a single word. Just cast alongside her."),
         line(P, '낚기만요?', 'Just fish?'),
         line(N, '네. 그게 작전이에요.', "Yep. That's the plan.", { act: 'nod' }),
       ], {
@@ -328,7 +328,7 @@ export const TALKS_N04: StoryTalkDef[] = [
         line(N, '부원이 모자라서요. 수아가 전단을 만들어 왔는데요…', "We don't have enough members. Sua made some flyers, but...", { act: 'look_away' }),
         line(P, '전단이면 좋은 방법 아니에요?', "Aren't flyers a good idea?"),
         line(N, '아뇨. 종이는 바람에 날아가잖아요. 낚는 걸 보여 주면 돼요.', "Nope. Paper blows away in the wind. We just have to show them us catching fish."),
-        line(N, '방파제에서 두 마리만 올려 주세요. 한 마리는 운이라고 하니까요.', "Land two fish off the breakwater. One, people call luck."),
+        line(N, '방파제에서 두 마리만 올려 주세요. 하나로는 안 믿어요, 애들은.', "Land two fish off the breakwater. Kids won't believe it from just one."),
         line(P, '그다음엔요?', 'And then?'),
         line(N, '구경 오는 애한테 대를 쥐여 주세요. 손에 쥐어 봐야 알아요.', "Put a rod in the hands of whoever comes to watch. You only know once you've held one."),
       ], {

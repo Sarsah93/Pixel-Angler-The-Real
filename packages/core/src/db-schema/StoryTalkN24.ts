@@ -679,4 +679,425 @@ export const TALKS_N24: StoryTalkDef[] = [
       }),
     },
   },
+
+  // ═══════════════════════════════════════════
+  // N24-3 「작업 수첩」 — 받는 자리(어촌계)
+  // ═══════════════════════════════════════════
+  {
+    id: 'n24_3_offer', questId: 'N24-3', at: 'offer', npcId: C, start: 'start',
+    nodes: {
+      start: scene([
+        line(C, '(안건 종이를 내민다.)', '(He holds out the agenda sheet.)'),
+        line(C, '동명항 찌 가게 두 집이 서로 원조라고 어촌계에 올렸네.', 'The two float shops at Dongmyeong have each filed with the co-op, both claiming to be the original.'),
+        line(P, '문필구 씨하고 차영배 씨요?', 'Pilgu and Yeongbae?'),
+        line(C, '그래. 간판 문구를 내리라고 서로.', "Yes. Each wants the other's sign taken down."),
+        line(P, '그 얘기를 왜 저한테…', 'And why are you telling me...'),
+        line(C, '둘 사이를 오간 사람이 자네밖에 없다더군. 회의에 나와서 본 대로만 말해 주게.', "They tell me you're the only one who went between the two. Come to the meeting and just say what you saw."),
+        line(C, '그 전에 두 사람 얘기를 다시 들어 보고.', 'And hear them both out again before then.'),
+      ], {
+        choices: [
+          opt('as_seen', '본 대로 말씀드리겠습니다.', "I'll tell it as I saw it.", {
+            stance: 'mid', aff: { coop: 0.03 },
+            end: endTalk({ accept: true,
+              lineKo: '그래. 본 대로. 그게 제일 어렵지. 문 사장은 수첩 얘기를 할 거고, 차 사장은 찢긴 장 얘기를 할 걸세.',
+              lineEn: "Right. As you saw it. That's the hardest thing of all. Mr. Mun will talk about his notebook, and Mr. Cha about a torn-out page." }),
+            note: ['본 대로 말하겠다고 했다. 그게 제일 어렵다며, 문필구 씨는 수첩 얘기를, 차영배 씨는 찢긴 장 얘기를 할 거라고 했다. 둘 다 들어 두라고.',
+              "I said I'd tell it as I saw it. That's the hardest thing, he said — Pilgu would talk about his notebook and Yeongbae about a torn page. Hear them both."] }),
+          opt('side_a', '저는 문필구 씨 편입니다. 그건 미리 말씀드리지요.', "I'm on Pilgu's side. I'll say that up front.", {
+            stance: 'giver', aff: { coop: -0.03, mun_pilgu: 0.02 },
+            end: endTalk({ accept: true, offer: 'side_a',
+              lineKo: '편이 있는 증인이라. 정직해서 좋군. 회의에서는 그 편을 잠깐 내려놓고 말해 주게.',
+              lineEn: 'A witness with a side. Honest of you. At the meeting, set that side down for a moment when you speak.' }),
+            note: ['나는 문필구 씨 편이라고 미리 밝혔다. 안경을 고쳐 쓰더니, 편이 있는 증인이라 정직해서 좋다고, 회의에서는 그 편을 잠깐 내려놓으라고 했다.',
+              "I said up front that I was on Pilgu's side. He adjusted his glasses — a witness with a side, honest of me — and asked me to set that side down at the meeting."] }),
+          opt('side_b', '차영배 씨 쪽 얘기가 더 맞는 것 같습니다.', "I think Yeongbae's side of the story is closer to the truth.", {
+            stance: 'other', aff: { coop: -0.03, cha_yeongbae: 0.02 },
+            end: endTalk({ accept: true, offer: 'side_b',
+              lineKo: '그렇게 생각한다면 회의에서 그 까닭을 말하게. 마음 말고 까닭을.',
+              lineEn: "If that's what you think, give your reasons at the meeting. Reasons, not feelings." }),
+            note: ['차영배 씨 쪽 얘기가 더 맞는 것 같다고 했다. 고개를 끄덕이더니, 그렇다면 회의에서 마음 말고 까닭을 말하라고 했다.',
+              "I said Yeongbae's side seemed closer to the truth. He nodded — then give your reasons at the meeting. Reasons, not feelings."] }),
+          opt('their_business', '두 분 일은 두 분이 푸셔야지요.', 'The two of them should settle it between themselves.', {
+            stance: 'self',
+            end: endTalk({ decline: true,
+              lineKo: '그 말이 맞지. 그런데 이십 년을 못 풀었다네. 마음 바뀌면 오게.',
+              lineEn: "You're right. But they haven't managed it in twenty years. Come back if you change your mind." }),
+            note: ['두 분 일은 두 분이 풀어야 한다고 했다. 종이를 접으며, 그 말이 맞지만 이십 년을 못 풀었다고 했다. 마음 바뀌면 오라고.',
+              "I said the two of them should settle it themselves. Folding the sheet, he said that was right — but they hadn't managed in twenty years. Come back if I changed my mind."] }),
+        ],
+        note: ['어촌계 게시판에 「동명항 찌 가게 간판 문구 건」이 붙었다. 두 가게를 다 오간 사람이 나뿐이라며, 회의 전에 두 사람 얘기를 다시 듣고 회의에서 본 대로 말해 달라고 했다.',
+          "The co-op notice board carried a new item: the matter of the float shops' signs. As the only one who had gone between both shops, I was asked to hear both men out again and say what I saw at the meeting."],
+      }),
+    },
+  },
+
+  // N24-3 — 진행 중: 문필구의 작업 수첩(목표 0)
+  {
+    id: 'n24_3_notebook', questId: 'N24-3', at: 'objective', objectiveIndex: 0, npcId: A, start: 'start',
+    nodes: {
+      start: scene([
+        line(A, '(안건 얘기를 꺼내기도 전에 서랍을 연다.)', '(Before I can bring up the meeting, he opens a drawer.)'),
+        line(A, '회의에 나간다며. 계장한테 들었다.', "You're going to the meeting, I hear. The chief told me."),
+        line(P, '네. 그 전에 말씀을 좀 들으려고요.', 'Yes. I wanted to hear from you before then.'),
+        line(A, '(낡은 수첩을 꺼내 탁자에 올려놓는다. 가운데 한 장이 찢겨 나가 있다.)', '(He takes out a worn notebook and lays it on the table. One page in the middle has been torn out.)'),
+        line(A, '이게 내 작업 수첩이다. 찢긴 데가 보이지.', "This is my workshop notebook. See where it's torn?"),
+        line(A, '그놈이 나갈 때 찢어 간 장이다.', "That's the page he tore out when he left."),
+      ], {
+        choices: [
+          opt('look_pages', '찢긴 장 앞뒤를 봐도 되겠습니까?', 'May I look at the pages either side of the tear?', { stance: 'mid', next: 'pages' }),
+          opt('evidence', '이걸 회의에 가져가면 끝나겠네요.', "Take this to the meeting and that'll settle it.", {
+            stance: 'giver', aff: { [A]: 0.04 }, next: 'evidence' }),
+          opt('his_page', '찢어 간 게 아니라 자기 장을 가져간 거라던데요.', "He says he didn't tear it out. He took back his own page.", {
+            stance: 'other', aff: { [A]: -0.06 }, requires: { flag: 'choice.n24_heard_b' }, next: 'his_page' }),
+          opt('as_planned', '어촌계에서 가리자고 하셨지요. 그 자리에 나가겠습니다.', "You wanted the co-op to decide. I'll be there.", {
+            stance: 'giver', aff: { [A]: 0.03 }, requires: { flag: 'choice.n24_revenge_more' }, next: 'evidence' }),
+        ],
+        note: ['회의 전에 문필구 씨를 찾아갔다. 문필구 씨는 말을 꺼내기도 전에 낡은 작업 수첩을 꺼냈다. 가운데 한 장이 찢겨 나가 있었다. 그놈이 나갈 때 찢어 간 장이라고 했다.',
+          "Before the meeting I went to see Pilgu. Before I could say a word he took out a worn workshop notebook. One page in the middle was torn out — the page the man took when he left, he said."],
+      }),
+      pages: scene([
+        line('', '(문필구 씨가 머뭇거리다 수첩을 내 쪽으로 민다. 찢긴 장 바로 앞장에 물방울 모양 몸통 그림이 반쯤 남아 있다.)', '(Pilgu hesitates, then pushes the notebook towards me. On the page just before the tear, half of a teardrop-shaped body drawing remains.)'),
+        line('', '(글씨가 두 가지다. 위쪽 찌톱 치수는 굵고 모난 글씨, 아래쪽 몸통 치수는 작고 둥근 글씨. 여백에 작게 「영」 자가 적혀 있다.)', '(There are two kinds of handwriting. The measurements for the top are in thick, angular strokes; the ones for the body below are small and round. In the margin, small, the syllable Yeong.)'),
+        line(P, '(이 둥근 글씨는…)', '(This round handwriting...)'),
+      ], {
+        choices: [
+          opt('two_hands', '이 둥근 글씨, 문필구 씨 글씨가 아니지요?', "This round handwriting isn't yours, is it?", {
+            stance: 'mid', aff: { [A]: -0.03 }, next: 'two_hands' }),
+          opt('give_back', '(아무 말 없이 수첩을 돌려드린다.)', '(I hand the notebook back without a word.)', {
+            stance: 'self', aff: { [A]: 0.02 },
+            end: endTalk({ lineKo: '회의에서 봐라. 원조가 누군지.', lineEn: 'See at the meeting who the original is.' }),
+            note: ['아무 말 없이 수첩을 돌려드렸다. 문필구 씨는 수첩을 도로 서랍에 넣으며, 회의에서 원조가 누군지 보라고 했다.', "I handed the notebook back without a word. Pilgu put it back in the drawer: see at the meeting who the original is."] }),
+        ],
+        note: ['찢긴 장 바로 앞장에 물방울 모양 몸통 그림이 반쯤 남아 있었다. 찌톱 치수는 굵고 모난 글씨, 몸통 치수는 작고 둥근 글씨였다. 여백에 작게 「영」 자가 있었다.',
+          "On the page before the tear, half of a teardrop body drawing remained. The top's measurements were in thick, angular strokes, the body's in small, round ones. In the margin, small: Yeong."],
+      }),
+      two_hands: scene([
+        act(A, 'silence'),
+        line(A, '…그놈 글씨다. 몸통은 그놈이 깎았어. 내가 찌톱을 올리고 수첩에 적었지.', "...It's his writing. He carved the body. I put the top on it and wrote it in my notebook."),
+        line(P, '그럼…', 'Then...'),
+        line(A, '(수첩을 덮는다.)', '(He closes the notebook.)'),
+        line(A, '그런데 내 수첩이다. 내 가게고. 제자 놈 이름을 어떻게 찌에 새기냐. 그게 이 골목 법이었다.', "But it's my notebook. My shop. How do you carve an apprentice's name into a float? That was the rule in this alley."),
+      ], {
+        choices: [
+          opt('twenty_years', '그 법 때문에 이십 년을 길 건너에서 사셨네요.', "And because of that rule you've lived twenty years across the street from him.", {
+            stance: 'other', aff: { [A]: -0.05 },
+            end: endTalk({ lineKo: '…가라. 회의에서 보자.', lineEn: "...Go. I'll see you at the meeting." }),
+            note: ['그 법 때문에 이십 년을 길 건너에서 살았다고 했다. 수첩을 쥔 문필구 씨의 손등이 하얘졌다. 가라고, 회의에서 보자고 했다.', "I said that rule had kept them across the street from each other for twenty years. The back of Pilgu's hand went white on the notebook. Go, he said — see you at the meeting."] }),
+          opt('bring_it', '회의에 이 수첩을 가져와 주실 수 있겠습니까?', 'Would you bring this notebook to the meeting?', {
+            stance: 'mid', aff: { [A]: -0.02, coop: 0.02 },
+            end: endTalk({ lineKo: '…가져가마. 대신 네 눈으로 본 걸 말해. 네 입으로.', lineEn: "...I'll bring it. But you say what you saw with your own eyes. In your own words." }),
+            note: ['회의에 이 수첩을 가져와 달라고 했다. 문필구 씨는 한참 수첩을 내려다보다가, 가져가겠다고 했다. 대신 내 눈으로 본 걸 내 입으로 말하라고.', "I asked him to bring the notebook to the meeting. Pilgu looked down at it a long while, then agreed — but I was to say what I saw, in my own words."] }),
+          opt('still_yours', '문필구 씨 수첩이 맞습니다. 그건 변하지 않지요.', "It's your notebook. That doesn't change.", {
+            stance: 'giver', aff: { [A]: 0.04 },
+            end: endTalk({ lineKo: '그래. 그거면 됐다.', lineEn: "Right. That's enough." }),
+            note: ['그래도 문필구 씨 수첩이 맞다고 했다. 문필구 씨는 고개를 끄덕이며 그거면 됐다고 했다.', "I said it was still Pilgu's notebook. He nodded — that was enough."] }),
+        ],
+        note: ['둥근 글씨가 문필구 씨 글씨가 아니지 않느냐고 물었다. 오래 말이 없다가, 그놈 글씨라고, 몸통은 그놈이 깎고 자기가 찌톱을 올렸다고 했다. 그래도 자기 수첩이고 자기 가게라고.',
+          "I asked whether the round handwriting was really his. After a long silence Pilgu admitted it was the apprentice's — he carved the body, Pilgu added the top. But it was his notebook, his shop."],
+      }),
+      evidence: scene([
+        line(A, '그래. 찢긴 장이 증거다. 그놈이 가져간 증거.', 'Right. The torn page is the evidence. Proof he took it.'),
+        line(P, '회의에서 뭐라고 말씀드리면 됩니까?', 'What should I say at the meeting?'),
+        line(A, '이걸 들고 말해라. 아홉 해 가르친 스승의 수첩을 찢어 간 놈이라고.', "Hold this up and say it. That he tore a page from the notebook of the master who taught him nine years."),
+      ], {
+        choices: [
+          opt('look_first', '찢긴 장 앞뒤를 먼저 보겠습니다.', "I'll look at the pages either side of the tear first.", { stance: 'mid', next: 'pages' }),
+          opt('promise', '그렇게 말씀드리겠습니다.', "I'll say exactly that.", {
+            stance: 'giver', aff: { [A]: 0.04, [B]: -0.03 },
+            end: endTalk({ lineKo: '회의 날 가져가마. 너는 말만 해! 길 건너까지 다 들리게!', lineEn: "I'll bring it on the day. You just talk! Loud enough to carry across the street!" }),
+            note: ['그렇게 말하겠다고 했다. 문필구 씨는 수첩을 서랍에 넣고 잠그더니, 유리문 밖으로 들리게 목소리를 높였다. 길 건너 셔터가 반쯤 내려갔다.', "I said I would say exactly that. Pilgu locked the notebook in the drawer and raised his voice so it carried past the glass door. Across the street, a shutter came halfway down."] }),
+        ],
+        note: ['문필구 씨는 찢긴 장이 그놈이 가져간 증거라며, 회의에서 아홉 해 가르친 스승의 수첩을 찢어 간 놈이라고 말하라고 했다.',
+          "Pilgu said the torn page was proof the man took it — at the meeting I should say he tore a page from the notebook of the master who taught him nine years."],
+      }),
+      his_page: scene([
+        line(A, '자기 장? 그놈이 그러더냐.', 'His own page? He said that?', { act: 'look_up' }),
+        line(P, '네. 찢어 간 게 아니라 가져온 거라고요.', "Yes. That he didn't tear it out, he took it back."),
+        line(A, '…그래, 봐라.', '...Fine. Look.'),
+        line(A, '(수첩을 펼쳐 찢긴 자리를 내민다.)', '(He opens the notebook to the torn place and holds it out.)'),
+        line(A, '자기 장인지 내 장인지 네 눈으로 봐.', 'See for yourself whether it was his page or mine.'),
+      ], {
+        choices: [
+          opt('examine', '(찢긴 장 앞뒤를 살핀다.)', '(I examine the pages either side of the tear.)', { stance: 'mid', next: 'pages' }),
+        ],
+        note: ['차영배 씨가 자기 장을 가져간 거라더라고 전했다. 문필구 씨는 눈을 치켜뜨더니, 수첩을 펼쳐 찢긴 자리를 내밀었다. 누구 장인지 내 눈으로 보라고.',
+          "I passed on that Yeongbae said he took back his own page. Pilgu's eyes went wide; he opened the notebook to the tear and held it out. See for yourself whose page it was."],
+      }),
+    },
+  },
+
+  // N24-3 — 진행 중: 차영배의 찢긴 장(목표 1). 앞에서 차영배를 몰아세웠으면 장을 보여 주지 않는다
+  {
+    id: 'n24_3_torn', questId: 'N24-3', at: 'objective', objectiveIndex: 1, npcId: B, start: 'start',
+    nodes: {
+      start: scene([
+        line(B, '(진열장 너머에서 나를 보고 표정이 굳는다.)', '(He sees me over the display case and his face stiffens.)'),
+        line(B, '…회의 얘기 들었어요. 증인으로 나간다면서요.', "...I heard about the meeting. You're going as a witness, they say."),
+        line(P, '네. 그래서 왔습니다.', "Yes. That's why I'm here."),
+        line(B, '누구 쪽 증인인지는 안 물을게요. 물으러 온 거 있으면 물어요.', "I won't ask whose witness. If you came to ask something, ask."),
+      ], {
+        choices: [
+          opt('witness', '누구 쪽 증인도 아닙니다. 본 대로 말할 겁니다.', "I'm nobody's witness. I'll say what I saw.", {
+            stance: 'mid', aff: { [B]: 0.02 }, requires: { affinityMin: [B, -0.25] }, next: 'witness' }),
+          opt('the_page', '문필구 씨 수첩에서 가져오신 장, 아직 갖고 계십니까?', "The page you took from Pilgu's notebook — do you still have it?", {
+            stance: 'mid', requires: { flag: 'choice.n24_heard_notebook', affinityMin: [B, -0.25] }, next: 'witness' }),
+          opt('apology', '지난번 일은 사과드립니다. 차영배 씨 얘기를 듣고 싶습니다.', "I apologize for last time. I'd like to hear your side.", {
+            stance: 'other', aff: { [B]: 0.06 }, requires: { affinityMax: [B, -0.25] }, next: 'apology' }),
+          opt('it_lies', '이 집 찌가 눕는다는 건 다들 압니다.', 'Everyone knows your floats lie down.', {
+            stance: 'giver', aff: { [B]: -0.06 }, next: 'out' }),
+        ],
+        note: ['회의 전에 「영배 낚시」에 들렀다. 차영배 씨는 나를 보고 표정이 굳더니, 누구 쪽 증인인지는 안 묻겠다고, 물을 게 있으면 물으라고 했다.',
+          "Before the meeting I stopped at Yeongbae Tackle. Yeongbae's face stiffened when he saw me. He wouldn't ask whose witness I was, he said — if I had something to ask, ask."],
+      }),
+      witness: scene([
+        line(B, '본 대로라.', 'As you saw it.'),
+        line(B, '그럼 봐야 할 게 있어요.', "Then there's something you should see."),
+        line(B, '(카운터 밑에서 접힌 종이 한 장을 꺼낸다.)', '(He takes a folded sheet of paper from under the counter.)'),
+        line(B, '이거예요. 형님 수첩에서 가져온 장.', 'This. The page I took from his notebook.'),
+      ], {
+        choices: [
+          opt('unfold', '(종이를 받아 펼친다.)', '(I take the sheet and unfold it.)', { stance: 'mid', next: 'torn' }),
+        ],
+        note: ['차영배 씨의 얼굴이 조금 풀렸다. 본 대로 말하려면 봐야 할 게 있다며, 카운터 밑에서 접힌 종이 한 장을 꺼냈다. 문필구 씨 수첩에서 가져온 장이었다.',
+          "Yeongbae's face relaxed a little. If I was going to say what I saw, there was something I should see — and he took a folded sheet from under the counter. The page from Pilgu's notebook."],
+      }),
+      torn: scene([
+        line('', '(물방울 모양 몸통 그림의 나머지 반쪽이다. 문필구 씨 수첩에 남은 반쪽과 꼭 맞을 것이다. 작고 둥근 글씨로 몸통 치수가 빼곡하다.)', "(It is the other half of the teardrop-shaped body drawing. It will fit the half left in Pilgu's notebook exactly. The body's measurements crowd the page in small, round handwriting.)"),
+        line('', '(맨 아래에 굵고 모난 글씨로 한 줄. 「찌톱은 내가 올린다. 몸통은 영배 것이 낫다.」)', "(At the very bottom, one line in thick, angular strokes: I'll put the top on. Yeongbae's body is better.)"),
+        line(P, '(이 글씨는…)', '(This handwriting...)'),
+      ], {
+        choices: [
+          opt('his_hand', '문필구 씨가 직접 쓰신 글씨네요.', "That's Pilgu's own handwriting.", {
+            stance: 'mid', flags: ['choice.n24_saw_torn'], next: 'torn2' }),
+          opt('return_quiet', '(조용히 종이를 돌려드린다.)', '(I quietly hand the sheet back.)', {
+            stance: 'self', flags: ['choice.n24_saw_torn'],
+            end: endTalk({ lineKo: '회의에서 봐요.', lineEn: 'See you at the meeting.' }),
+            note: ['조용히 종이를 돌려드렸다. 차영배 씨는 종이를 다시 접으며, 회의에서 보자고 했다.', "I quietly handed the sheet back. Yeongbae folded it again — see you at the meeting, he said."] }),
+        ],
+        note: ['물방울 몸통 그림의 나머지 반쪽이었다. 맨 아래에 굵고 모난 글씨로 한 줄이 적혀 있었다. 「찌톱은 내가 올린다. 몸통은 영배 것이 낫다.」',
+          "It was the other half of the teardrop body drawing. At the very bottom, one line in thick, angular strokes: I'll put the top on. Yeongbae's body is better."],
+      }),
+      torn2: scene([
+        line(B, '형님이 그날 밤에 쓴 거예요. 내가 몸통을 처음 깎아 온 날.', 'He wrote that the night I brought in the first body I carved.', { act: 'nod' }),
+        line(B, '나는 그 한 줄이면 됐어요.', 'That one line was all I needed.'),
+        line(P, '그런데 왜 나오셨어요?', 'Then why did you leave?'),
+        line(B, '그다음 날부터 형님은 손님들한테 그 찌를 「문찌」라고만 팔았어요.', 'But from the next day he sold that float to his customers as the Mun float, nothing else.'),
+        line(B, '그래서 이 장만 들고 나왔어요. 내 거라서가 아니라, 형님 글씨라서.', 'So I took only this page and left. Not because it was mine. Because it was in his handwriting.'),
+      ], {
+        choices: [
+          opt('bring_page', '회의에 이 장을 가져와 주실 수 있겠습니까?', 'Would you bring this page to the meeting?', {
+            stance: 'mid', aff: { [B]: -0.02, coop: 0.02 },
+            end: endTalk({ lineKo: '가져갈게요. 이십 년 동안 이거 하나 들고 버텼어요.', lineEn: "I'll bring it. For twenty years this is the one thing I've held on to." }),
+            note: ['회의에 이 장을 가져와 달라고 했다. 차영배 씨는 오래 망설이다 고개를 끄덕였다. 이십 년 동안 이거 하나 들고 버텼다고 했다.', "I asked him to bring the page to the meeting. Yeongbae hesitated a long while, then nodded. For twenty years, this was the one thing he had held on to."] }),
+          opt('both_origin', '두 장을 맞추면 원조가 둘이라는 게 드러나겠네요.', "Put the two pages together and it'll show there are two originals.", {
+            stance: 'mid', aff: { [B]: 0.04 }, flags: ['choice.n24_both_origin'],
+            end: endTalk({ lineKo: '형님이 그걸 받아들일까요. …회의에서 봐요.', lineEn: 'Will he accept that, I wonder. ...See you at the meeting.' }),
+            note: ['두 장을 맞추면 원조가 둘이라는 게 드러나겠다고 했다. 차영배 씨는 쓴웃음을 지으며, 형님이 그걸 받아들이겠느냐고 했다.', "I said putting the two pages together would show there were two originals. Yeongbae smiled bitterly — would Pilgu accept that, he wondered."] }),
+          opt('beat_him', '이걸로 문필구 씨를 이길 수 있겠습니다.', 'With this, you can beat Pilgu.', {
+            stance: 'other', aff: { [B]: 0.02 },
+            end: endTalk({ lineKo: '이기려고 가져온 게 아닌데. …그래도 회의엔 가져갈게요.', lineEn: "I didn't take it to win. ...Still, I'll bring it to the meeting." }),
+            note: ['이걸로 문필구 씨를 이길 수 있겠다고 했다. 차영배 씨는 종이를 품에 넣으며, 이기려고 가져온 게 아니라고 했다. 그래도 회의엔 가져가겠다고.', "I said this would let him beat Pilgu. Yeongbae tucked the sheet inside his jacket — he didn't take it to win. Still, he would bring it to the meeting."] }),
+        ],
+        note: ['차영배 씨는 그 한 줄이 자기가 몸통을 처음 깎아 온 날 밤 문필구 씨가 쓴 거라고 했다. 그런데 다음 날부터 「문찌」라고만 팔아서, 형님 글씨라서 그 장만 들고 나왔다고.',
+          "Yeongbae said Pilgu wrote that line the night he brought in his first carved body. But from the next day it was sold only as the Mun float — so he took that one page, because it was in Pilgu's handwriting."],
+      }),
+      apology: scene([
+        line(B, '(한참 나를 본다.)', '(He looks at me a long while.)'),
+        line(B, '…사과는 받아요. 그날 나도 심했고 당신도 심했으니까.', '...I accept the apology. I went too far that day, and so did you.'),
+        line(P, '그럼 그 얘기를…', 'Then could you tell me about...'),
+        line(B, '근데 그 얘기는 안 해요. 내 얘기 들으러 왔으면 그날 들었어야지.', "But I won't talk about that. If you wanted my side, you should have listened that day."),
+        line(B, '회의에서 봐요.', 'See you at the meeting.'),
+      ], {
+        choices: [
+          opt('understood', '알겠습니다. 회의에서 뵙겠습니다.', "I understand. I'll see you at the meeting.", {
+            stance: 'mid',
+            end: endTalk({ lineKo: '(고개만 까딱한다.)', lineEn: '(He just gives a small nod.)' }),
+            note: ['알겠다고, 회의에서 뵙겠다고 했다. 차영배 씨는 고개만 까딱했다.', "I said I understood and would see him at the meeting. Yeongbae just gave a small nod."] }),
+        ],
+        note: ['지난번 일을 사과했다. 차영배 씨는 사과는 받는다면서도, 그 얘기는 안 하겠다고 했다. 내 얘기 들으러 왔으면 그날 들었어야 했다고.',
+          "I apologized for last time. Yeongbae accepted it, but said he wouldn't talk about that — if I wanted his side, I should have listened that day."],
+      }),
+      out: scene([
+        line(B, '(진열장 덮개를 쾅 내린다.)', '(He slams the case cover down.)'),
+        line(B, '그래요. 눕죠. 회의에서 그 말 해요. 나도 할 말 할 테니까.', "Right. They lie down. Say that at the meeting. I'll have my say too."),
+      ], {
+        choices: [
+          opt('leave', '(가게를 나선다.)', '(I leave the shop.)', { stance: 'self', end: endTalk({}) }),
+        ],
+        note: ['이 집 찌가 눕는다는 건 다들 안다고 했다. 차영배 씨는 진열장 덮개를 쾅 내리며, 회의에서 그 말을 하라고 했다. 자기도 할 말을 하겠다고.',
+          "I said everyone knows his floats lie down. Yeongbae slammed the case cover down — say that at the meeting, he said. He would have his say too."],
+      }),
+    },
+  },
+
+  // N24-3 — 끝내는 자리(어촌계 회의) · 결말을 고른다
+  {
+    id: 'n24_3_hearing', questId: 'N24-3', at: 'complete', npcId: C, start: 'start',
+    nodes: {
+      start: scene([
+        line('', '(어촌계 회의실. 긴 탁자 한쪽에 문필구 씨, 맞은편에 차영배 씨가 앉아 있다. 둘 다 서로를 보지 않는다.)', '(The co-op meeting room. Pilgu sits on one side of the long table, Yeongbae across from him. Neither looks at the other.)'),
+        line(C, '자, 증인. 두 집을 다 오갔지.', 'Now, witness. You went between both shops.'),
+        line(P, '네.', 'Yes.'),
+        line(C, '본 대로 말해 주게. 원조 문찌는 누구 것인가.', 'Tell us what you saw. Whose is the original Mun float?'),
+      ], {
+        choices: [
+          opt('both', '두 분 다입니다. 수첩과 찢긴 장을 맞춰 보시면 압니다.', "Both of theirs. Put the notebook and the torn page together and you'll see.", {
+            stance: 'mid', requires: { flag: 'choice.n24_saw_torn' }, next: 'match' }),
+          opt('for_a', '문필구 씨 것입니다. 건너편 찌는 모양만 베꼈습니다.', "It's Pilgu's. The float across the street only copies the shape.", {
+            stance: 'giver', aff: { [A]: 0.05, [B]: -0.15 }, next: 'verdict_a' }),
+          opt('for_b', '차영배 씨 것입니다. 문필구 씨가 제자의 일을 가로챘습니다.', "It's Yeongbae's. Pilgu took credit for his apprentice's work.", {
+            stance: 'other', aff: { [A]: -0.15, [B]: 0.05 }, requires: { flag: 'choice.n24_heard_b' }, next: 'verdict_b' }),
+          opt('cant_say', '제가 가릴 수 있는 일이 아닙니다.', "It's not something I can decide.", { stance: 'self', next: 'shelve' }),
+        ],
+        note: ['어촌계 회의실에서 문필구 씨와 차영배 씨가 마주 앉았다. 둘 다 서로를 보지 않았다. 계장이 나를 증인으로 불러, 원조 문찌가 누구 것이냐고 물었다.',
+          "In the co-op meeting room, Pilgu and Yeongbae sat across from each other, neither looking at the other. The chief called me as a witness and asked whose the original Mun float was."],
+      }),
+      match: scene([
+        line(C, '문 사장, 수첩을 주시지요.', 'Mr. Mun, the notebook, please.'),
+        line('', '(문필구 씨가 한참 버티다 수첩을 내놓는다. 차영배 씨가 품에서 접힌 장을 꺼낸다.)', '(Pilgu holds out a long time, then hands it over. Yeongbae takes the folded page from his jacket.)'),
+        line('', '(계장이 찢긴 자리에 그 장을 댄다. 반쪽 그림이 맞아 들어간다.)', '(The chief lays it against the torn edge. The two halves of the drawing fit together.)'),
+      ], {
+        choices: [
+          opt('read_line', '찌톱은 문필구 씨, 몸통은 차영배 씨. 그렇게 적혀 있습니다.', "The top is Pilgu's, the body is Yeongbae's. That's what it says.", {
+            stance: 'mid', aff: { [A]: 0.04, [B]: 0.04 }, next: 'reconcile' }),
+          opt('said_before', '차영배 씨께 드린 말 그대로입니다. 원조는 두 분 다입니다.', "It's what I told Yeongbae before. You are both the original.", {
+            stance: 'mid', aff: { [A]: 0.02, [B]: 0.06 }, requires: { flag: 'choice.n24_both_origin' }, next: 'reconcile' }),
+        ],
+        note: ['수첩과 찢긴 장을 맞춰 보면 안다고 했다. 계장이 찢긴 자리에 차영배 씨가 꺼낸 장을 대자, 반쪽 그림이 맞아 들어갔다.',
+          "I said they would see if they put the notebook and the torn page together. When the chief laid Yeongbae's page against the tear, the two halves of the drawing fit."],
+      }),
+      reconcile: scene([
+        line(A, '(맞춰진 장을 오래 내려다본다. 자기 글씨, 「몸통은 영배 것이 낫다」.)', "(He looks down at the matched pages for a long time. His own handwriting: Yeongbae's body is better.)"),
+        line(A, '…내가 쓴 거다. 잊은 게 아니다. 못 본 척한 거지.', "...I wrote that. I didn't forget it. I pretended not to see it."),
+        line(A, '(처음으로 맞은편을 본다.)', '(For the first time he looks across the table.)'),
+        line(A, '영배야. 간판 하나 더 달자. 우리 집 유리문에.', "Yeongbae. Let's hang another sign. On my glass door."),
+      ], {
+        choices: [
+          opt('watch_both', '(두 사람을 번갈아 본다.)', '(I look from one man to the other.)', { stance: 'mid', next: 'fee_together' }),
+        ],
+        note: ['문필구 씨가 맞춰진 장을 오래 내려다보았다. 자기가 쓴 거라고, 잊은 게 아니라 못 본 척한 거라고 했다. 그러고는 처음으로 맞은편을 보며, 간판 하나 더 달자고 했다.',
+          "Pilgu looked down at the matched pages a long time. He wrote it, he said — he hadn't forgotten, only pretended not to see. Then, for the first time, he looked across the table: let's hang another sign."],
+      }),
+      fee_together: scene([
+        line('', '(차영배 씨가 고개를 숙인다. 어깨가 떨린다.)', "(Yeongbae bows his head. His shoulders shake.)"),
+        line(B, '…형님.', '...Pilgu.'),
+        line('', '(계장이 안건 종이에 한 줄을 적는다. 「원조 표기 — 두 집 공동」.)', '(The chief writes one line on the agenda sheet: Original — jointly, both shops.)'),
+        line(C, '이걸로 됐지요? 증인 수고비는 어떻게 하겠나.', 'That settles it, then? Now, what shall we do about the witness fee?'),
+      ], {
+        choices: [
+          opt('take_fee', '수고비는 받겠습니다.', "I'll take the fee, thank you.", {
+            stance: 'self',
+            end: endTalk({ complete: 'witness', ending: 'n24_together',
+              lineKo: '그래야지. 오늘 같은 날은 어촌계도 처음일세.',
+              lineEn: 'As you should. A day like this is a first for the co-op too.' }),
+            note: ['증인 수고비를 받았다. 계장은 오늘 같은 날은 어촌계도 처음이라고 했다.', 'I took the witness fee. A day like this was a first for the co-op too, the chief said.'] }),
+          opt('buy_floats', '두 가게 찌 값으로 써 주십시오.', 'Please spend it on floats from both shops.', {
+            stance: 'mid', aff: { [A]: 0.03, [B]: 0.03 },
+            end: endTalk({ complete: 'nofee', ending: 'n24_together',
+              lineKo: '그럼 첫 공동 찌는 어촌계가 사지.',
+              lineEn: 'Then the co-op buys the first joint float.' }),
+            note: ['수고비는 두 가게 찌 값으로 써 달라고 했다. 계장이 웃으며, 첫 공동 찌는 어촌계가 사겠다고 했다.', 'I asked that my fee go toward floats from both shops. The chief laughed — then the co-op would buy the first joint float.'] }),
+        ],
+        note: ['차영배 씨가 고개를 숙였다. 어깨가 떨렸다. 계장이 안건 종이에 「원조 표기 — 두 집 공동」이라고 적었다.',
+          "Yeongbae bowed his head, shoulders shaking. The chief wrote on the agenda sheet: Original — jointly, both shops."],
+      }),
+      verdict_a: scene([
+        line(C, '차 사장, 할 말 있나.', 'Mr. Cha, anything to say?'),
+        line('', '(차영배 씨가 접힌 종이를 꺼내려다 손을 멈춘다. 증인이 이미 말을 마쳤다. 그는 종이를 도로 품에 넣는다.)', '(Yeongbae starts to take out a folded sheet, then stops. The witness has already spoken. He tucks the sheet back inside his jacket.)'),
+        line(B, '…없습니다.', '...Nothing.'),
+      ], {
+        choices: [
+          opt('copied', '모양을 베낀 건 사실입니다.', "He did copy the shape. That's a fact.", {
+            stance: 'giver', aff: { [B]: -0.15 }, next: 'ruling_a' }),
+          opt('wait_page', '잠깐만요. 차영배 씨가 품에 넣으신 그 종이를 봐 주십시오.', 'Wait. Please look at the paper Yeongbae just put away.', {
+            stance: 'mid', requires: { flag: 'choice.n24_saw_torn' }, next: 'match' }),
+          opt('say_nothing', '(더 말하지 않는다.)', '(I say nothing more.)', { stance: 'self', next: 'ruling_a' }),
+        ],
+        note: ['문필구 씨 것이라고, 건너편 찌는 모양만 베꼈다고 했다. 차영배 씨는 접힌 종이를 꺼내려다 손을 멈추고, 도로 품에 넣었다. 할 말이 없다고 했다.',
+          "I said it was Pilgu's and the float across the street only copied the shape. Yeongbae started to take out a folded sheet, stopped, and put it back. He had nothing to say."],
+      }),
+      ruling_a: scene([
+        line(C, '(안건 종이에 적는다.)', '(He writes on the agenda sheet.)'),
+        line(C, '「영배 낚시 — 원조 표기 내림. 문찌 모양 판매 자제」. 차 사장, 이의 있나.', 'Yeongbae Tackle: remove the word original; refrain from selling the Mun shape. Mr. Cha, any objection?'),
+        line('', '(차영배 씨가 일어선다. 대답 대신 나를 오래 본다. 문이 닫힌다.)', '(Yeongbae stands. Instead of answering, he looks at me for a long time. The door closes.)'),
+      ], {
+        choices: [
+          opt('look_a', '(문필구 씨를 본다.)', '(I look at Pilgu.)', { stance: 'giver', next: 'fee_dark' }),
+        ],
+        note: ['어촌계는 「영배 낚시」에 원조 표기를 내리라고 적었다. 차영배 씨는 대답 대신 나를 오래 보다가 나갔다. 문이 닫혔다.',
+          "The co-op recorded that Yeongbae Tackle must take down the word original. Instead of answering, Yeongbae looked at me a long time, then left. The door closed."],
+      }),
+      fee_dark: scene([
+        line('', '(문필구 씨는 이긴 얼굴이 아니다. 닫힌 문만 본다.)', '(Pilgu does not look like a man who has won. He only stares at the closed door.)'),
+        line(C, '수고했네, 증인. 이걸로 끝이야. 수고비는 어떻게 하겠나.', "Thank you, witness. That's the end of it. What shall we do about your fee?"),
+      ], {
+        choices: [
+          opt('take_fee', '수고비는 받겠습니다.', "I'll take the fee, thank you.", {
+            stance: 'self',
+            end: endTalk({ complete: 'witness', ending: 'n24_dark', lineKo: '길 건너 불이 오늘은 일찍 꺼지겠군.', lineEn: 'The lights across the street will go out early tonight.' }),
+            note: ['증인 수고비를 받았다. 계장은 길 건너 불이 오늘은 일찍 꺼지겠다고 했다.', 'I took the witness fee. The lights across the street would go out early tonight, the chief said.'] }),
+          opt('learn_minutes', '이런 회의는 어떻게 적는지 배우고 싶습니다.', "I'd like to learn how a meeting like this is written up.", {
+            stance: 'mid',
+            end: endTalk({ complete: 'learn', ending: 'n24_dark',
+              lineKo: '본 것 · 들은 것 · 적힌 것을 따로 놓게. 오늘은 들은 것만 적혔지.',
+              lineEn: 'Keep what was seen, what was heard and what was written apart. Today, only what was heard got written down.' }),
+            note: ['이런 회의를 어떻게 적는지 배우고 싶다고 했다. 계장은 회의록을 내 앞으로 돌려 놓으며, 본 것과 들은 것과 적힌 것을 따로 놓으라고 했다. 오늘은 들은 것만 적혔다고.', "I asked how a meeting like this is written up. The chief turned the minutes toward me: keep what was seen, heard and written apart. Today, only what was heard got written down."] }),
+        ],
+        note: ['문필구 씨는 이긴 얼굴이 아니었다. 닫힌 문만 보고 있었다.', 'Pilgu did not look like a man who had won. He only stared at the closed door.'],
+      }),
+      verdict_b: scene([
+        line(C, '문 사장, 사실인가.', 'Mr. Mun, is that true?'),
+        line(A, '(탁자를 짚고 일어선다.)', '(He leans on the table and stands.)'),
+        line(A, '이 골목에서 사십 년이다. 증인이라는 게 남의 가게 얘기를 듣고 와서 이 꼴을 만들어?', 'Forty years in this alley. And a so-called witness listens to one shop\'s story and brings it to this?'),
+      ], {
+        choices: [
+          opt('as_heard', '들은 대로 말씀드린 겁니다.', 'I said what I heard.', {
+            stance: 'other', aff: { [A]: -0.08 }, next: 'ruling_none' }),
+          opt('too_far', '제가 말이 지나쳤습니다.', 'I went too far.', {
+            stance: 'mid', aff: { [A]: 0.04 }, next: 'ruling_none' }),
+        ],
+        note: ['차영배 씨 것이라고, 문필구 씨가 제자의 일을 가로챘다고 했다. 문필구 씨가 탁자를 짚고 일어서며, 남의 가게 얘기를 듣고 와서 이 꼴을 만드느냐고 했다.',
+          "I said it was Yeongbae's and Pilgu had taken credit for his apprentice's work. Pilgu leaned on the table and stood — a witness who listened to one shop's story and brought it to this?"],
+      }),
+      ruling_none: scene([
+        line(C, '그만.', 'Enough.'),
+        line(C, '들은 말로는 어촌계가 가릴 수 없네. 간판은 두 집 다 그대로 두게.', "The co-op can't decide on hearsay. Both shops keep their signs."),
+        line('', '(문필구 씨가 먼저 나간다. 문이 세게 닫힌다. 차영배 씨는 한참 앉아 있다가 나간다.)', '(Pilgu leaves first. The door slams. Yeongbae sits a long while, then leaves too.)'),
+      ], {
+        choices: [
+          opt('empty_chairs', '(빈 의자를 본다.)', '(I look at the empty chairs.)', { stance: 'self', next: 'fee_apart' }),
+        ],
+        note: ['계장이 손을 들어 막았다. 들은 말로는 가릴 수 없다며, 간판은 두 집 다 그대로 두라고 했다. 문필구 씨가 먼저 나갔고, 차영배 씨는 한참 앉아 있다가 나갔다.',
+          "The chief raised a hand: the co-op couldn't decide on hearsay, and both signs would stay. Pilgu left first; Yeongbae sat a long while, then left too."],
+      }),
+      shelve: scene([
+        act(C, 'sigh'),
+        line(C, '증인이 가릴 수 없다면 어촌계도 못 가리지. 간판은 두 집 다 그대로 두게.', "If the witness can't decide, neither can the co-op. Both shops keep their signs."),
+        line('', '(문필구 씨와 차영배 씨가 동시에 일어선다. 문 앞에서 잠깐 어깨가 부딪친다. 둘 다 아무 말도 하지 않는다.)', "(Pilgu and Yeongbae stand at the same moment. Their shoulders bump briefly at the door. Neither says a word.)"),
+      ], {
+        choices: [
+          opt('watch_go', '(두 사람이 나가는 걸 본다.)', '(I watch the two of them leave.)', { stance: 'self', next: 'fee_apart' }),
+        ],
+        note: ['내가 가릴 수 있는 일이 아니라고 했다. 계장은 한숨을 쉬며, 그럼 어촌계도 못 가린다고 했다. 두 사람은 동시에 일어섰고, 문 앞에서 어깨가 부딪쳤다. 둘 다 아무 말도 하지 않았다.',
+          "I said it wasn't mine to decide. The chief sighed — then neither could the co-op. The two men stood at the same moment, bumped shoulders at the door, and said nothing."],
+      }),
+      fee_apart: scene([
+        line(C, '(안건 종이를 접어 서랍에 넣는다.)', '(He folds the agenda sheet and puts it in a drawer.)'),
+        line(C, '또 올라오겠지. 내년에도.', "It'll come up again. Next year too."),
+        line(C, '수고비는 어떻게 하겠나, 증인.', 'What shall we do about your fee, witness?'),
+      ], {
+        choices: [
+          opt('take_fee', '수고비는 받겠습니다.', "I'll take the fee, thank you.", {
+            stance: 'self',
+            end: endTalk({ complete: 'witness', ending: 'n24_apart', lineKo: '자네 탓은 아닐세. 이십 년 묵은 일이야.', lineEn: "It's not your fault. This is twenty years old." }),
+            note: ['증인 수고비를 받았다. 계장은 내 탓이 아니라고, 이십 년 묵은 일이라고 했다.', "I took the witness fee. It wasn't my fault, the chief said — this was twenty years old."] }),
+          opt('buy_floats', '두 가게 찌 값으로 써 주십시오.', 'Please spend it on floats from both shops.', {
+            stance: 'mid', aff: { [A]: 0.02, [B]: 0.02 },
+            end: endTalk({ complete: 'nofee', ending: 'n24_apart', lineKo: '그러지. 두 집에서 똑같이 사 두겠네.', lineEn: "Very well. We'll buy the same from both shops." }),
+            note: ['수고비는 두 가게 찌 값으로 써 달라고 했다. 계장은 안경 너머로 나를 보더니, 두 집에서 똑같이 사 두겠다고 했다.', "I asked that the fee go toward floats from both shops. The chief looked at me over his glasses and said they would buy the same from each."] }),
+        ],
+        note: ['계장이 안건 종이를 접어 서랍에 넣었다. 또 올라올 거라고, 내년에도라고 했다.', "The chief folded the agenda sheet into a drawer. It would come up again, he said — next year too."],
+      }),
+    },
+  },
 ];
