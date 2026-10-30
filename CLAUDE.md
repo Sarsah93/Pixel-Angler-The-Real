@@ -101,6 +101,7 @@
   크기대로 그림(`forageImageSizeScale` — 판 · 상세 창 · 판을 열 때 크기를 먼저 굴림) · F10 「④-2b 해루질 놀이 바로 시작」(`DevHooks.playForageGame`) ·
   입질 감사 30건(달 효과 0 % · 수온 미사용 · 지역 KOSIS뿐 — 원문 `.agents/inputs/288_bite_audit.md`) · 결함 7 고침(F07 여 위 찌 · F13 · F14 KST · 밤 · F26 후보 0 · F06 지역 낚시지수 · F04 · F05 KOSIS · F16 울산 · F23) ·
   검증 = core 423 · 하네스 4/4(132판) · 6/6 · 이름 이행 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개. main · 배포는 하지 않았다(작업 브랜치만).
+  하모니 PR #13 · #14 · #15 검토 · 병합(main `80dd59c`) · main CI 실패 원인(core 시험 파일 타입 2건)은 작업 브랜치에서 고침 — 브랜치를 main에 넣어야 CI 초록.
   **다음 = 사용자 결정(호칭 방식 · 입질 하한 D1 · D2~D6 — 백로그 DD) → 나머지 190편 대본 → 289 맵 확장 영향**. 상세 `docs/wiki/03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md`.
 - **287차**: **진행 중 물음 · 진행 나레이션 빼기 · 191편 전수 · 바람 대사 성별 · dev 갯것 · 작물 지급** —
   사용자 「'딸은 만나봤나?'로만 물어보고, 선택지 1) …아직 만나보지 않았습니다. 2) 나가기 … 혼자 자문자답하고 … 다른 퀘스트들도 전부 전수조사해서 수정해줘」 ·
@@ -161,7 +162,7 @@ npx pnpm --filter @tra/client-pc run dev             # 개발 서버 → http://
 py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재생성 (예: sokcho)
 ```
 
-- 검증 루틴: 작업 후 `npx pnpm run build` + `npx pnpm --filter @tra/client-pc run typecheck` 통과 필수 (기준: 2026-09-02 **3/3** 성공, 0 오류 — map-builder 워크스페이스 제외로 4/4 → 3/3).
+- 검증 루틴: 작업 후 `npx pnpm run build` + `npx pnpm --filter @tra/client-pc run typecheck` 통과 필수 · **루트 `npx pnpm run typecheck`도**(288 — CI는 core 시험 파일까지 본다. client만 보면 core 시험 파일 타입 오류를 놓친다) (기준: 2026-09-02 **3/3** 성공, 0 오류 — map-builder 워크스페이스 제외로 4/4 → 3/3).
 - `noUnusedLocals`/`noUnusedParameters` 활성화 — 미사용 심볼은 제거하거나 `_` 접두사.
 
 ## 절대 규칙 요약 (상세는 AGENTS.md §8)
