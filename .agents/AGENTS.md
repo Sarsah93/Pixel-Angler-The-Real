@@ -324,7 +324,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 사용자 「편 지역을 대본에 맞춰 · 지역 활동 전부 다른 지역에서도 · 포항 · 거제 · 태안 미끼 가게 2개씩 · main & 재배포 · wiki」 → 편 지역 5(M3-09 · M4-10 · M2-09 · N20-3 → 속초 · N22-2~5 → 부산).
 - 품삯 일감 18(8지역 · `DayJobs` — 그 사람이 서 있는 지역에서만) · 일과 갈래 `night` + 27명 · 집 `home` 20(건물 아랫변 걷는 칸 — `r292/homes.py`).
 - 가게 종류 `tackle` 낚시용품점(24시간 · 직판장 tackle 품목 + 사이소 입문 대 · 마트 밑밥 — `get sells()` 한 정의) · OSM fishing · 「낚시」 outdoor · 손 POI 5(`src: manual`) → 포항 2 · 거제 2 · 태안 2 · 여수 4 · 울산 1 · 라디오 바다 9(열린 장까지).
-- 검증: core 459 · 하네스 r292 12/12 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [292차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-292-regional-jobs-routines-tackle-shops.md).
+- 검증: core 459 · 하네스 r292 12/12 · 빌드 3/3 · 루트 typecheck 4/4 · main `06340b3` · 97차 배포(gh-pages `9fa6c6d`) · 아티팩트 4개(36 · 37 · 35 · 위키 90).
+  상세: [292차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-292-regional-jobs-routines-tackle-shops.md).
 
 **이전 변경 (2026-10-30 291차) — 맵 확장 영향 ①: 출장 나온 사람 · 만나는 자리 · 안내 화살표(인물이 지금 있는 곳)**
 

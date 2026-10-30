@@ -218,7 +218,8 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 ### 292차 (2026-10-30) — 맵 확장 영향 ②: 지역 일감 · 인물 집 · 일과 · 낚시용품점 · 편 지역 정정 · main · 97차 배포
 
 - 편 지역 5를 대본대로(속초 4 · 부산 4편) · 품삯 일감 18(8지역) · 일과 27 · 집 20 · 가게 종류 `tackle`(포항 2 · 거제 2 · 태안 2 · 여수 4 · 울산 1) · 라디오 바다 9.
-- 검증: core 459 · 하네스 r292 12/12 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [워크로그 292](../docs/wiki/03-WORKLOG/2026-10-30-292-regional-jobs-routines-tackle-shops.md)
+- 검증: core 459 · 하네스 r292 12/12 · 빌드 3/3 · 루트 typecheck 4/4 · main `06340b3` · **97차 배포**(gh-pages `9fa6c6d` · 4xx 0 · pageerror 0) · 아티팩트 4개(tasks 36 · library 37 · rig 35 · 위키 90).
+  상세: [워크로그 292](../docs/wiki/03-WORKLOG/2026-10-30-292-regional-jobs-routines-tackle-shops.md)
 
 ### 291차 (2026-10-30) — 맵 확장 영향 ①: 출장 나온 사람 · 만나는 자리 · 안내 화살표
 
