@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 32 — 289차 기준(§01 입질 행 · §06 「289차 결정」(288 D1~D6 추천대로) · §07 289 ✅). 31 = 288 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 33 — 289차 기준(「바다 · 철 · 수온 존재 가중」 · 「풍랑 통제」 · 스폰 오라클 · 해양생물 DB 갯것 미끼). 32 = 288 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 31 — 289차 기준 · 채비 문법은 258차(「289차 기준」 줄 · 미끼 칸은 캔 갯것도 받는다) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 86 — 289차(시스템 「바다 · 철 · 수온 · 풍랑 · 새 미끼」 · 어종 카드 「사는 바다」 · 살오징어 · 미끼 셋). 85 = 288 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 33 — 290차 기준(§01 스토리 행 · §06 「290차 확인」 · §07 290 ✅ · 다음 291). 32 = 289 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 34 — 290차 기준(「대본 장면 · 몸짓」 ok · 「호칭 「OOO 씨」」 · 머리 숫자 · 바닥 줄 실측). 33 = 289 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 32 — 290차 기준 · 채비 문법은 258차(「290차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 87 — 290차(시스템 「모든 이야기의 대화 · 호칭」 · 장면 덤프 새로 · 일지 서두 호칭). 86 = 289 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

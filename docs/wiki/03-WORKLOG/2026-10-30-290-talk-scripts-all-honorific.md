@@ -104,4 +104,7 @@
 
 - [x] 시스템 페이지 [`story-quests.md`](../02-SYSTEMS/story-quests.md) §4 · §5 · §6 · 스펙 `.agents/STORY_SPEC_v4.md` §8-2
 - [x] `04-BACKLOG.md` · `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
-- [ ] 아티팩트 4개
+- [x] 아티팩트 4개 — 위키 [Version 87](https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c)(시스템 「모든 이야기의 대화 · 호칭」 · `tools/quest_scenes.json` 다시 덤프 — 193차 이후 처음) ·
+  남은 과업 설계 [33](https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4) · 구현 라이브러리 [34](https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5)(머리 숫자 · 바닥 줄 실측) ·
+  채비 모딩 순서도 [32](https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1)(「290차 기준」 줄) — `check_artifact_page` 셋 PASS
+- [ ] main 반영 · 배포 — 이번 차수는 하지 않았다(사용자 지시 없음 · 작업 브랜치만)
