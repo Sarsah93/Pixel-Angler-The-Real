@@ -23,7 +23,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
         '어촌계. 이 항구에서 바다를 나눠 쓰는 사람들 모임이다. 그물 칠 자리, 미역 따는 날, 다 거기서 정해.\n\n계원이 되면 통발이나 그물로 잡은 건 위판에 낼 수 있어. 낚싯대로 잡은 건 계원이어도 안 돼. 그게 둘째다. 앉아, 나머지도 들어.',
         'The fishing co-op. The people who share this harbour\'s sea. Where the nets go, which day the seaweed is cut, all decided there.\n\nA member can put trap or net catches up at auction. Rod catches, not even a member. That\'s the second rule. Sit and hear the rest.',
         { affinity: 0.02, flag: 'choice.m1_06_asked_coop' }),
-      d('who_enforces', '법이라면서요. 할머니가 단속하시는 건 아니죠?', 'You call it law. You\'re not the one enforcing it, are you?',
+      d('who_enforces', '법이라면서요. 정옥선 씨가 단속하시는 건 아니죠?', 'You call it law. You\'re not the one enforcing it, are you?',
         '단속은 해경이 하고, 나는 말만 한다. 말로 끝날 때 듣는 게 제일 싸게 먹힌다.\n\n벌금 나오면 네 품삯 몇 달 치야. 그거 내고 배우든가, 지금 공짜로 배우든가. 골라. (대답을 기다리지 않고 의자를 내민다.)',
         'The coast guard does the catching. I just do the talking. Listening while it\'s still only talk is the cheapest way to learn.\n\nA fine would eat months of your wages. Pay that and learn, or learn now for free. Your pick. (She pushes the stool at you without waiting.)',
         { affinity: -0.01 }),
@@ -342,7 +342,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
         '무서운 게 맞다. 안 무서운 놈이 물에 빠진다.\n\n랜턴은 발밑만 비추지 말고 가끔 멀리도 비춰. 물이 어디까지 왔는지 봐야 하니까. 손 시리면 미련 없이 올라와.',
         "You should be. The ones who aren't are the ones who end up in the water.\n\nDon't just shine the lamp at your feet. Sweep it further out now and then, so you can see how far the water's come. When your hands go numb, come up without a second thought.",
         { affinity: 0.03 }),
-      d('joke_law', '법한테 잡히는 게 할머니한테 잡히는 것보단 낫겠는데요.', 'Getting caught by the law sounds better than getting caught by you.',
+      d('joke_law', '법한테 잡히는 게 정옥선 씨한테 잡히는 것보단 낫겠는데요.', 'Getting caught by the law sounds better than getting caught by you.',
         '(눈을 가늘게 뜬다.) 내가 잡으면 꿀밤이고 법이 잡으면 벌금이다. 어느 쪽이 나은지 계산해 봐.\n\n어장 표지 안쪽에선 손도 넣지 마. 몰랐다는 말은 안 통한다.',
         "(She narrows her eyes.) When I catch you it's a knock on the head. When the law catches you it's a fine. Work out which is better.\n\nDon't so much as put a hand inside the markers. Saying you didn't know won't get you anywhere.",
         { affinity: 0.01, flag: 'choice.m1_09_joked' }),
@@ -745,7 +745,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
         '떨어질 수도 있지. 심사니까. (서류를 덮는다.)\n\n떨어진 사람은 다음 분기에 다시 선다. 그게 끝이 아니다. 떨 시간에 실적이나 채워.',
         "You could. It's a review. (He closes the file.)\n\nAnyone who fails stands again next quarter. It isn't the end. Instead of shaking, go fill your record.",
         { affinity: 0.02 }),
-      d('rival_vote', '도현수도 그날 표를 던집니까?', 'Does Do Hyeonsu get a vote that day too?',
+      d('rival_vote', '도현수 씨도 그날 표를 던집니까?', 'Does Do Hyeonsu get a vote that day too?',
         '계원이면 다 던진다. 그 애도.\n\n누가 어디에 손 드는지는 미리 묻는 게 아니다. 그날 보면 안다. 어디에 들든 그건 그 애 표다. 너는 네 실적만 챙겨.',
         "Every member votes. Him too.\n\nYou don't ask ahead of time where people's hands will go. You'll see on the day. Wherever his goes, it's his vote. You look after your own record.",
         { affinity: 0.01, flag: 'choice.m2_09_asked_rival' }),
@@ -771,7 +771,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
   // ── M2-11 「되돌아온 상자」 · 정옥선(손이 느려진 것 — 병 이야기는 7장 전에는 하지 않는다) ──
   'M2-11': {
     offer: [
-      d('fix_display', '부산에서 배운 대로 바꿔 보겠습니다. 할머니는 앉아 계세요.', "I'll redo it the way I learned in Busan. You sit down, Grandma.",
+      d('fix_display', '부산에서 배운 대로 바꿔 보겠습니다. 정옥선 씨는 앉아 계세요.', "I'll redo it the way I learned in Busan. You sit down, Okseon.",
         '앉아 있으라고? 내 좌판에서? (그래도 의자를 끌어다 앉는다.)\n\n해 봐. 부산 놈들 식이 뭔지 나도 좀 보자. 대신 얼음은 내 식대로다. 그건 안 바꾼다.',
         "Sit down? At my own stall? (She drags a stool over and sits anyway.)\n\nGo on. Let me see what this Busan way is. But the ice stays my way. That doesn't change.",
         { affinity: 0.05 }),
@@ -789,7 +789,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.02 }),
     ],
     completeAdd: [
-      d('learn_old_way', '다음엔 할머니 방식도 가르쳐 주세요.', 'Next time, teach me your way too.',
+      d('learn_old_way', '다음엔 정옥선 씨 방식도 가르쳐 주세요.', 'Next time, teach me your way too.',
         '내 방식? 그건 가르치는 게 아니라 보고 훔치는 거다. (얼음 위에 생선 한 마리를 고쳐 눕힌다.)\n\n부산 규격이 상자를 살리면 내 방식은 손님을 살린다. 둘 다 알아야 좌판이다. 내일 와서 봐.',
         "My way? That isn't taught. You watch and steal it. (She lays one fish straighter on the ice.)\n\nThe Busan rules keep the crates alive. My way keeps the customers. You need both to run a stall. Come tomorrow and watch.",
         { affinity: 0.06, flag: 'choice.m2_11_learn_old_way' }),
@@ -827,7 +827,7 @@ export const CHOICE_DEPTH_1: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.01, flag: 'choice.m2_10_asked_fee' }),
     ],
     completeAdd: [
-      d('ask_skipper', '고만석 선장님은 어떤 분입니까?', "What's Skipper Ko Manseok like?",
+      d('ask_skipper', '고만석 씨는 어떤 분입니까?', "What's Go Manseok like?",
         '말은 짧다. 배 위에선 그 사람 말이 법이고.\n\n가서 이름 대고, 시키는 대로 해. 그 배에서 배우는 게 필기 열 권보다 낫다. 이 릴 챙기고.',
         "Short on words. On his boat, his word is law.\n\nGo, give your name, and do as you're told. What you learn on that boat beats ten exam books. Take this reel with you.",
         { affinity: 0.03, flag: 'choice.m2_10_asked_skipper' }),

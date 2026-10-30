@@ -11,7 +11,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
   // ── M3-01 「방어진 입항」 · 고만석 ──
   'M3-01': {
     offer: [
-      d('sign_on', '계장님 소개로 왔습니다. 이름 쓰고 조끼 입겠습니다.', "The co-op chief sent me. I'll sign the list and get the vest on.",
+      d('sign_on', '어촌계 소개로 왔습니다. 이름 쓰고 조끼 입겠습니다.', "The co-op sent me. I'll sign the list and get the vest on.",
         '소개는 부두에서 끝이다. 배에 오르면 누가 보냈든 다 같은 짐이야. (명부 볼펜을 턱으로 가리킨다.)\n\n처음 타는 놈은 배 가운데 앉아. 거기가 제일 덜 흔들린다. 방어 한 마리 올리고 한 항차 버티면, 그때부터 짐 말고 사람으로 쳐 주지.',
         "An introduction ends at the pier. Once you're aboard, it doesn't matter who sent you — you're cargo like everyone else. (He points his chin at the pen on the list.)\n\nFirst-timers sit in the middle of the boat. It moves least there. Land one yellowtail and last one trip, and I'll count you as a person instead of cargo.",
         { affinity: 0.03 }),
@@ -71,7 +71,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         { affinity: -0.01, flag: 'choice.m3_02_power' }),
     ],
     completeAdd: [
-      d('father_hand', '선장님이 손을 잡았을 때, 아버지 생각이 났습니다.', 'When you took my hand, I thought of my father.',
+      d('father_hand', '고만석 씨가 손을 잡았을 때, 아버지 생각이 났습니다.', 'When you took my hand, I thought of my father.',
         '…배 위에서 그런 소리 하지 마라. 눈에 소금물 들어간다. (돌아서서 엔진 쪽으로 간다.)\n\n(한참 엔진 소리만 난다.) 손이 기억하는 건 오래 간다. 그 리듬 잊지 마. 누가 잡아 줬는지도.',
         "…Don't say things like that on a boat. You'll get salt water in your eyes. (He turns away toward the engine.)\n\n(For a long while there's only the engine.) What the hands remember lasts. Don't forget that rhythm. Or who set it for you.",
         { affinity: 0.05, flag: 'choice.m3_02_father_hand' }),
@@ -109,7 +109,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         { affinity: 0, flag: 'choice.m3_03_scrape_joke' }),
     ],
     completeAdd: [
-      d('show_okseon', '합격증은 할머니께 먼저 보여 드리겠습니다.', "I'll show the certificate to the stall grandmother first.",
+      d('show_okseon', '합격증은 정옥선 씨께 먼저 보여 드리겠습니다.', "I'll show the certificate to Okseon first.",
         '그래라. 네 보증 선 사람이 그 사람이다. (잠깐 말을 고른다.)\n\n가거든 합격증보다 얼음부터 날라. 그 사람은 그걸 더 좋아한다. 축하는 손으로 하는 거라고 생각하는 사람이니까.',
         "Do that. She's the one who stood guarantee for you. (He takes a moment over his words.)\n\nWhen you get there, carry the ice before you show the certificate. She'll like that better. She thinks congratulations are something you do with your hands.",
         { affinity: 0.05, flag: 'choice.m3_03_show_okseon' }),
@@ -175,7 +175,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '모른다. 그게 해무다. 바다가 차고 공기가 따뜻하면 바다가 김을 뿜어. 십 분 만에 부두가 지워진 날도 있다.\n\n그래서 정하는 건 빨라야 해. 안개 안에서 정하면 늦어. 안개가 보일 때 정하는 거다. 지금처럼. 정해.',
         "Nobody knows. That's sea fog. Cold sea, warm air, and the sea starts steaming. There've been days the pier vanished in ten minutes.\n\nSo the deciding has to be quick. Decide inside the fog and you're too late. You decide when you can see it coming. Like now. Decide.",
         { affinity: 0.03, flag: 'choice.m3_05_asked_fog' }),
-      d('ask_skipper', '선장님이라면 어떻게 하시겠습니까?', 'What would you do, Skipper?',
+      d('ask_skipper', '고만석 씨라면 어떻게 하시겠습니까?', 'What would you do, Manseok?',
         '내 배니까 나는 안다. 근데 오늘 묻는 건 너다. (팔짱을 낀다.)\n\n언젠가 네 배에서 안개를 만나면 물어볼 사람이 없어. 그날을 위해 지금 정해 보는 거다. 틀려도 오늘은 내가 있다. 정해.',
         "It's my boat, so I know. But today you're the one being asked. (He folds his arms.)\n\nSomeday you'll hit fog on your own boat with nobody to ask. You're deciding now for that day. Even if you're wrong, I'm here today. Decide.",
         { affinity: 0.02, flag: 'choice.m3_05_asked_skipper' }),
@@ -217,20 +217,20 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '잡은 것만 적으면 그건 장부다. 장부는 돈 세는 사람이 쓰는 거고.\n\n조행록은 바다가 어땠는지 남기는 거다. 뭐가 들었고 뭐가 안 들었는지. 안 든 걸 적는 사람이 있어야 나중에 왜 사라졌는지 안다. 셋이다. 잘 들어.',
         "Write down only what you catch and it's a ledger. Ledgers are for people counting money.\n\nThe log keeps what the sea was like. What came in and what didn't. Someone has to write down what didn't come, or later nobody knows why it vanished. Three people. Listen well.",
         { affinity: 0.03, flag: 'choice.m3_06_asked_log' }),
-      d('shy', '처음 보는 어르신들이 제게 얘기를 해 주실까요?', "Will old folks I've never met really talk to me?",
+      d('shy', '처음 보는 분들이 제게 얘기를 해 주실까요?', "Will people I've never met really talk to me?",
         '안 해 주지. 처음엔. (혀를 찬다.)\n\n그러니까 먼저 얼음을 날라 주든 그물 정리를 거들든 해. 손이 먼저 가면 입은 따라 열린다. 나도 얼음 상자 보고 너한테 열렸다. 셋 채우고 와.',
         "They won't. Not at first. (She clicks her tongue.)\n\nSo carry their ice first, or help sort their nets. When the hands go first, the mouths follow. I opened up to you over an ice crate, didn't I. Come back with three.",
         { affinity: 0.02, flag: 'choice.m3_06_shy' }),
     ],
     completeAdd: [
-      d('her_story', '다음엔 할머니 이야기도 받아 적고 싶습니다.', "Next time, I'd like to write down your story too.",
+      d('her_story', '다음엔 정옥선 씨 이야기도 받아 적고 싶습니다.', "Next time, I'd like to write down your story too.",
         '…내 얘기는 적을 게 없다. 좌판이랑 얼음이 다야. (수첩을 내 쪽으로 밀어 버린다.)\n\n적을 거면 네 얘기나 적어. 오늘 들은 걸 네 말로. 그것도 조행록이다. 늙은이 얘기는 늙은이들이 알아서 남긴다.',
         "…There's nothing in mine worth writing. A stall and ice, that's all. (She pushes the notebook back toward me.)\n\nIf you want to write, write your own. What you heard today, in your own words. That's the log too. Old people's stories, old people will see to.",
         { affinity: 0.04, flag: 'choice.m3_06_her_story' }),
     ],
     completeReply: {
       father: [
-        '…그랬을 거다. (할머니가 오래 말이 없다. 그러고는 내 손을 한 번 잡는다.)\n\n아버지가 뭘 알았는지는 아무도 모른다. 다만 네가 이렇게 적고 있으면, 알았든 몰랐든 이어지는 거다. (손을 놓고 수첩 표지를 한 번 쓸어 준다.)',
+        '…그랬을 거다. (정옥선 씨가 오래 말이 없다. 그러고는 내 손을 한 번 잡는다.)\n\n아버지가 뭘 알았는지는 아무도 모른다. 다만 네가 이렇게 적고 있으면, 알았든 몰랐든 이어지는 거다. (손을 놓고 수첩 표지를 한 번 쓸어 준다.)',
         "…He likely did. (She says nothing for a long time. Then she takes my hand, once.)\n\nNobody knows what your father knew. But as long as you keep writing like this, it carries on — whether he knew or not. (She lets go and smooths the notebook's cover once with her palm.)",
       ],
       record: [
@@ -295,7 +295,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.02, flag: 'choice.m3_08_asked_limit' }),
     ],
     completeAdd: [
-      d('did_you_know', '선장님은 부러질 줄 아셨습니까?', 'Did you know it would break, Skipper?',
+      d('did_you_know', '고만석 씨는 부러질 줄 아셨습니까?', 'Did you know it would break, Manseok?',
         '…알았으면 말렸겠지. 몰랐다. 다만 오래된 대는 언젠가 그런다는 건 알았다.\n\n대는 부러지라고 있는 거다. 부러질 때까지 고기를 안 놓은 대가 좋은 대야. 네 아버지 대는 끝까지 안 놨다. 그건 기억해 둬.',
         "…If I'd known, I'd have stopped you. I didn't. I just knew an old rod does that someday.\n\nRods are made to break. A good rod is one that won't let go of the fish till it breaks. Your father's rod held on to the end. Remember that.",
         { affinity: 0, flag: 'choice.m3_08_did_you_know' }),
@@ -437,20 +437,20 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '봉돌을 맨 밑에 달고, 바늘은 그 위에 달아요. 봉돌이 바닥에 닿아 있으면 미끼가 바닥 조금 위에서 놀아요.\n\n광어는 바닥에서 위를 보고 있다가 먹어요. 그래서 살짝 띄우는 거예요. 이건 제가 진짜 잘 알아요. 진짜로요. 가요!',
         "Sinker at the very bottom, hook tied above it. With the sinker on the bottom, the bait plays just above it.\n\nFlounder lie on the bottom looking up, then strike. That's why you lift it a little. This one I really do know. Really. Let's go!",
         { affinity: 0.03, flag: 'choice.m4_03_asked_downshot' }),
-      d('permission', '밤에 등선이라니, 선장님 허락은 받았어?', 'The light boat at night? Did the skipper say yes?',
-        '받았죠! 선장님이 키 줬어요. 사고만 안 치면 된대요. (열쇠를 자랑스럽게 흔든다.)\n\n걱정 마요, 형. 배 위에서는 저 안 덜렁대요. 덜렁대는 건 땅에서만이에요. 진짜예요. 타요!',
+      d('permission', '밤에 등선이라니, 채금자 씨 허락은 받았어?', 'The light boat at night? Did Geum-ja say yes?',
+        '받았죠! 선장님이 키 줬어요. 사고만 안 치면 된대요. (열쇠를 자랑스럽게 흔든다.)\n\n걱정 마요. 배 위에서는 저 안 덜렁대요. 덜렁대는 건 땅에서만이에요. 진짜예요. 타요!',
         "Course I did! The skipper gave me the key. Just don't cause any trouble, she said. (Pado jingles the key proudly.)\n\nDon't worry. I'm not scatterbrained on a boat. Only on land. Honest. Get in!",
         { affinity: 0.02, flag: 'choice.m4_03_permission' }),
     ],
     completeAdd: [
       d('net_swap', '뜰채는 다음부터 내가 댈게. 너는 배만 몰아.', "From now on I'll handle the net. You just drive the boat.",
-        '아… 그것도 좋네요. 사실 저는 배가 더 좋아요. (등선 키를 만지작거린다.)\n\n근데 형, 언젠가는 제가 댈 거예요. 한 마리도 안 놓치고. 그날은 꼭 보러 와요. 선장님이랑 같이요.',
+        '아… 그것도 좋네요. 사실 저는 배가 더 좋아요. (등선 키를 만지작거린다.)\n\n근데 언젠가는 제가 댈 거예요. 한 마리도 안 놓치고. 그날은 꼭 보러 와요. 선장님이랑 같이요.',
         "Oh… that works too. Honestly, I like the boat better. (Pado fiddles with the light boat's key.)\n\nBut someday I'll do the net myself. Without dropping a single one. Come and see that day. With the skipper.",
         { affinity: 0.04, flag: 'choice.m4_03_net_swap' }),
     ],
     completeReply: {
       secret: [
-        '역시! 형이에요! (다음 등선 출조 명단에 내 이름을 먼저 쓴다.)\n\n선장님은 어차피 다 알 거예요. 원래 다 알아요. 그래도 형이 말 안 하면 저는 모른 척할 수 있잖아요. 그게 중요해요.',
+        '역시! 최고예요! (다음 등선 출조 명단에 내 이름을 먼저 쓴다.)\n\n선장님은 어차피 다 알 거예요. 원래 다 알아요. 그래도 말 안 하면 저는 모른 척할 수 있잖아요. 그게 중요해요.',
         "See! You're a mate! (He writes my name first on the next lamp-boat outing.)\n\nThe skipper will know anyway. She always does. But if you don't say anything, I get to pretend she doesn't. That's what matters.",
       ],
     },
@@ -585,7 +585,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '동해는 물이 한 뼘 오르내리지. 여긴 사람 키를 몇 번 넘게 오르내려. 하루 두 번, 수백 걸음씩 물이 왔다 갔다 해.\n\n동해 버릇으로 들어오면 물이 등 뒤에서 와. 소리도 없이. 그래서 서해 사람은 바다를 등지고 안 서. 물때 보고 들어가.',
         "In the East the water rises and falls a hand's width. Here it's several times a man's height. Twice a day the sea walks hundreds of paces in and out.\n\nCome in with East Sea habits and the water arrives behind you. Without a sound. That's why West Sea folk never turn their backs on the sea. Check the tide, then go in.",
         { affinity: 0.03, flag: 'choice.m4_07_asked_tide' }),
-      d('rescue_joke', '빠지면 누가 꺼내 줍니까? 어르신이 오십니까?', 'If I get stuck, who pulls me out? Will you come?',
+      d('rescue_joke', '빠지면 누가 꺼내 줍니까? 송기백 씨가 오십니까?', 'If I get stuck, who pulls me out? Will you come?',
         '여든 넘은 늙은이가 자네를 꺼내? (껄껄 웃는다.)\n\n빠지면 자네가 나와야지. 그래서 혼자 깊이 들어가지 말라는 거야. 내가 보이는 데까지만. 그 안에서 세 개.',
         "A man past eighty pulling you out? (He laughs out loud.)\n\nIf you sink, you get yourself out. That's why I'm telling you not to go deep alone. Only as far as I can see. Three, inside that.",
         { affinity: 0.02, flag: 'choice.m4_07_rescue_joke' }),
@@ -624,19 +624,19 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         "I'm not twelve anymore, you know. (He kicks at the sand with his toe.)\n\nAnd rods aren't made by age. You just need an eye for the joints. I've got that. Stand on your pride after you've caught a sea bass.",
         { affinity: 0.01, flag: 'choice.m4_08_pride_joke' }),
       d('ask_night', '왜 꼭 밤이야? 낮엔 농어가 없어?', 'Why does it have to be night? No sea bass in the day?',
-        '낮에도 있어. 근데 낮엔 겁이 많아. 밤엔 파도 가까이 붙어서 대담해져.\n\n그리고 밤엔 사람이 없잖아. 시끄러운 사람들 없을 때가 좋아. 아저씨는 조용하니까 괜찮아. 가자.',
+        '낮에도 있어. 근데 낮엔 겁이 많아. 밤엔 파도 가까이 붙어서 대담해져.\n\n그리고 밤엔 사람이 없잖아. 시끄러운 사람들 없을 때가 좋아. 너는 조용하니까 괜찮아. 가자.',
         "There are. But in the day they're scared. At night they come right up to the waves and get bold.\n\nAnd there's nobody around at night. It's better without noisy people. You're quiet, so you're fine. Let's go.",
         { affinity: 0.03, flag: 'choice.m4_08_asked_night' }),
     ],
     completeAdd: [
-      d('show_grandpa', '이 대, 할아버지께도 보여 드려. 자랑해도 돼.', "Show this rod to your grandfather too. You've earned the brag.",
-        '…할아버지는 자랑하면 싫어해. 대는 말로 하는 거 아니래.\n\n그래도 아저씨가 잡은 농어 얘기는 할 거야. 그건 자랑이 아니라 증거니까. 증거는 괜찮잖아. 그치?',
+      d('show_grandpa', '이 대, 탁만수 씨께도 보여 드려. 자랑해도 돼.', "Show this rod to Mansu too. You've earned the brag.",
+        '…할아버지는 자랑하면 싫어해. 대는 말로 하는 거 아니래.\n\n그래도 네가 잡은 농어 얘기는 할 거야. 그건 자랑이 아니라 증거니까. 증거는 괜찮잖아. 그치?',
         "…Grandfather hates bragging. He says a rod doesn't do its talking with words.\n\nBut I'll tell him about the sea bass you caught. That's not bragging, that's evidence. Evidence is allowed. Right?",
         { affinity: 0.05, flag: 'choice.m4_08_show_grandpa' }),
     ],
     completeReply: {
       praise: [
-        '…내가 만든 거 맞지? 할아버지가 아니라? (아이가 대를 한 번 더 쓰다듬고 건넨다.)\n\n파도 이긴 대면 진짜 대 맞지? 그럼 이제 내 이름 새겨도 되겠다. 손잡이 밑에, 아주 작게. 아저씨만 알게.',
+        '…내가 만든 거 맞지? 할아버지가 아니라? (아이가 대를 한 번 더 쓰다듬고 건넨다.)\n\n파도 이긴 대면 진짜 대 맞지? 그럼 이제 내 이름 새겨도 되겠다. 손잡이 밑에, 아주 작게. 너만 알게.',
         "…I built it, right? Not grandfather? (The boy strokes the rod once more before handing it over.)\n\nA rod that beat the waves is a real rod, right? Then I can carve my name on it now. Under the grip, really small. So only you know.",
       ],
       teach_me: [
@@ -649,7 +649,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
   // ── M4-09 「갑오징어」 · 마감기 ──
   'M4-09': {
     offer: [
-      d('split_work', '좋습니다. 작가님은 그리시고, 저는 낚겠습니다.', "Fine by me. You draw, and I'll fish.",
+      d('split_work', '좋습니다. 마감기 씨는 그리시고, 저는 낚겠습니다.', "Fine by me. You draw, and I'll fish.",
         '역할 분담 완벽해요! 오늘 이 배에서 일하는 사람은 우리 둘뿐이에요. 선장님 빼고요.\n\n에기는 바닥까지 내려요. 두 번 튕기고 멈춰요. 갑오징어는 멈췄을 때 안아요. 세 번 튕기면 도망가요. 이건 제가 취재해서 알아요. 출항해요!',
         "Perfect division of labour! The only two people working on this boat today are us. Not counting the skipper.\n\nDrop the egi to the bottom. Twitch twice and stop. Cuttlefish grab it on the pause. Twitch three times and they flee. I know this — I researched it. Let's head out!",
         { affinity: 0.04 }),
@@ -667,7 +667,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         { affinity: 0.02, flag: 'choice.m4_09_accomplice' }),
     ],
     completeAdd: [
-      d('lost_egi', '에기를 또 잃었습니다. 작가님 책임도 있습니다.', "I lost another egi. Some of that's on you.",
+      d('lost_egi', '에기를 또 잃었습니다. 마감기 씨 책임도 있습니다.', "I lost another egi. Some of that's on you.",
         '제 책임 맞아요. 바닥에 걸리는 거 보고도 그림만 그렸어요. (에기 값을 계산하는 척하다 펜을 내려놓는다.)\n\n대신 장면은 건졌어요. 에기 잃고 허탈한 얼굴. 그게 오늘 제일 진짜 같은 컷이에요. 고마워요.',
         "It is on me. I saw it snag the bottom and just kept drawing. (The writer pretends to tally the cost of the egi, then puts the pen down.)\n\nBut I got the shot. The face of someone who's just lost an egi. That's the realest frame of the day. Thank you.",
         { affinity: 0.03, flag: 'choice.m4_09_lost_egi' }),
@@ -691,7 +691,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '허허, 정가에 넉넉히라. 장사 배웠구먼. 그 말이면 됐네.\n\n동해안 따라 천천히 올라오게. 서두르면 기름을 먹고, 기름 먹으면 정가로 받아도 남는 게 없어. 우리는 부두에서 기다리지.',
         "Heh, full fare and plenty. You've learned the trade. That'll do.\n\nCome up the east coast nice and slow. Hurry and you burn fuel, and burn fuel and you're left with nothing even at full fare. We'll be waiting on the pier.",
         { affinity: 0.04 }),
-      d('ask_tak', '탁 어르신도 배를 타십니까? 공방만 지키시는 줄 알았습니다.', "Old Tak's coming out on a boat? I thought he never left the workshop.",
+      d('ask_tak', '탁만수 씨도 배를 타십니까? 공방만 지키시는 줄 알았습니다.', "Mansu's coming out on a boat? I thought he never left the workshop.",
         '대 깎는 사람이 자기 대가 바다에서 어떻게 휘는지 안 보고 싶겠나. 자네 손에서 고기를 건 대라니 더 그렇지.\n\n탁 씨는 말 안 하겠지만, 자네 배라서 타는 거야. 그건 알고 모시게.',
         "A man who cuts rods — wouldn't he want to see how his rods bend at sea? All the more when it's a rod that hooked fish in your hands.\n\nTak won't say it, but he's coming because it's your boat. Know that when you take him out.",
         { affinity: 0.03, flag: 'choice.m4_11_asked_tak' }),
@@ -699,7 +699,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '동해안은 육지를 옆에 끼고 오는 길이야. 해 지면 가까운 항구에 들어가 자고, 날 밝으면 또 오게.\n\n밤바다를 혼자 건너는 게 실력이 아니네. 쉬어 가는 것도 실력이지. 늙은이들은 기다리는 거 하나는 잘해.',
         "Along the east coast you've got land beside you the whole way. When the sun goes down, put in at the nearest harbour and sleep, then come on at first light.\n\nCrossing the night sea alone isn't skill. Knowing when to rest is. And waiting is the one thing old men are good at.",
         { affinity: 0.02, flag: 'choice.m4_11_long_way' }),
-      d('rig_joke', '어르신 채비는 이번에도 제가 묶어 드려야 합니까?', 'Will I be tying your rig for you again this time?',
+      d('rig_joke', '강두철 씨 채비는 이번에도 제가 묶어 드려야 합니까?', 'Will I be tying your rig for you again this time?',
         '허허, 그래 주면 고맙지. (손가락을 꼼지락거려 보인다.)\n\n농담일세. 이번엔 내가 묶어 옴세. 자네는 키만 잡게. 손님이 채비까지 선장한테 맡기면 그건 손님이 아니라 짐이야.',
         "Heh, I'd be grateful if you did. (He wiggles his fingers at me.)\n\nI'm joking. This time I'll come with it tied. You just take the wheel. A passenger who leaves even his rig to the skipper isn't a passenger, he's cargo.",
         { affinity: 0.03, flag: 'choice.m4_11_rig_joke' }),
@@ -725,7 +725,7 @@ export const CHOICE_DEPTH_2: Record<string, ChoiceDepthEntry> = {
         '…바로 받네. 따질 줄 알았는데. (계산기를 꺼낸다.)\n\n제주 가는 길은 중간에 기름 넣을 데가 마땅치 않아. 계산은 넉넉하게 한다. 남는 기름은 아까운 게 아니라 보험이야. 너는 하늘이나 봐.',
         "…Straight yes. I thought you'd argue. (He pulls out a calculator.)\n\nThere's nowhere decent to refuel on the way to Jeju. I'll work it out with a margin. Spare fuel isn't waste, it's insurance. You watch the sky.",
         { affinity: 0.05 }),
-      d('ask_why', '네가 왜 내 배에 타? 계장님이 시키셨어?', 'Why are you getting on my boat? Did the chief put you up to it?',
+      d('ask_why', '네가 왜 내 배에 타? 네 할아버지가 시키셨어?', 'Why are you getting on my boat? Did your grandfather put you up to it?',
         '할아버지는 아무 말 안 했어. 내가 타겠다고 한 거야. (시선을 피한다.)\n\n…장거리는 혼자 보는 눈보다 둘이 보는 눈이 낫잖아. 그 이상은 묻지 마. 연료 계산이나 하게 둬.',
         "Grandfather didn't say a word. I'm the one who said I'd come. (He looks away.)\n\n…On a long run, two pairs of eyes beat one. Don't ask more than that. Just let me do the fuel.",
         { affinity: 0.03, flag: 'choice.m4_10_asked_why' }),
