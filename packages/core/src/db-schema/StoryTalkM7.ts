@@ -869,7 +869,7 @@ export const TALKS_M7: StoryTalkDef[] = [
       }),
       ours: scene([
         line(S, '…우리 대. 좋아.', '...Our rod. Okay.'),
-        line('', '(새벽이가 손잡이 옆에 「새벽」이라고 작게 새긴다. 그 옆에 내 이름도.)', "(Saebyeok carves his name small beside the grip. Then mine next to it.)"),
+        line('', '(탁새벽이 손잡이 옆에 「새벽」이라고 작게 새긴다. 그 옆에 내 이름도.)', "(Saebyeok carves his name small beside the grip. Then mine next to it.)"),
         line(S, '아버지 이름은 안 새겨도 돼. 처음부터 들어 있어. 손잡이 흠집. 그게 이름이야.', "We don't need to carve your father's name. It's been there from the start. The scratches on the grip. That's the name."),
       ], {
         end: endTalk({ complete: 'ours', lineKo: '우리는 그 옆에만 쓰면 돼.', lineEn: 'We only have to write beside it.' }),
