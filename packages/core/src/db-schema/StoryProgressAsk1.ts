@@ -166,7 +166,7 @@ export const PROGRESS_ASKS_1: Record<string, ProgressAskDef[]> = {
   'N14-5': [
     pa(['제주엔 언제 와요?', 'When are you coming to Jeju?'],
       ['…아직 떠나지 못했어요.', "...I haven't left yet."],
-      ['개회 선언 놓치면 안 돼요! 마라는 카메라 들고, 유리아 언니는 해설석에서 기다려요.', "You can't miss the opening! Mara's got the camera, and Yuria's waiting in the commentary booth."]),   // 0 — 제주로 돌아가기
+      ['개회 선언 놓치면 안 돼요! 마라는 카메라 들고, 유리아 언니는 해설석에서 기다려요.', "You can't miss the opening! Mara's got the camera, and Ria's waiting in the commentary booth."]),   // 0 — 제주로 돌아가기
     pa(['개회 선언, 들으러 갈래요?', 'Want to go hear the opening declaration?'],
       ['…조금 이따가 갈게요.', "...I'll come a bit later."],
       ['늦지 마요! 제가 마이크 잡는 거, 딱 한 번이에요.', "Don't be late! I only get the mic once."]),   // 1 — 개회 선언 듣기
