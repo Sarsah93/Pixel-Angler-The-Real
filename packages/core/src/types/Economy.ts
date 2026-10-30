@@ -288,6 +288,11 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
     defaultPricePerKg: 32000,
     sizeFactorMultiplier: 1.1,
   },
+  flying_squid: {
+    itemCode: '101401', // 289차 — 살오징어(동해 「오징어」) · 오징어류 품목 코드 공유 · 어획 급감으로 시세가 높다(활 오징어 kg 2만 원대)
+    defaultPricePerKg: 22000,
+    sizeFactorMultiplier: 1.0,
+  },
   // ── 신규 어종 6종 + 복섬 (2026-07-25) ──
   yellowfin_puffer: { itemCode: '100901', defaultPricePerKg: 40000, sizeFactorMultiplier: 1.2 }, // 까치복
   bartail_flathead: { itemCode: '100112', defaultPricePerKg: 22000, sizeFactorMultiplier: 1.1 }, // 양태

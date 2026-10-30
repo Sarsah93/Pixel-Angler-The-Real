@@ -1067,6 +1067,32 @@ export interface TuningConfig {
    * 날씨 → 캐스팅·채비 (127차 — 사용자 지시 3건).
    * 바람은 `calmMs` **초과분만** 작동하고, 스킬 보정은 바람 몫에만·`windCompCap`까지만 먹는다.
    */
+  /**
+   * 289차 — 어종 존재 가중(`rules/SpeciesPresence.ts`) — 바다 × 계절 × 수온. 사용자 결정 D1 「아예 0이 아니라 드물게」.
+   * 초기값은 근사(mockup) — 실플레이로 조율한다.
+   */
+  presence: {
+    /** 제철 앞뒤 한 달의 계절 가중 */
+    seasonAdjacent: number;
+    /** 제철이 아닌 달의 계절 가중 */
+    seasonOff: number;
+    /** 적수온 밖으로 이만큼(℃) 벗어나면 수온 가중이 하한에 닿는다 */
+    tempSpanC: number;
+    /** 수온 가중 하한 */
+    tempFloor: number;
+    /** 바다 가중 하한(그 바다에 거의 없는 어종도 이만큼은 — 「드물게」) */
+    seaFloor: number;
+    /** 존재 가중 전체 하한 */
+    minPresence: number;
+    /** 진행 중인 이야기가 찾는 어종의 하한(그 자리에서도 아주 드물지는 않게) */
+    storyFloor: number;
+    /** 입질 빈도에 거는 몫 — 후보 존재 가중의 평균을 이 지수로 누른다(0 = 빈도 무관 · 1 = 그대로) */
+    rateExponent: number;
+    /** 이 비율(존재 가중 후 / 전) 이상이면 빈도를 깎지 않는다 — 제철 · 맞는 바다는 288차까지와 같은 빈도(실측 분포 상위 약 30%) */
+    rateRef: number;
+    /** 입질 빈도 배율 하한 */
+    rateFloor: number;
+  };
   castWeather: {
     /** 이 풍속(m/s) 이하는 아무 영향 없음 */
     calmMs: number;
@@ -1094,6 +1120,13 @@ export interface TuningConfig {
     rainSnagGain: number;
     /** 강수 강도 1일 때 산포 가산 */
     rainScatterGain: number;
+    /**
+     * 289차 — 풍랑 통제(사용자 결정 D4): 이 파고(m) 이상이면 방파제 · 갯바위 낚시를 막는다(풍랑주의보 기준 3m).
+     * 해루질은 `forage.maxWaveM`(더 낮다 — 물에 들어간다).
+     */
+    closeWaveM: number;
+    /** 289차 — 이 풍속(m/s) 이상이면 낚시를 막는다(풍랑주의보 기준 14m/s) */
+    closeWindMps: number;
   };
   /**
    * 기절·사망 (§6 — P4). 기본값은 v2 완화 프리셋.
@@ -1680,6 +1713,12 @@ export const TUNING: TuningConfig = {
     chillColdC: 5, chillRainC: 14, chillColdPerHour: 0.08, chillRainPerHour: 0.06,
     chillFreezeMult: 1.5, chillLayerCut: 0.2, warmBuffMin: 60, spawnChance: 0.5,
   },
+  presence: {
+    seasonAdjacent: 0.7, seasonOff: 0.35,
+    tempSpanC: 6, tempFloor: 0.12,
+    seaFloor: 0.015, minPresence: 0.005, storyFloor: 0.25,
+    rateExponent: 0.5, rateRef: 0.5, rateFloor: 0.4,
+  },
   castWeather: {
     calmMs: 3,
     distPerMs: 0.045, tailGain: 0.020, distMultMin: 0.55,
@@ -1688,6 +1727,7 @@ export const TUNING: TuningConfig = {
     windCompCap: 0.30,
     baseScatter: 0.10,
     rainCurrentGain: 0.45, rainSnagGain: 0.55, rainScatterGain: 0.15,
+    closeWaveM: 3.0, closeWindMps: 14,
   },
   collapse: {
     dimMs: 500, popupDelayMs: 2000, faintFatiguePct: 80,
@@ -1874,6 +1914,17 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'craft.hospitalFee', min: 0, max: 200_000, step: 5000, category: 'balance', label: '병원 진료비(원)' },
   // ── 날씨 → 캐스팅·채비 (127차) ──
   { path: 'castWeather.calmMs', min: 0, max: 8, step: 0.5, category: 'balance', label: '바람 무시 임계(m/s)' },
+  { path: 'castWeather.closeWaveM', min: 1, max: 6, step: 0.1, category: 'balance', label: '낚시 통제 파고(m)' },
+  { path: 'castWeather.closeWindMps', min: 6, max: 25, step: 0.5, category: 'balance', label: '낚시 통제 풍속(m/s)' },
+  { path: 'presence.seasonAdjacent', min: 0.2, max: 1, step: 0.05, category: 'balance', label: '제철 앞뒤 달 가중' },
+  { path: 'presence.seasonOff', min: 0.05, max: 1, step: 0.05, category: 'balance', label: '제철 밖 가중' },
+  { path: 'presence.tempSpanC', min: 2, max: 12, step: 0.5, category: 'balance', label: '적수온 밖 하한까지(℃)' },
+  { path: 'presence.tempFloor', min: 0, max: 0.5, step: 0.01, category: 'balance', label: '수온 가중 하한' },
+  { path: 'presence.seaFloor', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '바다 가중 하한(드물게)' },
+  { path: 'presence.storyFloor', min: 0, max: 1, step: 0.05, category: 'balance', label: '이야기 어종 하한' },
+  { path: 'presence.rateExponent', min: 0, max: 1, step: 0.05, category: 'balance', label: '존재 → 입질 빈도 지수' },
+  { path: 'presence.rateRef', min: 0.1, max: 1, step: 0.05, category: 'balance', label: '빈도를 깎지 않는 존재 비율' },
+  { path: 'presence.rateFloor', min: 0.1, max: 1, step: 0.05, category: 'balance', label: '입질 빈도 배율 하한' },
   { path: 'castWeather.distPerMs', min: 0, max: 0.12, step: 0.005, category: 'balance', label: '맞바람 비거리 감소/ms' },
   { path: 'castWeather.scatterPerMs', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '바람 산포 증가/ms' },
   { path: 'castWeather.driftPerMs', min: 0, max: 0.1, step: 0.005, category: 'balance', label: '바람 착수 밀림/ms' },

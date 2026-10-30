@@ -22,6 +22,7 @@ import { TUNING, type BodyFormKey } from '../config/tuning.js';
 import type { ClosedSeason } from '../types/LegalSeason.js';
 import { isClosedOn } from '../rules/ClosedSeason.js';
 import { earthwormSeaPref } from './EarthwormRules.js';
+import { speciesPresence, seaPresence, tempPresence, presenceSstC } from '../rules/SpeciesPresence.js';
 
 /**
  * 체형 분류 (133차) — **같은 체중이라도 파이트에서 내는 힘·압력이 다르다.**
@@ -670,6 +671,19 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     nightBonus: 1.9, tideActivity: flatTide(0.65),
     fight: { basePower: 0.35, patternWeights: { jump: 0.05, dive: 0.35, lateral: 0.6 }, intervalMult: 1.15, mouthFragility: 0.45 },
   },
+  {
+    speciesId: 'flying_squid', nameKo: '살오징어', nameEn: 'Japanese Flying Squid',
+    // 289차 — 사용자 결정 D6. 동해 회유성 오징어(Todarodes pacificus) — 가을 밤 방파제 불빛 아래 표층~중층으로 몰려온다.
+    habitat: ['open', 'structure'], minDepthM: 5, maxDepthM: 200, preferredLayers: ['surface', 'mid'],
+    baitPreference: { lure: 95 }, egiOnly: true,
+    // 크기 = 외투장 — 법정 15cm 이하 방류 · 무게 W ≈ 0.026·L³(외투장 22cm ≈ 280g)
+    minCm: 12, maxCm: 35, meanCm: 22, sdCm: 4, lwrA: 0.026, lwrB: 3, bodyForm: 'cephalopod', maleRatio: 0.5,
+    legalMinCm: 15, closedSeasons: [{ from: [4, 1], to: [5, 31] }],
+    sexNote: '몸통이 붉은 갈색 · 지느러미가 몸통 끝 마름모 — 가을 동해 밤바다의 오징어',
+    // 밤 집어등 조업 어종 — 낮에는 깊이 내려가 연안에서 거의 안 문다
+    nightBonus: 2.4, tideActivity: flatTide(0.6),
+    fight: { basePower: 0.3, patternWeights: { jump: 0.05, dive: 0.4, lateral: 0.55 }, intervalMult: 1.1, mouthFragility: 0.5 },
+  },
   // ── 루어/지깅 중대형 (2026-07 리서치 — 잿방어/삼치 신규) ──
   {
     speciesId: 'greater_amberjack', nameKo: '잿방어', nameEn: 'Greater Amberjack',
@@ -807,6 +821,14 @@ export interface SpawnContext {
   tideStrength01?: number;
   /** 205차 — 물때 효과 지역 계수(`tideRegionK` — 동해 0.3) — 없으면 1 */
   tideRegionK?: number;
+
+  // ── 289차 — 존재 가중(바다 · 계절 · 수온 — `rules/SpeciesPresence.ts`) ──
+  /** 실측 수온(℃) — 없으면 지역 × 달 평년 수온 */
+  waterTempC?: number;
+  /** 진행 중인 이야기가 찾는 어종(존재 가중 하한 `TUNING.presence.storyFloor`) */
+  storyTargets?: readonly string[];
+  /** dev · 시험 — 존재 가중을 끈다(288차까지의 분포) */
+  presenceOff?: boolean;
 }
 
 /** 당첨 물고기 결과 */
@@ -951,6 +973,12 @@ export function baitPrefOf(spec: Pick<FishMasterSpec, 'baitPreference'>, key: Ba
 }
 
 function weightedCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: number }[] {
+  // 289차 — 존재 가중(바다 · 계절 · 수온)은 후보를 거른 **뒤에** 곱한다 — 드문 어종도 후보에서 빠지지 않는다(D1 「드물게」)
+  return baseCandidates(ctx).map((c) => ({ spec: c.spec, weight: c.weight * speciesPresence(c.spec.speciesId, ctx) }));
+}
+
+/** 존재 가중을 곱하기 전의 후보 · 가중(미끼 · 지형 · 수심층 · 물때 · 주야 · 통계 · 채비) */
+function baseCandidates(ctx: SpawnContext): { spec: FishMasterSpec; weight: number }[] {
   const filterSet = ctx.speciesFilter && ctx.speciesFilter.length > 0 ? new Set(ctx.speciesFilter) : null;
 
   return ORACLE_FISH_DB.map((spec) => {
@@ -987,7 +1015,24 @@ export function speciesBiteReadiness(ctx: SpawnContext, speciesId: string): numb
   const phaseBest = ctx.flowPhase
     ? speciesTidePhaseBest(speciesId, ctx.tideStrength01 ?? 0.5, ctx.tideRegionK ?? 1) : 1;
   const ideal = Math.max(0.03, baitBest / 50) * Math.max(0.05, tideBest) * Math.max(1, nb) * phaseBest;
-  return Math.min(1, intrinsicWeight(spec, ctx) / ideal);
+  // 289차 — 그 바다에 없거나 물이 맞지 않으면 떼도 없다(계절은 무리 걸림이 따로 제철로 본다 — 두 번 곱하지 않는다)
+  const here = ctx.presenceOff ? 1 : seaPresence(speciesId, ctx.region) * tempPresence(speciesId, presenceSstC(ctx));
+  return Math.min(1, (intrinsicWeight(spec, ctx) / ideal) * here);
+}
+
+/**
+ * 289차 — 존재 가중이 입질 **빈도**에 거는 배율(`TUNING.presence.rateFloor` ~ 1).
+ * 후보 가중을 존재 가중 전 · 후로 합쳐 비율을 내고 `rateExponent`로 누른다 — 철 밖 · 차가운 물에서는 무는 고기 자체가 적다
+ * (겨울 서해 · 한여름 동해 냉수대). 어종 고르기와는 따로 1인칭 씬이 입질 확률에 곱한다.
+ */
+export function presenceBiteRate(ctx: SpawnContext): number {
+  if (ctx.presenceOff) return 1;
+  const base = baseCandidates(ctx);
+  const raw = base.reduce((a, c) => a + c.weight, 0);
+  if (raw <= 0) return 1;
+  const withP = base.reduce((a, c) => a + c.weight * speciesPresence(c.spec.speciesId, ctx), 0);
+  const P = TUNING.presence;
+  return Math.min(1, Math.max(P.rateFloor, Math.pow(withP / raw / Math.max(0.01, P.rateRef), P.rateExponent)));
 }
 
 /**

@@ -32,7 +32,7 @@ const SEABREAM = new Set(['black_seabream', 'red_seabream', 'night_seabream', 'l
 const AMBERJACK = new Set(['yellowtail', 'amberjack', 'greater_amberjack']);
 const MACKEREL = new Set(['chub_mackerel', 'horse_mackerel', 'spanish_mackerel', 'pacific_saury', 'halfbeak']);
 const FLATFISH = new Set(['flatfish', 'flounder', 'frog_flounder', 'starry_flounder', 'tonguefish']);
-const CEPH = new Set(['squid', 'cuttlefish', 'octopus', 'giant_octopus', 'swordtip_squid']);
+const CEPH = new Set(['squid', 'cuttlefish', 'octopus', 'giant_octopus', 'swordtip_squid', 'flying_squid']);
 
 export function fightGroupOf(speciesId: string): FightGroup {
   if (SEABREAM.has(speciesId)) return 'seabream';

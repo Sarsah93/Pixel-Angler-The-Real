@@ -28,7 +28,7 @@ import {
 import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan } from '@tra/core';
 // 282차 — 개체 아이템 id(장비 · 단단한 루어는 `<카탈로그 id>#<번호>`)
 import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra/core';
-import { rodSpecFor, reelSpecFor, type RodItemSpec, type ReelItemSpec } from '@tra/core';
+import { rodSpecFor, reelSpecFor, forageBaitKeyOf, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER, bagsOfLoose, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -438,6 +438,7 @@ export function isBaitItem(i: InvItem): boolean {
   // 267차 — 곽 · 갑(묶음 — `unpack` · 상점 `bundle`)은 미끼가 아니다. 묶음을 바늘에 꿰면 한 번 먹히고 곽째 사라졌다
   //   (사용자 「미끼(20개입, 8개입)들이 한 번 사용하고 바로 사라짐」). 「열기」로 낱개를 꺼내야 꿸 수 있다.
   if (i.unpack || isBundlePack(i.id)) return false;
+  if (i.forageCatch && forageBaitKeyOf(i.speciesId)) return true;   // 289차 — 캔 성게 · 조개 · 소라 · 거북손
   return i.subCategory.includes('미끼') || i.subCategory === '생미끼';
 }
 
@@ -745,6 +746,7 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     //  전장 30cm 400~500g / 45cm 1.2~1.3kg, 오라클 lwrA 0.015와 동일). 손질은 가이드/렌더 확인용.
     { sp: 'squid', nameKo: '무늬오징어', lo: 22, hi: 42 },
     { sp: 'swordtip_squid', nameKo: '한치', lo: 15, hi: 35 },
+    { sp: 'flying_squid', nameKo: '살오징어', lo: 16, hi: 30 },   // 289차 — 한치 트리로 손질
     { sp: 'cuttlefish', nameKo: '갑오징어', lo: 12, hi: 25 },
     { sp: 'octopus', nameKo: '돌문어', lo: 30, hi: 60 },
   ];

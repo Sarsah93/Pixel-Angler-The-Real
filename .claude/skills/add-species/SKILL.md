@@ -3,7 +3,7 @@ name: add-species
 description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도감/텍스처/경락 매핑). 새 어종·해양생물을 추가하거나 기존 어종 데이터를 정정할 때 반드시 로드. "어종 추가", "어종 등록", "DB 등록", "신규 물고기", 한치·두족류 등 특정 종 이름의 등록 작업이면 이 스킬을 따른다.
 ---
 
-# 신규 어종 등록 (4계층)
+# 신규 어종 등록 (4계층 + 바다 가중)
 
 **ID 표준 = 오라클** (`ORACLE_FISH_DB`). 다른 계층이 오라클과 값이 다르면 오라클 기준으로 정렬한다 (드리프트 금지 — 금지체장 불일치 사례 有).
 
@@ -37,6 +37,15 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 - `KOSIS_SPECIES_MATCH` (`client-pc/src/store/ExternalDataStore.ts`): 통계 분류명 → speciesId[] (다중 매핑 가능).
 
 ⚠ **매칭 테이블 순서 규칙 (조용한 오매칭 주의)**: 두 테이블 모두 **부분일치(includes) + 선착순(find)** — 품목명이 포함 관계면 **긴 쪽을 반드시 앞에**. 기존 함정: `잿방어⊃방어` · `갑오징어⊃오징어` · `말쥐치⊃쥐치` · `강도다리⊃도다리` · `개서대⊃서대`.
+
+### 5. 바다 가중 — `packages/core/src/rules/SpeciesPresence.ts` (`SPECIES_SEA_WEIGHT`) — 289차
+- 종마다 `{ east, south, west, jeju }`(0~1 — 1 주 어장 · 0.5 흔하진 않다 · 0.05 이하 거의 없다). **빠지면 시험이 실패한다**(`Presence289.test.ts` — 오라클 종 = 표 종).
+- 도감의 `peakSeasonMonths` · `preferredTempC`가 이제 입질을 바꾼다(계절 가중 · 평년 수온 가중) — 제철에 그 종의 주 바다 평년 수온이
+  적수온 밖이면 제철에 눌린다(288 감사: 방어 18~26℃ ↔ 겨울 제철). 등록 뒤 `node tools/check_species_temp_season.mjs`(주 바다 × 제철 달 평균 수온 가중 < 0.7을 찍는다 — 겨울 서해 냉수는 실제로 비는 것이라 남아도 된다)로 확인.
+- 두족류(에기 전용)는 `LuresCatalogDB` 에기 `spawnBinding` 둘에도 넣는다 · `CephalopodProfiles` · `ButcherySections` · `CephalopodStages` · `CephalopodGuides`(손질 트리 — 살오징어는 한치 트리 공유)
+  · `CookIngredientDatabase.SQUID_SPECIES` · `FishRarity.CEPH` · `TidePhasePreference` 무리 · 위키 생성기 `CEPH_FISH`.
+- 그림이 없으면 `NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <폴더> --only <id>`(`LOOKS`에 한 줄 · **core를 먼저 빌드** — 도구가 dist에서 어종을 찾는다)
+  → `--install` → `FishTextures.ts` 두 표(`FISH_TEXTURE` · `FISH_IMAGE_FILES`) → `node tools/fish_cards.cjs --only <파일>` → 위키 `python3.13 tools/gen_wiki_images.py`.
 
 ## 부가 배선 (해당 시)
 

@@ -145,7 +145,8 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['갑오징어'], speciesIds: ['cuttlefish'] },
   // 한치(창꼴뚜기) 전용 — 아래 '오징어' 항목도 '한치'를 갖고 있으므로 반드시 앞에 둔다 (선착순 매칭)
   { keywords: ['한치', '창꼴뚜기'], speciesIds: ['swordtip_squid'] },
-  { keywords: ['오징어'], speciesIds: ['squid', 'cuttlefish', 'swordtip_squid'] },
+  { keywords: ['살오징어'], speciesIds: ['flying_squid'] },   // 289차 — 통계의 그냥 「오징어」도 대부분 살오징어다
+  { keywords: ['오징어'], speciesIds: ['flying_squid', 'squid', 'cuttlefish', 'swordtip_squid'] },
   // '대문어'⊃'문어' — 대문어 키워드를 먼저 두되 speciesIds는 참문어/대문어 공통 매칭
   { keywords: ['대문어', '피문어'], speciesIds: ['giant_octopus', 'octopus'] },
   { keywords: ['문어'], speciesIds: ['octopus', 'giant_octopus'] },
@@ -341,6 +342,15 @@ class ExternalDataStoreManager {
     return mmsi ? this._marine.get(mmsi) : undefined;
   }
 
+  /**
+   * 289차 — 실측 관측값만(Mock이면 없다). 배포본은 해양기상 관측이 막혀 Mock(수온 10~25℃ · 시정 0.5~20km 난수)이 들어온다 —
+   * 그 값이 수온 · 안개를 정하면 입질 계절 판정과 날씨가 매일 제멋대로 바뀐다.
+   */
+  private liveMarine(regionId: string): MarineWeatherInfo | undefined {
+    const m = this.rawMarine(regionId);
+    return m && !m.mock ? m : undefined;
+  }
+
   /** 기관(청)별 관측값 — 예: '101' 부산청 */
   getMarineWeatherByOffice(mmaf: string): MarineWeatherInfo[] {
     return this.getAllMarineWeather().filter((m) => m.mmaf === mmaf);
@@ -406,7 +416,7 @@ class ExternalDataStoreManager {
     const kind = kma?.kind ?? 'clear';
     // 비/눈이 오는 중이면 안개보다 강수 표시가 우선
     if (kind !== 'clear' && kind !== 'partly' && kind !== 'cloudy') return kind;
-    const marine = this.rawMarine(regionId);
+    const marine = this.liveMarine(regionId);   // 289차 — Mock 시정으로 안개를 만들지 않는다
     if (marine?.visibilityM !== undefined && marine.visibilityM < 1000) return 'fog';
     return kind;
   }
@@ -429,7 +439,7 @@ class ExternalDataStoreManager {
   getWaterTempC(regionId: string): number | undefined {
     const c = this.sessionCard(regionId);
     if (c) return c.waterC;
-    return this.rawMarine(regionId)?.waterTempC;
+    return this.liveMarine(regionId)?.waterTempC;   // 289차 — Mock 수온은 없는 것으로(호출부가 평년 수온을 쓴다)
   }
 
   // ── 234차 세션 정본 날씨 ─────────────────────────────
@@ -463,7 +473,7 @@ class ExternalDataStoreManager {
     if (regionId === 'hometown' || !this.liveIsFresh(now)) return null;
     const kma = this._kma.get(regionId);
     if (!kma || kma.mock) return null;   // 만든 값(키 없음 · 실패)은 남의 실데이터를 덮지 않는다
-    const marine = this.rawMarine(regionId);
+    const marine = this.liveMarine(regionId);   // 289차 — 관측소 값도 실측만(Mock 수온 · 시정이 카드에 실려 남에게 가지 않게)
     return {
       kind: this.localWeatherKind(regionId),
       windMs: kma.windSpeedMs ?? marine?.windSpeedMs,

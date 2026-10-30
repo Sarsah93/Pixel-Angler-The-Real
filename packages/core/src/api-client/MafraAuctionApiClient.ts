@@ -146,6 +146,9 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   // 한치 = 창꼴뚜기 (2026-08-05 어종 등록 — 구 매핑은 무늬오징어로 흘렸음)
   { item: '창꼴뚜기', speciesId: 'swordtip_squid' },
   { item: '한치', speciesId: 'swordtip_squid' },
+  // 289차 — 시장의 그냥 「오징어」는 살오징어다(갑오징어 · 무늬오징어 · 한치 다음 — 긴 이름 먼저)
+  { item: '살오징어', speciesId: 'flying_squid' },
+  { item: '오징어', speciesId: 'flying_squid' },
   { item: '문어', speciesId: 'octopus' },
 ];
 

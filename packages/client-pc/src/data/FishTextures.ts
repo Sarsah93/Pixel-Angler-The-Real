@@ -63,6 +63,7 @@ export const FISH_TEXTURE: Record<string, string> = {
   giant_octopus: 'fish_giant_octopus',     // 대문어(피문어) — giant_pacific_octopus.png
   // 2026-08-05 추가 — 한치 어종 DB 등록에 따른 배선 (에셋은 20차부터 선로드 상태였음)
   swordtip_squid: 'fish_swordtip_squid',   // 한치(창꼴뚜기) — swordtip_squid.png
+  flying_squid: 'fish_flying_squid',       // 289차 — 살오징어(동해) — japanese_flying_squid.png(Gemini)
   // 2026-09-22 추가 (170차) — 볼락류 어종별 실사
   red_snapper_rockfish: 'fish_red_snapper_rockfish', // 열기(불볼락)
   black_rockfish: 'fish_black_rockfish',             // 조피볼락(우럭)
@@ -115,6 +116,7 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
   // ⚠ 171차 정정 — `food assets/` 원본은 서로 다른 사진이다: spotbelly_greenling = 쏨뱅이 · spotbelly_rockfish = 놀래미
   fish_scorpionfish: 'spotbelly_greenling.png',           // 쏨뱅이
   fish_swordtip_squid: 'swordtip_squid.png',              // 한치(창꼴뚜기)
+  fish_flying_squid: 'japanese_flying_squid.png',         // 289차 — 살오징어
   fish_greenling: 'spotbelly_rockfish.png',               // 놀래미(노래미)
   fish_fat_greenling: 'fat_greenling.png',                // 쥐노래미
   fish_surfperch: 'surf_perch.png',                       // 망상어

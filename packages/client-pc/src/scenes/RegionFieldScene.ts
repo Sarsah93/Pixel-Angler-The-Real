@@ -36,7 +36,7 @@ import { NuisanceField } from '../ui/NuisanceField.js';
 import { planBuildingUnits, drawBuildingUnit, packUnits, labelBuildingComps, unitBodyRects, pointInPoly, doorEdgeOf, doorPointsOf, type BuildingUnit } from './field/BuildingArt.js';
 import type { MarineNuisance } from '@tra/core';
 // 288차 — dev 콘솔 「해루질 놀이 바로 시작」
-import { getCreatureById, creatureTools, forageLossLineKo, FORAGE_TOOL_LABEL, rollForageHarvest, forageImageSizeScale } from '@tra/core';
+import { getCreatureById, creatureTools, forageLossLineKo, FORAGE_TOOL_LABEL, rollForageHarvest, forageImageSizeScale, rodFishingClosure } from '@tra/core';
 import { DevHooks } from '../dev/DevMode.js';
 import { RegionLight, RegionBuilding,
   REGION_MAP_GRAPHS,
@@ -4064,6 +4064,15 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.nearWater && !this.holeSpot) {
       this.floatingHint('바다 가까이에서 캐스팅하세요');
       return;
+    }
+    // 289차 — 풍랑 통제(사용자 결정 D4): 파고 · 풍속이 풍랑주의보 기준을 넘으면 던지지 않는다(구멍치기도 같은 방파제다)
+    if (this.region !== 'hometown') {
+      const kma = ExternalDataStore.getKmaWeather(this.region);
+      const closed = rodFishingClosure({
+        windSpeedMs: kma?.windSpeedMs ?? ExternalDataStore.getRegionMarineWeather(this.region)?.windSpeedMs ?? 0,
+        waveHeightM: ExternalDataStore.getWaveHeightM(this.region) ?? 0,
+      });
+      if (closed) { this.floatingHint(closed); this.hud?.pushLog(`[안전] ${closed}`); return; }
     }
     // 채비 완성도 게이트: 필수 부품(원줄/찌/목줄/바늘·미끼)이 모두 장착되어야 캐스팅 가능
     const missing = InventoryStore.getMissingRigParts();

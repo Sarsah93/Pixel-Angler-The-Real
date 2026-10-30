@@ -116,6 +116,7 @@ export const DISH_VARIANT_LORE: Record<string, Record<string, { descKo: string; 
   },
   stirfry_squid: {
     swordtip_squid: { descKo: '연하고 단 한치를 센 불에 짧게 볶아 낸 것.', descEn: 'Tender, sweet swordtip squid flash-fried on high heat.' },
+    flying_squid: { descKo: '동해 오징어를 고추장 양념에 센 불로 볶아 낸, 누구나 아는 그 오징어볶음.', descEn: 'East Sea squid stir-fried hot in gochujang — the squid stir-fry everyone knows.' },
     squid: { descKo: '두툼하고 단 무늬오징어를 고추장 양념에 볶아 낸 것.', descEn: 'Thick, sweet bigfin reef squid stir-fried in gochujang sauce.' },
     cuttlefish: { descKo: '두툼한 갑오징어 살을 매콤하게 볶아 씹는 맛이 살아 있다.', descEn: 'Thick cuttlefish stir-fried spicy — it keeps its bite.' },
   },
@@ -177,6 +178,7 @@ export const DISH_SPECIES_NAME: Record<string, { ko: string; en: string }> = {
   black_rockfish: { ko: '우럭', en: 'Rockfish' },     // 조피볼락 — 매운탕 · 지리는 「우럭」으로 부른다
   chub_mackerel: { ko: '고등어', en: 'Mackerel' },
   pacific_cod: { ko: '대구', en: 'Cod' },             // 「태평양 대구구이」가 아니라 「대구구이」 · 「대구 지리」
+  flying_squid: { ko: '오징어', en: 'Squid' },        // 289차 — 살오징어는 상에 오르면 그냥 「오징어볶음」
 };
 
 /** 틀로 만든 이름이 어색한 조합만 통째로 (255차) — 굴은 「굴탕」보다 「굴국」이다 */

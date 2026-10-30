@@ -33,6 +33,7 @@ export const CEPH_SHIME_2: CutPoint = { x: 0.441, y: 0.576 };
 export const CEPH_SKIN_GRIP: Record<string, CutPoint> = {
   squid:          { x: 0.58, y: 0.87 },
   swordtip_squid: { x: 0.93, y: 0.46 },   // 몸통 꼭대기
+  flying_squid: { x: 0.93, y: 0.46 },     // 289차 — 한치 그림을 쓴다
   cuttlefish:     { x: 0.28, y: 0.16 },   // 개복부 모서리 (몸통 끝이 두껍고 각침이 남을 수 있다)
 };
 
@@ -46,6 +47,7 @@ export const CEPH_PEEL_PATH: Record<string, readonly CutPoint[]> = {
   ],
   // 한치는 머리쪽 부착부를 남기고 멈춘다 — 끝점이 그 부착부
   swordtip_squid: [{ x: 0.93, y: 0.46 }, { x: 0.61, y: 0.47 }, { x: 0.29, y: 0.55 }],
+  flying_squid: [{ x: 0.93, y: 0.46 }, { x: 0.61, y: 0.47 }, { x: 0.29, y: 0.55 }],
   // 갑오징어만 방향이 반대(좌→우) — 개복부 모서리에서 시작해 반대편으로 밀어낸다
   cuttlefish:     [{ x: 0.28, y: 0.16 }, { x: 0.58, y: 0.15 }, { x: 0.87, y: 0.15 }],
 };

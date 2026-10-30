@@ -180,7 +180,7 @@ const fishImgs = (id) => {
  *  변형 레시피는 주재료 이름 + 요리(예 넷) · 주재료 후보 수 · 효과를 움직이는 재료 특성. 전복죽은 이름이 고정이다.
  */
 const NAME_EXAMPLE_SPECIES = ['black_rockfish', 'chub_mackerel', 'hairtail', 'flatfish', 'pacific_cod', 'black_seabream',
-  'swordtip_squid', 'cuttlefish', 'squid', 'conger_eel', 'hagfish'];
+  'swordtip_squid', 'flying_squid', 'cuttlefish', 'squid', 'conger_eel', 'hagfish'];
 const EFFECT_DRIVER_KO = { fatness: '지방감', texture: '살 식감', clean: '비린 향이 적은 정도', flavorStrength: '풍미',
   brothContribution: '국물 맛', moistureRetention: '촉촉함', sweetness: '단맛', freshness: '신선도' };
 const VARIANT_KIND_KO = { fish: '생선', squid: '오징어류', eel: '장어류', shellfish: '조개' };
@@ -258,7 +258,7 @@ const BEHAVIOR_KO = {
   buried: '묻혀 산다 — 파기', attached: '바위에 붙어 산다 — 떼기', crevice: '바위 틈에 숨는다 — 당기기',
   crawler: '느리게 긴다 — 줍기', runner: '다가가면 달아난다 — 덮치기',
 };
-const CEPH_FISH = new Set(['squid', 'cuttlefish', 'swordtip_squid', 'octopus', 'giant_octopus']);
+const CEPH_FISH = new Set(['squid', 'cuttlefish', 'swordtip_squid', 'flying_squid', 'octopus', 'giant_octopus']);
 const RARITY_KO = { common: '흔함', uncommon: '드묾', rare: '귀함', epic: '진귀' };
 const LAYER_KO = { surface: '표층', mid: '중층', bottom: '바닥층' };
 const SPOT_KO = {
@@ -279,6 +279,16 @@ const fishLegalTraits = (id) => {
   const out = [['금어기', closed]];
   if (o.legalMinWeightG) out.push(['금지 체중', `${o.legalMinWeightG} g 이하 방류`]);
   return out;
+};
+
+/** 289차 — 바다 가중 → 「동해 · 남해 많다 / 제주 있다 / 서해 드물다」 */
+const seaLineKo = (w) => {
+  const groups = { 많다: [], 있다: [], 드물다: [] };
+  for (const k of ['east', 'south', 'west', 'jeju']) {
+    const v = w[k] ?? 0;
+    groups[v >= 0.8 ? '많다' : v >= 0.3 ? '있다' : '드물다'].push(core.SEA_LABEL_KO[k]);
+  }
+  return Object.entries(groups).filter(([, a]) => a.length).map(([g, a]) => `${a.join(' · ')} ${g}`).join(' / ');
 };
 
 // 246차 — 어종 「선호 미끼」(BaitCategory 키)를 사람 말로. 구 판은 sandworm · prawn 같은 키를 그대로 찍었다(R1).
@@ -307,6 +317,8 @@ for (const f of core.FISH_DATABASE) {
       ['수층', LAYER_KO[f.swimmingLayer] ?? f.swimmingLayer ?? '—'],
       ['서식 지형', (f.habitatSpotTypes ?? []).map((s) => SPOT_KO[s] ?? s).join('·') || '—'],
       ['제철', MONTHS(f.peakSeasonMonths)],
+      // 289차 — 바다 가중(`SPECIES_SEA_WEIGHT`) — 많다 · 있다 · 드물다
+      ...(core.SPECIES_SEA_WEIGHT?.[f.id] ? [['사는 바다', seaLineKo(core.SPECIES_SEA_WEIGHT[f.id])]] : []),
       ['주야', f.isNocturnal ? `야행성 (야간 입질 +${f.nightBiteBonus ?? 0}%)` : '주행성'],
       ['난이도', '★'.repeat(Math.max(1, f.difficulty ?? 1))],
       ['금지 체장', f.minLegalSizeCm ? `${f.minLegalSizeCm} cm 이하 방류` : '없음'],
@@ -710,6 +722,20 @@ const rules = [
       ['거절 = 실패', '곁가지 의뢰는 받는 자리에서 끝내 거절할 수 있다 — 실패로 닫혀 다시 오지 않고, 다음 이야기는 그대로 열린다'],
       ['일지 요약', '지나온 장면 · 고른 말마다 한두 문장이 일지(J) 편 상세에 1인칭으로 남는다'],
       ['해녀의 딸', '서귀포항에서 바람에게서 받는다(그 땅에서만) — 해솔에게 말 걸기 → 물 빠질 때 제주 물가에서 갯것 셋 → 캔 것을 어머니 부순덕께 보여 드리기 · 선수급으로 수영한다고 하면 담배 한 갑 · 바람 우호도 +0.25(여자 주인공이면 「내가 신뢰하는 여자에겐」 — 287)'],
+    ],
+  },
+  {
+    id: 'fish_presence', round: 289, hidden: false, title: '바다 · 철 · 수온 · 풍랑 · 새 미끼',
+    lede: '어떤 고기가 무는지는 미끼 · 수심 · 물때 · 밤낮에 더해 바다와 철, 물 온도가 정한다. 그 바다에 거의 없는 고기도 아주 드물게는 오고, 맡은 이야기가 찾는 고기는 그 자리에서도 아주 드물지는 않다.',
+    rows: [
+      ['사는 바다', '동해 · 남해 · 서해 · 제주마다 많은 고기가 다르다 — 어종 카드의 「사는 바다」(많다 · 있다 · 드물다)'],
+      ['철', '제철에 가장 잘 물고, 앞뒤 한 달은 조금 덜, 그 밖은 3분의 1쯤'],
+      ['수온', '관측소 실측이 있으면 그 값, 없으면 그 바다 이맘때의 평년 수온 — 좋아하는 온도에서 6℃ 벗어나면 아주 드물다'],
+      ['입질 빈도', '철 · 바다 · 수온이 맞는 고기가 많을수록 입질이 잦다 — 제철 바다는 예전 그대로, 겨울 서해는 절반 아래'],
+      ['에기', '가을 동해 밤은 살오징어, 여름 제주는 한치, 봄 서해는 갑오징어 · 문어, 동해 겨울은 대문어 — 바다마다 오는 두족류가 다르다'],
+      ['살오징어', '새 어종 — 동해 가을 밤 방파제 불빛 아래 · 에기로 · 외투장 15cm 이하 방류 · 4~5월 금어기 · 상에 오르면 「오징어볶음」'],
+      ['새 미끼', '직판장 — 미끼용 옥수수 1캔(40알 · 감성돔) · 돌돔 미끼 성게(10개) · 조개살 미끼 1팩(20개 · 쥐치 · 참복 · 감성돔) · 해루질로 캔 성게 · 홍합 · 굴 · 바지락 · 소라 · 거북손은 그대로 꿴다'],
+      ['풍랑 통제', '파고 3m · 풍속 14m/s를 넘으면 방파제 · 갯바위 · 구멍치기를 던질 수 없다(해루질은 더 낮은 파도에서 막힌다)'],
     ],
   },
   {

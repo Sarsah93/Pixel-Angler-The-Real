@@ -235,8 +235,8 @@ describe('255차 — 효과는 주재료에 따라 달라진다', () => {
 });
 
 describe('255차 — 요리 도감 후보', () => {
-  it('레시피마다 맞는 주재료만 — 오징어 셋 · 장어 셋 · 채집 조개 셋 · 어종은 정본 id', () => {
-    expect(new Set(dishVariantCandidates('stirfry_squid'))).toEqual(new Set(['squid', 'cuttlefish', 'swordtip_squid']));
+  it('레시피마다 맞는 주재료만 — 오징어 넷(289 살오징어) · 장어 셋 · 채집 조개 셋 · 어종은 정본 id', () => {
+    expect(new Set(dishVariantCandidates('stirfry_squid'))).toEqual(new Set(['squid', 'cuttlefish', 'swordtip_squid', 'flying_squid']));
     expect(new Set(dishVariantCandidates('grill_eel'))).toEqual(new Set(['conger_eel', 'hagfish', 'pike_conger']));
     expect(new Set(dishVariantCandidates('soup_clam'))).toEqual(new Set(['clam_varicosa', 'mytilus_coruscus', 'oyster_gigas']));
     const fish = dishVariantCandidates('grill_fish');

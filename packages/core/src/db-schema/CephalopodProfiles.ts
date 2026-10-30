@@ -61,9 +61,18 @@ export const COMMON_OCTOPUS: CephalopodProfile = {
   sliceMode: 'whole',
 };
 
+/** 289차 — 살오징어 — 한치 트리(14스테이지)를 쓰되 지느러미가 크고 몸통이 굵다 */
+export const FLYING_SQUID: CephalopodProfile = {
+  ...SWORDTIP_SQUID,
+  speciesId: 'flying_squid',
+  mantleRatio: 0.48, finRatio: 0.07, armsRatio: 0.15, tentacleRatio: 0.05,
+  baseYieldRate: 0.72, inkAmount: 0.50, gonadChance: 0.30, spawningMonths: [1, 2, 3, 9, 10],
+};
+
 const CEPH_PROFILES: Record<string, CephalopodProfile> = {
   squid: BIGFIN_REEF_SQUID,
   swordtip_squid: SWORDTIP_SQUID,
+  flying_squid: FLYING_SQUID,
   cuttlefish: GOLDEN_CUTTLEFISH,
   octopus: COMMON_OCTOPUS,
   // 대문어 — 참문어 트리·프로필 공유 (크기 편차만 개체 무게로 반영)

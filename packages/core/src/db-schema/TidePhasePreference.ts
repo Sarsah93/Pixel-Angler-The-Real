@@ -88,8 +88,8 @@ export const TIDE_PHASE_PREF_GROUPS: TidePhasePrefGroup[] = [
     evidence: 'community',
   },
   {
-    id: 'squid', nameKo: '무늬오징어 · 한치', nameEn: 'Squid',
-    members: ['squid', 'swordtip_squid'],
+    id: 'squid', nameKo: '무늬오징어 · 한치 · 살오징어', nameEn: 'Squid',
+    members: ['squid', 'swordtip_squid', 'flying_squid'],
     bite: row([1.05, 1.20, 0.95, 1.10, 1.10, 1.15, 0.90, 1.00]),
     noteKo: '오징어는 물이 완만할 때, 특히 물이 돌기 앞뒤로 에기를 잘 안는다.',
     noteEn: 'Squid grab the egi when the current is gentle — especially just before and after the tide turns.',

@@ -26,7 +26,7 @@
  */
 
 import Phaser from 'phaser';
-import { mpRng, mpTimeSlot, mpWorldSeed } from '@tra/core';
+import { mpRng, mpTimeSlot, mpWorldSeed, kstParts, speciesPresence } from '@tra/core';
 
 export type FieldEventKind = 'boiling' | 'schooling';
 
@@ -207,6 +207,20 @@ export class FieldEventManager {
   }
 
   /**
+   * 289차 — 이벤트 어종이 이 지역 · 이 철에 얼마나 있는가(0.05 ~ 1). 무리 어종 중 가장 흔한 것의 존재 가중을 0.5에서 포화시킨다.
+   * 지역 id는 `mapKey`(`지역:맵`)의 앞부분 — 심리스 맵은 데이터 지역 이름이어도 바다 판정(`seaOf`)은 같은 답을 낸다.
+   */
+  private presenceScale(kind: FieldEventKind, atMs: number): number {
+    const region = this.deps.mapKey.split(':')[0];
+    const kp = kstParts(new Date(atMs));
+    const ctx = { region, month: Number(kp.mo), day: Number(kp.d) };
+    const ids = kind === 'boiling' ? Object.keys(BOILING_SPECIES_BIAS)
+      : [...Object.keys(SCHOOLING_COASTAL_BIAS), ...Object.keys(SCHOOLING_OFFSHORE_BIAS)];
+    const best = Math.max(...ids.map((id) => speciesPresence(id, ctx)));
+    return Math.max(0.05, Math.min(1, best / 0.5));
+  }
+
+  /**
    * `(종류, 칸, 슬롯)` → 이벤트. **같은 세션이면 누가 계산해도 같은 답**이다.
    * 서버에 묻지 않는다 — 시드 하나만 공유하면 나머지는 순수 함수다.
    */
@@ -220,7 +234,9 @@ export class FieldEventManager {
     ));
     const slotStart = slot * SLOT_MS;
     const feed = this.deps.feedingAt(slotStart);
-    const p = CELL_RATE[kind] * Math.max(0, Math.min(1, (feed - 0.5) / 0.5));
+    // 289차 — 그 철 · 그 바다에 청물 · 무리 어종이 없으면 보일링 · 스쿨링도 드물다(입질 감사 F20 — 1월 속초 삼치 보일링).
+    //   슬롯 시작 시각으로 재므로 같은 세션이면 누구에게나 같은 값이다(145차 결정성)
+    const p = CELL_RATE[kind] * Math.max(0, Math.min(1, (feed - 0.5) / 0.5)) * this.presenceScale(kind, slotStart);
     let out: ScheduledEvent | null = null;
     if (rng() < p) {
       const spot = this.findSpotInCell(kind, cx, cy, rng);

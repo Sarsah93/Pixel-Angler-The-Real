@@ -94,7 +94,7 @@ export interface CookableItemLike {
 /** 장어류 어종 — 장어구이 주재료 */
 const EEL_SPECIES = new Set(['conger_eel', 'hagfish', 'pike_conger']);
 /** 두족류 어종 — 오징어볶음 주재료 (문어·낙지는 볶음 재료로 인정하지 않는다 — 별도 요리) */
-const SQUID_SPECIES = new Set(['squid', 'cuttlefish', 'swordtip_squid']);
+const SQUID_SPECIES = new Set(['squid', 'cuttlefish', 'swordtip_squid', 'flying_squid']);   // 289차 — 살오징어
 /** 채집 생물 → 재료 */
 const FORAGE_TO_ING: Record<string, string> = {
   clam_varicosa: 'clam', mytilus_coruscus: 'mussel', oyster_gigas: 'oyster', haliotis_discus: 'abalone',

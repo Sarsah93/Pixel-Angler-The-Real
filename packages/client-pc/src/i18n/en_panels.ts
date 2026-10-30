@@ -336,6 +336,13 @@ export const EN_PANELS: Record<string, string> = {
   '벵에돔·숭어용 반죽 미끼 한 봉지. 뜯으면 경단 10개 — 잡어 성화를 피한다.': 'A bag of dough bait for opaleye and mullet. Open it for 10 balls — keeps the small fry off.',
   '청갯지렁이 1갑 (8마리)': 'Clam worms, 1 box (8)',
   '원투·도다리용 생미끼 한 갑. 여덟 마리가 들어 있다.': 'A box of live bait for surf casting and flounder. Eight worms inside.',
+  // 289차 — 옥수수 · 성게 · 조개살 미끼
+  '미끼용 옥수수 1캔 (40알)': 'Bait corn, 1 can (40 kernels)', '미끼 옥수수': 'Bait corn',
+  '감성돔 찌낚시에 두세 알씩 꿰는 단옥수수 한 캔. 잡어가 덜 붙는다.': 'A can of sweet corn — two or three kernels on the hook for black seabream. Fewer small fish pick at it.',
+  '돌돔 미끼 성게 (10개)': 'Urchin bait for knifejaw (10)', '미끼 성게': 'Bait urchin',
+  '가시를 다듬은 성게 열 개. 돌돔 · 강담돔이 깨 먹는 미끼라 잡어에 잘 털리지 않는다.': 'Ten trimmed sea urchins. Knifejaws crack them open, so small fish rarely strip the hook.',
+  '조개살 미끼 1팩 (20개)': 'Clam meat bait, 1 pack (20)', '조개살 미끼': 'Clam meat bait',
+  '바지락 · 홍합 살을 발라 담은 미끼 한 팩. 쥐치 · 참복 · 감성돔이 좋아한다.': 'Shucked clam and mussel meat. Filefish, puffers and black seabream love it.',
   '참갯지렁이(혼무시) 1갑 (8마리 · 60g)': 'Rock worms (honmushi), 1 box (8 · 60g)',
   '굵고 냄새가 진한 참갯지렁이 한 갑(8마리 · 60g 남짓). 감성돔 · 참돔 · 대물 원투용.': 'A box of thick, strong-smelling rock worms (8, about 60g). For black seabream, red seabream and big surf-casting fish.',
   '해루질 장화': 'Wading boots',

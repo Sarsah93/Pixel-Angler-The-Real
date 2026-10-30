@@ -21,6 +21,7 @@ import { GameState, SAVE_SLOT_COUNT } from '../store/GameState.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
+import { kstParts, climatologySstC } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { showLoadingThen } from '../ui/LoadingOverlay.js';
 import { ensureTitleLogo } from '../ui/TitleLogo.js';
@@ -807,6 +808,10 @@ export class MainMenuScene extends Phaser.Scene {
       if (kma?.tempC !== undefined) envParts.push(`기온 ${kma.tempC}°C`);
       const waterTemp = ExternalDataStore.getWaterTempC(regionId);
       if (waterTemp !== undefined) envParts.push(`수온 ${waterTemp.toFixed(1)}°C`);
+      else {   // 289차 — 실측이 없으면 입질이 쓰는 평년 수온(지역 × 달)을 「약」으로 보인다
+        const kp = kstParts();
+        envParts.push(`수온 약 ${climatologySstC(regionId, Number(kp.mo), Number(kp.d)).toFixed(0)}°C`);
+      }
       const wind = kma?.windSpeedMs ?? marine?.windSpeedMs;
       if (wind !== undefined) envParts.push(`풍속 ${wind}m/s`);
       const wave = ExternalDataStore.getWaveHeightM(regionId);

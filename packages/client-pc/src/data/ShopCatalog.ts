@@ -503,6 +503,17 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'pack_honmushi', name: '참갯지렁이(혼무시) 1갑 (8마리 · 60g)', icon: '', iconTexture: 'item_honmushi_pack', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, condition: 'live', equippable: false,
         bundle: [{ tpl: { id: 'inv_honmushi', name: '혼무시', icon: '', iconTexture: 'item_honmushi', category: 'tackle', subCategory: '생미끼', basePrice: 1500, condition: 'live', equippable: false }, qty: 8 }],
         desc: '굵고 냄새가 진한 참갯지렁이 한 갑(8마리 · 60g 남짓). 감성돔 · 참돔 · 대물 원투용.' },
+      // 289차 — 사용자 결정 D3: 옥수수 · 성게 · 조개살 미끼. 미끼 종류는 있었지만 살 곳이 없어 감성돔 옥수수 · 돌돔 성게가 막혀 있었다(입질 감사 F10).
+      //   갑 · 캔째 가방에 들고 「열기」로 낱개를 꺼낸다(280차 생미끼 갑과 같다). 캔 갯것(성게 · 홍합 · 굴 · 바지락 · 소라 · 거북손)도 그대로 꿸 수 있다.
+      { id: 'pack_bait_corn', name: '미끼용 옥수수 1캔 (40알)', icon: '', iconTexture: 'art_chum_corn', category: 'tackle', subCategory: '미끼', basePrice: 2500, price: 3000, maxPerPurchase: 5, equippable: false,
+        bundle: [{ tpl: { id: 'inv_bait_corn', name: '미끼 옥수수', icon: '', iconTexture: 'art_chum_corn', category: 'tackle', subCategory: '미끼', basePrice: 60, equippable: false }, qty: 40 }],
+        desc: '감성돔 찌낚시에 두세 알씩 꿰는 단옥수수 한 캔. 잡어가 덜 붙는다.' },
+      { id: 'pack_bait_urchin', name: '돌돔 미끼 성게 (10개)', icon: '', iconTexture: 'forage_heliocidaris_crassispina', category: 'tackle', subCategory: '생미끼', basePrice: 12000, price: 15000, maxPerPurchase: 5, condition: 'live', equippable: false,
+        bundle: [{ tpl: { id: 'inv_bait_urchin', name: '미끼 성게', icon: '', iconTexture: 'forage_heliocidaris_crassispina', category: 'tackle', subCategory: '생미끼', basePrice: 1200, condition: 'live', equippable: false }, qty: 10 }],
+        desc: '가시를 다듬은 성게 열 개. 돌돔 · 강담돔이 깨 먹는 미끼라 잡어에 잘 털리지 않는다.' },
+      { id: 'pack_bait_clam', name: '조개살 미끼 1팩 (20개)', icon: '', iconTexture: 'forage_clam_varicosa', category: 'tackle', subCategory: '선어미끼', basePrice: 4000, price: 5000, maxPerPurchase: 5, condition: 'chilled', equippable: false,
+        bundle: [{ tpl: { id: 'inv_bait_clam', name: '조개살 미끼', icon: '', iconTexture: 'forage_clam_varicosa', category: 'tackle', subCategory: '선어미끼', basePrice: 250, condition: 'chilled', equippable: false }, qty: 20 }],
+        desc: '바지락 · 홍합 살을 발라 담은 미끼 한 팩. 쥐치 · 참복 · 감성돔이 좋아한다.' },
       // 제작 재료 (129차 P7) — 낚시 계열 재료는 직판장이 취급한다.
       { id: 'inv_mat_tin',   name: '주석 잉곳',    icon: '', iconTexture: 'art_tin_ingot', category: 'etc', subCategory: '재료', basePrice: 3000,  price: 3600,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '봉돌·에기 싱커 주조 재료.' },
       { id: 'inv_mat_mesh',  name: '통발 그물망',  icon: '', iconTexture: 'art_mesh_roll', category: 'etc', subCategory: '재료', basePrice: 6000,  price: 7200,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '통발 제작 재료.' },

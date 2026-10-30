@@ -72,6 +72,7 @@
 | 법정 수치(금어기 · 금지체장 · 금지체중) 정본 대조 | ✅ 날짜 단위 금어기(`ClosedSeason`) · 제주 덮어쓰기(`resolveLegal`) · 대문어 600g · 벌금은 위반 종류별 「기본 금액 · 가진 돈 비율 · 한도」(`TUNING.law.fines`) | 227 — [워크로그](../03-WORKLOG/2026-10-06-227-legal-closed-season-dates.md) |
 | **288 규정 · 크기** — 금지체장 「이하」(딱 그 크기 = 미달) · 시 · 도 고시(울릉 소라 · 경남 · 전남 · 인천 낙지 · 경남 · 전남 참문어 — 지역 키 5) · 둥근성게 · 보라성게 이름 · 학명 정정 · 종별 크기 분포 21종(`ShoreCreatureSize` — 재는 축 · 정규 분포 · 무게 식) · 크기대로 그림(판 · 상세 창 [0.8, 1.35]) · 판을 열 때 크기를 먼저 굴림 | ✅ | 288 — [워크로그](../03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md) |
 | **dev 해루질 놀이 바로 시작**(F10 「④-2b」 — 21종 · 도구 · 물속 · 이기면 가방) | ✅ 132판 오류 0 | 288 |
+| **캔 갯것 미끼**(성게 urchin · 홍합 · 굴 · 바지락 shellfish · 소라 · 거북손 crab — 손질 없이 미끼 칸 · `FORAGE_BAIT_KEY`) | ✅ | 289 — [워크로그](../03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md) |
 | 패류독소 봄철 채취 금지 → 식중독 | ✅ 해역별 봄 발령(`ShellfishToxin`) · 아이템 `toxin` 보라 물방울 · 익혀도 식중독 60% · 냄비 · 요리 승계 · 라디오 · 표지판 · 채널 고지 | 229 — [워크로그](../03-WORKLOG/2026-10-07-229-law-feedback-krill-economy-board-art.md) |
 | 벌금 · 파산 엔딩 · 어촌계 표지판 · 게 암수 · 외포란 자동 방생 | ✅ `enforcementFineWon`(조례 위반 = 기본 100만 · 가진 돈 30% · 한도 1천만 — mockup) · `beginBankruptcy`(혼잣말 → 암전 → 처음부터) · 보호 어장마다 표지판([F] 읽기 · 첫 읽기 가이드 · `sign.farm_read`) · `ForageHarvest.sex/berried` | 229 |
 | 놀이 판 그림 고급화 · 그림 가이드 | ✅ 구운 바닥 4종(`ForageBoardArt`) · 손 도구 24x24 도트 5종 · 1자형 혼무시 · 이김 연출 · `TourStep.picture` | 229 |
@@ -162,3 +163,4 @@
    끝날 때 다시 굴리면 판 그림과 잡은 칸 그림이 다른 크기가 된다. dev 지급(`devGrantForage(c, count, pre)`)도 미리 굴린 값을 받는다.
 32. **갯것 이름을 바꾸면 옛 세이브 칸 이름도 옮긴다**(288) — 칸 이름은 글자(`둥근성게 (6cm)`)라 DB 이름만 바꾸면 옛 칸은 옛 이름이다.
    `data/SpeciesMigration.ts` `FORAGE_NAME_MIGRATION`에 한 줄을 더한다(가방 · 쿨러가 불러올 때 앞부분만 바꾼다).
+33. **캔 갯것 미끼는 종으로 가른다**(289) — `forageBaitKeyOf(speciesId)`. 칸 이름(「홍합 (섭) (6cm)」)에 「조개」가 없어 이름 분류(`baitKeyOf`)로는 안 잡힌다. 새 갯것을 미끼로 쓰려면 `FORAGE_BAIT_KEY`에 한 줄.

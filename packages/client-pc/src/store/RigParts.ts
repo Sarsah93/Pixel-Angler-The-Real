@@ -6,7 +6,7 @@
  * 트리(core `RigTree`)는 아이템 실체를 모르고 `RigItemView`만 본다 — 이 파일이 그 다리다.
  */
 
-import { getLureSpec, type RigPartKind, type RigItemView, type BaitKey } from '@tra/core';
+import { getLureSpec, forageBaitKeyOf, type RigPartKind, type RigItemView, type BaitKey } from '@tra/core';
 import type { InvItem } from './InventoryStore.js';
 import { SHOP_CATALOG } from '../data/ShopCatalog.js';
 
@@ -28,7 +28,7 @@ export function isPackItem(i: Pick<InvItem, 'id' | 'unpack'>): boolean {
 }
 
 /** 아이템이 들어갈 수 있는 채비 칸 종류 (없으면 채비 부품이 아니다) */
-export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rigPart' | 'sinkerKind' | 'floatBuoyG' | 'unpack'>): RigPartKind | null {
+export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rigPart' | 'sinkerKind' | 'floatBuoyG' | 'unpack' | 'forageCatch' | 'speciesId'>): RigPartKind | null {
   // 279차 — 곽 · 갑은 어느 칸에도 들어가지 않는다(채비 창 후보 · 끌어 놓기 · 트리 판정이 모두 이 함수를 본다)
   if (isPackItem(i)) return null;
   if (i.rigPart) return i.rigPart;
@@ -45,6 +45,8 @@ export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rig
   if (sub === '루어') return 'hard_lure';
   if (sub === '바늘/훅') return 'hook';
   if (sub.includes('미끼') || sub === '생미끼') return 'bait';
+  // 289차 — 캔 갯것(성게 · 홍합 · 굴 · 바지락 · 소라 · 거북손)은 그대로 바늘에 꿴다(사용자 결정 D3)
+  if (i.forageCatch && forageBaitKeyOf(i.speciesId)) return 'bait';
   if (sub === '채비 부속') {
     if (n.includes('타이라바')) {
       if (n.includes('헤드')) return 'tairaba_head';
@@ -63,7 +65,9 @@ export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rig
 }
 
 /** 미끼 아이템 → 스폰 오라클 BaitKey (이름 기준 — 1인칭 씬의 분류와 같다) */
-export function baitKeyOf(i: Pick<InvItem, 'name' | 'subCategory'>): BaitKey | undefined {
+export function baitKeyOf(i: Pick<InvItem, 'name' | 'subCategory' | 'forageCatch' | 'speciesId'>): BaitKey | undefined {
+  // 289차 — 캔 갯것은 이름이 아니라 종으로 가른다(「홍합 (섭) (6cm)」 · 「보라성게 (5.5cm)」)
+  if (i.forageCatch) { const k = forageBaitKeyOf(i.speciesId); if (k) return k; }
   const n = i.name ?? '';
   if (n.includes('혼무시') || n.includes('참갯지렁이')) return 'worm_king';
   if (n.includes('갯강구')) return 'slater';   // 224차

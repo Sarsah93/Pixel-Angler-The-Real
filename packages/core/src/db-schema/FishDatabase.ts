@@ -127,7 +127,7 @@ export const FISH_DATABASE: FishSpecies[] = [
     maxRecordCm: 73,
     avgWeightRangeG: [500, 3500],
     preferredDepthM: [2, 25],
-    preferredTempC: [14, 25],
+    preferredTempC: [10, 25],   // 289차 — 겨울 감성돔(여수 · 통영 10~13℃)
     preferredBaits: ['crab', 'mussel', 'barnacle', 'sandworm', 'earthworm'],
     habitatSpotTypes: ['breakwater', 'rocky_shore', 'beach'],
     peakSeasonMonths: [10, 11, 12, 1, 2, 3],
@@ -176,7 +176,7 @@ export const FISH_DATABASE: FishSpecies[] = [
     maxRecordCm: 150,
     avgWeightRangeG: [2000, 12000],
     preferredDepthM: [10, 60],
-    preferredTempC: [18, 26],
+    preferredTempC: [11, 21],   // 289차 — 겨울 제철(강원 정치망 · 모슬포 11~17℃)과 모순이던 18~26 정정
     preferredBaits: ['artificial_lure', 'squid', 'fish_strip'],
     habitatSpotTypes: ['boat_fishing', 'rocky_shore'],
     peakSeasonMonths: [11, 12, 1],
@@ -557,7 +557,7 @@ export const FISH_DATABASE: FishSpecies[] = [
     maxRecordCm: 35,
     avgWeightRangeG: [150, 450],
     preferredDepthM: [5, 40],
-    preferredTempC: [13, 24],
+    preferredTempC: [10, 24],   // 289차 — 겨울 제철 — 동해 9~10℃에도 문다
     preferredBaits: ['fish_strip', 'sandworm', 'prawn'],
     habitatSpotTypes: ['rocky_shore', 'breakwater'],
     peakSeasonMonths: [11, 12, 1, 2, 3],
@@ -1007,7 +1007,7 @@ export const FISH_DATABASE: FishSpecies[] = [
     maxRecordCm: 30,
     avgWeightRangeG: [50, 100],
     preferredDepthM: [2, 150],
-    preferredTempC: [2, 12],
+    preferredTempC: [2, 15],   // 289차 — 산란기(11~12월) 연안 13~16℃까지
     preferredBaits: ['prawn', 'sandworm', 'artificial_worm'],
     habitatSpotTypes: ['breakwater', 'beach', 'boat_fishing'],
     peakSeasonMonths: [11, 12],
@@ -1269,12 +1269,38 @@ export const FISH_DATABASE: FishSpecies[] = [
     isBoilingSpecies: false,
     description: '제주·남해 여름 밤바다의 주인공. 몸통이 창처럼 가늘고 길며 지느러미가 몸통의 60% 이상을 덮는다. 낮에는 깊은 중층에 머물다 밤이면 집어등 불빛을 따라 20~30m권까지 떠오른다. 오징어류 중 회 맛이 가장 좋아 시세도 높다.',
   },
+  // 289차 — 사용자 결정 D6: 동해 살오징어(그 바다의 「오징어」). 금지체장 외투장 15cm 이하 · 금어기 4.1~5.31(수산자원관리법 시행령 별표)
+  {
+    id: 'flying_squid',
+    nameKo: '살오징어',
+    nameEn: 'Japanese Flying Squid',
+    scientificName: 'Todarodes pacificus',
+    spriteKey: 'fish_flying_squid',
+    minLegalSizeCm: 15,
+    // 크기 = 외투장(몸통) 기준 — 두족류 공통 관례 · 법정 크기도 외투장
+    avgSizeRangeCm: [18, 28],
+    maxRecordCm: 35,
+    avgWeightRangeG: [150, 500],
+    preferredDepthM: [5, 200],
+    preferredTempC: [12, 22],   // 289차 — 12~18℃가 가장 잘 모인다 · 한겨울 동해(9~10℃)에는 남쪽으로 내려간다
+    preferredBaits: ['artificial_lure'],
+    habitatSpotTypes: ['breakwater', 'boat_fishing'],
+    peakSeasonMonths: [9, 10, 11, 12],
+    isNocturnal: true,
+    nightBiteBonus: 80,
+    rarity: 'common',
+    difficulty: 2,
+    sashimiValuePerKg: 30000,
+    swimmingLayer: 'mid',
+    isBoilingSpecies: false,
+    description: '동해를 대표하는 오징어. 몸통이 붉은 갈색이고 지느러미가 몸통 끝에 마름모꼴로 붙는다. 가을 밤 방파제 불빛 아래로 떼 지어 몰려와 에기나 오징어 루어를 채 간다. 물회 · 숙회 · 오징어볶음의 바로 그 오징어다.',
+  },
   // ══ 신규 어종 6종 (2026-07-25 실측 리서치 — 에셋 추가에 따른 도감 확보) ══
   {
     id: 'yellowfin_puffer', nameKo: '까치복', nameEn: 'Yellowfin Puffer',
     scientificName: 'Takifugu xanthopterus', spriteKey: 'fish_yellowfin_puffer',
     minLegalSizeCm: 0, avgSizeRangeCm: [28, 40], maxRecordCm: 50, avgWeightRangeG: [700, 2500],
-    preferredDepthM: [10, 100], preferredTempC: [14, 24],
+    preferredDepthM: [10, 100], preferredTempC: [10, 24],   // 289차 — 겨울 제철(남해 9~13℃)
     preferredBaits: ['fish_strip', 'mussel', 'crab', 'sandworm'],
     habitatSpotTypes: ['boat_fishing', 'rocky_shore'], peakSeasonMonths: [11, 12, 1, 2, 3],
     isNocturnal: false, nightBiteBonus: 0, rarity: 'uncommon', difficulty: 3, sashimiValuePerKg: 40000,

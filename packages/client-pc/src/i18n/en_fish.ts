@@ -91,6 +91,9 @@ export const EN_FISH: Record<string, string> = {
     'A cold-water bottom fish with a mouth as big as its head. The star of winter cod soup in Geoje and Jinhae, it is found mainly in the South Sea at 45–450 m. Off Jeju and the South Sea in December, migrating Japan → South Sea → Jeju from January to August. Closed 16 Jan – 15 Feb.',
   '작고 오므린 입으로 미끼만 톡톡 따먹어 "미끼 도둑"으로 불리는 어종. 여름~가을 방파제와 갯바위 수중여 주변에 흔하다. 입질 파악이 까다로워 예민한 채비가 필요하며, 살과 간이 별미로 회·조림 대상어로 친다.':
     'Called the bait thief for the way its small pursed mouth nibbles the bait clean off. Common around breakwaters and sunken reefs from summer into autumn. The bite is hard to read, so a sensitive rig is needed; the flesh and liver are both prized, raw or braised.',
+  // 289차 — 살오징어
+  '동해를 대표하는 오징어. 몸통이 붉은 갈색이고 지느러미가 몸통 끝에 마름모꼴로 붙는다. 가을 밤 방파제 불빛 아래로 떼 지어 몰려와 에기나 오징어 루어를 채 간다. 물회 · 숙회 · 오징어볶음의 바로 그 오징어다.':
+    'The squid of the East Sea. A reddish-brown body with a diamond-shaped fin at the tip. On autumn nights it gathers in schools under the breakwater lights and snatches egi and squid jigs. The very squid of mulhoe, blanched squid and spicy stir-fry.',
   '제주·남해 여름 밤바다의 주인공. 몸통이 창처럼 가늘고 길며 지느러미가 몸통의 60% 이상을 덮는다. 낮에는 깊은 중층에 머물다 밤이면 집어등 불빛을 따라 20~30m권까지 떠오른다. 오징어류 중 회 맛이 가장 좋아 시세도 높다.':
     'The star of summer nights off Jeju and the South Sea. Its body is slender as a spear, with fins covering more than 60 % of the mantle. By day it holds in the deeper mid layer; after dark it rises to 20–30 m following the lamps. The best-eating squid there is, and priced accordingly.',
   '쥐치보다 크고 길쭉한 쥐포의 주 원료. 작은 입으로 미끼만 갉아먹는 악명 높은 미끼 도둑. 내만·암초·해조류 70~100m. 1~3월 제주, 4~11월 남해>동해, 6~10월 제주>서해 회유. 금어기 5~7월.':

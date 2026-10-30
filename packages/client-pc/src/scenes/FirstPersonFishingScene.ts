@@ -30,6 +30,7 @@
 
 import Phaser from 'phaser';
 import { isNightNow as isNightNowKst } from '@tra/core';
+import { presenceBiteRate } from '@tra/core';
 import {
   createUnderwaterRig, stepUnderwater, isHoldState, computeSinkRate, SinkBodyType,
   UnderwaterRigState, RigPhysicsParams, TideVector,
@@ -408,6 +409,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private rigSwept = false;
   /** 루어 액션 반응형 입질 배율 (방치 0.15 ~ 트위칭 3.0, 지깅 보정) — 게이지 표기용 */
   private lureActionMult = 1;
+  /** 289차 — 존재 가중의 입질 빈도 배율(마지막 프레임 값 · 하네스 · 디버그) */
+  private presenceRate = 1;
   /** 입질 유도용 연속 릴링 시간 (초) — 1~2단계 중 1초 릴링 시 provoke */
   private provokeReelT = 0;
 
@@ -2531,6 +2534,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       ? (candidateCount(this.buildSpawnCtx(reefBottom)) > 0 ? FLASHER_ONLY_BITE_MULT : 0) : 1;
     // 바다낚시지수 API 캐시 → P_base 보정 (지수 1~5 → 0.7~1.4배)
     const indexModifier = ExternalDataStore.getRegionFishingIndexModifier(this.cfg.region);   // 288차 — 그 지역 지수(옛: 전국 목록 첫 지점)
+    // 289차 — 철 밖 · 차가운 물 · 그 바다에 드문 고기뿐이면 무는 고기 자체가 적다(존재 가중의 빈도 몫 — `TUNING.presence.rate*`)
+    this.presenceRate = presenceBiteRate(this.buildSpawnCtx(reefBottom));
 
     // ── 루어/지깅 액션 반응형 입질 (찌낚시=기다림 ↔ 루어=액션이 입질을 만든다) ──
     // 방치된 루어는 거의 물지 않고(0.15배), 리트리브/폴/트위칭 등 살아있는 움직임에
@@ -2554,7 +2559,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       dtSec: dt,
       // 조경지대(Hit Zone) 1.6배 / 본대조류 0.35배 — 조류 존 입질 배율
       // × 피딩타임 활성도(계절/조류/날씨) × 필드 이벤트(보일링 링/스쿨 히트) 보너스
-      baseProbPerSec: 0.035 * baitAffinity * indexModifier * influence.biteMult * this.lureActionMult
+      baseProbPerSec: 0.035 * baitAffinity * indexModifier * this.presenceRate * influence.biteMult * this.lureActionMult
         // 136차 — 고장난 채비는 입질을 깎는다 (찌 부력 변성 ×0.78 / 루어 부분 파손 ×0.72)
         * gearBiteMult(InventoryStore.rigFloat?.fault)
         * gearBiteMult(this.lureMode ? InventoryStore.rigLure?.fault : undefined)
@@ -2790,8 +2795,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       inReef,
       // 288차 — 밤은 게임 전체가 쓰는 철 따라 바뀌는 밤(겨울 17~07시 · 화면 · 밤 스킬과 같다 — 옛 20~05시 고정은 겨울 초저녁을 낮으로 쳤다)
       isNight: isNightNowKst(),
-      // KOSIS 시도별 어획량 캐시 → 지역 어종 스폰 가중치
+      // KOSIS 시도별 어획량 캐시 → 지역 어종 스폰 가중치(289차 — 약한 보정 1.0~1.3 · 지역의 주 신호는 바다 가중이다)
       catchWeightBySpecies: ExternalDataStore.getCatchWeights(this.cfg.region),
+      // 289차 — 존재 가중(바다 · 계절 · 수온): 실측 수온이 있으면 그것, 없으면 core가 지역 × 달 평년 수온을 쓴다 ·
+      //   진행 중인 이야기가 찾는 어종은 그 자리에서도 아주 드물지는 않게(사용자 결정 D1)
+      waterTempC: ExternalDataStore.getWaterTempC(this.cfg.region),
+      storyTargets: StoryStore.rodCatchTargets(),
     };
     // 루어 스펙 → 타겟 가중/스폰 바인딩/서식 성향 (하드코딩 금지, 데이터 소비)
     const lure = this.lureSpec;

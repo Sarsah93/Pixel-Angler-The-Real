@@ -363,7 +363,7 @@ export const OCTOPUS_SECTIONS: ButcherySectionDef[] = [
 export function sectionsForCephalopod(speciesId: string): ButcherySectionDef[] | undefined {
   switch (speciesId) {
     // 한치 = 무늬오징어와 같은 공정 공유 (097차 — 부산물·회뜨기 규칙 공통)
-    case 'squid': case 'swordtip_squid': return SQUID_SECTIONS;
+    case 'squid': case 'swordtip_squid': case 'flying_squid': return SQUID_SECTIONS;   // 289차 — 살오징어는 한치 트리
     case 'octopus': case 'giant_octopus': return OCTOPUS_SECTIONS;
     default: return undefined;
   }

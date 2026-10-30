@@ -305,7 +305,7 @@ export {
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
   rollEnforcement, enforcementFineWon, enforcementRepeatMult, trapSeasonViolations,
   forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
-  rollForageSizeCm, forageWeightG, forageImageSizeScale,   // 288차 — 종별 크기 · 무게 · 그림 배율
+  rollForageSizeCm, forageWeightG, forageImageSizeScale, FORAGE_BAIT_KEY, forageBaitKeyOf, rodFishingClosure,   // 288차 — 종별 크기 · 무게 · 그림 배율
   isCrabCreature, BERRIED_MONTHS, BERRIED_CHANCE,
 } from './simulation/ForagingEngine.js';
 export type { ForageInjury, ForageHarvest } from './simulation/ForagingEngine.js';
@@ -507,8 +507,14 @@ export type {
 } from './simulation/FishSpawningOracle.js';
 export {
   ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity, candidateCount, speciesBiteShare, speciesBiteReadiness,
-  standardWeightG, speciesStandardWeightG, conditionFactorFor, baitPrefOf,
+  standardWeightG, speciesStandardWeightG, conditionFactorFor, baitPrefOf, presenceBiteRate,
 } from './simulation/FishSpawningOracle.js';
+// 289차 — 어종 존재 가중(바다 · 계절 · 수온 — D1 · D2 · D5 · D6)
+export type { SeaKey, PresenceContext, PresenceBreakdown } from './rules/SpeciesPresence.js';
+export {
+  seaOf, SEA_LABEL_KO, SEA_LABEL_EN, SPECIES_SEA_WEIGHT, SST_CLIMATOLOGY_C, sstStationOf, climatologySstC,
+  seaPresence, seasonPresence, tempPresence, presenceSstC, presenceBreakdown, speciesPresence,
+} from './rules/SpeciesPresence.js';
 // 248차 — 땅지렁이(텃밭에서 드러난다 · 바다 미끼로는 금방 늘어진다)
 export type { EarthwormAct, EarthwormCtx } from './simulation/EarthwormRules.js';
 export {

@@ -465,6 +465,26 @@ class StoryStoreManager {
     }
     return false;
   }
+  /**
+   * 289차 — 지금 열린 낚싯대 어획 목표의 어종(사용자 결정 D1 「드물게」 — 이야기가 찾는 어종은 그 자리에서도 아주 드물지는 않다).
+   * 1인칭 스폰 문맥 `storyTargets`로 간다. 어종이 없는 목표(「아무거나 한 마리」)는 뺀다.
+   */
+  rodCatchTargets(): string[] {
+    const out = new Set<string>();
+    for (const [id, p] of Object.entries(this.quests)) {
+      if (p.status !== 'active') continue;
+      const q = getStoryQuest(id);
+      if (!q) continue;
+      for (let i = 0; i < q.objectives.length; i++) {
+        const o = q.objectives[i];
+        if (o.kind !== 'catch' || !o.speciesId) continue;
+        if (o.method && o.method !== 'rod') continue;
+        if (this.objectiveDone(q, i) || !this.objectiveReachable(q, i)) continue;
+        out.add(o.speciesId);
+      }
+    }
+    return [...out];
+  }
   /** 188차 — 순서형 퀘스트(`ordered`)는 앞 목표를 다 닫아야 이 목표를 받는다 */
   objectiveReachable(q: StoryQuestDef, i: number): boolean {
     if (!q.ordered) return true;

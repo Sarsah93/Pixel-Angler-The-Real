@@ -908,4 +908,17 @@ export const EN_HELP: Record<string, string> = {
     'Stories have endings. A story that later stories rely on always comes to the same ending; a story with a fork has two or three. If an ending leaves someone ruined for good, trading with that person changes — no haggling, and no rare stock. The ending you reached stays on that task in the journal.',
   '물건을 파는 사람과의 사이는 값에도 묻어납니다. 친밀하면 6%, 호의면 3% 싸게 팔고, 냉담하면 5%, 적대면 10% 더 받습니다. 그 사람 가게 창 맨 위 줄에 지금 사이와 조건이 나옵니다.':
     'How you get on with a shopkeeper shows in the prices too. Close: 6% cheaper, Warm: 3% cheaper, Cold: 5% more, Hostile: 10% more. The top line of their shop window shows where you stand and the terms.',
+  // 289차 — 바다 · 철 · 수온 · 풍랑 · 새 미끼
+  '바다 · 철 · 수온 — 어디서 언제 무엇이 무나': 'Sea, season and water temperature — what bites where and when',
+  '고기마다 사는 바다가 다릅니다. 동해는 도루묵 · 대구 · 대문어 · 살오징어, 남해는 감성돔 · 벵에돔 · 갈치, 서해는 우럭 · 갑오징어 · 개서대, 제주는 한치 · 긴꼬리벵에돔 · 잿방어가 많고, 그 바다에 거의 없는 고기도 아주 드물게는 뭅니다.':
+    'Each fish has its own sea. The East Sea has sandfish, cod, giant octopus and flying squid; the South Sea black seabream, opaleye and hairtail; the Yellow Sea rockfish, cuttlefish and tonguefish; Jeju swordtip squid, longtail opaleye and greater amberjack. A fish that barely lives in a sea can still bite there — very rarely.',
+  '고기마다 제철이 있어 제철에 가장 잘 물고, 철이 지나면 줄어듭니다. 물이 그 고기가 좋아하는 온도에서 벗어날수록 더 줄어듭니다 — 겨울 서해처럼 물이 차가운 철에는 무는 고기 자체가 적어 입질이 뜸합니다.':
+    'Every fish bites best in its season and less after it. The further the water drifts from the temperature a fish likes, the fewer there are — in cold seasons like a Yellow Sea winter there are simply fewer fish, so bites come slowly.',
+  '수온은 관측소 실측이 있으면 그 값, 없으면 그 바다의 이맘때 평년 수온으로 봅니다(메인 화면 시세 띠의 「수온 약」). 맡은 이야기가 찾는 고기는 그 자리에서도 아주 드물지는 않습니다.':
+    'Water temperature comes from a station reading when there is one, otherwise from the usual temperature of that sea at this time of year ("Water ~" on the main-screen ticker). A fish your current story needs is never too rare where you are.',
+  '풍랑 — 파도 3m · 바람 14m/s를 넘으면 통제': 'Rough seas — closed above 3 m waves or 14 m/s wind',
+  '파고가 3m를 넘거나 풍속이 14m/s를 넘으면 풍랑주의보 수준이라 방파제 · 갯바위에서 던질 수 없습니다(구멍치기도 같습니다). 해루질은 물에 들어가므로 더 낮은 파도에서도 막힙니다.':
+    'With waves over 3 m or wind over 14 m/s — gale-warning conditions — you cannot cast from breakwaters or rocks (hole fishing too). Shore gleaning goes into the water, so it closes at lower waves.',
+  '옥수수 · 성게 · 조개살 미끼도 직판장에서 캔 · 팩으로 팝니다 — 옥수수 40알(감성돔), 성게 10개(돌돔 · 강담돔 — 잡어에 잘 털리지 않는다), 조개살 20개(쥐치 · 참복 · 감성돔). 해루질로 캔 성게 · 홍합 · 굴 · 바지락 · 소라 · 거북손은 손질 없이 그대로 미끼 칸에 꿸 수 있습니다(한 마리가 미끼 하나).':
+    'The fish market also sells corn, urchin and clam bait by the can or pack — 40 corn kernels (black seabream), 10 urchins (knifejaws — small fish rarely strip them), 20 pieces of clam meat (filefish, puffers, black seabream). Urchins, mussels, oysters, clams, turban shells and gooseneck barnacles you gather go straight onto the hook (one each).',
 };

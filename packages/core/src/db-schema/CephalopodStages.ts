@@ -225,6 +225,7 @@ export function buildCephalopodStages(speciesId: string): ButcheryStage[] | unde
     // 한치 = **무늬오징어 트리 공유** (097차 사용자 지시 — 부산물·회뜨기 규칙 공통.
     //  스펙 §4.2의 껍질 중단(peelStopBand)·촉완 전용 스테이지는 실사 확보 시 분화)
     case 'swordtip_squid': return buildSquidStages();
+    case 'flying_squid': return buildSquidStages();   // 289차 — 살오징어(몸통이 길쭉한 오징어 — 한치와 같은 손질)
     // 참문어·대문어 = 칼 없는 8스테이지 (097차 — 스펙 §4.4 기반 축약)
     case 'octopus': case 'giant_octopus': return buildOctopusStages();
     // TODO: cuttlefish 13 (§4.3 — 갑 들어내기·속껍질. 날개살 미지급 규칙 적용할 것)

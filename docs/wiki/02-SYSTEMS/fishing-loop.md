@@ -48,7 +48,7 @@
 
 | 과제 | 상태 | 차수 |
 |---|---|---|
-| **입질 연결성 점검**(지역 · 날씨 · 수온 · 서식지 · 낚시법 · 이벤트 — 30건) · 결정 없이 고친 결함 7(여 위 찌 = 여 바닥 · KST 달 · 날 · 밤 하나 · 후보 0 = 입질 없음 · 지역 낚시지수 · KOSIS 별칭 · 가중 1.0~1.3 · 울산 동해 · 추천 id) | 🔶 계절 · 수온 · 바다 가중은 설계 결정 대기(D1~D6) | 288 — [워크로그](../03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md) |
+| **입질 연결성 점검**(지역 · 날씨 · 수온 · 서식지 · 낚시법 · 이벤트 — 30건) · 결정 없이 고친 결함 7(여 위 찌 = 여 바닥 · KST 달 · 날 · 밤 하나 · 후보 0 = 입질 없음 · 지역 낚시지수 · KOSIS 별칭 · 가중 1.0~1.3 · 울산 동해 · 추천 id) | ✅ 289 — 존재 가중(바다 · 철 · 수온) · 빈도 배율 · 살오징어 · 미끼 셋 · 풍랑 통제 | 288 — [288](../03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md) · [289](../03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md) |
 | **원줄 · 목줄 내구도**(묶인 줄의 마모 0~1 — 파이팅 피로 · 랜딩 충격 · 밑걸림 끌어냄 · 캐스팅 · 여 바닥 끌림 · 재질 3 · 세기 = 공칭 × (1 − 마모 × 0.5) · 단계 4 · 1인칭 흰 테 알림) | ✅ | **273** — core `LineWear` · `FirstPersonFishingScene.bumpLineWear` · [273](../03-WORKLOG/2026-10-26-273-line-wear-durability.md) |
 | 챔질 3단계 시퀀스 + 어종 패턴 | ✅ | 19차(1인칭 개편) |
 | 조류 5존 + 조경지대 Hit Zone | ✅ | 19 |
@@ -140,10 +140,15 @@
   도움말 토픽은 문구만이고 **실캡처 4장이 없다** · 블록 사이로 내려가는 **전용 전경 연출이 없다**
   (현재는 기존 1인칭 뷰에 거리만 1.4m).
 
-- **288 입질 — 결정 대기**(백로그 DD) — 지금 달은 어종을 바꾸지 않는다(속초 1월 ↔ 8월 분포 차 0.00 %) · 수온은 표시만 · 지역 차는 KOSIS뿐(제주 ≡ 태안 ≡ 울산).
-  D1 철 · 바다 밖 어종을 0으로 할지 드물게 둘지(N02-3 서귀포 태평양 대구) · D2 수온 출처 · `preferredTempC` 정정(방어) · D3 살아 있는 미끼 · D4 폭풍 막기 · D5 KOSIS 역할 · D6 살오징어 · 에기 바다 제한. 근거 = [`.agents/inputs/288_bite_audit.md`](../../../.agents/inputs/288_bite_audit.md)(288 §2 요약).
+- **289 입질 남은 것** — 살아 있는 미끼(`livefish` — 살림통 · 기포기 · 따로 한 차수) · 깊은 바다 새기(F09) · 도감 ↔ 엔진 10종(F12) · 지역 물때(F15) · 진흙 · 모래 · 여(F08) · 날씨 선호(F17) · 집어등(F28) · 바다 가중 · 평년 수온 · `TUNING.presence` 실플레이 조율 — [289 §6](../03-WORKLOG/2026-10-30-289-presence-sea-season-sst-baits-storm-flying-squid.md).
 
 ## 6. 함정·불변조건
+
+> **289차 신규 함정**
+> 1. **존재 가중은 후보를 거른 뒤에 곱한다** — `baseCandidates`(0.001 문턱) → `× speciesPresence`. 문턱 전에 곱하면 드문 어종이 후보에서 빠져 D1 「드물게」가 「없음」이 된다.
+> 2. **새 어종은 `SPECIES_SEA_WEIGHT`에도 넣는다** — 빠지면 `Presence289.test.ts`가 실패한다. 적수온은 `node tools/check_species_temp_season.mjs`로 제철과 대조(방어처럼 제철에 눌리면 안 된다).
+> 3. **해양기상 Mock은 「없는 값」이다** — 배포본은 관측이 막혀 수온 · 시정이 난수다. `ExternalDataStore.liveMarine`만 수온 · 안개 · 세션 카드에 쓴다. 평년 수온은 core `climatologySstC`.
+> 4. **입질 빈도 배율(`presenceRate`)은 제철 바다에서 1이다** — `rateRef` 0.5(실측 분포 상위 약 30 %). 기준을 올리면 모든 곳이 느려진다.
 
 > **288차 신규 함정**
 > 1. **스폰 「여 바닥」은 미끼 아래 바닥이다**(F07) — `buildSpawnCtx(reefBottom)`의 `reefBottom = seabed.isRockAt(distM)`. 미끼 친화(`rigBaitAffinity`) · 집어등 후보 수도 같은 값이다.

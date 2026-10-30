@@ -7,6 +7,7 @@
  * 스팟이 재현되므로 세이브가 필요 없다.
  */
 
+import type { BaitKey } from './FishSpawningOracle.js';
 import type { ShoreCreature } from '../db-schema/ShoreCreatureDatabase.js';
 import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
 import type { ForageCandidate, ForageSpot, ForageSpotKind, ForageTool, FishFarm, ForageBehavior, ForageGameKind } from '../types/Foraging.js';
@@ -83,6 +84,18 @@ export function forageSafety(ctx: ForageEnvContext): ForageSafety {
   return { allowed: true, warning, slipChance };
 }
 
+/**
+ * 289차 — 사용자 결정 D4: 풍랑 통제. 파고 · 풍속이 풍랑주의보 기준(`TUNING.castWeather.closeWaveM` 3m · `closeWindMps` 14m/s)을
+ * 넘으면 방파제 · 갯바위 낚시를 막는다(실제로 기상특보가 나면 출입이 통제된다). 해루질(`forageSafety`)은 물에 들어가므로 더 낮은 기준이다.
+ * 막히면 사람 말로 된 까닭, 아니면 null.
+ */
+export function rodFishingClosure(ctx: { windSpeedMs: number; waveHeightM: number }): string | null {
+  const t = TUNING.castWeather;
+  if (ctx.waveHeightM >= t.closeWaveM) return `파고 ${ctx.waveHeightM.toFixed(1)}m — 풍랑주의보 수준이라 방파제 · 갯바위 낚시가 통제됐다`;
+  if (ctx.windSpeedMs >= t.closeWindMps) return `풍속 ${ctx.windSpeedMs.toFixed(0)}m/s — 바람이 거세 방파제 · 갯바위 낚시가 통제됐다`;
+  return null;
+}
+
 // ─────────────────────────────────────────────
 // 생물 ↔ 스팟 종류 · 도구
 // ─────────────────────────────────────────────
@@ -144,6 +157,22 @@ export function shallowWaterDepthM(tideLevel01: number): number {
 }
 
 /** 224차 — 동해(강원 · 경북) 지역인가 — 출현 배율(`eastSeaWeight`)을 건다 */
+/**
+ * 289차 — 사용자 결정 D3: 캔 갯것을 그대로 바늘에 꿰는 미끼 종류(스폰 오라클 `BaitKey`).
+ * 성게 = 돌돔 · 강담돔 미끼, 조개살(홍합 · 굴 · 바지락) = 쥐치 · 참복 · 감성돔, 게 · 소라(소라 · 거북손) = 돌돔 · 감성돔.
+ * 표에 없는 갯것은 미끼 칸에 들어가지 않는다(쫄장게 · 갯강구 · 갯지렁이는 잡을 때부터 미끼 아이템이다 — `baitItemId`).
+ */
+export const FORAGE_BAIT_KEY: Readonly<Record<string, BaitKey>> = {
+  strongylocentrotus_nudus: 'urchin', heliocidaris_crassispina: 'urchin',
+  mytilus_coruscus: 'shellfish', oyster_gigas: 'shellfish', clam_varicosa: 'shellfish',
+  turbo_cornutus: 'crab', capitulum_mitella: 'crab',
+};
+
+/** 캔 갯것(가방 칸 `speciesId`)을 미끼로 쓸 때의 미끼 종류 — 없으면 미끼가 아니다 */
+export function forageBaitKeyOf(creatureId: string | undefined | null): BaitKey | undefined {
+  return creatureId ? FORAGE_BAIT_KEY[creatureId] : undefined;
+}
+
 export function isEastSeaRegion(regionId: string): boolean {
   // 288차 — 울산 · 울릉도 · 독도도 동해다(전에는 빠져 오분자기 같은 남해 종이 나왔다)
   return /gangwon|sokcho|gangneung|pohang|gyeongbuk|uljin|donghae|ulsan|ulleung|dokdo/.test(regionId);
