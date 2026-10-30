@@ -958,3 +958,18 @@ export function clampHarbor(v: number, max: number): number {
 export function clampSea(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(v * 10) / 10));
 }
+
+/**
+ * 291차 — 대화가 일어나는 자리(의뢰인 · 대화 목표 인물이 편의 지역에 서 있지 않을 때).
+ * - `here` — 편의 지역에서 만난다(그 사람이 그 지역에 와 있다 — 「너도 감천 왔냐」). 집에서는 그 자리가 열리지 않는다.
+ * - `home` — 그 사람이 사는 지역에서 만난다(떠나기 전 · 돌아온 뒤 — 「부산 갈 준비는 됐냐」). 편의 지역에 나오지 않는다.
+ * - `any` — 자리를 가리지 않는다(전해 들은 소식 · 지시). 집에도 있고 편의 지역에도 나와 있다.
+ */
+export type MeetPlace = 'here' | 'home' | 'any';
+
+/** 291차 — 편 하나의 만나는 자리(없는 칸 = `any`). `talks`는 대화 목표 번호 → 자리 */
+export interface QuestMeetingDef {
+  offer?: MeetPlace;
+  complete?: MeetPlace;
+  talks?: Readonly<Record<number, MeetPlace>>;
+}

@@ -133,7 +133,7 @@ import { MultiplayerClient } from '../net/MultiplayerClient.js';
 import { WorldDepletionStore } from '../store/WorldDepletionStore.js';
 import { WeatherSync } from '../net/WeatherSync.js';
 import { ConsignListPanel } from '../ui/ConsignListPanel.js';
-import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
+import { STORY_NPC_PLACEMENTS, STORY_PLACES, STORY_FIELD_TRIGGERS, STORY_GUEST_ANCHORS, STORY_GUEST_OFFSETS, type StoryNpcPlacement, type StoryFieldTrigger } from '../data/StoryNpcs.js';
 import { GroundItemStore, type GroundItem } from '../store/GroundItemStore.js';
 import { InteractChoicePanel, type InteractOption } from '../ui/InteractChoicePanel.js';
 import { createItemIcon, itemImageKeyOf } from '../ui/ItemIcon.js';
@@ -5819,6 +5819,8 @@ export class RegionFieldScene extends Phaser.Scene {
     homeReason?: NpcHomeReason;
     /** 214차 — 집 ↔ 일터 전환 페이드 중 */
     shifting?: boolean;
+    /** 291차 — 출장 나온 사람(이 지역 이야기 때문에 와 있다 — 부른 편 id). 이야기가 끝나면 돌아간다 */
+    guest?: string;
   }[] = [];
   /** 214차 — 일과 재평가 누적(ms) */
   private routineAt = 0;
@@ -6266,6 +6268,63 @@ export class RegionFieldScene extends Phaser.Scene {
     };
   }
 
+  /** 스토리 인물 하나를 세운다 — 외형 · 자유 행동 · 이름표 · 집 문(있으면). 목록에 넣는 것은 부르는 쪽 */
+  private spawnStoryNpc(def: StoryNpcPlacement, guestOf?: string): (typeof this.storyNpcs)[number] {
+    const { col, row } = this.nearestStandable(def.tx ?? 0, def.ty ?? 0);   // 277차 — 차도 밖 칸
+    const ai = new StoryNpcActor(this, this.npcHost, characterOf(def.npcId), col, row, def.behavior ?? 'wander', def.facing ?? 'down');
+    const x = ai.x, y = ai.y;
+    const actor = ai.image;
+    const npc = getStoryNpc(def.npcId);
+    const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
+      ...worldLabelStyle(10),
+    }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
+    if (import.meta.env.DEV && def.behavior === 'fishing' && !ai.fishingSpotFound) {
+      console.warn(`[FieldNpc] ${def.npcId}: 앵커 5x5 안에 물가가 없어 낚시 대신 배회한다 (${col},${row})`);
+    }
+    const entry: (typeof this.storyNpcs)[number] = { def, x, y, actor, label, ai, guest: guestOf };
+    if (def.home) this.buildNpcDoor(entry, def.home);
+    return entry;
+  }
+
+  /**
+   * 291차 — 출장 나온 사람을 맞춘다. 집 자리가 이 지역에 없는 의뢰인 · 대화 상대를 이 지역 이야기가 부르면
+   * 출장 자리(`STORY_GUEST_ANCHORS`) 둘레에 세우고, 부른 이야기가 끝나면 돌려보낸다.
+   * 말을 거는 중(창 · 장면)에는 바꾸지 않는다 — 대화 상대가 눈앞에서 사라지면 안 된다.
+   */
+  private syncStoryGuests(initial = false): void {
+    if (!initial && (this.uiBlocked || this.interior)) return;
+    const anchor = STORY_GUEST_ANCHORS.find((a) => a.regionId === this.region);
+    const here = !!anchor && (!anchor.dataRegion || anchor.dataRegion === this.seamlessDef?.dataRegion);
+    const want = here ? StoryStore.guestsIn(this.region) : [];
+    const wantIds = new Set(want.map((g) => g.npcId));
+    let changed = false;
+    // 돌아갈 사람
+    for (const n of [...this.storyNpcs]) {
+      if (!n.guest || wantIds.has(n.def.npcId)) continue;
+      n.ai?.destroy(); n.label.destroy(); n.mark?.destroy();
+      this.storyNpcs.splice(this.storyNpcs.indexOf(n), 1);
+      if (this.nearNpc === n.def) this.nearNpc = null;
+      changed = true;
+    }
+    // 새로 온 사람 — 집 자리로 이미 서 있으면 건너뛴다
+    let slot = this.storyNpcs.filter((n) => n.guest).length;
+    for (const g of want) {
+      if (!anchor || this.storyNpcs.some((n) => n.def.npcId === g.npcId)) continue;
+      const [dx, dy] = STORY_GUEST_OFFSETS[slot % STORY_GUEST_OFFSETS.length];
+      slot++;
+      const def: StoryNpcPlacement = {
+        npcId: g.npcId, regionId: this.region, dataRegion: anchor.dataRegion,
+        tx: anchor.tx + dx, ty: anchor.ty + dy, behavior: 'wander',
+      };
+      this.storyNpcs.push(this.spawnStoryNpc(def, g.questId));
+      changed = true;
+    }
+    if (changed && !initial) {
+      StoryStore.setFieldNpcs(this.storyNpcs.map((n) => n.def.npcId));
+      this.refreshQuestMarkers(true);
+    }
+  }
+
   /**
    * 지역에 배치된 스토리 NPC — 인물마다 고유 외형(`characterOf`, 138차) + 자유 행동(`StoryNpcActor`, 166차).
    * 이름표는 씬이 들고 매 프레임 본체를 따라간다(`updateFieldNpcs`).
@@ -6277,21 +6336,9 @@ export class RegionFieldScene extends Phaser.Scene {
       if (def.dataRegion && def.dataRegion !== this.seamlessDef?.dataRegion) continue;   // 263차 — 데이터 지역이 여럿인 지역은 그 필드에서만
       // 178차 — 좌표 없는 등록은 **지역 안내 전용**이다(무대가 아직 없는 인물). 세우지 않는다.
       if (def.tx === undefined || def.ty === undefined) continue;
-      const { col, row } = this.nearestStandable(def.tx, def.ty);   // 277차 — 차도 밖 칸
-      const ai = new StoryNpcActor(this, this.npcHost, characterOf(def.npcId), col, row, def.behavior ?? 'wander', def.facing ?? 'down');
-      const x = ai.x, y = ai.y;
-      const actor = ai.image;
-      const npc = getStoryNpc(def.npcId);
-      const label = this.add.text(x, y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP, npc?.nameKo ?? def.npcId, {
-        ...worldLabelStyle(10),
-      }).setOrigin(0.5, 1).setDepth(20 + y * 0.001 + 0.0007);
-      if (import.meta.env.DEV && def.behavior === 'fishing' && !ai.fishingSpotFound) {
-        console.warn(`[FieldNpc] ${def.npcId}: 앵커 5x5 안에 물가가 없어 낚시 대신 배회한다 (${col},${row})`);
-      }
-      const entry: (typeof this.storyNpcs)[number] = { def, x, y, actor, label, ai };
-      if (def.home) this.buildNpcDoor(entry, def.home);
-      this.storyNpcs.push(entry);
+      this.storyNpcs.push(this.spawnStoryNpc(def));
     }
+    this.syncStoryGuests(true);   // 291차 — 이 지역 이야기로 출장 나온 사람
     this.refreshNpcRoutines(true);   // 214차 — 지금 시각에 집에 있는 사람은 문 안으로
     StoryStore.setFieldNpcs(this.storyNpcs.map((n) => n.def.npcId));   // 167차 — 장면 입구 판정
     this.refreshQuestMarkers(true);
@@ -7105,17 +7152,16 @@ export class RegionFieldScene extends Phaser.Scene {
         const n = this.storyNpcs.find((s) => s.def.npcId === t.npcId);
         if (n) return { x: n.x, y: n.y - 12, label: names.npcName(t.npcId) };
         // 178차 — 이 지역에 서 있지 않으면 어느 지역으로 가야 하는지 알려준다.
-        //  지역은 **추적 중인 할 일의 지역**이 우선(같은 인물도 장마다 무대가 다르다) · 없으면 배치표.
-        // 286차 — 떠돌이(바람)는 여러 지역에 선다: 추적 중인 할 일의 지역에 선 자리를 먼저 본다
-        const placement = STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId && (!t.regionId || p.regionId === t.regionId))
-          ?? STORY_NPC_PLACEMENTS.find((p) => p.npcId === t.npcId);
-        const away = t.regionId ?? placement?.regionId;
+        // 291차 — **그 사람이 지금 있는 곳**(집 자리 · 출장)을 본다. 구: 할 일의 지역을 먼저 가리켜, 의뢰인이 속초에만 서 있는
+        //  다른 지역 편 76편이 「같은 지역인데 안내 없음」 · 「엉뚱한 지역」이 됐다. 추적 중인 할 일의 지역에 그 사람이 있으면 그것이 먼저다.
+        const where = StoryStore.npcWhere(t.npcId, t.regionId);
+        if (!where) return null;
         // 263차 — 같은 지역의 다른 데이터 지역(부산 백운포 ↔ 감천 등)이면 그 출조 구역 이름으로 안내한다
-        if (away === this.region && placement?.dataRegion && placement.dataRegion !== this.seamlessDef?.dataRegion) {
-          return { away: this.areaNameOfDataRegion(placement.dataRegion) };
+        if (where.regionId === this.region && where.dataRegion && where.dataRegion !== this.seamlessDef?.dataRegion) {
+          return { away: this.areaNameOfDataRegion(where.dataRegion) };
         }
-        if (!away || away === this.region) return null;   // 같은 지역인데 안 서 있으면 조용히 안내 없음
-        return { away: this.regionNameKo(away) };
+        if (where.regionId === this.region) return null;   // 같은 지역인데 안 서 있으면(집 안 · 일과) 조용히 안내 없음
+        return { away: this.regionNameKo(where.regionId) };
       }
       case 'place': {
         // 188차 — 프롤로그 홈타운 지점(집 문·우물·버스 정류장)
@@ -7380,7 +7426,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.nearNpc = trigger ? null : nearest;
     // 퀘스트 마커는 600ms마다만 재평가 (상태가 안 바뀌면 교체도 없다)
     this.questMarkerAt += 150;
-    if (this.questMarkerAt >= 600) { this.questMarkerAt = 0; this.refreshQuestMarkers(); }
+    if (this.questMarkerAt >= 600) { this.questMarkerAt = 0; this.syncStoryGuests(); this.refreshQuestMarkers(); }
     // ── 머리 위 [F] 안내 ──
     //  178차 — 상호작용이 겹치면 낱개로 나열하지 않고 「상호작용 — N가지」로 묶어 안내한다.
     //  각본 게이트(스토리 현장 지점)는 선택지로 내리지 않으므로 그것만 따로 먼저 알린다.

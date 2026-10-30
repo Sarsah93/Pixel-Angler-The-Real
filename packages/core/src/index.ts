@@ -630,6 +630,7 @@ export type {
 } from './types/Story.js';
 export { seasonOfMonth, SEASON_LABEL, createDefaultReputation, clampHarbor, clampSea, spotKindSatisfies, SPOT_KIND_LABEL } from './types/Story.js';
 // 140차 — 대화 선택지 · 우호도
+export type { MeetPlace, QuestMeetingDef } from './types/Story.js';
 export type { ChoiceOutcome, ChoiceRequires, QuestChoiceDef, QuestChoiceSet, ChoiceDepthEntry, AffinityTier, AffinityState } from './types/Story.js';
 export {
   AFFINITY_MIN, AFFINITY_MAX, clampAffinity, affinityTier, AFFINITY_TIER_LABEL, affinityRewardMult,
@@ -654,6 +655,8 @@ export { d as choiceDepthAnswer, dNo as choiceDepthDecline } from './db-schema/S
 // 253차 — 물어보기(조사 대화 · 킹덤컴 방식): 화제 · 물음 · 꼬리 질문 · 조사 목표
 export type { InquiryTopicKind, InquiryGate, InquiryTopicDef, InquiryEffect, InquiryNodeDef } from './types/Story.js';
 export { INQUIRY_TOPICS, INQUIRY_NODES, INQUIRY_TOPICS_BASE } from './db-schema/StoryInquiry.js';
+export { QUEST_MEETING } from './db-schema/StoryMeeting.js';
+export { meetPlaceOf, questGuestsIn, meetStageOpenIn, npcRegionNow, type MeetStage, type MeetingCtx, type QuestGuest } from './rules/QuestMeeting.js';
 export { topic as inquiryTopicDef, ask as inquiryAskDef } from './db-schema/StoryInquiryKit.js';
 export {
   INQUIRY_KIND_LABEL, inquiryTopic, inquiryNode, inquiryGateOk, inquiryKnows, inquiryKnownTopics, isInquiryActionNode,

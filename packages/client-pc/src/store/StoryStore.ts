@@ -30,7 +30,9 @@ import {
   offerTalkOf, completeTalkOf, objectiveTalkOf, actionTalkOf, talkNode, talkGateOk, talkVisibleChoices, talkAnswerRef,
   endingById, endingsOfArc, endingArcOfQuest, npcShopTerms, npcAffinityCap, npcEndingRole,
   type TalkCtx, type StoryTalkDef, type TalkChoiceDef, type TalkEndDef, type NpcShopTerms, type StoryEndingDef,
+  questGuestsIn, meetStageOpenIn, npcRegionNow, type MeetingCtx, type QuestGuest,
 } from '@tra/core';
+import { npcPlacedIn, npcHomeRegions, STORY_GUEST_ANCHORS, STORY_NPC_PLACEMENTS } from '../data/StoryNpcs.js';
 import {
   storyActionSpec, originMatches, isChoiceOrigin, DAILY_ACTION_ORIGINS, type StoryActionChoice, type StoryActionSource,
 } from './StoryActionRegistry.js';
@@ -512,6 +514,38 @@ class StoryStoreManager {
     return done;
   }
 
+  /** 291차 — 「어디서 만나는가」 판정 문맥(core `rules/QuestMeeting`) */
+  meetingCtx(): MeetingCtx {
+    return {
+      placedIn: npcPlacedIn,
+      status: (q) => this.status(q),
+      allObjectivesDone: (q) => this.allObjectivesDone(q),
+      objectiveOpen: (q, i) => this.isActive(q.id) && this.objectiveReachable(q, i) && !this.objectiveDone(q, i),
+    };
+  }
+
+  /** 291차 — 이 지역에 출장 나와 있는 인물(집 자리가 이 지역에 없는 의뢰인 · 대화 상대) */
+  guestsIn(regionId: string): QuestGuest[] {
+    return questGuestsIn(regionId, this.meetingCtx());
+  }
+
+  /**
+   * 291차 — 인물이 지금 있는 지역 · 데이터 지역(할 일 안내용). `prefer` = 추적 중인 할 일의 지역.
+   * 집 자리면 그 배치의 데이터 지역, 출장이면 출장 자리의 데이터 지역.
+   */
+  npcWhere(npcId: string, prefer?: string): { regionId: string; dataRegion?: string } | null {
+    const homes = npcHomeRegions(npcId);
+    const regionIds = [...new Set(STORY_GUEST_ANCHORS.map((a) => a.regionId))];
+    const r = npcRegionNow(npcId, homes, this.meetingCtx(), prefer, regionIds);
+    if (!r) return null;
+    if (homes.includes(r)) {
+      const pl = STORY_NPC_PLACEMENTS.find((p) => p.npcId === npcId && p.regionId === r && p.tx !== undefined)
+        ?? STORY_NPC_PLACEMENTS.find((p) => p.npcId === npcId && p.regionId === r);
+      return { regionId: r, dataRegion: pl?.dataRegion };
+    }
+    return { regionId: r, dataRegion: STORY_GUEST_ANCHORS.find((a) => a.regionId === r)?.dataRegion };
+  }
+
   /**
    * NPC 대화용 — 이 NPC가 발주한 퀘스트 분류.
    * 140차: 우호도가 `subGateMin` 미만이면 **서브** 발주는 감춘다(`refusedSub`에 표시용으로 남긴다).
@@ -520,10 +554,12 @@ class StoryStoreManager {
   questsForNpc(npcId: string, regionId?: string): { completable: StoryQuestDef[]; active: StoryQuestDef[]; offer: StoryQuestDef[]; refusedSub: StoryQuestDef[] } {
     const mine = STORY_QUESTS.filter((q) => q.giver === npcId);
     // 286차 — 그 땅에서 꺼내는 이야기(`offerRegion`)는 그 지역에서 만났을 때만 받는다(떠돌이 바람 — 「해녀의 딸」은 서귀포)
-    const avail = mine.filter((q) => this.status(q) === 'available' && (!q.offerRegion || !regionId || q.offerRegion === regionId));
+    // 291차 — 받는 · 끝내는 자리가 이 지역에서 열리는가(`here` 편은 편의 지역에서만 · `home` 편은 그 사람 집에서만)
+    const meetOk = (q: StoryQuestDef, stage: 'offer' | 'complete'): boolean => !regionId || meetStageOpenIn(q, stage, regionId, npcPlacedIn);
+    const avail = mine.filter((q) => this.status(q) === 'available' && (!q.offerRegion || !regionId || q.offerRegion === regionId) && meetOk(q, 'offer'));
     const open = canOfferSubQuest(this.affinityOf(npcId));
     return {
-      completable: mine.filter((q) => this.isActive(q.id) && this.allObjectivesDone(q)),
+      completable: mine.filter((q) => this.isActive(q.id) && this.allObjectivesDone(q) && meetOk(q, 'complete')),
       active: mine.filter((q) => this.isActive(q.id) && !this.allObjectivesDone(q)),
       offer: avail.filter((q) => q.kind === 'main' || open),
       refusedSub: open ? [] : avail.filter((q) => q.kind === 'sub'),

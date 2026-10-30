@@ -165,6 +165,50 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   { npcId: 'ha_minji', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 331, ty: 358, behavior: 'wander' },
 ];
 
+/**
+ * 291차 — **출장 자리**. 집 자리가 이 지역에 없는 인물(대부분 속초 사람)이 이 지역 이야기로 나와 설 곳이다.
+ * core `questGuestsIn`이 「누가 나와 있는가」를 정하고, 씬은 이 칸 둘레에 사람마다 몇 칸씩 비켜 세운다(`nearestStandable`로 스냅).
+ * 칸 = 그 데이터 지역에서 이야기 인물이 모이는 항구 · 시장 앞(263차 배치 옆 걷는 칸). 지역마다 하나.
+ */
+export interface StoryGuestAnchor {
+  regionId: string;
+  dataRegion?: string;
+  tx: number;
+  ty: number;
+  labelKo: string;
+}
+
+export const STORY_GUEST_ANCHORS: StoryGuestAnchor[] = [
+  // 칸은 291차 실측 — 이야기 인물(집 자리) 곁 16칸 안에서 비켜 서는 칸 9곳이 모두 땅(. , w)인 곳(바다 · 방파제 · 차도 · 건물 제외)
+  { regionId: 'gangwon_sokcho', tx: 590, ty: 157, labelKo: '동명활어센터 앞' },
+  { regionId: 'busan', dataRegion: 'busan_gamcheon', tx: 740, ty: 143, labelKo: '부산 남항 공동어시장 앞' },
+  { regionId: 'ulsan', dataRegion: 'ulsan', tx: 639, ty: 415, labelKo: '방어진항 부두 뒤' },
+  { regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 569, ty: 349, labelKo: '구룡포 수협 옆' },
+  { regionId: 'gyeongnam_geoje', dataRegion: 'geoje_east', tx: 615, ty: 420, labelKo: '지세포 터미널 앞' },
+  { regionId: 'jeonnam_yeosu', dataRegion: 'yeosu_city', tx: 260, ty: 508, labelKo: '여수 구항 숙소 거리' },
+  { regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 446, ty: 350, labelKo: '안흥항 부두' },
+  { regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 513, ty: 397, labelKo: '서귀포항 안쪽' },
+  { regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 333, ty: 361, labelKo: '연안부두' },
+];
+
+/** 출장 온 사람마다 비켜 서는 칸(타일) — 같은 지역에 여럿이 나와도 겹치지 않게 */
+export const STORY_GUEST_OFFSETS: readonly (readonly [number, number])[] = [
+  [0, 0], [3, 1], [-3, 1], [0, 3], [3, -2], [-3, -2], [6, 0], [-6, 0], [0, -4],
+];
+
+/** 이 인물이 이 지역에 좌표 있는 집 자리를 갖는가(291 — core `MeetingCtx.placedIn`) */
+export function npcPlacedIn(npcId: string, regionId: string): boolean {
+  return STORY_NPC_PLACEMENTS.some((p) => p.npcId === npcId && p.regionId === regionId && p.tx !== undefined);
+}
+
+/** 이 인물의 집 자리 지역들(좌표 있는 자리 먼저) */
+export function npcHomeRegions(npcId: string): string[] {
+  const mine = STORY_NPC_PLACEMENTS.filter((p) => p.npcId === npcId);
+  const withXY = mine.filter((p) => p.tx !== undefined).map((p) => p.regionId);
+  const rest = mine.filter((p) => p.tx === undefined).map((p) => p.regionId);
+  return [...new Set([...withXY, ...rest])];
+}
+
 export const STORY_PLACES: StoryPlace[] = [
   { key: 'poi:yeonggeumjeong', regionId: 'gangwon_sokcho', tx: 572, ty: 88, radiusTiles: 6, labelKo: '영금정' },
   { key: 'poi:okseon-stall', regionId: 'gangwon_sokcho', tx: 584, ty: 158, radiusTiles: 3, labelKo: '정옥선 좌판 근처' },
