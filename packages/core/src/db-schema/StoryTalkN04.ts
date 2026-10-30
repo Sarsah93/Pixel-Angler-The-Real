@@ -103,6 +103,8 @@ export const TALKS_N04: StoryTalkDef[] = [
             note: ['오늘은 구경만 하겠다고 했다. 배누리 씨는 아쉬워하면서도 다음에 꼭 같이 낚자고 했다.',
               "I said I'd only watch today. Nuri looked disappointed, but made me promise to fish with them next time."] }),
         ],
+        note: ['부비를 물었더니, 배누리 씨는 부비 대신 소금이랑 호일만 가져오면 된다고 했다. 입부는 나중에 정해도 된다고.',
+          "When I asked about dues, Nuri said there weren't any — just bring salt and foil. Joining could wait."],
       }),
     },
   },

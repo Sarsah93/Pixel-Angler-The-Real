@@ -147,6 +147,7 @@ export const TALKS_N05: StoryTalkDef[] = [
           opt('thank', '나기범 씨한테 직접 고맙다고 할게요', "I'll go and thank Gibeom myself", {
             say: ['나기범 씨한테 직접 고맙다고 하고 올게요.', "I'll go and thank Gibeom in person."], next: 'thank' }),
         ],
+        note: ['보답 얘기 대신, 서하린 씨에게 꼭 할 말이 있었다.', "Rather than talk about repayment, there was something I had to tell Harin."],
       }),
       counted: scene([
         line(H, '…네 번이요? 아니에요, 세 번…', "...Four? No, three...", { act: 'look_up' }),

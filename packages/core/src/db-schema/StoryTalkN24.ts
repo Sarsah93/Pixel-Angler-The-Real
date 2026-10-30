@@ -311,4 +311,372 @@ export const TALKS_N24: StoryTalkDef[] = [
       }),
     },
   },
+
+  // ═══════════════════════════════════════════
+  // N24-2 「원조」 — 받는 자리(문필구) · 사용자 예시 그대로
+  // ═══════════════════════════════════════════
+  {
+    id: 'n24_2_offer', questId: 'N24-2', at: 'offer', npcId: A, start: 'start',
+    nodes: {
+      start: scene([
+        line(A, '(유리문의 종이를 손가락으로 두드린다.)', '(He taps the notice on the glass door.)'),
+        line(A, '봤냐. 「원조는 여기 하나뿐」. 내가 붙였다.', 'See that? There is only one original, and it is here. I put that up.'),
+        line(P, '건너편 유리문에도 비슷한 게 붙었던데요.', "There's something like it on the glass door across the street too."),
+        line(A, '그놈이 먼저 「원조 문찌」를 써 붙였거든.', 'Because the one across the street put up The original Mun float first.'),
+        line(P, '차영배 씨가요?', 'Yeongbae did?'),
+        line(A, '그놈, 내 밑에서 아홉 해를 배웠다. 밥 먹여 가며 칼 쥐는 법부터 가르쳤어.', 'Nine years he learned under me. I fed him and taught him from how to hold a knife.'),
+        line(A, '그러다 하루아침에 나가서 길 건너에 똑같은 간판을 달았다. 내 찌 모양 그대로, 반값에.', "Then one morning he walked out and hung the same sign across the street. My float's shape exactly, at half the price."),
+        line(A, '이번엔 그냥 못 넘긴다. 네가 좀 해 줘야겠다.', "This time I can't let it go. You'll have to do something for me."),
+      ], {
+        choices: [
+          opt('too_far', '그건 너무했네요. 배운 집 앞에 같은 간판이라니요.', 'That was going too far. The same sign right in front of the shop that taught him.', {
+            stance: 'giver', aff: { [A]: 0.05 }, next: 'plan' }),
+          opt('not_bad', '그래도 차영배 씨가 딱히 나쁜 사람 같지는 않던데요.', "Still, Yeongbae didn't strike me as a bad man.", {
+            stance: 'other', aff: { [A]: -0.08 }, next: 'whose_side' }),
+          opt('listen', '두 분 사이에 무슨 일이 있었는지 더 듣고 싶습니다.', "I'd like to hear more about what happened between you two.", {
+            stance: 'mid', aff: { [A]: -0.01 }, flags: ['choice.n24_heard_notebook'], next: 'listen' }),
+          opt('stay_out', '남의 가게 싸움에 끼고 싶지 않습니다.', "I don't want to get caught up in someone else's shop feud.", {
+            stance: 'self', aff: { [A]: -0.04 },
+            end: endTalk({ decline: true,
+              lineKo: '…싸움이라. 그래, 너한텐 싸움으로 보이겠지. 가 봐라.',
+              lineEn: "...A feud. Right, I suppose that's how it looks to you. Off you go." }),
+            note: ['남의 가게 싸움에 끼고 싶지 않다고 했다. 문필구 씨는 너한텐 싸움으로 보이겠다며, 유리문의 종이를 손바닥으로 쓸어 폈다. 내 쪽은 보지 않았다.',
+              "I said I didn't want to get caught up in another shop's feud. I suppose that's how it looks to you, Pilgu said, smoothing the notice on his glass door with his palm. He didn't look my way."] }),
+        ],
+        note: ['두 가게 유리문에 같은 「원조」 종이가 붙었다. 문필구 씨는 차영배 씨가 자기 밑에서 아홉 해를 배우고는 하루아침에 나가 길 건너에 같은 간판을 달았다며, 이번엔 그냥 못 넘긴다고 했다.',
+          "The same notice — The Original — hung on both glass doors. Pilgu said Yeongbae learned under him for nine years, then walked out one morning and hung the same sign across the street. This time he couldn't let it go."],
+      }),
+      whose_side: scene([
+        line(A, '뭐라고?', 'What?'),
+        line(A, '(의자를 밀고 일어선다.)', '(He pushes back his chair and stands.)'),
+        line(A, '너는 지금 누구 편을 드는 거냐? 영배 그놈이 잘한 게 뭐가 있다고!', 'Whose side are you on? What has Yeongbae ever done right?'),
+        line(P, '편을 드는 게 아니라…', "I'm not taking sides, I just—"),
+        line(A, '남의 찌 모양 가져다 반값에 판 놈이야. 그게 나쁜 사람이 아니면 누가 나쁜 사람이냐.', "He took another man's float and sold it at half price. If that's not a bad man, who is?"),
+      ], {
+        choices: [
+          opt('apologize', '제가 말이 짧았습니다. 말씀을 더 듣겠습니다.', "I spoke too quickly. I'll hear you out.", {
+            stance: 'giver', aff: { [A]: 0.03 }, next: 'plan' }),
+          opt('both_same', '둘 다 같은 사람인 것 같습니다.', 'You two seem like the same kind of man to me.', {
+            stance: 'mid', aff: { [A]: -0.06 },
+            say: ['…제가 보기엔, 둘 다 같은 사람인 것 같습니다.', '...The way I see it, you two seem like the same kind of man.'], next: 'no_help' }),
+          opt('silent', '(아무 말 없이 고개를 숙인다.)', '(I lower my head and say nothing.)', { stance: 'self', next: 'plan' }),
+        ],
+        note: ['차영배 씨가 나쁜 사람 같지는 않더라고 했다가, 문필구 씨가 의자를 밀고 일어섰다. 누구 편을 드는 거냐고, 남의 찌 모양을 가져다 반값에 판 놈이라고 했다.',
+          "When I said Yeongbae didn't seem like a bad man, Pilgu pushed back his chair and stood. Whose side was I on? The man took another's float and sold it at half price."],
+      }),
+      no_help: scene([
+        line(A, '(한참 나를 노려본다.)', '(He glares at me for a long while.)'),
+        line(A, '…너는 나를 도울 생각이 없는 거지?', "...You've got no intention of helping me, have you?"),
+      ], {
+        choices: [
+          opt('not_that', '그건 아닙니다만…', "That's not it, but...", {
+            stance: 'mid',
+            end: endTalk({ accept: true, offer: 'help_him',
+              lineKo: '그럼 내가 말하는 대로 우선 영배를 자극해.\n\n그놈 찌로 한 마리 낚아서 눕는 걸 봐 두고, 그놈 가게에 가서 물어. 원조라면서 왜 눕느냐고. 얼굴이 시뻘게질 거다.',
+              lineEn: "Then do as I say. Get under Yeongbae's skin first.\n\nCatch one on his float and watch it lie down, then go to his shop and ask him. If it's the original, why does it lie down? His face will go red." }),
+            note: ['그건 아니라고 얼버무렸다. 문필구 씨는 찌 하나를 탁자에 탁 내려놓으며, 그놈 찌로 한 마리 낚아 눕는 걸 보고 가서 원조라면서 왜 눕느냐고 물으라고 했다.',
+              "I mumbled that it wasn't that. Pilgu slapped a float down on the table: catch one on his float, watch it lie down, then go ask him why the original lies down."] }),
+          opt('ask_him', '차영배 씨에게도 의견을 물어봐야 하지 않을까요?', "Shouldn't we ask Yeongbae what he thinks too?", {
+            stance: 'other', aff: { [A]: -0.08 }, flags: ['choice.n24_mission_tell'],
+            end: endTalk({ accept: true,
+              lineKo: '영배한테 가서, 다 내가 시킨 일이니 그렇다고 해라! 못난 놈!\n\n가. 그놈 찌로 한 마리 낚아 보고, 가서 그놈 얼굴이나 보고 와.',
+              lineEn: "Then go to Yeongbae and tell him this was all my doing! Hopeless!\n\nGo. Catch one on his float, then go and look him in the face." }),
+            note: ['차영배 씨에게도 의견을 물어야 하지 않겠느냐고 했다. 문필구 씨는 탁자를 내리치며, 다 자기가 시킨 일이니 그렇다고 하라고 소리쳤다.',
+              "I said we should ask Yeongbae too. Pilgu slammed the table and shouted for me to go tell him it was all his doing."] }),
+          opt('leave', '(대답하지 않고 일어선다.)', '(I stand up without answering.)', {
+            stance: 'self', aff: { [A]: -0.04 },
+            end: endTalk({ decline: true, lineKo: '…다들 그렇지. 가라.', lineEn: "...They're all the same. Go." }),
+            note: ['대답하지 않고 일어섰다. 등 뒤로 혀 차는 소리가 들렸다.', 'I stood up without answering. Behind me, I heard him click his tongue.'] }),
+        ],
+        note: ['둘 다 같은 사람 같다고 했다. 문필구 씨는 한참 나를 노려보더니, 자기를 도울 생각이 없는 거냐고 물었다.',
+          'I said they seemed like the same kind of man. Pilgu glared at me for a long while, then asked whether I had any intention of helping him.'],
+      }),
+      listen: scene([
+        act(A, 'sigh'),
+        line(A, '들어서 뭐 하게.', 'What good will hearing it do?'),
+        line(P, '그래도 알고 싶습니다.', "I'd still like to know."),
+        line(A, '…아홉 해다. 손이 빨랐어. 내가 깎은 걸 한 번 보면 그대로 깎았지.', "...Nine years. Quick hands. Show him something I'd carved once and he'd carve it the same."),
+        line(A, '그런 놈이 어느 날 내 작업 수첩에서 한 장을 찢어 들고 나갔다.', 'Then one day he tore a page out of my workshop notebook and walked out with it.'),
+        line(A, '그 수첩에 문찌가 다 들어 있었어. 그러니 원조를 써 붙이지.', "Everything about the Mun float was in that notebook. No wonder he puts up 'the original.'"),
+      ], {
+        choices: [
+          opt('theft', '수첩을 찢어 갔다고요? 그건 도둑질 아닙니까.', "He tore it out of your notebook? Isn't that theft?", {
+            stance: 'giver', aff: { [A]: 0.04 }, next: 'plan' }),
+          opt('his_hand', '그 수첩에 차영배 씨 손이 간 건 없습니까?', "Is there nothing in that notebook from Yeongbae's own hand?", {
+            stance: 'other', aff: { [A]: -0.07 }, next: 'whose_side' }),
+          opt('what_want', '그래서 저한테 바라시는 게 뭡니까?', 'So what is it you want from me?', { stance: 'mid', next: 'plan' }),
+        ],
+        note: ['두 사람 사이에 무슨 일이 있었는지 물었다. 문필구 씨는 한숨을 쉬며, 손이 빠른 제자였는데 어느 날 자기 작업 수첩에서 한 장을 찢어 들고 나갔다고 했다.',
+          "I asked what happened between them. Pilgu sighed: a quick-handed apprentice who one day tore a page out of his workshop notebook and walked out with it."],
+      }),
+      plan: scene([
+        line(A, '(목소리를 낮춘다.)', '(He lowers his voice.)'),
+        line(A, '그놈 찌로 한 마리 낚아 봐라. 파도에 어떻게 눕는지 네 눈으로 보는 거다.', 'Catch one on his float. See with your own eyes how it lies down in the waves.'),
+        line(P, '그다음에는요?', 'And then?'),
+        line(A, '그다음에 그놈 가게에 가서 물어. 원조라면서 왜 눕느냐고.', "Then go to his shop and ask him. If it's the original, why does it lie down?"),
+        line(A, '그 얼굴만 보고 와. 그거면 된다.', "Just see his face. That's all."),
+      ], {
+        choices: [
+          opt('will_go', '알겠습니다. 다녀오겠습니다.', "Understood. I'll go.", {
+            stance: 'giver', aff: { [A]: 0.03 },
+            end: endTalk({ accept: true, offer: 'help_him', lineKo: '그래. 너는 말이 통하는구나.', lineEn: 'Good. You and I understand each other.' }),
+            note: ['다녀오겠다고 했다. 문필구 씨는 처음으로 내 어깨를 두드리며, 말이 통한다고 했다.', "I said I'd go. For the first time Pilgu patted my shoulder — we understood each other, he said."] }),
+          opt('own_words', '가 보겠습니다. 다만 무슨 말을 할지는 제가 정하겠습니다.', "I'll go. But I'll decide what to say myself.", {
+            stance: 'mid', aff: { [A]: -0.02 },
+            end: endTalk({ accept: true, offer: 'my_way',
+              lineKo: '…네 입이니 네가 정하겠지. 대신 빈손으로는 오지 마라.',
+              lineEn: "...It's your mouth, so I suppose you'll decide. Just don't come back empty-handed." }),
+            note: ['가겠지만 무슨 말을 할지는 내가 정하겠다고 했다. 문필구 씨는 눈을 가늘게 뜨더니, 대신 빈손으로는 오지 말라고 했다. 그놈 찌로 한 마리는 낚아 오라고.',
+              "I said I'd go but would decide what to say myself. Pilgu narrowed his eyes — then don't come back empty-handed. At least catch one on the man's float."] }),
+          opt('wont', '그런 일이라면 못 하겠습니다.', "If that's the job, I can't do it.", {
+            stance: 'self', aff: { [A]: -0.05 },
+            end: endTalk({ decline: true, lineKo: '그래, 깨끗한 손으로 살아라. 나는 이십 년을 더럽혔다.', lineEn: "Fine. Keep your hands clean. I've spent twenty years getting mine dirty." }),
+            note: ['그런 일이라면 못 하겠다고 했다. 문필구 씨는 깨끗한 손으로 살라며, 자기는 이십 년을 더럽혔다고 했다.', "I said I couldn't do that kind of job. Keep your hands clean, Pilgu said — he had spent twenty years getting his dirty."] }),
+        ],
+        note: ['문필구 씨가 목소리를 낮췄다. 건너편 찌로 한 마리 낚아 파도에 어떻게 눕는지 보고, 그 가게에 가서 원조라면서 왜 눕느냐고 물어보라고 했다. 그 얼굴만 보고 오라고.',
+          "Pilgu lowered his voice. Catch one on the float from across the street and watch how it lies down in the waves, then go ask why the original lies down. Just see the man's face."],
+      }),
+    },
+  },
+
+  // N24-2 — 진행 중: 차영배 앞(목표 1). 사실대로 / 감추고 자극 / 중도
+  {
+    id: 'n24_2_face_b', questId: 'N24-2', at: 'objective', objectiveIndex: 1, npcId: B, start: 'start',
+    nodes: {
+      start: scene([
+        line(B, '또 왔네요.', 'You again.', { act: 'look_up' }),
+        line(B, '오늘은 얼굴이 심부름 온 얼굴인데.', "Today you've got the look of someone sent on an errand."),
+        line(P, '…티가 납니까?', '...Is it that obvious?'),
+        line(B, '(유리문에 붙은 「원조 문찌」 종이를 턱으로 가리킨다.)', '(He nods at the notice on his glass door: The original Mun float.)'),
+        line(B, '저거 때문에 왔죠?', "You're here about that, aren't you?"),
+      ], {
+        choices: [
+          opt('tell_truth', '문필구 씨가 보내셨습니다. 다 자기가 시킨 일이라더군요.', 'Pilgu sent me. He said this is all his doing.', {
+            stance: 'giver', aff: { [B]: -0.1 }, flags: ['choice.n24_told_truth'], requires: { flag: 'choice.n24_mission_tell' },
+            say: ['문필구 씨가 보내셨습니다. 다 자기가 시킨 일이니 그렇게 전하라더군요.', 'Pilgu sent me. He said to tell you this is all his doing.'], next: 'angry_truth' }),
+          opt('provoke', '그 찌, 원조라면서 왜 파도에 눕습니까?', 'If that float is the original, why does it lie down in the waves?', {
+            stance: 'giver', aff: { [B]: -0.12, [A]: 0.03 }, flags: ['choice.n24_provoked'], next: 'angry_provoke' }),
+          opt('honest_mid', '문필구 씨가 보내셨어요. 그래도 이쪽 얘기도 듣고 싶습니다.', 'Pilgu sent me. But I want to hear your side too.', {
+            stance: 'mid', aff: { [B]: -0.03 }, flags: ['choice.n24_told_truth', 'choice.n24_heard_b'],
+            say: ['사실은 문필구 씨가 보내셨습니다. 그런데 저는 차영배 씨 얘기도 듣고 싶습니다.', "The truth is, Pilgu sent me. But I'd like to hear your side too, Yeongbae."], next: 'confide' }),
+          opt('pretend', '그냥 찌 사러 왔습니다.', 'I just came to buy a float.', { stance: 'self', next: 'pretend' }),
+        ],
+        note: ['건너편 찌로 한 마리를 올린 뒤 「영배 낚시」에 들렀다. 차영배 씨는 나를 보자마자 웃음이 반쯤 걷히며, 저 종이 때문에 왔느냐고 물었다.',
+          "After catching one on the float from across the street, I went to Yeongbae Tackle. The moment he saw me, Yeongbae's smile half faded, and he asked if I was there about that notice."],
+      }),
+      angry_truth: scene([
+        line(B, '뭐라고?', 'What?'),
+        line(B, '(찌를 닦던 손이 멈춘다.)', '(His hand stops on the float he was wiping.)'),
+        line(B, '형님이 그랬다고 한들, 너도 매한가지로구나!', "Even if it was Pilgu's doing, you're no better!"),
+        line(P, '그게…', 'Well...'),
+        line(B, '시킨 사람이나 시킨다고 오는 사람이나. 이십 년을 길 건너에서 쳐다보기만 하더니, 이제는 남의 입을 빌려 말하네.', "The one who sends and the one who comes when he's sent. Twenty years of staring from across the street, and now he talks through someone else's mouth."),
+      ], {
+        choices: [
+          opt('just_passed', '전하라는 말만 전했습니다. 판단은 차영배 씨 몫입니다.', "I only passed on what I was told. What you make of it is up to you.", {
+            stance: 'mid', aff: { [B]: -0.02 },
+            end: endTalk({ lineKo: '…그래, 전했으면 가요. 오늘은 장사 안 해요.', lineEn: "...Fine. If you've passed it on, go. I'm not open today." }),
+            note: ['전하라는 말만 전했을 뿐이라고 했다. 차영배 씨는 등을 돌리며, 전했으면 가라고 했다. 오늘은 장사 안 한다고.', "I said I'd only passed on what I was told. Yeongbae turned his back — if I'd passed it on, go. He wasn't open today."] }),
+          opt('rude_sorry', '제가 무례했습니다. 차영배 씨 얘기도 듣고 싶습니다.', 'That was rude of me. I want to hear your side too.', {
+            stance: 'other', aff: { [B]: 0.04 }, flags: ['choice.n24_heard_b', 'choice.n24_heard_notebook'], next: 'confide_late' }),
+        ],
+        note: ['문필구 씨가 시킨 일이라고 그대로 전했다. 차영배 씨는 찌를 닦던 손을 멈추고, 형님이 그랬다고 한들 너도 매한가지라고 소리쳤다.',
+          "I told him plainly it was Pilgu's doing. Yeongbae's hand stopped on the float he was wiping. Even if it was Pilgu's doing, he shouted, I was no better."],
+      }),
+      angry_provoke: scene([
+        line(B, '(얼굴이 붉어진다.)', '(His face reddens.)'),
+        line(B, '…누가 시켰는지 안 봐도 알겠네.', "...I don't need to ask who put you up to it."),
+        line(B, '뭐라고? 형님이 그랬다고 한들, 너도 매한가지로구나!', "What? Even if it was Pilgu's doing, you're no better!"),
+        line(B, '남의 가게에 와서 손님들 앞에서 그 말을 해?', "Coming into another man's shop and saying that in front of his customers?"),
+      ], {
+        choices: [
+          opt('it_lies', '눕는 건 사실 아닙니까.', "Well, it does lie down, doesn't it?", {
+            stance: 'giver', aff: { [B]: -0.05, [A]: 0.03 },
+            end: endTalk({ lineKo: '나가요. 다신 오지 마요.', lineEn: "Get out. Don't come back." }),
+            note: ['눕는 건 사실이지 않느냐고 했다. 차영배 씨는 진열장 유리를 쾅 닫고, 나가라고, 다신 오지 말라고 했다.', "I said it did lie down, didn't it. Yeongbae slammed the glass case shut and told me to get out and never come back."] }),
+          opt('too_far_sorry', '말이 지나쳤습니다. 죄송합니다.', "That went too far. I'm sorry.", {
+            stance: 'mid', aff: { [B]: 0.03 }, next: 'sorry' }),
+        ],
+        note: ['원조라면서 왜 눕느냐고 물었다. 차영배 씨는 얼굴이 붉어지더니, 누가 시켰는지 안 봐도 안다며 너도 매한가지라고 했다. 손님들 앞에서였다.',
+          "I asked why the original lies down. Yeongbae's face reddened — he didn't need to ask who put me up to it, and I was no better. In front of his customers."],
+      }),
+      sorry: scene([
+        act(B, 'sigh'),
+        line(B, '…됐어요. 그 양반 말버릇 옮은 거 알아요. 나도 저 집에서 아홉 해 그 말 듣고 살았으니까.', "...Never mind. I know you caught his way of talking. I lived nine years in that shop hearing it too."),
+        line(P, '그래도 눕는 건…', 'Still, the way it lies down...'),
+        line(B, '눕는 건 맞아요. 공장 몸통이라.', "It does lie down, that's true. Factory bodies."),
+        line(B, '근데 그 몸통 모양을 처음 낸 게 누군지는, 그 양반 수첩이 알아요.', 'But who first came up with that body shape, his notebook knows.'),
+      ], {
+        choices: [
+          opt('notebook', '수첩이요?', 'His notebook?', {
+            stance: 'mid', flags: ['choice.n24_heard_b', 'choice.n24_heard_notebook'],
+            end: endTalk({ lineKo: '오늘은 여기까지. 그 양반한테는 내가 화냈다고 전해요. 그래야 좋아하지.', lineEn: "That's enough for today. Tell him I got angry. That'll please him." }),
+            note: ['수첩이 무슨 말이냐고 물었다. 차영배 씨는 고개를 저으며 오늘은 여기까지라고, 문필구 씨에게는 자기가 화냈다고 전하라고 했다. 그래야 좋아한다고.', "I asked what he meant by the notebook. Yeongbae shook his head — that was enough for today. Tell Pilgu he got angry; that would please him."] }),
+        ],
+        note: ['말이 지나쳤다고 사과했다. 차영배 씨는 숨을 고르며, 공장 몸통이라 눕는 건 맞다고 했다. 그런데 그 몸통 모양을 처음 낸 게 누군지는 문필구 씨 수첩이 안다고.',
+          "I apologized for going too far. Yeongbae caught his breath and admitted his floats lie down — factory bodies. But who first came up with that body shape, Pilgu's notebook knows, he said."],
+      }),
+      confide: scene([
+        line(B, '(한참 나를 본다.)', '(He looks at me for a long time.)'),
+        line(B, '…솔직하네요. 그 양반이 보낸 사람치고.', "...You're honest. For someone he sent."),
+        line(B, '(걸레를 내려놓는다.)', '(He puts down his rag.)'),
+        line(B, '문찌 몸통, 그 물방울 모양. 그거 내가 깎았어요. 형님 밑에 있을 때.', 'The body of the Mun float, that teardrop shape. I carved that. Back when I worked for him.'),
+        line(P, '차영배 씨가요?', 'You did?'),
+        line(B, '형님은 그걸 수첩에 적고 「문찌」라고 팔았죠. 나는 그게 싫어서 나왔고.', "He wrote it in his notebook and sold it as the Mun float. I couldn't stand that, so I left."),
+      ], {
+        choices: [
+          opt('both_origin', '그럼 원조는 두 분 다인 셈이네요.', "Then you could say you're both the original.", {
+            stance: 'mid', aff: { [B]: 0.04 }, flags: ['choice.n24_both_origin'],
+            end: endTalk({ lineKo: '그 말을 그 양반 앞에서도 할 수 있으면, 그때 다시 얘기해요.', lineEn: 'If you can say that in front of him too, then we\'ll talk again.' }),
+            note: ['그럼 원조는 두 분 다인 셈이라고 했다. 차영배 씨는 쓴웃음을 지으며, 그 말을 문필구 씨 앞에서도 할 수 있으면 그때 다시 얘기하자고 했다.', "I said that made them both the original. Yeongbae smiled bitterly — if I could say that in front of Pilgu too, we'd talk again."] }),
+          opt('still_wrong', '그래도 남의 수첩을 찢어 간 건 잘못 아닙니까.', "Still, tearing a page from another man's notebook was wrong, wasn't it?", {
+            stance: 'giver', aff: { [B]: -0.05 },
+            end: endTalk({ lineKo: '찢어 간 게 아니라 내 장을 가져온 거예요. …그만해요.', lineEn: "I didn't tear it out. I took back my own page. ...That's enough." }),
+            note: ['그래도 남의 수첩을 찢어 간 건 잘못이지 않느냐고 했다. 차영배 씨는 입술을 깨물며, 찢어 간 게 아니라 자기 장을 가져온 거라고 했다.', "I said tearing a page from another man's notebook was still wrong. Yeongbae bit his lip — he didn't tear it out; he took back his own page."] }),
+        ],
+        note: ['문필구 씨가 보냈다고 솔직히 말하고, 차영배 씨 얘기도 듣고 싶다고 했다. 차영배 씨는 문찌의 물방울 몸통을 자기가 깎았다고 털어놓았다. 문필구 씨가 그걸 수첩에 적고 「문찌」라고 판 게 싫어서 나왔다고.',
+          "I admitted Pilgu had sent me and said I wanted to hear Yeongbae's side. He confessed that he carved the teardrop body of the Mun float — and left because Pilgu wrote it in his notebook and sold it as the Mun float."],
+      }),
+      confide_late: scene([
+        act(B, 'sigh'),
+        line(B, '…문찌 몸통, 그 물방울 모양 말이에요. 그거 내가 깎았어요.', '...The body of the Mun float, that teardrop shape. I carved it.'),
+        line(B, '형님은 그걸 수첩에 적고 「문찌」라고 팔았죠.', 'He wrote it in his notebook and sold it as the Mun float.'),
+        line(P, '그래서 「원조」를 써 붙이신 거군요.', "So that's why you put up 'the original.'"),
+        line(B, '그 수첩 앞에 내 이름이 한 줄도 없어서예요. 그게 다예요.', "Because my name isn't on a single line of that notebook's front pages. That's all."),
+      ], {
+        choices: [
+          opt('ever_told', '그 얘기, 문필구 씨께 직접 하신 적은 있습니까?', 'Have you ever said that to Pilgu yourself?', {
+            stance: 'mid', aff: { [B]: 0.02 },
+            end: endTalk({ lineKo: '이십 년 동안 길 하나를 못 건넜어요. 형님도, 나도.', lineEn: 'In twenty years neither of us has managed to cross one street. Not him, not me.' }),
+            note: ['그 얘기를 문필구 씨에게 직접 한 적이 있느냐고 물었다. 차영배 씨는 고개를 저으며, 이십 년 동안 둘 다 길 하나를 못 건넜다고 했다.', "I asked whether he had ever told Pilgu himself. Yeongbae shook his head: in twenty years, neither of them had managed to cross one street."] }),
+        ],
+        note: ['무례했다고 사과하자, 차영배 씨가 길게 숨을 내쉬고 털어놓았다. 문찌의 물방울 몸통은 자기가 깎았고, 「원조」를 써 붙인 건 그 수첩에 자기 이름이 한 줄도 없어서라고.',
+          "When I apologized for my rudeness, Yeongbae let out a long breath and told me: he carved the teardrop body of the Mun float, and he put up 'the original' because his name isn't on a single line of that notebook."],
+      }),
+      pretend: scene([
+        act(B, 'laugh'),
+        line(B, '찌 사러 온 얼굴이 아닌데. 뭐, 좋아요. 어떤 걸로?', "That's not the face of someone here to buy a float. Well, fine. Which one?"),
+        line(P, '…추천해 주시는 걸로요.', '...Whatever you recommend.'),
+        line(B, '(진열장을 열며 길 건너를 힐끔 본다.)', '(He opens the case and glances across the street.)'),
+        line(B, '저 양반이 유리문 뒤에서 또 보고 있네.', "He's watching from behind his glass door again."),
+      ], {
+        choices: [
+          opt('which_original', '원조 문찌로 하나 주세요. 원조가 맞긴 합니까?', "I'll take an original Mun float. Is it really the original?", {
+            stance: 'giver', aff: { [B]: -0.08, [A]: 0.02 }, flags: ['choice.n24_provoked'], next: 'angry_provoke' }),
+          opt('confess', '이 집 찌로 하나 주세요. 사실은 문필구 씨가 보내셨습니다.', "One of your floats, please. And the truth is, Pilgu sent me.", {
+            stance: 'mid', aff: { [B]: -0.03 }, flags: ['choice.n24_told_truth', 'choice.n24_heard_b'], next: 'confide' }),
+          opt('just_buy', '(찌만 하나 사서 나온다.)', '(I just buy a float and leave.)', {
+            stance: 'self',
+            end: endTalk({ lineKo: '또 와요. 다음엔 심부름 말고.', lineEn: 'Come again. Next time, not on an errand.' }),
+            note: ['찌만 하나 사서 나왔다. 차영배 씨는 봉투에 찌를 넣어 주며, 다음엔 심부름 말고 오라고 했다.', "I just bought a float and left. Yeongbae bagged it for me and said to come again — next time, not on an errand."] }),
+        ],
+        note: ['그냥 찌 사러 왔다고 했다. 차영배 씨는 찌 사러 온 얼굴이 아니라며 웃고는, 길 건너 유리문 뒤에서 문필구 씨가 또 보고 있다고 했다.',
+          "I said I'd just come to buy a float. Yeongbae laughed that it wasn't the face of a buyer, then said Pilgu was watching from behind his glass door again."],
+      }),
+    },
+  },
+
+  // N24-2 — 끝내는 자리(문필구)
+  {
+    id: 'n24_2_done', questId: 'N24-2', at: 'complete', npcId: A, start: 'start',
+    nodes: {
+      start: scene([
+        line(A, '(유리문 앞에서 기다리고 있었다.)', '(He was waiting by the glass door.)'),
+        line(A, '봤다. 유리문 너머로 다 봤어.', 'I saw. I saw it all through the glass.'),
+        line(P, '보셨으면 아시겠네요.', 'If you saw, then you know.'),
+        line(A, '소리는 안 들려. 그래서, 그놈 얼굴이 어떻더냐.', "I can't hear through glass. So — what did his face look like?"),
+      ], {
+        choices: [
+          opt('red_face', '말씀대로 물었습니다. 얼굴이 시뻘개지더군요.', 'I asked him, as you said. His face went bright red.', {
+            stance: 'giver', aff: { [A]: 0.06 }, requires: { flag: 'choice.n24_provoked' }, next: 'gloat' }),
+          opt('told', '시키신 일이라고 그대로 전했습니다.', 'I told him plainly that it was your doing.', {
+            stance: 'mid', aff: { [A]: -0.03 }, requires: { flag: 'choice.n24_told_truth' }, next: 'told' }),
+          opt('body', '차영배 씨는 그 몸통을 자기가 깎았다고 하더군요.', 'Yeongbae says he carved that body himself.', {
+            stance: 'other', aff: { [A]: -0.06 }, requires: { flag: 'choice.n24_heard_b' }, next: 'body' }),
+          opt('bought', '그냥 찌만 하나 사 왔습니다.', 'I just bought a float and came back.', { stance: 'self', next: 'bought' }),
+        ],
+        note: ['차영배 씨를 만나고 돌아왔다. 문필구 씨는 유리문 앞에서 기다리고 있었다. 유리문 너머로 다 봤지만 소리는 안 들린다며, 그놈 얼굴이 어떻더냐고 물었다.',
+          "I came back from seeing Yeongbae. Pilgu had been waiting by his glass door. He had seen it all, he said, but couldn't hear through glass — what did the man's face look like?"],
+      }),
+      gloat: scene([
+        act(A, 'laugh'),
+        line(A, '그렇지! 그놈은 그 말에 약해. 원조 소리에.', "That's it! That's his weak spot. The word original."),
+        line(P, '…', '...'),
+        line(A, '(웃음이 금방 꺼진다.)', '(The laugh dies quickly.)'),
+        line(A, '…그래. 시뻘개졌단 말이지.', '...Right. Bright red, you say.'),
+      ], {
+        choices: [
+          opt('relieved', '속이 시원하십니까?', 'Do you feel better now?', {
+            stance: 'mid',
+            end: endTalk({ complete: 'pay', lineKo: '…수고했다. 이건 수고비다.', lineEn: '...Good work. Here, your fee.' }),
+            note: ['속이 시원하냐고 물었다. 문필구 씨는 대답 대신 찌 깎던 칼을 내려놓고, 수고했다며 수고비를 건넸다.', "I asked if he felt better. Instead of answering, Pilgu put down his carving knife and handed me my fee."] }),
+          opt('whats_next', '다음엔 뭘 할까요?', 'What should I do next?', {
+            stance: 'giver', aff: { [A]: 0.03 }, flags: ['choice.n24_revenge_more'],
+            end: endTalk({ complete: 'pay',
+              lineKo: '다음? 다음은 어촌계다. 원조가 누군지 공식으로 가리자고 할 거다. 그때 네가 본 걸 말해 줘야 한다.',
+              lineEn: "Next? Next is the co-op. I'll have them decide officially who the original is. When that happens, you'll tell them what you saw." }),
+            note: ['다음엔 뭘 할지 물었다. 문필구 씨는 눈이 번쩍하더니, 어촌계에서 원조를 공식으로 가리자고 할 거라며 그때 내가 본 걸 말해 달라고 했다.', "I asked what to do next. Pilgu's eyes lit up — he would take it to the co-op to settle the original officially, and I would tell them what I saw."] }),
+        ],
+        note: ['말씀대로 물었더니 얼굴이 시뻘개지더라고 했다. 문필구 씨는 손뼉을 치며 좋아하다가, 웃음이 금방 꺼졌다.',
+          "I said I'd asked as he told me and the man's face went bright red. Pilgu clapped his hands with glee — then the laugh died quickly."],
+      }),
+      told: scene([
+        line(A, '그대로 전했다고.', 'You told him straight.', { act: 'look_away' }),
+        line(A, '…내가 시킨 일이라고.', '...That it was my doing.'),
+        act(A, 'silence'),
+        line(A, '그놈이 뭐라더냐. 아니, 됐다. 화냈겠지. 그놈은 화낼 때 귀가 빨개져.', "What did he say? No, never mind. He got angry. His ears go red when he's angry."),
+      ], {
+        choices: [
+          opt('his_side', '귀가 빨개지셨습니다. 그리고 문필구 씨 얘기도 조금 하셨습니다.', 'His ears went red. And he said a little about you too.', {
+            stance: 'mid',
+            end: endTalk({ complete: 'nopay', lineKo: '…그놈이 내 얘기를 했다고. 다음에 마저 듣자. 오늘은 가라.', lineEn: '...He talked about me. Tell me the rest another time. Go for today.' }),
+            note: ['귀가 빨개졌고 문필구 씨 얘기도 조금 하더라고 했다. 문필구 씨는 창밖 건너편을 보며 다음에 마저 듣자고 했다. 봉투를 내밀다가 도로 거뒀다.', "I said his ears went red and he spoke a little about Pilgu too. Pilgu looked out across the street and said he'd hear the rest another time. He began to hold out an envelope, then took it back."] }),
+          opt('as_told', '말씀대로 했을 뿐입니다.', 'I only did as you told me.', {
+            stance: 'giver',
+            end: endTalk({ complete: 'pay', lineKo: '그래. 내가 시켰다. 그건 내가 지고 가마. 수고비다.', lineEn: "Right. I sent you. I'll carry that myself. Here's your fee." }),
+            note: ['말씀대로 했을 뿐이라고 했다. 문필구 씨는 고개를 끄덕이며, 자기가 시켰으니 그건 자기가 지고 가겠다고 했다.', "I said I'd only done as told. Pilgu nodded — he sent me, so he would carry that himself."] }),
+        ],
+        note: ['시킨 일이라고 그대로 전했다고 했다. 문필구 씨의 입꼬리가 내려갔다. 한참 있다가, 그놈은 화낼 때 귀가 빨개진다고 했다.',
+          "I said I'd told him plainly it was Pilgu's doing. The corners of Pilgu's mouth dropped. After a long pause he said the man's ears go red when he's angry."],
+      }),
+      body: scene([
+        line(A, '(얼굴이 굳는다.)', '(His face hardens.)'),
+        line(A, '…그놈이 그러더냐. 몸통은 자기가 깎았다고.', '...He said that? That he carved the body.'),
+        line(A, '(서랍을 열었다가 도로 닫는다.)', '(He opens a drawer, then shuts it again.)'),
+        line(A, '깎은 손은 그놈 손이 맞다. 그런데 그걸 찌로 만든 건 내 수첩이야. 손 하나로 찌가 되는 줄 아냐.', "The hand that carved it was his, true. But what made it a float was my notebook. You think one pair of hands makes a float?"),
+      ], {
+        choices: [
+          opt('show_notebook', '수첩을 한번 보여 주실 수 있습니까?', 'Could you show me the notebook?', {
+            stance: 'mid', aff: { [A]: -0.02 },
+            end: endTalk({ complete: 'float', lineKo: '…다음에. 다음에 와라. 오늘은 이거나 가져가.', lineEn: '...Another time. Come another time. Take this for today.' }),
+            note: ['수첩을 보여 줄 수 있느냐고 했다. 문필구 씨는 서랍 손잡이를 쥔 채 한참 있다가, 다음에 오라며 서랍 대신 진열장에서 찌 하나를 꺼내 주었다.', "I asked if he would show me the notebook. Pilgu stood with his hand on the drawer a long time, then said another time — and gave me a float from the case instead."] }),
+          opt('also_right', '그 말씀도 맞습니다.', "You're right about that too.", {
+            stance: 'giver', aff: { [A]: 0.03 },
+            end: endTalk({ complete: 'pay', lineKo: '그래. 오늘은 그만하자. 수고비다.', lineEn: "Right. Let's leave it there for today. Here's your fee." }),
+            note: ['그 말도 맞다고 했다. 문필구 씨의 어깨가 조금 내려갔다. 오늘은 그만하자며 수고비를 건넸다.', "I said he was right about that too. Pilgu's shoulders dropped a little; let's leave it for today, he said, and handed me my fee."] }),
+        ],
+        note: ['차영배 씨가 그 몸통을 자기가 깎았다더라고 전했다. 문필구 씨는 얼굴이 굳어 서랍을 열었다 닫더니, 깎은 손은 그놈 손이 맞지만 찌로 만든 건 자기 수첩이라고 했다.',
+          "I passed on that Yeongbae said he carved the body himself. Pilgu's face hardened; he opened a drawer and shut it again. The hands that carved it were the man's, he admitted — but his notebook made it a float."],
+      }),
+      bought: scene([
+        line(A, '(봉투를 흘끗 본다.)', '(He glances at the bag.)'),
+        line(A, '그놈 찌를 샀어? 내가 보낸 사람이?', 'You bought his float? Someone I sent?'),
+        line(P, '그게…', 'Well...'),
+        act(A, 'sigh'),
+        line(A, '너도 결국 싼 게 좋은 거지.', 'In the end you just like cheap things too.'),
+      ], {
+        choices: [
+          opt('to_test', '물에 세워 보려고 산 겁니다.', 'I bought it to stand it in the water.', {
+            stance: 'mid',
+            end: endTalk({ complete: 'pay', lineKo: '…그래, 세워 봐라. 누워 있을 거다. 옜다, 수고비.', lineEn: "...Fine, stand it. It'll be lying down. Here, your fee." }),
+            note: ['물에 세워 보려고 산 거라고 했다. 문필구 씨는 누워 있을 거라며 마지못해 수고비를 건넸다.', "I said I bought it to stand it in the water. It would be lying down, Pilgu said, and reluctantly handed over my fee."] }),
+          opt('cheap_fine', '싼 찌도 잃어버리기엔 좋더군요.', 'A cheap float is easier to lose, at least.', {
+            stance: 'other', aff: { [A]: -0.04 },
+            end: endTalk({ complete: 'nopay', lineKo: '잃어버려도 되는 찌로 무슨 고기를 낚겠냐. 가라.', lineEn: "What fish will you catch with a float you don't mind losing? Go." }),
+            note: ['싼 찌도 잃어버리기엔 좋더라고 했다. 문필구 씨는 봉투를 서랍에 도로 넣으며, 잃어버려도 되는 찌로 무슨 고기를 낚겠느냐고 했다.', "I said a cheap float was at least easier to lose. Pilgu put the envelope back in his drawer — what fish would I catch with a float I didn't mind losing?"] }),
+        ],
+        note: ['그냥 찌만 하나 사 왔다고 했다. 문필구 씨는 봉투를 흘끗 보더니 혀를 찼다. 나도 결국 싼 게 좋은 거냐고 했다.',
+          "I said I'd just bought a float and come back. Pilgu glanced at the bag and clicked his tongue — in the end I liked cheap things too, he said."],
+      }),
+    },
+  },
 ];

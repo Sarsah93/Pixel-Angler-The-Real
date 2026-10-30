@@ -1154,5 +1154,233 @@ export const TALKS_M2: StoryTalkDef[] = [
     },
   },
 
-  // ── M2-11 · M2-10 ──
+  // ═══════════════════════════════════════════
+  // M2-11 「되돌아온 상자」 — 받는 자리(정옥선) · 부산에서 속초 좌판으로
+  // ═══════════════════════════════════════════
+  {
+    id: 'm2_11_offer', questId: 'M2-11', at: 'offer', npcId: OK, start: 'start',
+    nodes: {
+      start: scene([
+        line(OK, '…왔어?', "...You're back?", { act: 'look_up' }),
+        line(P, '네. 부산에서 막 올라왔어요.', 'Yes. I just got in from Busan.'),
+        line(OK, '부산은 어떻더냐.', 'How was Busan?'),
+        line(P, '크더라고요. 사람도 많고, 목소리도 크고요.', 'Big. Lots of people, and loud ones.'),
+        act(OK, 'laugh'),
+        line(OK, '좌판 좀 봐라.', 'Take a look at the stall.'),
+        line(P, '좌판이요?', 'The stall?', { act: 'peer' }),
+        line(OK, '요즘 손이 말을 안 들어. 상자 정리도 못 하고 있다.', "My hands won't do what I tell them lately. I haven't even kept the crates in order."),
+        line(P, '(…상자가 다 제각각이다. 얼음을 고르는 손도 예전보다 느리다.)', "(...The crates are all over the place. And her hands are slower with the ice than they used to be.)"),
+      ], {
+        choices: [
+          opt('fix', '부산에서 배운 대로 바꿔 볼게요. 앉아 계세요', "Let me change it the way I learned in Busan. You sit", {
+            say: ['부산에서 배운 대로 바꿔 보겠습니다. 정옥선 씨는 앉아 계세요.', "Let me change it the way I learned in Busan. You sit down, Okseon."],
+            next: 'fix' }),
+          opt('story', '부산 위판장은 여기 스무 배는 돼요. 얘기해 드릴까요?', "The Busan auction is twenty times this place. Shall I tell you about it?", { next: 'story' }),
+          opt('hands', '손이 말을 안 듣는다니요? 어디 다치셨어요?', "Your hands won't listen? Did you hurt them?", { next: 'hands' }),
+        ],
+        note: ['부산에서 배운 상자 규격을 들고 속초 만복상회로 돌아왔다. 정옥선 씨는 좌판 좀 보라며, 요즘 손이 말을 안 들어 상자 정리도 못 하고 있다고 했다. 얼음을 고르는 손이 예전보다 느렸다.',
+          "I came back to the Manbok Store stall in Sokcho with the crate standards I'd learned in Busan. Jeong Okseon told me to look at her stall — her hands wouldn't do what she told them lately, and she hadn't kept the crates in order. Her hands were slower with the ice than before."],
+      }),
+      fix: scene([
+        line(OK, '앉아 있으라고? 내 좌판에서?', 'Sit down? At my own stall?'),
+        line(OK, '(그래도 의자를 끌어다 앉는다.) 해 봐. 부산 놈들 식이 뭔지 나도 좀 보자.', "(She pulls a stool over and sits anyway.) Go on, then. Let me see what this Busan way is."),
+        line(P, '한 상자에 한 가지씩, 얼음은 위아래로요.', 'One kind per crate, ice above and below.'),
+        line(OK, '대신 얼음은 내 식대로다. 그건 안 바꾼다.', "But the ice stays my way. That doesn't change."),
+      ], {
+        choices: [
+          opt('ok', '얼음은 정옥선 씨 식대로 둘게요', "The ice stays your way, Okseon", {
+            end: endTalk({ accept: true, offer: 'fix_display' }),
+            note: ['얼음은 정옥선 씨 식대로 두기로 했다.', 'I agreed to leave the ice her way.'] }),
+          opt('tease', '부산 식으로 바꾸면 손님이 더 올 거예요. 장담해요', "Do it the Busan way and more customers will come. I promise", { next: 'tease' }),
+        ],
+        note: ['부산에서 배운 대로 바꿔 볼 테니 앉아 계시라고 했다. 정옥선 씨는 자기 좌판에서 앉아 있으라느냐면서도 의자를 끌어다 앉았다. 대신 얼음은 자기 식대로라고.', "I said I'd change things the Busan way and asked her to sit. Okseon grumbled about being told to sit at her own stall, but pulled over a stool anyway. The ice would stay her way, though."],
+      }),
+      tease: scene([
+        line(OK, '장담은 함부로 하는 거 아니다.', "Don't go making promises lightly."),
+        line(OK, '손님은 좌판 보고 오는 게 아니라 사람 보고 와.', "Customers don't come for the stall. They come for the person."),
+        line(P, '…', '...'),
+        line(OK, '…그래도 보기 좋으면 한 번은 더 쳐다보겠지. 해 봐.', "...Still, if it looks good, they might glance twice. Go on."),
+      ], {
+        end: endTalk({ accept: true, offer: 'tease' }),
+        note: ['부산 식으로 바꾸면 손님이 더 올 거라고 장담했다. 장담은 함부로 하는 게 아니라고, 손님은 좌판이 아니라 사람 보고 온다고 했다. 그래도 보기 좋으면 한 번은 더 쳐다보겠다며 해 보라고.', "I promised that the Busan way would bring more customers. Don't promise lightly, Okseon said — customers come for the person, not the stall. Still, if it looked good, they might glance twice. Go on, she said."],
+      }),
+      story: scene([
+        act(OK, 'laugh'),
+        line(OK, '스무 배? 크기만 크면 뭐 하냐.', 'Twenty times? What good is big?'),
+        line(P, '(코웃음을 치면서도, 귀는 이쪽으로 와 있다.)', '(She snorts — but her ears are turned my way.)'),
+        line(OK, '얘기는 손 움직이면서 해.', 'Talk while your hands are working.'),
+        line(OK, '상자 규격부터. 거기선 어떻게 담더냐.', 'Start with the crate standard. How do they pack them there?'),
+      ], {
+        end: endTalk({ accept: true, offer: 'busan_story' }),
+        note: ['부산 위판장이 여기 스무 배는 된다고, 얘기해 드리겠다고 했다. 정옥선 씨는 크기만 크면 뭐 하냐고 코웃음을 치면서도 귀는 이쪽으로 와 있었다. 손 움직이면서 상자 규격부터 얘기하라고.', "I said the Busan auction was twenty times the size of this place and offered to tell her about it. What good is big, Okseon snorted — but her ears were turned my way. Talk while working, she said, starting with the crate standard."],
+      }),
+      hands: scene([
+        line(OK, '다치긴. 얼음 만지는 손이 다 그렇지. 별거 아니다.', "Hurt them? Hands that handle ice all get like this. It's nothing.", { act: 'look_away' }),
+        line(P, '그래도…', 'Still...'),
+        line(OK, '그 얘기 말고 좌판이나 봐. 상자가 다 제각각이잖아.', "Never mind that. Look at the stall. The crates are all over the place."),
+        line(OK, '네 눈엔 그게 보이지?', 'You can see that, can\'t you?'),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_hands' }),
+        note: ['손이 말을 안 듣는다니 어디 다쳤느냐고 물었다. 정옥선 씨는 시선을 돌리며, 얼음 만지는 손이 다 그렇다고, 별거 아니라고 했다. 그 얘기 말고 좌판이나 보라고.', "I asked if she'd hurt her hands. Okseon looked away — hands that handle ice all get like this, it was nothing. Never mind that, she said; look at the stall."],
+      }),
+    },
+  },
+
+  // M2-11 — 끝내는 자리(정옥선)
+  {
+    id: 'm2_11_done', questId: 'M2-11', at: 'complete', npcId: OK, start: 'start',
+    nodes: {
+      start: scene([
+        line(P, '다 바꿨어요. 한 상자에 한 가지씩, 얼음은 위아래로요.', "It's all changed. One kind per crate, ice above and below."),
+        line(OK, '…', '...', { act: 'peer' }),
+        act(OK, 'silence'),
+        line(OK, '…보기 좋네. 부산 놈들 규격이 뭐가 좋은지 이제 알겠다.', "...It looks good. Now I see what's so good about those Busan standards."),
+        line(P, '(진열을 고치는 동안, 정옥선 씨는 잔소리 한 번 없이 옆에 앉아 보고만 있었다.)', "(While I fixed the display, Okseon just sat beside me and watched, without a single word of nagging.)"),
+        line(OK, '손이 느려서 미안하다.', "I'm sorry my hands are so slow.", { act: 'look_away' }),
+        line(P, '…그런 말씀 마세요.', "...Don't say that."),
+        line(OK, '네가 와서 됐다.', "It's all right, now that you've come."),
+      ], {
+        choices: [
+          opt('worry', '손이 왜 그러세요. 병원은 가 보셨어요?', "What's wrong with your hands? Have you seen a doctor?", { next: 'worry' }),
+          opt('work', '진열은 됐어요. 얼음은 제가 나를게요', "The display's done. I'll carry the ice", {
+            say: ['진열은 이제 됐습니다. 얼음은 제가 나르겠습니다.', "The display's done now. I'll carry the ice."],
+            end: endTalk({ complete: 'work',
+              lineKo: '얼음은 네 일이었지, 처음부터. (웃는다. 오래 못 본 얼굴이다.) 처음 왔을 때 상자 하나 들고 쩔쩔매던 게 엊그제 같은데. 이제 부산 규격까지 들고 왔네. …다 날랐으면 앉아. 밥 먹고 가.',
+              lineEn: "Ice was always your job, from the very start. (She smiles — a face I haven't seen in a long while.) It feels like only yesterday you were struggling with one box. Now you've come back with Busan standards. ...When you're done carrying, sit. Eat before you go." }),
+            note: ['진열은 됐으니 얼음은 내가 나르겠다고 했다. 정옥선 씨가 웃었다. 오래 못 본 얼굴이었다. 처음 와서 상자 하나에 쩔쩔매던 게 엊그제 같다고, 다 날랐으면 밥 먹고 가라고 했다.', "I said the display was done and I'd carry the ice. Okseon smiled — a face I hadn't seen in a long time. It felt like yesterday I'd been struggling with one box, she said. Eat before you go."] }),
+          opt('learn', '다음엔 정옥선 씨 방식도 가르쳐 주세요', 'Next time, teach me your way too, Okseon', {
+            end: endTalk({ complete: 'learn_old_way',
+              lineKo: '내 방식? 그건 가르치는 게 아니라 보고 훔치는 거다. (얼음 위에 생선 한 마리를 고쳐 눕힌다.) 부산 규격이 상자를 살리면 내 방식은 손님을 살린다. 둘 다 알아야 좌판이다. 내일 와서 봐.',
+              lineEn: "My way? That isn't taught, it's stolen by watching. (She lays a fish back down on the ice, just so.) If the Busan standard saves the crate, my way saves the customer. A stall needs both. Come tomorrow and watch." }),
+            note: ['다음엔 정옥선 씨 방식도 가르쳐 달라고 했다. 그건 가르치는 게 아니라 보고 훔치는 거라고, 부산 규격이 상자를 살리면 자기 방식은 손님을 살린다고 했다. 내일 와서 보라고.', "I asked Okseon to teach me her way next time. That isn't taught, it's stolen by watching, she said — the Busan standard saves the crate, her way saves the customer. Come and watch tomorrow."] }),
+        ],
+        note: ['부산 규격으로 좌판 진열을 고쳤다. 정옥선 씨는 보기 좋다고, 부산 규격이 뭐가 좋은지 이제 알겠다고 했다. 그러고는 손이 느려서 미안하다고, 내가 와서 됐다고 했다. 그 말이 더 마음에 걸렸다.',
+          "I redid the stall display to the Busan standard. Okseon said it looked good — now she saw what was good about it. Then she said she was sorry her hands were so slow, and that it was all right now that I'd come. That weighed on me more than anything."],
+      }),
+      worry: scene([
+        line(OK, '늙어서 그렇다. 병원은 얼음값보다 비싸.', "It's age. Doctors cost more than ice."),
+        act(OK, 'silence'),
+        line(OK, '…가 볼게. 네가 그러니.', "...I'll go. Since you say so."),
+        line(P, '꼭이요.', 'Promise.'),
+      ], {
+        end: endTalk({ complete: 'worry',
+          lineKo: '(손을 앞치마에 문지른다.) 이 얘기 좌판에 퍼뜨리지 마라. 늙은이 손 얘기로 장사 안 된다. 너나 밥 거르지 말고.',
+          lineEn: "(She rubs her hands on her apron.) Don't go spreading this around the stalls. An old woman's hands don't sell anything. And you — don't skip meals." }),
+        note: ['손이 왜 그러냐고, 병원은 가 봤느냐고 물었다. 정옥선 씨는 늙어서 그렇다고, 병원은 얼음값보다 비싸다고 하다가, 한참 만에 내가 그러니 가 보겠다고 했다. 그 말이 오래 걸렸다.', "I asked what was wrong with her hands and whether she'd seen a doctor. It's age, Okseon said, and doctors cost more than ice — then, after a long pause, she said she'd go, since I'd asked. That took her a long time to say."],
+      }),
+    },
+  },
+
+  // ═══════════════════════════════════════════
+  // M2-10 「면허 학원」 — 받는 자리(어촌계장)
+  // ═══════════════════════════════════════════
+  {
+    id: 'm2_10_offer', questId: 'M2-10', at: 'offer', npcId: COOP, start: 'start',
+    nodes: {
+      start: scene([
+        line(COOP, '배 몰아 본 적 있냐.', 'Ever handled a boat?'),
+        line(P, '배요? 타 본 적도 별로 없습니다.', "A boat? I've hardly even been on one."),
+        line(COOP, '배를 몰 줄 알아야 겨울 바다를 안다.', "You have to be able to handle a boat to know the winter sea."),
+        line(P, '배를 몰려면 면허가 있어야 하지 않습니까?', "Don't you need a licence to handle one?"),
+        line(COOP, '선박조종면허. 학원 가서 필기부터 봐라.', 'A boat operator licence. Go to the school and sit the written test first.'),
+        line(COOP, '학원비는 위판으로 마련하고.', 'Earn the fees at auction.'),
+        line(P, '위판으로요…', 'At auction...'),
+        line(COOP, '붙으면 울산, 포항 가는 길 열어 주지.', "Pass, and I'll open the way to Ulsan and Pohang."),
+        line(P, '(…속초와 부산 말고도, 바다가 더 있다.)', '(...There is more sea out there than Sokcho and Busan.)'),
+      ], {
+        choices: [
+          opt('helm', '배는 늘 몰아 보고 싶었습니다. 필기부터 붙겠습니다', "I've always wanted to handle a boat. I'll pass the written test first", { next: 'helm' }),
+          opt('winter', '배를 몰아야 겨울 바다를 안다는 건 무슨 뜻입니까?', 'What do you mean, you need a boat to know the winter sea?', { next: 'winter' }),
+          opt('fee', '학원비는 얼마나 듭니까? 위판으로 벌 수 있겠습니까?', 'How much are the fees? Can I earn that at auction?', { next: 'fee' }),
+        ],
+        note: ['배를 몰 줄 알아야 겨울 바다를 안다며, 학원비를 위판으로 마련해 선박조종면허 필기부터 보라고 했다. 붙으면 울산, 포항 가는 길을 열어 준다고.',
+          "You have to handle a boat to know the winter sea, the chief said — earn the school fees at auction and sit the written test for a boat operator licence. Pass, and the way to Ulsan and Pohang would open."],
+      }),
+      helm: scene([
+        line(COOP, '몰아 보고 싶은 거랑 몰 줄 아는 거랑은 다르다. 그 차이가 필기다.', "Wanting to handle one and knowing how are different things. The difference is the written test."),
+        line(COOP, '항법, 기상, 법규. 바다에서 사람 살리는 순서가 다 거기 있다.', "Navigation, weather, regulations. Everything that keeps people alive at sea is in there, in order."),
+        line(P, '외울 게 많겠네요.', "That's a lot to memorise."),
+        line(COOP, '외우지 말고 이해해. 바다는 시험지처럼 안 나온다.', "Don't memorise — understand. The sea doesn't come at you like an exam paper."),
+      ], {
+        choices: [
+          opt('ok', '이해하면서 공부하겠습니다', "I'll study to understand it", {
+            end: endTalk({ accept: true, offer: 'want_helm' }),
+            note: ['외우지 말고 이해하며 공부하기로 했다.', 'I resolved to study to understand, not just memorise.'] }),
+          opt('fear', '바다보다 책상이 더 무섭습니다', "A desk scares me more than the sea", {
+            say: ['바다보다 책상이 더 무섭습니다. 떨어지면 어떡합니까?', "A desk scares me more than the sea. What if I fail?"],
+            next: 'fear' }),
+        ],
+        note: ['배는 늘 몰아 보고 싶었다고 했다. 몰아 보고 싶은 것과 몰 줄 아는 것의 차이가 필기라고, 항법, 기상, 법규에 바다에서 사람 살리는 순서가 다 있다고 했다. 외우지 말고 이해하라고.', "I said I'd always wanted to handle a boat. Wanting to and knowing how were different, I was told — the difference was the written test. Navigation, weather and regulations held everything that keeps people alive at sea. Understand it, don't memorise it."],
+      }),
+      fear: scene([
+        line(COOP, '떨어지면 다시 본다. 시험은 날짜가 또 온다.', "If you fail, you sit it again. Exams come round again."),
+        line(COOP, '바다는 다시 안 봐준다.', "The sea doesn't give you another go."),
+        line(P, '…', '...'),
+        line(COOP, '그러니까 책상에서 틀리는 게 싸게 먹히는 거다. 모르는 건 지금 틀려 둬. 바다에서 틀리면 그땐 늦다.', "That's why getting it wrong at a desk is cheap. Get what you don't know wrong now. Get it wrong at sea and it's too late."),
+      ], {
+        end: endTalk({ accept: true, offer: 'desk_fear' }),
+        note: ['바다보다 책상이 무섭다고, 떨어지면 어떡하느냐고 했다. 시험은 날짜가 또 오지만 바다는 다시 안 봐준다고, 그러니 책상에서 틀리는 게 싸게 먹힌다고 했다.', "I said a desk scared me more than the sea — what if I failed? Exams come round again, I was told, but the sea doesn't give you another go. Getting it wrong at a desk is cheap."],
+      }),
+      winter: scene([
+        line(COOP, '겨울엔 갯바위도 방파제도 파도에 묻힌다. 고기는 깊은 데로 빠지고.', "In winter, the rocks and breakwaters disappear under the waves. The fish go deep."),
+        line(P, '그럼 그때는…', 'Then at that time...'),
+        line(COOP, '그때 바다에 나가 있는 건 배뿐이다.', "The only things out on the sea then are boats."),
+        line(COOP, '남의 배에 얹혀서 보는 바다랑 내가 키 잡고 보는 바다는 다르다. 그걸 알라는 거다. 필기부터 해.', "The sea you see riding on someone else's boat isn't the sea you see at the helm yourself. That's what you need to learn. Start with the written test."),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_winter' }),
+        note: ['배를 몰아야 겨울 바다를 안다는 게 무슨 뜻이냐고 물었다. 겨울엔 갯바위도 방파제도 파도에 묻히고 고기는 깊이 빠져서, 그때 바다에 나가 있는 건 배뿐이라고 했다. 남의 배에서 보는 바다와 내가 키를 잡고 보는 바다는 다르다고.', "I asked what he meant about needing a boat to know the winter sea. In winter the rocks and breakwaters vanish under the waves and the fish go deep, I was told — only boats are out then. The sea from someone else's boat isn't the sea from your own helm."],
+      }),
+      fee: scene([
+        line(COOP, '싸진 않다. 그래도 위판 네 건이면 된다.', "It isn't cheap. But four auction lots will cover it."),
+        line(P, '네 건이요.', 'Four lots.'),
+        line(COOP, '얼음 아끼지 말고 제값 받아.', "Don't skimp on ice. Get the full price."),
+        line(COOP, '학원비 아끼려고 상자 날리면, 그건 유찰 때 배운 걸 다시 배우는 거다.', "Lose a crate trying to save on fees, and you're relearning what that unsold crate taught you."),
+      ], {
+        end: endTalk({ accept: true, offer: 'ask_fee' }),
+        note: ['학원비가 얼마나 드는지, 위판으로 벌 수 있는지 물었다. 싸진 않지만 위판 네 건이면 된다고, 얼음 아끼지 말고 제값 받으라고 했다. 아끼려다 상자를 날리면 유찰 때 배운 걸 다시 배우는 거라고.', "I asked how much the fees were and whether I could earn them at auction. Not cheap, but four lots would do it, I was told — don't skimp on ice; get the full price. Lose a crate trying to save and I'd be relearning what the unsold crate had taught me."],
+      }),
+    },
+  },
+
+  // M2-10 — 끝내는 자리(어촌계장)
+  {
+    id: 'm2_10_done', questId: 'M2-10', at: 'complete', npcId: COOP, start: 'start',
+    nodes: {
+      start: scene([
+        line(P, '붙었습니다. 필기.', 'I passed. The written test.'),
+        line(COOP, '붙었네.', 'So you did.', { act: 'nod' }),
+        line(COOP, '울산 방어진에 고만석이라는 선장이 있다. 그 배에 타.', "There's a skipper at Bangeojin in Ulsan called Go Manseok. Get on his boat."),
+        line(P, '고만석 씨요?', 'Go Manseok?'),
+        act(COOP, 'give', { to: P, item: 'qr_reel_winter' }),
+        line(COOP, '이 릴은 겨울 바다용이다. 드랙이 얼어도 돈다.', 'This reel is for the winter sea. The drag turns even when it freezes.'),
+        line(P, '…묵직하네요.', "...It's solid.", { act: 'receive' }),
+      ], {
+        choices: [
+          opt('study', '기상 파트가 어려웠습니다. 더 공부하겠습니다', "The weather part was hard. I'll study more", {
+            end: endTalk({ complete: 'study',
+              lineKo: '기상이 어려워야 정상이다. 바다에서 제일 무서운 게 그거니까. 구름, 바람 방향, 기압. 외운 건 바다에서 다시 배운다. 그래도 외워 둔 사람이 먼저 알아챈다. 이상하다 싶으면 그날은 나가지 마라.',
+              lineEn: "Weather should be hard. It's the most frightening thing at sea. Clouds, wind direction, pressure. What you memorised you'll learn again at sea. But the ones who memorised it notice first. If something feels off, don't go out that day." }),
+            note: ['기상 파트가 어려웠다고, 더 공부하겠다고 했다. 기상이 어려워야 정상이라고, 바다에서 제일 무서운 게 그거라고 했다. 이상하다 싶으면 그날은 나가지 말라고.', "I said the weather section had been hard and I'd study more. It should be hard, I was told — it's the most frightening thing at sea. If something felt off, I wasn't to go out that day."] }),
+          opt('easy', '생각보다 쉬웠습니다', 'It was easier than I expected', { next: 'easy' }),
+          opt('skipper', '고만석 씨는 어떤 분입니까?', 'What kind of person is Go Manseok?', {
+            end: endTalk({ complete: 'ask_skipper',
+              lineKo: '말은 짧다. 배 위에선 그 사람 말이 법이고. 가서 이름 대고, 시키는 대로 해. 그 배에서 배우는 게 필기 열 권보다 낫다. 그 릴 챙기고.',
+              lineEn: "A man of few words. On his boat, his word is law. Go, give your name, and do as you're told. What you learn on that boat beats ten books for the written test. And take that reel." }),
+            note: ['고만석 씨가 어떤 사람이냐고 물었다. 말은 짧고 배 위에선 그 사람 말이 법이라고, 가서 이름 대고 시키는 대로 하라고 했다.', "I asked what Go Manseok was like. A man of few words, I was told — on his boat, his word is law. Give my name and do as I'm told."] }),
+        ],
+        note: ['선박조종면허 필기에 붙었다. 울산 방어진에 고만석이라는 선장이 있으니 그 배에 타라고 했다. 드랙이 얼어도 도는 겨울 바다용 릴을 건넸다.',
+          "I passed the written test for the boat operator licence. There was a skipper called Go Manseok at Bangeojin in Ulsan, I was told — get on his boat. Then the chief handed me a reel for the winter sea, one whose drag turns even when frozen."],
+      }),
+      easy: scene([
+        line(COOP, '필기가 쉬웠으면 실기가 어려울 거다.', "If the written test was easy, the practical will be hard."),
+        line(COOP, '그 릴, 바다에서 떨어뜨리지 마.', "Don't drop that reel at sea."),
+        line(P, '…네.', '...Right.'),
+      ], {
+        end: endTalk({ complete: 'easy',
+          lineKo: '쉽다는 말은 바다 앞에선 하지 마라. 그 말 한 날 꼭 뭔가 일이 난다. …미신 아니다. 쉽다고 생각하는 순간 손이 느슨해져서 그렇다.',
+          lineEn: "Don't say easy in front of the sea. Something always happens on the day you do. ...It isn't superstition. The moment you think it's easy, your hands go slack." }),
+        note: ['생각보다 쉬웠다고 했다. 필기가 쉬웠으면 실기가 어려울 거라고, 쉽다는 말은 바다 앞에선 하지 말라고 했다. 쉽다고 생각하는 순간 손이 느슨해진다고.', "I said it had been easier than I expected. Then the practical would be hard, I was told — and never say easy in front of the sea. The moment you think it's easy, your hands go slack."],
+      }),
+    },
+  },
 ];

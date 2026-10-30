@@ -392,8 +392,8 @@ export const TALKS_N07: StoryTalkDef[] = [
         line(JK, '한 번에 다 하면 이 바다에 다 쏟을 것 같아.', "If I said it all at once, I think I'd pour the whole thing into this sea."),
       ], {
         end: endTalk({ complete: 'brother' }),
-        note: ['동생 이야기를 더 듣고 싶다고 했다. 짐 강 씨는 제주에서 넷이 다 모이면 하겠다며, 유작 세 번째의 사본인 미노우 하나를 줬다. 동생이라는 말이 아직 입에 설다고.',
-          "I said I wanted to hear more about his brother. Jim said he'd tell me in Jeju, once all four were together, and gave me a minnow — a copy of the third piece. The word brother still felt strange to say, he said."],
+        note: ['동생 이야기를 더 듣고 싶다고 했다. 짐 강 씨는 제주에서 넷이 다 모이면 하겠다고 했다. 동생이라는 말이 아직 입에 설다고.',
+          "I said I wanted to hear more about his brother. Jim said he'd tell me in Jeju, once all four were together. The word brother still felt strange to say, he said."],
       }),
       lesson: scene([
         line(JK, '파도 타이밍이야. 밀려올 때 감아.', "It's the timing of the waves. Reel as it rolls in."),
