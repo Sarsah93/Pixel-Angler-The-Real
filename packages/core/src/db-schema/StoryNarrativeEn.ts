@@ -257,7 +257,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Summer's here. Look at the inner bay. Moon jellyfish. They come up in the nets. Clear just five for me.",
       done: "Five. The inner bay looks better. It's like this every summer. I'll call you next summer too." }),
   'N23-1': E(
-    "A typhoon tore open a fish farm cage. Chae Surim, the management officer, says the escaped flounder have to be counted. Farmed individuals have worn fins and abnormally high condition factors. You can tell from the detail view. I catch and measure three flounder. One has worn fin tips. This one is farmed, she says, writing it into the table. Even a fish in open water has an origin.",
+    "A typhoon tore open a fish farm cage. Chae Surim says the escaped flounder have to be counted. Farmed individuals have worn fins and abnormally high condition factors. You can tell from the detail view. I catch and measure three flounder. One has worn fin tips. This one is farmed, she says, writing it into the table. Even a fish in open water has an origin.",
     { offer: "A cage tore open. We have to count the escaped flounder. Catch three and measure them. Farmed fish have worn fins.",
       done: "This one is farmed. Well sorted. I'll put it in the table." }),
   'N20-1': E(
