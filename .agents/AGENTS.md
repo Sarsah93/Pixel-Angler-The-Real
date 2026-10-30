@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-30 289차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-10-30 290차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-10-30 289차) — 입질 B 단계: 바다 · 철 · 수온 존재 가중 · 새 미끼 셋 · 풍랑 통제 · 살오징어**
+**최근 변경 (2026-10-30 290차) — 전 편 대본(받는 자리 · 끝내는 자리 주고받기) · 호칭 「OOO 씨」 통일**
+
+- 사용자 「호칭은 'OOO씨'로 통일하고 나머지 190편 대본 진행해줘」 → 의뢰인이 있는 189편 받는 · 끝내는 자리 대본(대화 396 · 대사 7,450 · 31묶음 · 10갈래 병렬 · 지침 `.agents/inputs/290_talk_brief.md`).
+- 옛 답 묶기(`TalkEndDef.offer` · `end.complete` · 조건대로 말 숨김 · 우호도 겹침 막기) · 덮개 검사 `talkCoverageIssues` · 호칭 검사 `rules/PlayerAddress.ts` · `{player} 씨`(번역 뒤 이름).
+- 대본 밖도 정리: 일지 서두 · 목표 줄 · 진행 중 내 답(반말 33 → 해요체) · 물어보기 물음 · 주제 · 컷씬 속말 · 탁새벽 「아저씨」 → 이름.
+  상세: [290차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-290-talk-scripts-all-honorific.md).
+
+**이전 변경 (2026-10-30 289차) — 입질 B 단계: 바다 · 철 · 수온 존재 가중 · 새 미끼 셋 · 풍랑 통제 · 살오징어**
 
 - 사용자 「추천대로 추가해주고, main 반영 및 재배포, wiki 업데이트도 해줘」(288 감사 D1~D6) → core `rules/SpeciesPresence.ts`(바다 가중 · 연안 평년 수온 · 계절 · 수온 · 이야기 하한) · `presenceBiteRate`.
 - 존재 가중은 후보를 거른 뒤에 곱한다(드물게 ≠ 없음) · 해양기상 Mock은 수온 · 안개에 쓰지 않는다(`liveMarine`) · 적수온 정정 5 · 살오징어 · 미끼 셋 · 캔 갯것 미끼 · 풍랑 통제.
@@ -333,14 +340,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 입질 감사 30건(달 · 수온 · 바다 항 없음) · 결함 7 고침(여 위 찌 = 미끼 아래 바닥 · KST · `isNightNow` · 후보 0 = 입질 없음 · 지역 낚시지수 · KOSIS 별칭 · 울산 동해) · 결정 D1~D6 = 백로그 DD.
 - 검증: core 423 · 하네스 4/4 · 6/6 · 이름 이행 · pageerror 0 · 빌드 3/3 · typecheck 0 · 아티팩트 4개.
   상세: [288차 워크로그](../docs/wiki/03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md).
-
-**이전 변경 (2026-10-29 287차) — 진행 중 물음(목표마다 물음 · 내 답 · 조언) · 진행 나레이션 빼기 · 191편 전수 · 바람 대사 성별 · dev 갯것 · 작물 지급**
-
-- 사용자 「'딸은 만나봤나?'로만 물어보고, 선택지 1) …아직 만나보지 않았습니다. 2) 나가기 …」 · 「혼자 자문자답하고 … 다른 퀘스트들도 전부 전수조사해서 수정해줘」 →
-  진행 중 화면 = 물음 하나 · [내 답 · 나가기] → 내 말 · 조언 · [나가기] · 진행 나레이션 · 옛 `progress` 줄 삭제(일지 J만).
-- `ProgressAskDef` · `StoryProgressAsk1~8`(189편 · 351벌 · 한 · 영 · 검사 `validateProgressAsks`) · 바람 「여자에겐」 · F10 「④-2 갯것」 · 「④-3 작물」 · 지역 도착 목표 받는 순간 셈.
-- 검증: 하네스 17/17 · 전 편 훑기 350/351 · core 410 · 빌드 3/3 · typecheck 0 · 아티팩트 4개 · main `4186cfc` · 95차 배포(gh-pages `6768723`).
-  상세: [287차 워크로그](../docs/wiki/03-WORKLOG/2026-10-29-287-progress-ask-dev-forage-crops.md).
 
 ---
 
