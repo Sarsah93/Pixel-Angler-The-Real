@@ -1862,6 +1862,43 @@
    "last_seen": "2026-10-30",
    "status": "열림",
    "pr": 15
+  },
+  {
+   "lane": "q6-access",
+   "first_seen": "2026-10-31",
+   "last_seen": "2026-10-31",
+   "status": "열림",
+   "pattern": "BP-18",
+   "id": "F-0102",
+   "severity": "경미",
+   "title": "가이드 허브 팁 줄이 전구 이모지를 글자 앞에 그린다",
+   "evidence": [
+    "packages/client-pc/src/ui/GuidePanel.ts:127"
+   ],
+   "why": "규칙 8(UI 이모지 금지) — 규칙 정규식 범위 밖(U+1F4A1 미포함 아님이나 ui 비주석 줄 스캔에서만 발견)",
+   "repro": "main 소스에서 비주석 줄 U+1F4A1 검사 → 127행 적중",
+   "expected": "이모지 없이 글자 머리",
+   "actual": "💡 접두",
+   "player_impact": "1인칭 · 손질 가이드 허브 모든 쪽 팁 줄이 도트 톤과 섞이지 않는 컬러 글리프",
+   "proposal": "P-0026 PR #16"
+  },
+  {
+   "lane": "q6-access",
+   "first_seen": "2026-10-31",
+   "last_seen": "2026-10-31",
+   "status": "열림",
+   "pattern": "BP-27",
+   "id": "F-0103",
+   "severity": "경미",
+   "title": "캐릭터 생성 화면 하단에 조작 안내 문구(R11)가 상시 표시된다",
+   "evidence": [
+    "packages/client-pc/src/scenes/CharacterCreateScene.ts:341"
+   ],
+   "why": "「↑↓ 항목 ←→ 변경 Enter 생성 ESC 뒤로」 — 규칙 R11/절대규칙 13. 지우면 키보드 단서가 사라지므로 설계 판단 필요 → 제안만",
+   "repro": "정적: 해당 줄",
+   "expected": "글자 나열 대신 가이드",
+   "actual": "상시 안내 줄",
+   "player_impact": "규칙 위반이나 처음 하는 사람에게는 유일한 키 단서"
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."

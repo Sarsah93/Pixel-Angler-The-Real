@@ -406,8 +406,8 @@
    "title": "butchery.md B2 제목을 머리 상태와 맞춤(F-0089 일부)",
    "pr": 13,
    "branch": "harmony/2026-10-24",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-31",
    "findings": [
     "F-0089"
    ],
@@ -422,8 +422,8 @@
    "title": "구조가 깨진 세이브를 빈 슬롯으로 취급",
    "pr": 14,
    "branch": "harmony/2026-10-28-save-shape",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-31",
    "findings": [
     "F-0100"
    ],
@@ -438,12 +438,27 @@
    "title": "위치 알림·입장 입력 모양/크기 검증",
    "pr": 15,
    "branch": "harmony/2026-10-30-presence-validate",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-10-31",
    "findings": [
     "F-0101"
    ],
    "lane": "q5-security"
+  },
+  {
+   "id": "P-0026",
+   "date": "2026-10-31",
+   "domain": "q6-access",
+   "kind": "적용",
+   "title": "가이드 허브 팁 줄 전구 이모지 교체",
+   "pr": 16,
+   "branch": "harmony/2026-10-31-guide-emoji",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0102"
+   ],
+   "lane": "q6-access"
   }
  ]
 }

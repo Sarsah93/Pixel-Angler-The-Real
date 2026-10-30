@@ -366,8 +366,8 @@
     "title": "한글 입력(IME)이 모든 입력 칸에서 되는가",
     "how": "`ui/TextInput` 밖에서 글자를 모으는 칸(규칙 no-keydown-text-input) · 조합 중 Enter · 붙여넣기",
     "mode": "정적 + 하네스",
-    "last_run": null,
-    "result": null,
+    "last_run": "2026-10-31",
+    "result": "통과(정적: 글자 수집 입력 0)",
     "findings": []
    },
    {
@@ -375,9 +375,12 @@
     "title": "인게임 표현 규칙 R1~R14 위반",
     "how": "내부 id · 개발 용어 노출 · 스포일러 · 조작 안내 문구 · 바탕 상자 글자 · 이모지(AGENTS §4). 화면 Text 전수 스캔 + 규칙 정규식",
     "mode": "하네스 + 정적",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-10-31",
+    "result": "발견 2(정적만 — 화면 전수는 못 돌림: 시간)",
+    "findings": [
+     "F-0102",
+     "F-0103"
+    ]
    },
    {
     "id": "S6-06",
