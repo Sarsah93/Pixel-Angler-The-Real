@@ -101,7 +101,7 @@
   31묶음 `StoryTalk<이야기>.ts` · 10갈래 병렬 · 지침 `.agents/inputs/290_talk_brief.md` · 문맥 `tools/story_talk_context.mjs`) · 옛 254 갈래(N02 · N03 · N19 · N24 · M2-09)는 구조 그대로 대본 꼴로 ·
   옛 답 묶기(`TalkEndDef.offer` · `end.complete` — 결과 · 표시 · 보상 갈래 보존 · 조건대로 말 숨김 · 고른 말이 마음을 움직이면 묶인 받는 답 우호도는 겹치지 않음 · 덮개 `talkCoverageIssues`) ·
   호칭(`rules/PlayerAddress.ts` — 주인공 → 이름 씨 · 인물 → `{player} 씨`(번역 뒤 `fillPlayerName`) · 나이 · 성별 · 직함 부름말 금지 · 검사기 `--strict`) ·
-  대본 밖(일지 서두 · 목표 줄 · 진행 중 내 답 반말 33 → 해요체 · 물어보기 물음 · 주제 · 컷씬 속말 · 탁새벽 「아저씨」) · 대본 받는 자리에도 영업시간 단서 ·
+  대본 밖(일지 서두 · 목표 줄 · 진행 중 내 답 반말 33 → 해요체 · 물어보기 물음 · 주제 · 컷씬 속말 · 탁새벽 「아저씨」) ·
   검증 = check_talks --all --strict 오류 0 · core 447. **다음 = 사용자 실플레이 확인 → 291 맵 확장 영향 · 살아 있는 미끼 · 옛 답 글 청소**. 상세 `docs/wiki/03-WORKLOG/2026-10-30-290-talk-scripts-all-honorific.md`.
 - **289차**: **입질 B 단계 — 바다 · 철 · 수온 · 새 미끼 · 풍랑 통제 · 살오징어** —
   사용자 「추천대로 추가해주고, main 반영 및 재배포, wiki 업데이트도 해줘」(288 감사 D1~D6) →

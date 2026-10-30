@@ -733,8 +733,7 @@ export class DialoguePanel extends DraggablePanel {
     if (offerTalk) {
       const fresh = StoryStore.talkResume(offerTalk) === offerTalk.start;
       const note = StoryStore.offerNoteKo(q);
-      // 290차 — 대본으로 받는 자리도 영업시간 주의(빨간 글 · 267차)를 앞에 찍는다(옛 표준 답 화면만 찍고 있었다)
-      this.enterTalk(offerTalk, fresh ? [...paras, ...this.hoursHintParas(q, false), ...(note ? [note] : [])] : paras);
+      this.enterTalk(offerTalk, fresh && note ? [...paras, note] : paras);   // 영업시간 주의는 대화가 끝나 받은 뒤에 찍는다(`talkEnded` — 267)
       return;
     }
     if (n?.offer) paras.push(`"${n.offer}"`);

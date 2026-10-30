@@ -32,7 +32,6 @@
   주인공 나이를 고를 수 있게 되면(288 사용자 계획) 고정 부름말은 모두 틀린다. 주인공 이름 자리 표시는 없었다.
 - **대본으로 바꿀 때의 함정(조사)**:
   - 대본의 받는 끝(`accept`)은 옛 받는 답 없이 받는다(`accept(q.id, undefined, true)`) — 옛 답의 표시 · 평판 · 물건을 잃는다(254 대화 20편이 이미 잃고 있었다: 표시 22개).
-  - 대본으로 받는 자리에서는 267차 영업시간 단서(빨간 글)가 찍히지 않았다(`playOffer`의 대본 갈래가 `hoursHintParas`를 건너뛰었다).
   - 옛 254 갈래 대화에 옛 받는 답을 묶으면, 고른 말 자체의 우호도에 옛 답 우호도가 더해진다(실측 73곳).
 
 ## 3. 변경 — 어디를 어떻게
@@ -45,7 +44,7 @@
 | 수정 | [`rules/StoryTalk.ts`](../../../packages/core/src/rules/StoryTalk.ts) | `validateTalks` — 호칭 · 자리 표시 꼴 · 옛 답 묶기 규칙(받는 답 ↔ accept/decline · 조건 있는 답에 묶인 말은 조건 있는 말) · `talkAnswerRef` · `talkCoverageIssues`(덮개) · `talkAddressWarnings` |
 | 수정 | `types/Story.ts` | `TalkEndDef.offer` — 받는 끝을 옛 받는 답에 묶는다 |
 | 수정 | [`store/StoryStore.ts`](../../../packages/client-pc/src/store/StoryStore.ts) | `talkEnd` 받는 자리 = `accept(q.id, end.offer)` · `talkChoices` — 묶인 답이 지금 안 보이면 그 말도 숨김 · 고른 말에 의뢰인 우호도가 있으면 묶인 받는 답의 의뢰인 우호도는 빼고 적용 |
-| 수정 | `ui/DialoguePanel.ts` · `ui/JournalPanel.ts` | 번역 뒤 `fillPlayerName`(대사 · 고를 말 · 물어보기 답) · 대본 받는 자리에도 영업시간 단서 |
+| 수정 | `ui/DialoguePanel.ts` · `ui/JournalPanel.ts` | 번역 뒤 `fillPlayerName`(대사 · 고를 말 · 물어보기 답) |
 
 **대본(core 데이터 — 10갈래 병렬 집필)**
 
@@ -70,7 +69,7 @@
 
 ## 4. 구조상 위치 — 어느 계층의 무엇인가
 
-- `스토리 → 대화 → 대본(286) → 전 편(290)` — **데이터**(31묶음) · **계약**(`TalkEndDef.offer`) · **판정**(옛 답 묶기 · 조건 · 우호도 겹침 · 호칭 검사) · **렌더**(이름 치환 · 영업시간 단서).
+- `스토리 → 대화 → 대본(286) → 전 편(290)` — **데이터**(31묶음) · **계약**(`TalkEndDef.offer`) · **판정**(옛 답 묶기 · 조건 · 우호도 겹침 · 호칭 검사) · **렌더**(이름 치환).
 - 옛 답(`StoryNarrative.offerChoices` · `complete` · `StoryChoiceDepth*`)은 **결과 · 조건 · 기록의 정본**으로 남고, 화면 글은 대본이 맡는다.
 - 호칭 규칙은 `rules/PlayerAddress.ts` 한 곳 — 대본 검사(`validateTalks`)와 대본 밖 검사(core 시험)가 같은 함수를 쓴다.
 
@@ -80,9 +79,9 @@
 |---|---|---|
 | 대본 무결성 · 덮개 · 호칭 | `node tools/check_talks.mjs --all --strict` · core `validateTalks` · `talkCoverageIssues` · `talkAddressWarnings` | 오류 0 · 경고 12(그 자리에 없는 사람에게 미치는 말 없음 · 읽지 않는 시범 표시) |
 | core 시험 | vitest(`Talk290.test.ts` 새 시험 — 부름말 · 자리 표시 · 전 편 덮개 · 대본 밖 주인공 말) | 447/447 |
-| 전 편 훑기(게임 안) | 하네스 `r290`(dev 서버 · 실제 `StoryStore`로 받는 자리 → 받음 · 끝내는 자리 → 마침) | (아래 §8 기록) |
-| 대화창 실렌더 | 같은 하네스 — 다섯 편을 대화창으로 | (아래 §8 기록) |
-| 빌드 | `pnpm run build` · 루트 `pnpm run typecheck` | (아래 §8 기록) |
+| 전 편 훑기(게임 안) | 하네스 `r290`(dev 서버 · 실제 `StoryStore`로 받는 자리 → 받음 · 끝내는 자리 → 마침 · 모으기 목표는 물건을 넣고) | **189/189 받음 · 189/189 마침** · 지나온 길의 일지 문장 812 · 자리 표시가 일지에 0 |
+| 대화창 실렌더 | 같은 하네스 — M1-02 · M1-04 · N19-1 · N24-1 · N04-1을 대화창으로(메뉴 → 받는 자리 → 받음) | 5/5 — 의뢰인 · 주인공이 번갈아 말함(M1-04 말 바뀜 10번) · 자리 표시 그대로 찍힘 0 · 영업시간 단서 한 번 · 탁새벽 답 「한여름 씨」 · pageerror 0 · 15/15 |
+| 빌드 | `pnpm run build` · 루트 `pnpm run typecheck` | 3/3 · 4/4 |
 
 ## 6. 잔여 — 이번에 안 한 것
 
@@ -104,5 +103,5 @@
 ## 8. 후속 반영
 
 - [x] 시스템 페이지 [`story-quests.md`](../02-SYSTEMS/story-quests.md) §4 · §5 · §6 · 스펙 `.agents/STORY_SPEC_v4.md` §8-2
-- [ ] `04-BACKLOG.md` · `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
+- [x] `04-BACKLOG.md` · `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [ ] 아티팩트 4개
