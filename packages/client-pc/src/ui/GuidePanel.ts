@@ -124,7 +124,7 @@ export class GuidePanel extends DraggablePanel {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '13px', color: '#e8f4fd', lineSpacing: 6,
       wordWrap: { width: ART_W },
     });
-    const tip = this.scene.add.text(artX, capY + 26 + Math.max(44, body.height + 8), `💡 ${pg.tip}`, {
+    const tip = this.scene.add.text(artX, capY + 26 + Math.max(44, body.height + 8), `팁 — ${pg.tip}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#9fc0d4',
       wordWrap: { width: ART_W },
     });
