@@ -360,8 +360,8 @@ export const TALKS_M7: StoryTalkDef[] = [
             end: endTalk({ complete: 'dokgu',
               lineKo: '진짜? 내 사진이? 그럼 이거 흔들리면 안 되는데. …안 흔들렸지? 나 이거 평생 자랑할 거야. 할아버지한테도, 조사단 형들한테도.',
               lineEn: "Really? My photo? Then it can't be blurry. ...It isn't, right? I'm going to brag about this my whole life. To Grandpa, and to the survey guys too." }),
-            note: ['석독구가 찍은 사진이 마지막 장이라고 했다. 아이는 카메라를 꼭 쥐고, 평생 자랑하겠다고 했다. 할아버지한테도.',
-              'I told Dokgu his photo was the last page. He clutched the camera and said he would brag about it his whole life — to his grandfather too.'] }),
+            note: ['석독구가 찍은 사진이 마지막 장이라고 했다. 아이는 카메라를 꼭 쥐고, 평생 자랑하겠다고 했다. 자기 할아버지인 석대양 씨한테도.',
+              'I told Dokgu his photo was the last page. He clutched the camera and said he would brag about it his whole life — to his grandfather Daeyang too.'] }),
           opt('release', '놓아주는 손은 네가 제일 좋더라', 'You were best at letting it go', {
             say: ['놓아주는 손은 네가 제일 좋더라.', 'You had the best hands for letting it go.'],
             end: endTalk({ complete: 'good_release',

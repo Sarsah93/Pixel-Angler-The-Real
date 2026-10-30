@@ -110,7 +110,7 @@ export const PROGRESS_ASKS_6: Record<string, ProgressAskDef[]> = {
       ['…아직 손질은 못 했습니다.', "...I haven't cleaned it yet."],
       ['낚으면 그 자리에서 바로 해 주세요. 바다에서 낚은 걸 바로 먹는 게 제 채널이거든요.', "Do it right there as soon as it's caught. Eating it fresh off the sea is what my channel's about."]),   // 1 — 그 자리 손질
     pa(['기범 오빠한테 선상 매너는 들어 보셨어요?', 'Did you hear the boat manners from Gibeom?'],
-      ['…아직 기범 씨와 이야기를 못 나눴습니다.', "...I haven't talked with Gibeom yet."],
+      ['…아직 나기범 씨와 이야기를 못 나눴습니다.', "...I haven't talked with Gibeom yet."],
       ['기범 오빠는 조용한 사람이라 먼저 물어봐야 말해 줘요. 그 대신 한 번 말하면 다 맞아요.', "He's quiet, so you have to ask before he'll tell you. But once he does, it's all right."]),   // 2 — 나기범에게 선상 매너
   ],
   'N05-2': [

@@ -1773,7 +1773,7 @@ export const TALKS_N19: StoryTalkDef[] = [
         line(OK, '남는 거 줄 테니 두 칸만 심어 봐.', "I'll give you some of what's left. Plant two plots."),
         line(P, '제가요? 밭은 해 본 적이 없는데요.', "Me? I've never worked a field."),
         line(OK, '사 먹는 것만 먹고는 바다 일 오래 못 한다.', "Living only on what you buy, you won't last long at sea work."),
-        line(OK, '흙만 담아 주면 집 안 선반에서도 자라.', "Give it some soil and it'll even grow on a shelf indoors."),
+        line(OK, '흙만 담아 주면 집 안 선반에서도 자라. 심거든 와서 말하고.', "Give it some soil and it'll even grow on a shelf indoors. Come and tell me once it's in."),
         line(P, '(바다에서 건지는 것 말고, 땅에서 기다려 얻는 것도 있구나.)', "(Not just what you pull from the sea — some things you wait for from the land.)"),
       ], {
         choices: [

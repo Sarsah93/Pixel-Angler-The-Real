@@ -221,7 +221,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "I thought it was the basketball club... turns out it's a lure club. What's a sea bass? Catch one with me, please.",
       done: "Got it! A sea bass! It's bigger than the basketball! ...I'm going to keep doing this." }),
   'N06-2': E(
-    "Senior Mo Taejo has a mania about him. He intends to turn Baek Haneul, who joined because he fell for a part-timer, into a serious angler. There is one method: measuring lure choice against conditions. Current, depth, turbidity, change the lure and land three. Haneul was somewhere else at first, and from the second fish his eyes changed. An impure motive is still a motive.",
+    "Mo Taejo has a mania about him. He intends to turn Baek Haneul, who joined because he fell for a part-timer, into a serious angler. There is one method: measuring lure choice against conditions. Current, depth, turbidity, change the lure and land three. Haneul was somewhere else at first, and from the second fish his eyes changed. An impure motive is still a motive.",
     { offer: "I need to make Haneul serious. The method is measurement. Lure by condition. Three fish. Cast with us.",
       done: "Did you see Haneul's eyes? They changed. That's what I wanted. Thank you." }),
   'N06-3': E(

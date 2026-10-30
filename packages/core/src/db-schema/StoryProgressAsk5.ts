@@ -191,7 +191,7 @@ export const PROGRESS_ASKS_5: Record<string, ProgressAskDef[]> = {
       ['배 위에선 칼을 몸에 붙이고 짧게 끊어요. 흔들릴 때 길게 당기면 살이 찢어져요.',
         "On a boat, keep the knife close to your body and cut short. Draw long while it's rocking and the flesh tears."]), // 1 — 두 사람에게 회
     pa(['하린이는 만났어요?', 'Have you met Harin?'],
-      ['…아직 하린 씨를 못 만났습니다.', "...I haven't met Harin yet."],
+      ['…아직 서하린 씨를 못 만났습니다.', "...I haven't met Harin yet."],
       ['명부에 이름 써 놓고 기다릴 거예요. 카메라는… 이번엔 먼저 물어본대요.',
         "She'll have signed the book and be waiting. The camera... she says she'll ask first this time."]), // 2 — 첫 예약 손님 맞기
   ],

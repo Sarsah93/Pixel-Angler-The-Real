@@ -170,7 +170,7 @@ export const TALKS_N20: StoryTalkDef[] = [
         line(H, '아뇨! 이번엔 해 떨어지는 그림이 필요해요.', 'No! This time I need a shot of the sun going down.'),
         line(P, '해 떨어지는 그림이요?', 'A shot of the sun going down?'),
         line(H, '일몰까지만 저기 앉아 있어 줘요. 조과는 욕심 안 내요.', "Just sit over there until sunset. I'm not greedy about the catch."),
-        line(H, '해 질 무렵에 두 마리만 올라오면, 그거면 그림이 살아요.', "If two bite around dusk, that brings the shot to life."),
+        line(H, '해 질 무렵에 두 마리만 올라오면, 그거면 그림이 살아요. 다 찍으면 같이 봐요.', "If two bite around dusk, that brings the shot to life. Once it's filmed, we'll watch it together."),
         line(P, '(낚시를 하러 와서, 앉아 있는 게 일이라니.)', "(Come out fishing, and the job is to sit.)"),
       ], {
         choices: [
@@ -280,7 +280,7 @@ export const TALKS_N20: StoryTalkDef[] = [
         line(H, '대신 그쪽 홈그라운드로 갈게요.', "But I'll come to your home ground."),
         line(P, '제 홈그라운드라면…', 'My home ground...'),
         line(H, '속초요! 둘이 나란히 앉아서 두 마리 올리는 거예요.', "Sokcho! We sit side by side and land two fish."),
-        line(H, '좌판도 찍고요. 아, 허락 받고요.', 'And film the stalls too. Oh — with permission, of course.'),
+        line(H, '좌판도 찍고요. 아, 허락 받고요. 편집본은 그쪽도 같이 봐 줘요.', "And film the stalls too. Oh — with permission, of course. And you'll look over the edit with me."),
         line(P, '(카메라가 속초까지 따라오겠구나.)', "(So the camera's following me all the way to Sokcho.)"),
       ], {
         choices: [
