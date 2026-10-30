@@ -202,7 +202,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
   'M2-10': E(
     "The chief said you only know the winter sea if you can run a boat. Licence school, written exam. Navigation, weather, regulations. Sitting at a desk is harder than fishing. When the pass notice came, Ulsan and Pohang opened up on the map. The first page of the qualification to go out on a winter sea.",
     { offer: "You only know the winter sea if you can run a boat. Start with the written exam. Pass it and I'll open the road to Ulsan and Pohang.",
-      done: "Passed. There's a skipper called Ko Manseok at Bangeojin in Ulsan. Get on his boat. This reel is for a winter sea. It turns even when the drag freezes.",
+      done: "Passed. There's a skipper called Go Manseok at Bangeojin in Ulsan. Get on his boat. This reel is for a winter sea. It turns even when the drag freezes.",
       obj: ["Pay for the course with four consigned lots", "Pass the written exam for the small-craft operator licence"] }),
   'N01-2': E(
     "A runaway middle schooler is sitting under a Busan bridge. Baram spotted him first and brought me along. His father is out on a deep-sea boat and he says he cannot press the call button. We just fished for horse mackerel beside him. When one came up the boy smiled for the first time. Then he took out his phone. I did not listen to what he said.",
@@ -275,12 +275,12 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
 
   // ── Ch3 Ulsan / Pohang ──
   'M3-01': E(
-    "The Goraemaru is tied up at the Bangeojin pier. Skipper Ko Manseok looks rough and speaks short. The chief said this is the last stretch where I learn riding on other people's boats. I write my name on the boarding list and put on a life vest. The moment the boat leaves the pier the ground moves under me and my stomach turns over. Still, it is the first time I have seen the horizon move at eye level. I have to get used to this motion before anything comes next.",
+    "The Goraemaru is tied up at the Bangeojin pier. Skipper Go Manseok looks rough and speaks short. The chief said this is the last stretch where I learn riding on other people's boats. I write my name on the boarding list and put on a life vest. The moment the boat leaves the pier the ground moves under me and my stomach turns over. Still, it is the first time I have seen the horizon move at eye level. I have to get used to this motion before anything comes next.",
     { offer: "If you're coming, write your name on the list. Vest on. Run on my boat and you get off. That's all of it.",
       done: "...came back alive. I saw you throw up. Everyone does. Jigging next. Bring a rod.",
       obj: ["Land one yellowtail where the Goraemaru puts you", "Board the Goraemaru and complete one trip out"] }),
   'M3-02': E(
-    "Jigging. Drop the metal jig to the bottom and work it up with jerks. My arms tire before anything else. Ko Manseok watched my jerking rhythm without a word and took my hand once. Do it at that rhythm. Something knocked during the fall. A forty-three centimetre yellowtail. My first real fish from a boat. The skipper did not smile, but he threw me another jig.",
+    "Jigging. Drop the metal jig to the bottom and work it up with jerks. My arms tire before anything else. Go Manseok watched my jerking rhythm without a word and took my hand once. Do it at that rhythm. Something knocked during the fall. A forty-three centimetre yellowtail. My first real fish from a boat. The skipper did not smile, but he threw me another jig.",
     { offer: "Jigging. Drop it to the bottom and jerk. They take it on the fall. Get a yellowtail over forty.",
       done: "Forty-three. That'll do. This rod is for jigging. Jerk with yours and the tip goes. Use this. And jigging is a skill you can learn now.",
       obj: ["Land a yellowtail of 40cm or more by jigging on a winter sea"] }),
@@ -295,7 +295,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "You dried it. That's gwamegi now. Even if it isn't herring. You've become someone who can wait.",
       obj: ["Catch three fish to hang on the racks", "Carry one drying and curing craft through to the end"] }),
   'M3-05': E(
-    "Sea fog rolls in. I cannot see ten metres ahead. Ko Manseok throttles down and looks at me. What will you do. I had heard before that turning back without pushing is also skill. Return to port. No catch. But the moment I stepped onto the pier, news from another boat told me the call had been right.",
+    "Sea fog rolls in. I cannot see ten metres ahead. Go Manseok throttles down and looks at me. What will you do. I had heard before that turning back without pushing is also skill. Return to port. No catch. But the moment I stepped onto the pier, news from another boat told me the call had been right.",
     { offer: "Sea fog. Can't see ahead. You decide. Push on, or turn back.",
       done: "You came back. Coming back with no catch is skill. You heard about the other boat. That's your answer.",
       obj: ["Land two before the fog closes in", "Decide to turn back in the sea fog and return to the pier"] }),
@@ -332,7 +332,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "Stand at the bow. Use this rig. Bring a land rig aboard and you're a joke. Lunch is mulhoe.",
       done: "Good work. You heard the passenger's story. That's boat work too. From the next trip I'll open up passenger requests." }),
   'N08-2': E(
-    "Ko Haena said she wants to go to culinary school. Her father Ko Manseok is against it. She asked me to catch one winter yellowtail. She will set her father's table with it. Her knife is precise when she cuts the sashimi. The skipper ate without a word. Two bowls. Whether that was an answer, I still do not know.",
+    "Go Haena said she wants to go to culinary school. Her father Go Manseok is against it. She asked me to catch one winter yellowtail. She will set her father's table with it. Her knife is precise when she cuts the sashimi. The skipper ate without a word. Two bowls. Whether that was an answer, I still do not know.",
     { offer: "Please catch me one yellowtail. A winter one. I'll set my dad's table with it. I'll cut the sashimi myself.",
       done: "Dad had two bowls. He didn't say anything, but... two bowls." }),
   'N09-1': E(
@@ -356,8 +356,8 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "I'm helping with the interviews. The old ones like me. ...I just came along.",
       done: "...three lines you missed, two I missed. With two of us it works." }),
   'N03-6': E(
-    "Kang Ducheol turned up at Bangeojin. He says he sailed with Ko Manseok on the same boat thirty years ago. Instead of greeting each other the two old men looked at each other's hands. They are people with more left in their hands than in words. I sat between them and listened to old stories. I never heard the name of that boat. Neither of them said it.",
-    { offer: "I heard you were at Bangeojin. I'll go too. Ko Manseok. We were on the same boat thirty years back. Will you sit for the old talk?",
+    "Kang Ducheol turned up at Bangeojin. He says he sailed with Go Manseok on the same boat thirty years ago. Instead of greeting each other the two old men looked at each other's hands. They are people with more left in their hands than in words. I sat between them and listened to old stories. I never heard the name of that boat. Neither of them said it.",
+    { offer: "I heard you were at Bangeojin. I'll go too. Go Manseok. We were on the same boat thirty years back. Will you sit for the old talk?",
       done: "...neither said the boat's name. Both of them. That belongs to the men who were on it." }),
   'N19-3': E(
     "Since the food container came back, Old Tak has been carving again. This time not for himself, a rest for the stall. The second one. I went back to Sokcho and set it on the stall. Jeong Okseon said nothing again. She only set it down beside the first one. With two of them, something looked different.",
@@ -368,7 +368,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "I opened a shop. Customers... none. Would you cut some sashimi. No customers, but you still cut sashimi or it isn't a shop.",
       done: "...that's good. Harin says she won't film today. I like it better that way." }),
   'N08-3': E(
-    "Ko Haena practises at the helm behind her father's back. The skipper knows and pretends not to. I rode along on that trip. Haena's hands take the wheel. The boat wanders at first and then runs straight. One passenger photographed it. The skipper stood at the bow with his back turned. His shoulders were smiling a little.",
+    "Go Haena practises at the helm behind her father's back. The skipper knows and pretends not to. I rode along on that trip. Haena's hands take the wheel. The boat wanders at first and then runs straight. One passenger photographed it. The skipper stood at the bow with his back turned. His shoulders were smiling a little.",
     { offer: "Behind Dad's back. Helm practice. Stay beside me for one trip. He'll... he'll know. Still.",
       done: "It ran straight, didn't it? Do you think Dad saw. ...he must have. His back was smiling." }),
   'N21-3': E(
@@ -618,7 +618,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
     { offer: "We're disbanding. Graduation. You're the opponent for the last match. Come to Busan. Hosu'll bring the basketball.",
       done: "...I lost. Or did I win. Doesn't matter. Take this. The honorary member's share." }),
   'N08-4': E(
-    "Ko Manseok mentioned retirement for the first time. He is thinking of putting the boat up. Ko Haena said nothing. I went back to Ulsan and listened to the skipper. That day's fishing was the best of the year. The skipper did not smile at it. He looked at the boat for a long time.",
+    "Go Manseok mentioned retirement for the first time. He is thinking of putting the boat up. Go Haena said nothing. I went back to Ulsan and listened to the skipper. That day's fishing was the best of the year. The skipper did not smile at it. He looked at the boat for a long time.",
     { offer: "...I'm thinking of putting the boat up. First time I've said it. Haena doesn't know. No, she'll know. Come and listen.",
       done: "...you heard it. Nothing's decided. But saying it is half of it." }),
   'N13-3': E(
@@ -662,8 +662,8 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "...you landed it. It worked without me speaking. Who my teacher is... another time.",
       obj: ["Land an amberjack on a popper in summer or autumn"] }),
   'M6-03': E(
-    "The lighthouse. Old Seok Daeyang records the weather. Wind speed, wave height, visibility. Written by hand on paper. When he heard my name he looked at me for a long time. He asked whether I knew Skipper Ko Jintae. That is my father's name. He remembered my father. A boat that passed this lighthouse twenty-two years ago. I could not say anything.",
-    { offer: "...what did you say your name was. Are you Skipper Ko Jintae's child. Sit down. Help me with the weather log, and let's talk.",
+    "The lighthouse. Old Seok Daeyang records the weather. Wind speed, wave height, visibility. Written by hand on paper. When he heard my name he looked at me for a long time. He asked whether I knew Skipper Go Jintae. That is my father's name. He remembered my father. A boat that passed this lighthouse twenty-two years ago. I could not say anything.",
+    { offer: "...what did you say your name was. Are you Skipper Go Jintae's child. Sit down. Help me with the weather log, and let's talk.",
       done: "...that boat, twenty-two years back, it passed right out there. I saw it. This lantern belongs to the lighthouse. Your father saw this light too.",
       obj: ["Land one amberjack below the lighthouse", "Help lighthouse keeper Seok Daeyang with the weather log and hear his story"] }),
   'M6-04': E(
@@ -682,7 +682,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
       done: "Three days. You saw what a stall is. Now you know why carrying ice came first.",
       obj: ["Build three consigned lots as goods for the stall", "Run the Manbok Store stall for three days"] }),
   'M6-09': E(
-    "Ko Manseok decided to put the boat up. He called me as the customer for the last trip. Do you remember where you sat the first time you came aboard. The bow. I sat there. Ko Haena stood in the wheelhouse. The skipper sat on deck and looked at the sea like a customer. The Goraemaru's last trip. I did not record the catch.",
+    "Go Manseok decided to put the boat up. He called me as the customer for the last trip. Do you remember where you sat the first time you came aboard. The bow. I sat there. Go Haena stood in the wheelhouse. The skipper sat on deck and looked at the sea like a customer. The Goraemaru's last trip. I did not record the catch.",
     { offer: "I'm putting the boat up. It's the last trip. Come as a customer. Do you remember where you sat the first time.",
       done: "...it's over. The Goraemaru. Haena ran her. I was a customer. So were you.",
       obj: ["Return to Bangeojin in Ulsan", "Board the Goraemaru's last trip as a customer"] }),
@@ -836,7 +836,7 @@ export const STORY_NARRATIVE_EN: Record<string, NarrativeEnEntry> = {
   'N19-6': E(
     "Jeong Okseon finished her convalescence and came out to the stall in a wheelchair. The three bamboo rests are lined up. Old Tak sits in the next seat. I made a place for the two of them. Two chairs, between the ice boxes. Neither said anything. Fifty years to hold a hand. I pretended not to see that hand.",
     { offer: "...I'm out at the stall. They say Tak is coming. A place, could you. No, never mind. Make a place for us.",
-      done: "...we sat. We held hands. You pretended not to see. Good kid." }),
+      done: "...we sat. We held hands. You pretended not to see. Good of you." }),
   'N04-6': E(
     "The graduated members. Bae Nuri is in her final year at the fisheries high school, Ha Sua at university, Mo Jinju works a boat. The three of them came to the reopening carrying the club flag. Cheongcho High Breakwater Club. Catch it and eat it. We hung the flag on the second floor. Jinju spoke to me first for the first time. I'm on a boat. Not yours, though.",
     { offer: "Hey! We're here! With the flag! Hang it on the second floor. Jinju's on a boat. Not yours, she says.",

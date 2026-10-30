@@ -221,7 +221,7 @@ export const QUEST_SCENE_OVERRIDES: Record<string, (q: StoryQuestDef, idx: numbe
     base.script = {
       id: base.script.id, placeKo: base.script.placeKo, placeEn: base.script.placeEn,
       steps: [
-        { kind: 'say', who: 'player', thought: true, text: '동해안을 따라 하루 반. 부두에 강두철 조합장과 탁만수 노인이 서 있었다.', textEn: 'A day and a half up the coast. Kang Ducheol and old Tak were standing on the pier.' },
+        { kind: 'say', who: 'player', thought: true, text: '동해안을 따라 하루 반. 부두에 강두철 씨와 탁만수 씨가 서 있었다.', textEn: 'A day and a half up the coast. Kang Ducheol and Tak Mansu were standing on the pier.' },
         { kind: 'fade', who: 'tak', alpha: 1, ms: 360 },
         { kind: 'faceTo', who: 'npc', target: 'player' },
         { kind: 'faceTo', who: 'tak', target: 'player' },

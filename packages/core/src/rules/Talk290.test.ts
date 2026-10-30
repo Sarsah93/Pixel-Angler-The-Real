@@ -12,6 +12,7 @@ import { INQUIRY_NODES } from '../db-schema/StoryInquiry.js';
 import { choicesFor } from '../db-schema/StoryChoices.js';
 import { narrativeOf } from '../db-schema/StoryNarrative.js';
 import { STORY_NARRATIVE_EN } from '../db-schema/StoryNarrativeEn.js';
+import { getJournalPage } from '../db-schema/JournalPages.js';
 
 describe('290 호칭 — 부름말 찾기', () => {
   it('부르는 꼴 · 가리키는 꼴 · 자기 집안', () => {
@@ -114,6 +115,8 @@ describe('290(2) 데이터 어긋남', () => {
     const q = STORY_QUESTS.find((x) => x.id === 'M3-08')!;
     expect(q.objectives[0].season).toEqual(['winter']);
     expect(q.objectives[0].labelKo).toContain('겨울');
+    // 이 편이 채우는 조행록 6장도 겨울 참돔을 받는다
+    expect(getJournalPage(6)?.seasons).toContain('winter');
   });
   it('M4-03 「지세포의 밤」 — 목표 줄이 낮을 말하지 않는다', () => {
     const q = STORY_QUESTS.find((x) => x.id === 'M4-03')!;

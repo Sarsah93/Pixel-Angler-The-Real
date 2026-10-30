@@ -425,9 +425,9 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     { offer: '저 농구부인 줄 알고 들었는데요… 루어 동아리래요. 농어가 뭐예요? 같이 잡아 주세요.',
       done: '잡았어요! 농어! 농구공보다 큰데요! …저 계속 할래요, 이거.' },
     [
-      c('lesson', '호수, 선배들 액션 보는 눈이 좋더라. 나도 옆에서 봐도 되겠나.', '그쪽이 저한테요? 네! (초보의 눈으로 다시 본 루어 액션이 새롭다.)', { proficiency: { skillId: 'fish_lure', xp: 22 }, affinity: 0.05 }),
+      c('lesson', '호수, 선배들 액션 보는 눈이 좋더라. 나도 옆에서 봐도 되겠나.', '저한테요? 네! (초보의 눈으로 다시 본 루어 액션이 새롭다.)', { proficiency: { skillId: 'fish_lure', xp: 22 }, affinity: 0.05 }),
       c('pay', '동아리 활동비 같은 게 있습니까.', '있어요! 회비… 라면 살 돈이지만요. (동전을 모아 준다.)', { payMult: 0.6, affinity: -0.02 }),
-      c('decline', '농어 잡은 얼굴 봤으면 됐다.', '…그쪽은 이제 우리 동아리 명예 회원이에요! (해양대 앞에서 인사받는 어른이 됐다.)', { affinity: 0.12, harborRep: 2 }),
+      c('decline', '농어 잡은 얼굴 봤으면 됐다.', '…이제 우리 동아리 명예 회원이에요! (해양대 앞에서 인사받는 어른이 됐다.)', { affinity: 0.12, harborRep: 2 }),
     ]),
   'N06-2': N(
     '모태조 씨는 광기가 있다. 알바생에게 반해 입문한 백하늘을 진지한 앵글러로 만들겠다고 한다. 방법은 하나. 상황별 루어 선택을 실측하는 것. 조류, 수심, 탁도에 따라 루어를 바꿔 세 마리를 올린다. 백하늘은 처음엔 딴생각을 하다가 두 번째부터 눈이 바뀌었다. 불순한 동기도 동기다.',
@@ -839,7 +839,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
       done: '잡았다! 뜰채 놓칠 뻔한 건 비밀이에요. 선장님한테는요.',
       obj: ['소형 등선에서 다운샷으로 광어를 올린다'] },
     [
-      c('secret', '비밀은 지켜 주겠다. 뜰채는 잘 댔다.', '역시! 의리 있어요! (다음 등선 출조 명단에 내 이름을 먼저 쓴다.)', { affinity: 0.08, flag: 'choice.m4_pado_secret' }),
+      c('secret', '비밀은 지켜 주겠다. 뜰채는 잘 댔다.', '역시! 최고예요! (다음 등선 출조 명단에 내 이름을 먼저 쓴다.)', { affinity: 0.08, flag: 'choice.m4_pado_secret' }),
       c('tell', '채금자 씨한테 말해야겠다. 뜰채 연습 시켜 달라고.', '아… 그건 그래요. 맞아요. (채금자가 다음 날 파도에게 뜰채 연습을 시킨다. 파도는 나를 노려본다. 웃으면서.)', { affinity: -0.02, affinityOther: [{ npcId: 'chae_geumja', delta: 0.05 }] }),
     ]),
   'M4-04': N(
@@ -1028,7 +1028,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     { offer: '수산고요… 갈까요. 어른 한 명이 필요한데. 어른이 없어요, 주변에. 그래서 그쪽이요.',
       done: '들어 줘서 됐어요. 결정은 제가 할게요. 그래도 들어 준 사람이 그쪽이에요.' },
     [
-      c('listen', '결정은 네 몫이다. 어느 쪽이든 부장은 부장이다.', '…네. (수산고 원서를 낸다. 그 애가 처음으로 나를 편하게 부른다.)', { affinity: 0.12, harborRep: 2, flag: 'choice.n04_listened' }),
+      c('listen', '결정은 네 몫이다. 어느 쪽이든 부장은 부장이다.', '…네. (수산고 원서를 낸다. 그 애가 처음으로 내 이름을 편하게 부른다.)', { affinity: 0.12, harborRep: 2, flag: 'choice.n04_listened' }),
       c('advise', '내 생각엔 수산고가 맞다. 네 눈이 바다를 본다.', '…그렇게 말해 주는 어른이 처음이에요. (원서를 낸다. 그러나 결정을 내가 한 것 같아 조금 무겁다.)', { affinity: 0.06, flag: 'choice.n04_advised' }),
       c('pay', '상담비는 받아야겠다. 농담이다.', '…어른들 농담 진짜 재미없어요. (그래도 웃는다. 라면값을 준다.)', { payMult: 0.4, affinity: 0.02 }),
     ]),
@@ -1055,9 +1055,9 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     { offer: '저 혼자 손님 맡아요. 처음이에요. 동승만 해 줘요. 아무것도 안 해도 돼요. 있기만요.',
       done: '팁 받았어요! 선장님한테 보여 줬어요! …고마워요. 있기만 했는데.' },
     [
-      c('praise', '덜렁이가 아니었다. 선장이었다.', '…… (파도가 팁 봉투를 반으로 접어 내민다. 받지 않으면 안 될 얼굴이다.)', { payMult: 0.6, affinity: 0.1, affinityOther: [{ npcId: 'chae_geumja', delta: 0.05 }] }),
+      c('praise', '덜렁이가 아니었다. 선장이었다.', '…여기요. (파도가 팁 봉투를 반으로 접어 내민다. 받지 않으면 안 될 얼굴이다.)', { payMult: 0.6, affinity: 0.1, affinityOther: [{ npcId: 'chae_geumja', delta: 0.05 }] }),
       c('lesson', '손님 앉히는 순서, 네가 나보다 낫더라. 배워야겠다.', '저요? 선장님이 가르쳐 준 거예요. 뱃멀미 심한 사람 가운데! (손님 응대가 손에 붙는다.)', { proficiency: { category: 'driving', xp: 30 }, affinity: 0.06 }),
-      c('decline', '있기만 한 건데 뭘. 됐다.', '그쪽은 있기만 해도 돼요. 진짜로. (지세포에서 파도가 나를 따르는 걸 다들 안다.)', { affinity: 0.12, harborRep: 2 }),
+      c('decline', '있기만 한 건데 뭘. 됐다.', '있기만 해도 돼요. 진짜로. (지세포에서 파도가 나를 따르는 걸 다들 안다.)', { affinity: 0.12, harborRep: 2 }),
     ]),
   'N21-4': N(
     '양식 가두리 앞이 보름달물해파리로 막혔다. 취수구까지 밀려가기 전에 걷어야 한다고 오세찬이 말했다. 열 마리. 훌치기로 하나씩 끌어온다. 팔이 저리다. 열 번째를 걷었을 때 가두리 관리인이 소리를 질렀다. 취수구 열렸어요. 처음으로 걷는 일이 누군가를 살렸다.',
@@ -1154,8 +1154,8 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
       done: '잡았네요. …저도 던졌어요, 오늘. 세린이한테는 말하지 마요.',
       obj: ['가을 밤 얕은 곳에서 에깅으로 무늬오징어를 올린다'] },
     [
-      c('keep_secret', '세린한테는 말 안 하겠다.', '…고마워요. (그래도 세린이는 알았다. 마라가 던진 에기가 세린이 것이었으니까.)', { affinity: 0.08, flag: 'choice.m5_mara_secret' }),
-      c('tell', '세린이 알아야 한다. 네가 던졌다는 걸.', '…그럴 거면 그쪽이 말해요. 저는 못 해요. (그날 밤 세린이 마라의 집 앞에 앉아 있었다.)', { affinity: 0.03, affinityOther: [{ npcId: 'oh_serin', delta: 0.08 }], flag: 'choice.m5_mara_told' }),
+      c('keep_secret', '세린한테는 말 안 하겠다.', '…고마워요. (그래도 오세린 씨는 알았다. 마라 씨가 던진 에기가 오세린 씨 것이었으니까.)', { affinity: 0.08, flag: 'choice.m5_mara_secret' }),
+      c('tell', '세린이 알아야 한다. 네가 던졌다는 걸.', '…그럴 거면 그쪽이 말해요. 저는 못 해요. (그날 밤 오세린 씨가 마라 씨의 집 앞에 앉아 있었다.)', { affinity: 0.03, affinityOther: [{ npcId: 'oh_serin', delta: 0.08 }], flag: 'choice.m5_mara_told' }),
     ]),
   'M5-08': N(
     '결선. 겨울 방어 대물. 80cm가 넘는 놈이 걸렸다. 드랙이 울고 팔이 저린다. 십오 분. 뜰채에 들어오는 순간 전화가 울렸다. 정옥선 씨가 쓰러졌다는 연락. 계측대에 방어를 올리고 결과를 듣지 않고 배로 갔다. 대회 장비를 남궁현이 대신 챙겨 뒀다. 그 안에 부상 세트가 있었다.',
@@ -1212,7 +1212,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     { offer: '…퇴사해요. 낚시로 살 거예요. 하린이는 아무 말도 안 해요. 그쪽은 뭐라고 할 거예요.',
       done: '들어 줬네요. …고마워요. 하린이한테는 그쪽이 말해 줘요.' },
     [
-      c('support', '낚시로 살 수 있다. 네 칼이면.', '…… (하린이 그 말을 듣고 카메라를 다시 들었다. 이번엔 기범을 찍기 위해.)', { affinity: 0.12, affinityOther: [{ npcId: 'seo_harin', delta: 0.08 }], flag: 'choice.n05_supported' }),
+      c('support', '낚시로 살 수 있다. 네 칼이면.', '… (하린이 그 말을 듣고 카메라를 다시 들었다. 이번엔 기범을 찍기 위해.)', { affinity: 0.12, affinityOther: [{ npcId: 'seo_harin', delta: 0.08 }], flag: 'choice.n05_supported' }),
       c('caution', '손님 없는 가게로 살 수 있겠나. 한 번 더 생각해라.', '…생각했어요. 천 번. (그래도 웃는다. 말려 준 사람이 있어서.)', { affinity: 0.04, flag: 'choice.n05_cautioned' }),
       c('lesson', '결심한 사람 눈은 다르더라. 그 칼로 회 뜨는 거 한 번 더 보여 줘.', '…네. 이건 퇴사 기념. (회 뜨는 각도가 한 번 더 달라진다.)', { proficiency: { skillId: 'life_fillet', xp: 34 }, affinity: 0.06 }),
     ]),
@@ -1258,7 +1258,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
       done: '리듬 맞았죠? 셋이요. …마라 왔어요. 아무 말도 안 했지만요.' },
     [
       c('rhythm', '세 번째에 리듬이 맞았다. 그거면 됐다.', '맞았죠! (팀 유니폼을 하나 준다. 등번호 3.)', { affinity: 0.1, affinityOther: [{ npcId: 'mara', delta: 0.05 }] }),
-      c('lesson', '세린이 저킹 리듬, 대회용이더라. 가르쳐 줘.', '저요? 그쪽한테? …좋아요. 이 박자로. (지깅 리듬이 몸에 붙는다.)', { proficiency: { skillId: 'fish_jig', xp: 32 }, affinity: 0.06 }),
+      c('lesson', '세린이 저킹 리듬, 대회용이더라. 가르쳐 줘.', '저요? 제가 가르쳐요? …좋아요. 이 박자로. (지깅 리듬이 몸에 붙는다.)', { proficiency: { skillId: 'fish_jig', xp: 32 }, affinity: 0.06 }),
       c('pay', '훈련 코치비는 받아야겠다.', '코치… 유리아 언니가 감독인데. (유리아가 대신 준다. 방송국 돈으로.)', { payMult: 1 }),
     ]),
   'N14-4': N(
@@ -1430,7 +1430,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
       obj: ['울산 방어진으로 돌아간다', '고래마루 마지막 출항에 손님으로 오른다'] },
     [
       c('bow', '뱃머리에 앉았습니다. 처음처럼.', '…기억하네. (선장이 배 이름이 새겨진 나무판을 떼어 내게 준다.)', { affinity: 0.1, affinityOther: [{ npcId: 'go_haena', delta: 0.08 }], flag: 'choice.m6_bow_seat' }),
-      c('haena', '해나 씨 조타가 고만석 씨보다 부드러웠습니다.', '…그건 인정 못 하지. 아니, 인정한다. (해나가 조타실에서 그 말을 들었다.)', { affinity: 0.06, affinityOther: [{ npcId: 'go_haena', delta: 0.12 }] }),
+      c('haena', '해나 씨 조타가 고만석 씨보다 부드러웠습니다.', '…그건 인정 못 하지. 아니, 인정한다. (고해나 씨가 조타실에서 그 말을 들었다.)', { affinity: 0.06, affinityOther: [{ npcId: 'go_haena', delta: 0.12 }] }),
     ]),
   'M6-07': N(
     '항해 계획 승인. 기상, 정비, 비상계획 서류. 독도까지 가는 원거리 항해의 마지막 자격이다. 계장이 서류를 한 장씩 넘겼다. 비상계획에서 한 항목을 지적했다. 연료 예비량. 다시 계산했다. 승인 도장이 찍혔다. 이제 남은 건 허가뿐이다.',
@@ -1498,7 +1498,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
       done: '내가 이겼지. 이 릴, 줄게. 낡았지만 돼. 이긴 사람이 주는 거야, 우리 섬은.' },
     [
       c('lesson', '현지 미끼, 뭘 쓴 거야. 가르쳐 줘.', '갯바위 밑에. 손으로 캐. (현지 조달 채집이 손에 붙는다.)', { proficiency: { category: 'gathering', xp: 32 }, affinity: 0.06 }),
-      c('rematch', '다음엔 내가 이긴다.', '해 봐, 육지 사람. (아이가 웃는다. 자기 할아버지 등대 이야기를 꺼낸다.)', { affinity: 0.08, xpMult: 1.1, flag: 'choice.n16_rematch' }),
+      c('rematch', '다음엔 내가 이긴다.', '해 봐, 육지 사람. (아이가 웃는다. 할아버지 등대 이야기를 꺼낸다.)', { affinity: 0.08, xpMult: 1.1, flag: 'choice.n16_rematch' }),
       c('pay', '릴은 받고, 대결 상금은 내가 내지.', '상금! 아이스크림! (아이스크림값을 준다. 아이가 세 개를 산다.)', { payMult: 0.3, affinity: 0.05 }),
     ],
     [
@@ -1755,7 +1755,7 @@ export const STORY_NARRATIVE: Record<string, NarrativeEntry> = {
     [
       c('first', '처음 들은 잘했다는 말. 잊지 마.', '안 잊어. (아이가 계측자를 내게 준다. 할아버지 것이라고. 이제 자기 것을 쓴다고.)', { affinity: 0.15, affinityOther: [{ npcId: 'seok_daeyang', delta: 0.12 }], flag: 'choice.n16_first_praise' }),
       c('lesson', '네가 자 대는 법이 조사단보다 정확하더라. 어디서 배웠어.', '할아버지가. 기상 적을 때. 눈금 읽는 법. (계측이 정확해진다.)', { proficiency: { category: 'fishing', xp: 38 }, affinity: 0.08 }),
-      c('pay', '조사 보조 수당은 어른한테 주는 거지.', '어른? 너? …그럼 아이스크림. (조사단이 아이스크림값을 준다. 아이가 다섯 개를 산다.)', { payMult: 0.3, affinity: 0.05 }),
+      c('pay', '조사 보조 수당은 어른한테 주는 거지.', '어른? 네가? …그럼 아이스크림. (조사단이 아이스크림값을 준다. 아이가 다섯 개를 산다.)', { payMult: 0.3, affinity: 0.05 }),
     ]),
   'N18-7': N(
     '재개관식 준비. 도현수가 의자를 나른다. 네 이름으로 여는 거 아니야. 우리 이름으로 여는 거지. 처음으로 우리라고 했다. 둘이 의자 백 개를 날랐다. 스무 살 때 방파제에서 혀를 차던 그가. 마지막 의자를 놓고 그가 말했다. 앉아 봐. 우리가 날랐잖아.',

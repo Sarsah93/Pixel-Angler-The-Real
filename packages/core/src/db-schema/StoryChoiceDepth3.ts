@@ -425,7 +425,7 @@ export const CHOICE_DEPTH_3: Record<string, ChoiceDepthEntry> = {
   // ── M6-03 「등대」 · 석대양 ──
   'M6-03': {
     offer: [
-      d('yes_father', '네. 고진태 선장이 제 아버지입니다.', 'Yes. Skipper Ko Jintae is my father.',
+      d('yes_father', '네. 고진태 선장이 제 아버지입니다.', 'Yes. Skipper Go Jintae is my father.',
         '…그렇군. (한참 나를 보다가 기상 일지를 편다.)\n\n앉게. 얘기는 길어질 거야. 먼저 풍속부터 적지. 바람이 어디서 오는지 알아야 그 배 얘기도 할 수 있어.',
         "...I see. (He looks at me a long while, then opens the weather log.)\n\nSit. This will take a while. Wind speed first. You have to know where the wind comes from before I can tell you about that boat.",
         { affinity: 0.05 }),

@@ -1122,7 +1122,7 @@ export const CHOICE_DEPTH_6: Record<string, ChoiceDepthEntry> = {
         '응. 형이 책은 많이 읽었는데 갯바위는 처음이래. 첫날 미끄러질 뻔했어. 그래서 내가 가르쳐 준다고 했지. (자랑스러운 걸 숨기지 못한다.)\n\n책에는 돌돔 줄무늬가 몇 개인지는 나오는데, 어디를 디디면 미끄러운지는 안 나온대. 그건 내가 알아. 그러니까 내가 선생이야.',
         "Yep. He's read loads of books, but it's his first time on the rocks. Nearly slipped on day one. So I said I'd teach him. (He can't hide how proud he is.)\n\nBooks tell you how many stripes a beakperch has, but not where it's slippery underfoot, he says. I know that. So I'm the teacher.",
         { affinity: 0.04, flag: 'choice.n16_4_asked_student' }),
-      d('tease_teacher', '선생님 소리 들으니까 기분 좋냐?', "Feels good being called teacher, eh?",
+      d('tease_teacher', '선생 소리 들으니까 기분 좋냐?', "Feels good being called teacher, eh?",
         '…좋아. 엄청. (얼굴이 빨개지는데 아니라고는 안 한다.)\n\n근데 형이 나보다 키가 두 배야. 선생이 올려다보면서 가르쳐. 그건 좀 이상해. 그래도 형이 내 말을 다 들어. 할아버지보다 잘 들어.',
         "…Yeah. Loads. (His face goes red, but he doesn't deny it.)\n\nBut he's twice as tall as me. The teacher teaches looking up. That's kind of weird. Still, he listens to everything I say. Better than Grandpa does.",
         { affinity: 0.03 }),
