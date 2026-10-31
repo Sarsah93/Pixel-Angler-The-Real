@@ -1,61 +1,29 @@
 [
 {
-"tx": 1392,
-"ty": 645,
-"colour": "white",
-"kind": "lighthouse"
-},
-{
-"tx": 1377,
-"ty": 667,
-"colour": "white",
-"kind": "lighthouse"
-},
-{
-"tx": 838,
-"ty": 906,
-"colour": "white",
-"kind": "lighthouse",
-"name": "태하등대"
-},
-{
-"tx": 851,
-"ty": 918,
-"colour": "white",
-"kind": "lighthouse",
-"name": "울릉도 항로표지관리소"
-},
-{
-"tx": 2905,
-"ty": 1370,
+"tx": 692,
+"ty": 383,
 "colour": "white",
 "kind": "lighthouse",
 "name": "빨간등대"
 },
 {
-"tx": 2892,
-"ty": 1396,
+"tx": 678,
+"ty": 409,
 "colour": "white",
 "kind": "lighthouse",
 "name": "하얀등대"
 },
 {
-"tx": 2998,
-"ty": 1608,
+"tx": 784,
+"ty": 621,
 "colour": "white",
 "kind": "lighthouse",
 "major": true,
 "name": "행남등대"
 },
 {
-"tx": 1502,
-"ty": 2083,
-"colour": "white",
-"kind": "lighthouse"
-},
-{
-"tx": 2442,
-"ty": 2105,
+"tx": 228,
+"ty": 1118,
 "colour": "green",
 "kind": "lighthouse"
 }

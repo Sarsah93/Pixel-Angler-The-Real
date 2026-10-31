@@ -1,414 +1,138 @@
 [
  {
-  "type": "lighthouse",
-  "name": "",
-  "nameEn": "",
-  "tx": 1392,
-  "ty": 645,
-  "osmId": 444671024
- },
- {
-  "type": "lighthouse",
-  "name": "태하등대",
-  "nameEn": "",
-  "tx": 838,
-  "ty": 906,
-  "osmId": 444671223
- },
- {
-  "type": "police",
-  "name": "울릉경찰서 북면파출소",
-  "nameEn": "",
-  "tx": 2200,
-  "ty": 405,
-  "osmId": 4623917342
- },
- {
-  "type": "lodging",
-  "name": "바다풍걍펜션",
-  "nameEn": "Badapunggyang Pension",
-  "tx": 2189,
-  "ty": 395,
-  "osmId": 4623917343
- },
- {
-  "type": "lodging",
-  "name": "휴행복헌펜션",
-  "nameEn": "Hyuhaengbokheon Pension",
-  "tx": 1935,
-  "ty": 558,
-  "osmId": 4623917344
- },
- {
-  "type": "police",
-  "name": "울릉해양경비안전센터 현포출장소",
-  "nameEn": "",
-  "tx": 1318,
-  "ty": 734,
-  "osmId": 4623995026
- },
- {
-  "type": "lodging",
-  "name": "학포웰빙거펜션",
-  "nameEn": "Hakpowelbinggeo Pension",
-  "tx": 1036,
-  "ty": 1293,
-  "osmId": 4624065930
- },
- {
-  "type": "viewpoint",
-  "name": "만물상전망대",
-  "nameEn": "",
-  "tx": 1020,
-  "ty": 1362,
-  "osmId": 4624065933
- },
- {
-  "type": "hospital",
-  "name": "태하보건진료소",
-  "nameEn": "",
-  "tx": 863,
-  "ty": 1044,
-  "osmId": 4624114496
- },
- {
-  "type": "info",
-  "name": "",
-  "nameEn": "Number 11",
-  "tx": 2155,
-  "ty": 1417,
-  "osmId": 6013033310
- },
- {
-  "type": "info",
-  "name": "",
-  "nameEn": "Number 10",
-  "tx": 2196,
-  "ty": 1438,
-  "osmId": 6013033311
- },
- {
-  "type": "info",
-  "name": "signpost to Naribunji",
-  "nameEn": "",
-  "tx": 2075,
-  "ty": 1368,
-  "osmId": 6013033315
- },
- {
-  "type": "info",
-  "name": "",
-  "nameEn": "Number 13",
-  "tx": 2102,
-  "ty": 1375,
-  "osmId": 6013033317
- },
- {
-  "type": "police",
-  "name": "울릉경찰서 서면파출소",
-  "nameEn": "",
-  "tx": 1566,
-  "ty": 2036,
-  "osmId": 7793038545
- },
- {
-  "type": "lighthouse",
-  "name": "",
-  "nameEn": "",
-  "tx": 1377,
-  "ty": 667,
-  "osmId": 8398972029
- },
- {
-  "type": "lodging",
-  "name": "삼게스트하우스",
-  "nameEn": "Sam Guesthouse",
-  "tx": 901,
-  "ty": 1045,
-  "osmId": 8883561686
- },
- {
-  "type": "viewpoint",
-  "name": "수토전망대",
-  "nameEn": "",
-  "tx": 861,
-  "ty": 1093,
-  "osmId": 8983098588
- },
- {
-  "type": "viewpoint",
-  "name": "현포전망대(정자)",
-  "nameEn": "",
-  "tx": 1177,
-  "ty": 859,
-  "osmId": 8983105463
- },
- {
-  "type": "lighthouse",
-  "name": "울릉도 항로표지관리소",
-  "nameEn": "",
-  "tx": 851,
-  "ty": 918,
-  "osmId": 9109589817
- },
- {
-  "type": "shop",
-  "shopKind": "convenience",
-  "name": "QU",
-  "nameEn": "QU",
-  "tx": 2279,
-  "ty": 2082,
-  "osmId": 9466851531
- },
- {
-  "type": "ferry_terminal",
-  "name": "울릉항여객선터미널",
-  "nameEn": "",
-  "tx": 2268,
-  "ty": 2180,
-  "osmId": 9466851586
- },
- {
-  "type": "lighthouse",
-  "name": "",
-  "nameEn": "",
-  "tx": 1502,
-  "ty": 2083,
-  "osmId": 9471571292
- },
- {
-  "type": "shop",
-  "shopKind": "convenience",
-  "name": "QU",
-  "nameEn": "QU",
-  "tx": 1331,
-  "ty": 740,
-  "osmId": 9496933630
- },
- {
-  "type": "shop",
-  "shopKind": "convenience",
-  "name": "QU",
-  "nameEn": "QU",
-  "tx": 2194,
-  "ty": 412,
-  "osmId": 9501839824
- },
- {
-  "type": "viewpoint",
-  "name": "천부해중전망대",
-  "nameEn": "",
-  "tx": 2211,
-  "ty": 350,
-  "osmId": 9502841155
- },
- {
-  "type": "viewpoint",
-  "name": "천부전망대",
-  "nameEn": "",
-  "tx": 2237,
-  "ty": 387,
-  "osmId": 9502841156
- },
- {
-  "type": "viewpoint",
-  "name": "나리전망대",
-  "nameEn": "",
-  "tx": 2147,
-  "ty": 760,
-  "osmId": 9502841613
- },
- {
-  "type": "viewpoint",
-  "name": "알봉분화구전망대",
-  "nameEn": "",
-  "tx": 1941,
-  "ty": 890,
-  "osmId": 10297067531
- },
- {
-  "type": "restaurant",
-  "name": "산마일식당",
-  "nameEn": "Sanmail Restaurant",
-  "tx": 2108,
-  "ty": 852,
-  "osmId": 12944067357
- },
- {
-  "type": "cafe",
-  "name": "Café Ullo",
-  "nameEn": "Café Ullo",
-  "tx": 1901,
-  "ty": 569,
-  "osmId": 12944822366
- },
- {
-  "type": "shop",
-  "shopKind": "convenience",
-  "name": "QU",
-  "nameEn": "QU",
-  "tx": 2239,
-  "ty": 2150,
-  "osmId": 12946757966
- },
- {
-  "type": "police",
-  "name": "",
-  "nameEn": "",
-  "tx": 2240,
-  "ty": 2162,
-  "osmId": 12946794326
- },
- {
-  "type": "viewpoint",
-  "name": "",
-  "nameEn": "",
-  "tx": 1456,
-  "ty": 2019,
-  "osmId": 14331094953
- },
- {
   "type": "lodging",
   "name": "독두게스트하우스",
   "nameEn": "Dokdu Guesthouse",
-  "tx": 2743,
-  "ty": 1627,
+  "tx": 529,
+  "ty": 640,
   "osmId": 368601305
  },
  {
   "type": "lodging",
   "name": "울링콘도",
   "nameEn": "Ulringkondo",
-  "tx": 2566,
-  "ty": 1694,
+  "tx": 352,
+  "ty": 707,
   "osmId": 368663551
  },
  {
   "type": "restaurant",
   "name": "울링횟집",
   "nameEn": "Ulring Sashimi House",
-  "tx": 2786,
-  "ty": 1701,
+  "tx": 573,
+  "ty": 714,
   "osmId": 368971860
  },
  {
   "type": "ferry_terminal",
   "name": "도동선착장",
   "nameEn": "",
-  "tx": 2832,
-  "ty": 1742,
+  "tx": 618,
+  "ty": 755,
   "osmId": 408727177
  },
  {
   "type": "lighthouse",
   "name": "행남등대",
   "nameEn": "Haengnamdeungdae",
-  "tx": 2998,
-  "ty": 1608,
+  "tx": 784,
+  "ty": 621,
   "osmId": 444671209
  },
  {
   "type": "viewpoint",
   "name": "내수전일출전망대",
   "nameEn": "",
-  "tx": 2827,
-  "ty": 1046,
+  "tx": 613,
+  "ty": 59,
   "osmId": 4621601006
  },
  {
   "type": "lodging",
   "name": "송림비츠호텔",
   "nameEn": "Songrimbicheu Hotel",
-  "tx": 2809,
-  "ty": 1708,
+  "tx": 595,
+  "ty": 720,
   "osmId": 4623907797
- },
- {
-  "type": "viewpoint",
-  "name": "",
-  "nameEn": "",
-  "tx": 2786,
-  "ty": 526,
-  "osmId": 4624131706
  },
  {
   "type": "lodging",
   "name": "오션파키호텔",
   "nameEn": "Osyeonpaki Hotel",
-  "tx": 2790,
-  "ty": 1705,
+  "tx": 577,
+  "ty": 718,
   "osmId": 4627180620
  },
  {
   "type": "lodging",
   "name": "울릉도이사보호텔",
   "nameEn": "Ulreungdoisabo Hotel",
-  "tx": 2785,
-  "ty": 1703,
+  "tx": 572,
+  "ty": 716,
   "osmId": 4627180621
  },
  {
   "type": "police",
   "name": "울릉경찰서 도동파출소",
   "nameEn": "",
-  "tx": 2743,
-  "ty": 1682,
+  "tx": 529,
+  "ty": 695,
   "osmId": 4627208084
  },
  {
   "type": "lodging",
   "name": "울링호텔",
   "nameEn": "Ulring Hotel",
-  "tx": 2739,
-  "ty": 1658,
+  "tx": 525,
+  "ty": 671,
   "osmId": 4633925025
  },
  {
   "type": "police",
   "name": "울릉경찰서 저동파출소",
   "nameEn": "",
-  "tx": 2817,
-  "ty": 1464,
+  "tx": 603,
+  "ty": 477,
   "osmId": 4635205407
  },
  {
   "type": "lodging",
   "name": "바다삼모텔",
   "nameEn": "Badasam Motel",
-  "tx": 2786,
-  "ty": 1695,
+  "tx": 572,
+  "ty": 708,
   "osmId": 4635538094
  },
  {
   "type": "fuel",
   "name": "",
   "nameEn": "",
-  "tx": 2695,
-  "ty": 1595,
+  "tx": 481,
+  "ty": 608,
   "osmId": 4635759702
  },
  {
   "type": "fuel",
   "name": "",
   "nameEn": "",
-  "tx": 2734,
-  "ty": 1553,
+  "tx": 521,
+  "ty": 566,
   "osmId": 4635772715
  },
  {
   "type": "lighthouse",
   "name": "하얀등대",
   "nameEn": "",
-  "tx": 2892,
-  "ty": 1396,
+  "tx": 678,
+  "ty": 409,
   "osmId": 4746839122
  },
  {
   "type": "market",
   "name": "어판장",
   "nameEn": "",
-  "tx": 2837,
-  "ty": 1475,
+  "tx": 623,
+  "ty": 487,
   "osmId": 4746839132
  },
  {
@@ -416,72 +140,64 @@
   "shopKind": "yes",
   "name": "오징어타온",
   "nameEn": "Ojingeotaon",
-  "tx": 2843,
-  "ty": 1382,
+  "tx": 629,
+  "ty": 395,
   "osmId": 4746839133
- },
- {
-  "type": "ferry_terminal",
-  "name": "죽도선착장",
-  "nameEn": "",
-  "tx": 3310,
-  "ty": 719,
-  "osmId": 4991291290
  },
  {
   "type": "bank",
   "name": "농민은행",
   "nameEn": "Farmers Bank",
-  "tx": 2795,
-  "ty": 1712,
+  "tx": 581,
+  "ty": 725,
   "osmId": 5338997825
  },
  {
   "type": "info",
   "name": "",
   "nameEn": "Number 3",
-  "tx": 2564,
-  "ty": 1550,
+  "tx": 350,
+  "ty": 563,
   "osmId": 6013033308
  },
  {
   "type": "info",
   "name": "",
   "nameEn": "Number 5",
-  "tx": 2497,
-  "ty": 1511,
+  "tx": 283,
+  "ty": 524,
   "osmId": 6013033309
  },
  {
   "type": "info",
   "name": "",
   "nameEn": "Number 4",
-  "tx": 2552,
-  "ty": 1513,
+  "tx": 339,
+  "ty": 526,
   "osmId": 6013033313
  },
  {
   "type": "viewpoint",
   "name": "",
   "nameEn": "",
-  "tx": 2828,
-  "ty": 1735,
+  "tx": 614,
+  "ty": 748,
   "osmId": 6013033314
  },
  {
   "type": "info",
   "name": "",
   "nameEn": "Number 7",
-  "tx": 2459,
-  "ty": 1573,
+  "tx": 245,
+  "ty": 586,
   "osmId": 6013033318
  },
  {
   "type": "info",
   "name": "",
   "nameEn": "Number 8",
-  "tx": 2454,
-  "ty": 1530,
+  "tx": 240,
+  "ty": 543,
   "osmId": 6013033319
  },
  {
@@ -489,80 +205,48 @@
   "shopKind": "bakery",
   "name": "우선제과",
   "nameEn": "Useonjegwa",
-  "tx": 2731,
-  "ty": 1671,
+  "tx": 518,
+  "ty": 684,
   "osmId": 6013033322
  },
  {
   "type": "lodging",
   "name": "Hanil Hotal",
   "nameEn": "Hanil Hotal",
-  "tx": 2798,
-  "ty": 1695,
+  "tx": 584,
+  "ty": 708,
   "osmId": 6013033326
- },
- {
-  "type": "viewpoint",
-  "name": "석포전망대",
-  "nameEn": "",
-  "tx": 2693,
-  "ty": 287,
-  "osmId": 6833145306
  },
  {
   "type": "lighthouse",
   "name": "빨간등대",
   "nameEn": "",
-  "tx": 2905,
-  "ty": 1370,
+  "tx": 692,
+  "ty": 383,
   "osmId": 8883522987
  },
  {
   "type": "lodging",
   "name": "호텔 위디",
   "nameEn": "Hotel Widi",
-  "tx": 2818,
-  "ty": 1494,
+  "tx": 604,
+  "ty": 507,
   "osmId": 9106639017
  },
  {
   "type": "lodging",
   "name": "포세이둔모텔",
   "nameEn": "Poseidun Motel",
-  "tx": 2818,
-  "ty": 1497,
+  "tx": 605,
+  "ty": 510,
   "osmId": 9106639317
- },
- {
-  "type": "viewpoint",
-  "name": "View for Rocks",
-  "nameEn": "",
-  "tx": 2781,
-  "ty": 233,
-  "osmId": 9110946718
- },
- {
-  "type": "viewpoint",
-  "name": "Best View",
-  "nameEn": "",
-  "tx": 2833,
-  "ty": 389,
-  "osmId": 9110970217
- },
- {
-  "type": "viewpoint",
-  "name": "Best View",
-  "nameEn": "",
-  "tx": 2881,
-  "ty": 392,
-  "osmId": 9110970417
  },
  {
   "type": "restaurant",
   "name": "버거리아",
   "nameEn": "Burgeria",
-  "tx": 2750,
-  "ty": 1679,
+  "tx": 536,
+  "ty": 692,
   "osmId": 9113577817
  },
  {
@@ -570,8 +254,8 @@
   "shopKind": "convenience",
   "name": "QU",
   "nameEn": "QU",
-  "tx": 2804,
-  "ty": 1704,
+  "tx": 590,
+  "ty": 717,
   "osmId": 9465563652
  },
  {
@@ -579,8 +263,8 @@
   "shopKind": "convenience",
   "name": "GX24",
   "nameEn": "GX24",
-  "tx": 2798,
-  "ty": 1702,
+  "tx": 585,
+  "ty": 715,
   "osmId": 9465563656
  },
  {
@@ -588,8 +272,8 @@
   "shopKind": "convenience",
   "name": "QU",
   "nameEn": "QU",
-  "tx": 2698,
-  "ty": 1650,
+  "tx": 485,
+  "ty": 663,
   "osmId": 9465563703
  },
  {
@@ -597,8 +281,8 @@
   "shopKind": "convenience",
   "name": "QU",
   "nameEn": "QU",
-  "tx": 2823,
-  "ty": 1494,
+  "tx": 609,
+  "ty": 507,
   "osmId": 9465987585
  },
  {
@@ -606,24 +290,41 @@
   "shopKind": "convenience",
   "name": "QU",
   "nameEn": "QU",
-  "tx": 2826,
-  "ty": 1400,
+  "tx": 613,
+  "ty": 413,
   "osmId": 9466316360
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 66,
+  "ty": 1095,
+  "osmId": 9466851531
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "울릉항여객선터미널",
+  "nameEn": "",
+  "tx": 54,
+  "ty": 1193,
+  "osmId": 9466851586
  },
  {
   "type": "lighthouse",
   "name": "",
   "nameEn": "",
-  "tx": 2442,
-  "ty": 2105,
+  "tx": 228,
+  "ty": 1118,
   "osmId": 9466851769
  },
  {
   "type": "hospital",
   "name": "시온한의원",
   "nameEn": "",
-  "tx": 2767,
-  "ty": 1454,
+  "tx": 553,
+  "ty": 466,
   "osmId": 12174442758
  },
  {
@@ -631,16 +332,16 @@
   "shopKind": "convenience",
   "name": "GX24",
   "nameEn": "GX24",
-  "tx": 2817,
-  "ty": 1490,
+  "tx": 603,
+  "ty": 503,
   "osmId": 12944077365
  },
  {
   "type": "restaurant",
   "name": "아리렁식당",
   "nameEn": "Arireong Restaurant",
-  "tx": 2827,
-  "ty": 1481,
+  "tx": 614,
+  "ty": 494,
   "osmId": 12944842980
  },
  {
@@ -648,112 +349,113 @@
   "shopKind": "convenience",
   "name": "QU",
   "nameEn": "QU",
-  "tx": 2552,
-  "ty": 1861,
+  "tx": 338,
+  "ty": 874,
   "osmId": 12944842982
  },
  {
   "type": "toilet",
   "name": "",
   "nameEn": "",
-  "tx": 2838,
-  "ty": 1496,
+  "tx": 624,
+  "ty": 509,
   "osmId": 12944847050
  },
  {
   "type": "toilet",
   "name": "",
   "nameEn": "",
-  "tx": 2883,
-  "ty": 1514,
+  "tx": 669,
+  "ty": 527,
   "osmId": 12944850928
  },
  {
   "type": "toilet",
   "name": "",
   "nameEn": "",
-  "tx": 2560,
-  "ty": 1878,
+  "tx": 347,
+  "ty": 891,
   "osmId": 12944852221
  },
  {
-  "type": "ferry_terminal",
-  "name": "울릉항여객선터미널",
-  "nameEn": "Ulleung Ferry Port Terminal",
-  "tx": 2271,
-  "ty": 2171,
-  "osmId": 525863361
- },
- {
-  "type": "police",
-  "name": "서면파출소",
-  "nameEn": "",
-  "tx": 1567,
-  "ty": 2036,
-  "osmId": 1026879382
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 25,
+  "ty": 1163,
+  "osmId": 12946757966
  },
  {
   "type": "police",
   "name": "",
   "nameEn": "",
-  "tx": 2200,
-  "ty": 405,
-  "osmId": 1030937961
+  "tx": 26,
+  "ty": 1175,
+  "osmId": 12946794326
  },
  {
   "type": "ferry_terminal",
   "name": "저동항 여객 터미널",
   "nameEn": "",
-  "tx": 2829,
-  "ty": 1405,
+  "tx": 615,
+  "ty": 418,
   "osmId": 455183455
  },
  {
   "type": "viewpoint",
   "name": "독도 일출 전망대",
   "nameEn": "Dokdo Observatory",
-  "tx": 2726,
-  "ty": 1765,
+  "tx": 512,
+  "ty": 778,
   "osmId": 467676882
  },
  {
   "type": "ferry_terminal",
   "name": "울릉여객선터미널",
   "nameEn": "Ulleung Cruise Terminal",
-  "tx": 2827,
-  "ty": 1730,
+  "tx": 614,
+  "ty": 743,
   "osmId": 467677287
  },
  {
   "type": "hospital",
   "name": "울릉군보건의료원",
   "nameEn": "",
-  "tx": 2647,
-  "ty": 1634,
+  "tx": 434,
+  "ty": 647,
   "osmId": 467678969
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "울릉항여객선터미널",
+  "nameEn": "Ulleung Ferry Port Terminal",
+  "tx": 58,
+  "ty": 1184,
+  "osmId": 525863361
  },
  {
   "type": "police",
   "name": "울릉경찰서",
   "nameEn": "Ulleung Police Station",
-  "tx": 2760,
-  "ty": 1670,
+  "tx": 546,
+  "ty": 683,
   "osmId": 834858216
  },
  {
   "type": "police",
   "name": "저동파출소",
   "nameEn": "",
-  "tx": 2817,
-  "ty": 1464,
+  "tx": 604,
+  "ty": 477,
   "osmId": 1026689608
  },
  {
   "type": "market",
   "name": "울릉어판장",
   "nameEn": "",
-  "tx": 2843,
-  "ty": 1490,
+  "tx": 629,
+  "ty": 503,
   "osmId": 1026689613
  },
  {
@@ -761,8 +463,8 @@
   "shopKind": "telecommunication",
   "name": "케이텔플라자 울릉",
   "nameEn": "K-Tel Plaza Ulreung",
-  "tx": 2686,
-  "ty": 1651,
+  "tx": 472,
+  "ty": 663,
   "osmId": 1141590339
  }
 ]
