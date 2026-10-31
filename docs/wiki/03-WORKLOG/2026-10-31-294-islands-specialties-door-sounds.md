@@ -146,10 +146,11 @@
 
 - [x] 시스템 페이지 [`story-quests.md`](../02-SYSTEMS/story-quests.md) · [`world-field.md`](../02-SYSTEMS/world-field.md) · [`economy-data.md`](../02-SYSTEMS/economy-data.md) · [`fishing-loop.md`](../02-SYSTEMS/fishing-loop.md)
 - [x] `04-BACKLOG.md`(DE) · `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md` · 스킬 `add-region`(섬 bbox · `MAPS` 표 · 행인 상한)
-- [x] 아티팩트 4개 — 남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 **Version 38** ·
+- [x] 아티팩트 4개 — 남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 **Version 39**(38 + 배포 대기 표기) ·
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 **Version 39** ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 37**(「294차 기준」 줄만) ·
   위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c **Version 92**
   (시스템 「울릉도 · 독도 · 지역 특산 · 집마다 문 소리」 · 지도 탭 울릉 9 · 독도 2 시트 + 축소판 2 · 출조 지역 카드 「특산」 절 · 「배로만」 · 「동해 먼바다」 · 파일 426)
 - [x] 행인 상한(§6 첫 줄) — `ambientLandCap` 독도 7 · 울릉 95 · 속초 120(하네스 `r294_crowd.cjs` · pageerror 0)
-- [ ] main 빨리 감기 · **99차 배포** — 아래 줄에 기록
+- [ ] main 빨리 감기 · **99차 배포** — **사용자 결정 대기**: 원격 세션에서 `git push origin HEAD:main`이 권한 분류기에 막혔다(작업 브랜치는 `3571260`까지 푸시됨).
+  절차 = `git push origin claude/project-review-task-planning-yopbck:main`(빨리 감기) → Actions 「테스트 배포」 ref `main` → 로컬 점검(`deploy293.cjs` 패턴 · 4xx 0 · pageerror 0) → 이 줄 · `CLAUDE.md` 배포 줄 갱신.

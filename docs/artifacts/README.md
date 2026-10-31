@@ -8,7 +8,7 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 38 — 294차 기준(§07 294 ✅ 가족 한집 · 문 소리 · 울릉 · 독도 · 특산 · 추천 1 = 특산 후속 8 결정). 37 = 293 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 39 — 294차 기준(§07 294 ✅ 가족 한집 · 문 소리 · 울릉 · 독도 · 특산 · 추천 1 = 특산 후속 8 결정 · 39 = 99차 배포 대기 표기). 37 = 293 |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 39 — 294차 기준(「울릉도 · 독도 · 동해 먼바다 어종」 · 「지역 특산 · 얻은 곳 꼬리표 · 집마다 문 소리」 DATA · 워크로그 215). 38 = 293 |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 37 — 294차 기준 · 채비 문법은 258차(「294차 기준」 줄) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 92 — 294차(시스템 「울릉도 · 독도 · 지역 특산 · 집마다 문 소리」 · 지도 탭 울릉 · 독도 13장 · 출조 지역 카드 「특산」). 91 = 293 |
