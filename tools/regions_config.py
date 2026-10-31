@@ -47,7 +47,8 @@ REGIONS = {
                                   linearity_min=3.0,
                                   dem_sheets=['38815014', '38815015', '38815024', '38815025'])),
     # 울릉·독도 = 배 전용 섬 지역 — 심리스 1차 확장에서 분리 (access 문서 참조)
-    'ulleung': dict(bbox=(37.44284, 130.74966, 37.55941, 131.01917), seaEdges='NSEW',
+    # 294차 — 섬 전체(4,760×2,591 = 1,233만 타일 · seamless 12MB)는 너무 커서 이야기 무대인 동남 해안(사동항 · 도동항 · 행남등대 · 저동항)만 — 속초 크기
+    'ulleung': dict(bbox=(37.455, 130.875, 37.515, 130.935), seaEdges='NSEW',
                     spawn=(37.4835, 130.9070), spawnName='도동항', access='boat'),
     'dokdo': dict(bbox=(37.23540, 131.85280, 37.25002, 131.88649), seaEdges='NSEW',
                   spawn=(37.2394, 131.8686), spawnName='동도 접안시설', access='boat'),

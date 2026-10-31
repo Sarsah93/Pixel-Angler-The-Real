@@ -247,15 +247,46 @@ export function playDayChime(): void {
 }
 
 /** 214차 — 문 두드리기: 나무문 「똑, 똑, 똑」(낮은 톤 + 짧은 둔탁한 잡음 세 번) */
-export function playKnock(): void {
+export function playKnock(variant = 0): void {
   const ac = audioContext();
   if (!ac) return;
   note('knock');
-  for (let i = 0; i < 3; i++) {
-    const at = 0.01 + i * 0.19;
-    tone(ac, { type: 'triangle', f0: 210, f1: 120, at, dur: 0.07, peak: 0.16, attack: 0.002 });
-    noise(ac, { at, dur: 0.05, peak: 0.08, filter: 'lowpass', f0: 900, f1: 300, q: 0.8 });
+  // 294차 — 집마다 조금씩 다른 두드림(사용자 「집마다 문 두드리기 혹은 벨 누르기가 조금씩 다르게」): 0 = 퉁 퉁 퉁 · 1 = 퉁퉁 · 2 = 똑똑똑똑(가볍고 빠르게)
+  const v = ((variant % 3) + 3) % 3;
+  const n = v === 1 ? 2 : v === 2 ? 4 : 3;
+  const gap = v === 2 ? 0.12 : 0.19;
+  const f0 = v === 2 ? 320 : 210, f1 = v === 2 ? 180 : 120;
+  for (let i = 0; i < n; i++) {
+    const at = 0.01 + i * gap;
+    tone(ac, { type: 'triangle', f0, f1, at, dur: v === 2 ? 0.05 : 0.07, peak: v === 2 ? 0.12 : 0.16, attack: 0.002 });
+    noise(ac, { at, dur: 0.05, peak: v === 2 ? 0.05 : 0.08, filter: 'lowpass', f0: 900, f1: 300, q: 0.8 });
   }
+}
+
+/**
+ * 294차 — 초인종(띵동). 0 = 띵동(두 음) · 1 = 딩동댕(세 음) · 2 = 띵— 동(길게).
+ * 아파트 · 숙소 · 관사처럼 벨이 있는 집(`doorStyleOf`)에서 문 앞 [F]가 이 소리를 낸다.
+ */
+export function playDoorbell(variant = 0): void {
+  const ac = audioContext();
+  if (!ac) return;
+  note('doorbell');
+  const v = ((variant % 3) + 3) % 3;
+  const seq: [number, number, number][] = v === 1
+    ? [[0.01, 659, 0.22], [0.2, 523, 0.22], [0.4, 784, 0.4]]
+    : v === 2 ? [[0.01, 740, 0.5], [0.5, 587, 0.6]] : [[0.01, 659, 0.3], [0.3, 523, 0.5]];
+  for (const [at, f, dur] of seq) {
+    tone(ac, { type: 'sine', f0: f, at, dur, peak: 0.14, attack: 0.006 });
+    tone(ac, { type: 'triangle', f0: f * 2, at, dur: dur * 0.6, peak: 0.03, attack: 0.004 });
+  }
+}
+
+/** 294차 — 이 집의 문은 벨인가 두드리는가. 벨이 달린 건물 말(아파트 · 빌라 · 숙소 · 관사 …)이면 벨, 아니면 집 이름 해시로 셋 중 하나는 벨 */
+export function doorStyleOf(labelKo: string): { bell: boolean; variant: number } {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < labelKo.length; i++) { h ^= labelKo.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  const bellWord = /아파트|빌라|오피스텔|숙소|민박|호텔|관사|원룸|펜션/.test(labelKo);
+  return { bell: bellWord || h % 3 === 0, variant: (h >>> 8) % 3 };
 }
 
 /** 결산 카드 한 장 넘길 때 — 종이 */

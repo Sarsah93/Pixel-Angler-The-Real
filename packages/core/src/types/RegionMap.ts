@@ -304,6 +304,9 @@ const JEJU_DODU = def('jeju_city', '제주 도두', 'Jeju Dodu');
 const JEJU_MOSEULPO = def('jeju_moseulpo', '제주 모슬포', 'Jeju Moseulpo');
 const JEJU_SEOGWIPO = def('jeju_seogwipo', '제주 서귀포', 'Jeju Seogwipo');
 const INCHEON_YEONAN = def('incheon_yeonan', '인천 연안부두', 'Incheon Yeonan Pier');
+// 294차 — 배 전용 섬 지역(6 · 7장). 울릉은 동남 해안(사동 · 도동 · 행남등대 · 저동)만 굽는다 · 독도는 동도 접안시설 둘레
+const ULLEUNG_DODONG = def('ulleung', '울릉도 도동', 'Ulleungdo Dodong');
+const DOKDO_DONGDO = def('dokdo', '독도', 'Dokdo');
 
 /** WorldMap 지역 ID → 심리스 지역 정의 (등록 = 심리스 개방). 구역별로 다른 데이터 지역은 `SEAMLESS_AREA_REGIONS` */
 export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
@@ -318,6 +321,8 @@ export const SEAMLESS_REGIONS: Record<string, SeamlessRegionDef> = {
   chungnam_taean: TAEAN_ANHEUNG,
   jeju: JEJU_DODU,
   incheon: INCHEON_YEONAN,
+  ulleungdo: ULLEUNG_DODONG,   // 294차
+  dokdo: DOKDO_DONGDO,         // 294차
 };
 SEAMLESS_AREA_REGIONS['busan_baegunpo_1'] = BUSAN_BAEGUNPO;
 SEAMLESS_AREA_REGIONS['busan_namhang_1'] = BUSAN_GAMCHEON;   // 263차 — 남항 · 공동어시장(감천 bbox 북쪽 확장분)

@@ -715,6 +715,47 @@ export const REGION_AREA_NODES: Record<string, RegionAreaNode[]> = {
       depthRangeM: [3, 12], snagRisk: 'low',
     },
   ],
+  // 294차 — 배 전용 섬 지역(6 · 7장). 울릉 bbox는 동남 해안만(사동항 · 도동항 · 행남등대 · 저동항) — 좌표는 OSM 실측
+  ulleungdo: [
+    {
+      id: 'ulleungdo_area_dodong', name: '도동항', nameEn: 'Dodong Port',
+      desc: '여객선이 닿는 섬의 현관 · 행남등대 갯바위', descEn: "The island's front door where the ferry lands · Haengnam lighthouse rocks",
+      pixelX: 149, pixelY: 167, fieldMapId: 'ulleung_dodong_1', spawnLatLon: [37.4835, 130.9070],
+      details: [
+        '도동항 방파제 · 행남 해안산책로 갯바위 — 발밑이 바로 급심',
+        '대표 어종: 참돔 · 돌돔 · 벵에돔 · 부시리 · 방어 · 살오징어(밤 집어등)',
+        '난류를 타고 오는 등푸른 생선 — 여름 끝 ~ 가을 가다랑어 · 삼치 회유',
+        '결항이 잦다 — 바람이 세면 배가 안 뜬다(섬에 묶이는 날)',
+      ],
+      detailsEn: [
+        'Dodong breakwater and the Haengnam coastal path rocks — deep water right at your feet',
+        'Key species: red seabream · knifejaw · blackfish · amberjack · yellowtail · flying squid (night lights)',
+        'Pelagics riding the warm current — skipjack and Spanish mackerel from late summer into autumn',
+        'Ferries are often cancelled — when the wind is up, nothing sails (island-bound days)',
+      ],
+      depthRangeM: [8, 40], snagRisk: 'high',
+    },
+  ],
+  dokdo: [
+    {
+      id: 'dokdo_area_dongdo', name: '동도 접안시설', nameEn: 'Dongdo Landing',
+      desc: '가장 먼 바다 · 기상이 허락할 때만', descEn: 'The farthest sea · only when the weather allows',
+      pixelX: 120, pixelY: 186, fieldMapId: 'dokdo_dongdo_1', spawnLatLon: [37.2394, 131.8686],
+      details: [
+        '동도 접안시설 · 독도등대 아래 갯바위 — 체류 시간이 정해져 있다',
+        '대표 어종: 방어 · 부시리 · 참돔 · 돌돔 · 벵에돔 · 가다랑어',
+        '독도 새우(도화새우 · 물렁가시붉은새우) · 소라 · 전복 · 해삼의 바다',
+        '조사선 해역 — 잡는 게 목적이 아닌 낚시(계측 → 방류)',
+      ],
+      detailsEn: [
+        'Dongdo landing and the rocks below the Dokdo lighthouse — your stay is timed',
+        'Key species: yellowtail · amberjack · red seabream · knifejaw · blackfish · skipjack',
+        'The sea of Dokdo shrimp (spotted · humpback), turban shell, abalone and sea cucumber',
+        'Survey waters — fishing that is not about keeping (measure, then release)',
+      ],
+      depthRangeM: [10, 60], snagRisk: 'high',
+    },
+  ],
 };
 
 /** 해당 지역이 준비되어(입장 가능) 있는지 여부 */

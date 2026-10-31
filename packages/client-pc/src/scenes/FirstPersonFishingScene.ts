@@ -3821,7 +3821,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             for (const x of school) {
               CoolerStore.add({
                 speciesId: x.speciesId, nameKo: x.nameKo, lengthCm: x.lengthCm,
-                weightG: x.weightG, sex: x.sex, iconTexture: texOf(x), catchMethod: 'rod',
+                weightG: x.weightG, sex: x.sex, iconTexture: texOf(x), catchMethod: 'rod', originRegion: GameState.originRegionId,
               });
             }
             playSfx('cooler_in');
@@ -4084,7 +4084,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         if (InventoryStore.hasCooler()) {
           const slot = CoolerStore.add({
             speciesId: ef.speciesId, nameKo: ef.nameKo, lengthCm: ef.lengthCm,
-            weightG: ef.weightG, sex: ef.sex, iconTexture: efTexture, catchMethod: 'rod',
+            weightG: ef.weightG, sex: ef.sex, iconTexture: efTexture, catchMethod: 'rod', originRegion: GameState.originRegionId,
           });
           tag = slot < 0 ? ' (쿨러 가득 — 방생)' : ' (어창)';
         } else {
@@ -4095,7 +4095,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
             category: 'food', subCategory: '어획물',
             basePrice: Math.max(2000, Math.round(ef.weightG * 12)),
             condition: 'live', equippable: false,
-            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG, sex: ef.sex, catchMethod: 'rod',
+            speciesId: ef.speciesId, lengthCm: ef.lengthCm, weightG: ef.weightG, sex: ef.sex, catchMethod: 'rod', originRegion: GameState.originRegionId,
           }, 1);
           tag = ok ? ' (인벤토리)' : ' (인벤 가득 — 방생)';
         }

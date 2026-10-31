@@ -180,7 +180,7 @@ class FarmStoreImpl {
     const back = p.facilities.map((f) => supplyOfFacility(f)).filter((s): s is NonNullable<typeof s> => !!s);
     const parts = back.map((s) => ({ tpl: cropItemTemplate(s.itemId)!, qty: 1 })).filter((x) => !!x.tpl);
     if (Object.keys(InventoryStore.slotShortfall(parts)).length) return { ok: false, message: '설비를 돌려받을 가방 자리가 없다' };
-    for (const x of parts) InventoryStore.addItem(x.tpl, 1);
+    for (const x of parts) InventoryStore.addItem({ ...x.tpl, originRegion: GameState.originRegionId }, 1);   // 294차 — 얻은 지역(특산)
     this.plots.delete(id);
     GameState.markDirty();
     return { ok: true };
@@ -501,7 +501,7 @@ class FarmStoreImpl {
     for (const [itemId, qty] of yields) {
       const tpl = cropItemTemplate(itemId);
       if (!tpl) continue;
-      message += InventoryStore.addItem(tpl, qty) ? ` — ${tpl.name} ${qty}개를 땄다` : ` — 가방에 자리가 없어 ${josa(tpl.name, '은', '는')} 두고 왔다`;
+      message += InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, qty) ? ` — ${tpl.name} ${qty}개를 땄다` : ` — 가방에 자리가 없어 ${josa(tpl.name, '은', '는')} 두고 왔다`;
     }
     // 248차 — 김매기 · 북주기는 호미로 겉흙을 긁는다 — 지렁이가 드러날 수 있다
     if (id === 'weed' || id === 'hill_up') return this.withWorms({ ok: true, message }, plotId, doneCells, id);
@@ -772,7 +772,7 @@ class FarmStoreImpl {
     const res = this.giveHarvest(r, crop);
     if (r.offsets) {
       const tpl = cropItemTemplate(r.offsets.itemId);
-      if (tpl && InventoryStore.addItem(tpl, r.offsets.qty)) {
+      if (tpl && InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, r.offsets.qty)) {
         res.harvested?.push({ itemId: tpl.id, qty: r.offsets.qty, name: tpl.name });
         res.message += ` — 곁눈 ${r.offsets.qty}개를 떼어 냈다`;
       }
@@ -889,7 +889,7 @@ class FarmStoreImpl {
     const r = divideCell(cell, crop, Date.now(), Math.random);
     const tpl = r ? cropItemTemplate(r.itemId) : null;
     if (!r || !tpl) return fail('나눌 수 없다');
-    InventoryStore.addItem(tpl, r.qty);
+    InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, r.qty);   // 294차 — 얻은 지역(특산)
     this.spend(laborOf('divide').fatigue);
     GameState.markDirty();
     const by = cultivationOf(crop).propagate?.by;
@@ -919,7 +919,7 @@ class FarmStoreImpl {
     if (tired) return fail(tired);
     const r = saveSeedsCell(cell, crop, Math.random);
     if (!r) return fail('씨를 받을 수 없다');
-    InventoryStore.addItem(tpl, r.qty);
+    InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, r.qty);   // 294차 — 얻은 지역(특산)
     this.spend(laborOf('harvest', crop).fatigue);
     GameState.markDirty();
     const hybrid = crop.seedSave?.hybrid ? ' — 사 온 씨가 교잡종이면 받은 씨는 고르지 않다' : '';
@@ -1006,7 +1006,7 @@ class FarmStoreImpl {
     const id = r.seedling ? r.itemId : produceItemId(r.itemId, r.grade);
     const tpl = cropItemTemplate(id);
     if (!tpl) return fail('거둔 것을 담을 수 없다');
-    InventoryStore.addItem(tpl, r.qty);
+    InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, r.qty);   // 294차 — 얻은 지역(특산)
     const harvested = [{ itemId: id, qty: r.qty, name: tpl.name }];
     // 238차 — 육묘 트레이: 모종은 수확이 아니다(거둔 횟수 · 퀘스트에 세지 않는다)
     if (r.seedling) {

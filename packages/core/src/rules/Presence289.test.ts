@@ -35,7 +35,8 @@ describe('289차 — 바다 · 평년 수온', () => {
   it('지역 → 바다(부산 남해 · 울산부터 동해 · 태안 · 인천 서해 · 심리스 데이터 지역 이름도)', () => {
     expect(seaOf('gangwon_sokcho')).toBe('east');
     expect(seaOf('ulsan')).toBe('east');
-    expect(seaOf('ulleungdo')).toBe('east');
+    expect(seaOf('ulleungdo')).toBe('ulleung');   // 294차 — 동해 먼바다
+    expect(seaOf('dokdo')).toBe('ulleung');
     expect(seaOf('busan')).toBe('south');
     expect(seaOf('busan_gamcheon')).toBe('south');
     expect(seaOf('geoje_east')).toBe('south');

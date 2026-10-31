@@ -359,6 +359,8 @@ export class GameStateManager {
   isMounted = false;
   /** 현재 지역 id (WorldMap RegionDef.id) — 필드 씬이 갱신, 퀘스트 어획 이벤트의 regionId (저장 비대상) */
   get currentRegionId(): string { return this._currentRegionId; }
+  /** 294차 — 얻은 것의 「지역」(특산 판정용): 홈타운 텃밭 · 집은 속초 근교다 */
+  get originRegionId(): string { return this._currentRegionId === 'hometown' ? 'gangwon_sokcho' : this._currentRegionId; }
   set currentRegionId(id: string) {
     this._currentRegionId = id;
     // 188차 — 항구 평판이 걸리는 지역만 기억한다(홈타운은 항구가 아니다)

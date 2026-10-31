@@ -442,7 +442,7 @@ export class CoolerPanel extends DraggablePanel {
       category: 'food', subCategory: '어획물', slot: 0, qty: 1,
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
-      speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
+      originRegion: f.originRegion, speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
       ...(f.toxin ? { toxin: true } : {}),   // 234차 — 상세보기에도 패류독소 행이 뜨게
     };
   }
@@ -565,7 +565,7 @@ export class CoolerPanel extends DraggablePanel {
       category: 'food', subCategory: creature ? '채집물' : '어획물', ...(creature ? { forageCatch: true } : {}),
       basePrice: Math.max(2000, Math.round(f.weightG * 12)),
       condition: f.condition, equippable: false,
-      speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
+      originRegion: f.originRegion, speciesId: f.speciesId, lengthCm: f.lengthCm, weightG: f.weightG, sex: f.sex, catchMethod: f.catchMethod,
       ...(f.toxin ? { toxin: true } : {}),   // 229차 — 패류독소 표식 승계
     }, 1);
     if (!ok) {

@@ -111,7 +111,7 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   // 오세찬 — 해양환경 감시원. 밀려온 불가사리를 세는 사람이라 물가 안벽을 오간다 (178차 신규 · 214차 교대 근무 = 24시간 밖)
   { npcId: 'oh_sechan', regionId: 'gangwon_sokcho', tx: 594, ty: 159, behavior: 'patrol' },
   // 탁새벽 — 탁만수의 손녀. 할아버지 좌판 근처 보도에서 서성인다 (178차 신규)
-  { npcId: 'tak_saebyeok', regionId: 'gangwon_sokcho', tx: 556, ty: 148, behavior: 'wander', home: { tx: 539, ty: 144, labelKo: '공방 살림채' } },
+  { npcId: 'tak_saebyeok', regionId: 'gangwon_sokcho', tx: 556, ty: 148, behavior: 'wander', home: { tx: 541, ty: 144, labelKo: '탁씨 죽간 공방' } },
   // 254차 — N24 「건너편 가게」: 동명항 대게 거리 어귀, 비스듬한 길을 사이에 두고 마주 보는 찌 가게 두 집
   //  (가게 앞을 지킨다 · 집 문 없음 — 늘 가게에). 자리는 실측 — 둘 다 이름 없는 건물 앞 보도 · 가게 문에서 2칸 넘게 떨어진 칸:
   //  문필구 = 길 동쪽 단층 붉은 지붕집(윤곽 579~582 · 116~118) 바로 앞 · 차영배 = 길 서쪽 3층 상가(552~564 · 113~120) 남동 모서리 앞.
@@ -143,8 +143,9 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   { npcId: 'namgung_hyeon', regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 582, ty: 350, behavior: 'wander', home: { tx: 550, ty: 385, labelKo: '남궁현의 집' } },
   { npcId: 'han_bom', regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 770, ty: 359, behavior: 'wander' },
   { npcId: 'lee_suyeon', regionId: 'gyeongbuk_pohang', dataRegion: 'pohang_guryongpo', tx: 768, ty: 363, behavior: 'fishing' },
-  { npcId: 'go_manseok', regionId: 'ulsan', dataRegion: 'ulsan', tx: 633, ty: 421, behavior: 'patrol', home: { tx: 643, ty: 398, labelKo: '고만석의 집' } },
-  { npcId: 'go_haena', regionId: 'ulsan', dataRegion: 'ulsan', tx: 637, ty: 417, behavior: 'wander', home: { tx: 621, ty: 391, labelKo: '고해나의 집' } },
+  // 294차 — 가족은 한집(사용자 「가족인데 집 위치가 다르면 안됨」): 고해나(선장의 딸) = 고만석 집 · 탁새벽(손자) = 탁씨 죽간 공방
+  { npcId: 'go_manseok', regionId: 'ulsan', dataRegion: 'ulsan', tx: 633, ty: 421, behavior: 'patrol', home: { tx: 643, ty: 398, labelKo: '고만석 · 고해나의 집' } },
+  { npcId: 'go_haena', regionId: 'ulsan', dataRegion: 'ulsan', tx: 637, ty: 417, behavior: 'wander', home: { tx: 643, ty: 398, labelKo: '고만석 · 고해나의 집' } },
   { npcId: 'chae_geumja', regionId: 'gyeongnam_geoje', dataRegion: 'geoje_east', tx: 616, ty: 411, behavior: 'patrol', home: { tx: 614, ty: 416, labelKo: '채금자의 집' } },
   { npcId: 'chae_pado', regionId: 'gyeongnam_geoje', dataRegion: 'geoje_east', tx: 616, ty: 410, behavior: 'wander', home: { tx: 608, ty: 427, labelKo: '채파도의 집' } },
   { npcId: 'song_gibaek', regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 446, ty: 353, behavior: 'wander' },
@@ -194,6 +195,8 @@ export const STORY_GUEST_ANCHORS: StoryGuestAnchor[] = [
   { regionId: 'chungnam_taean', dataRegion: 'taean_anheung', tx: 446, ty: 350, labelKo: '안흥항 부두' },
   { regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 513, ty: 397, labelKo: '서귀포항 안쪽' },
   { regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 333, ty: 361, labelKo: '연안부두' },
+  // 294차 — 독도: 동도 접안시설 스폰(280, 236) 서쪽 두 칸(비켜 서는 9칸 전부 땅 — terrain.txt 실측). 울릉은 동남 해안 bbox를 다시 구운 뒤 적는다
+  { regionId: 'dokdo', dataRegion: 'dokdo', tx: 278, ty: 236, labelKo: '동도 접안시설' },
 ];
 
 /** 출장 온 사람마다 비켜 서는 칸(타일) — 같은 지역에 여럿이 나와도 겹치지 않게 */

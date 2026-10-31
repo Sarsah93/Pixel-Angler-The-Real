@@ -196,7 +196,7 @@ import { InventoryStore, InvItem, isSealedBaitBundle } from '../store/InventoryS
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { LedgerStore } from '../store/LedgerStore.js';
-import { playCast, playPickup, playQuestChime, playCoin, playKnock, playRelease } from '../audio/Sfx.js';
+import { playCast, playPickup, playQuestChime, playCoin, playKnock, playDoorbell, doorStyleOf, playRelease } from '../audio/Sfx.js';
 import { npcWhereabouts, routineOfNpc, type NpcHomeReason } from '@tra/core';
 import { offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
@@ -6464,7 +6464,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const n = this.storyNpcs.find((x) => x.def.npcId === npcId);
     const layout = homeLayoutOf(npcId);
     if (!n?.atHome || !layout || n.homeReason === 'sleep') { this.knockDoor(npcId); return; }
-    playKnock();
+    this.playDoorSound(n.def.home?.labelKo ?? npcId);
     this.time.delayedCall(550, () => {
       if (!this.scene.isActive() || this.interior || !n.atHome) return;
       this.enterNpcHome(npcId);
@@ -6480,11 +6480,17 @@ export class RegionFieldScene extends Phaser.Scene {
     this.enterInterior(null, undefined, name, { layout, npcId, greetKo: homeLineOf(npcId).welcome[0] });
   }
 
-  /** 문 두드리기 → 똑똑 → (잠깐 뒤) 문이 열리고 평소와 같은 대화(R12) */
+  /** 294차 — 집마다 다른 문 소리(벨 띵동 · 두드림 변주) — `doorStyleOf`(집 이름 해시 · 벨 건물 말) */
+  private playDoorSound(labelKo: string): void {
+    const st = doorStyleOf(labelKo);
+    if (st.bell) playDoorbell(st.variant); else playKnock(st.variant);
+  }
+
+  /** 문 두드리기 · 벨 누르기 → (잠깐 뒤) 문이 열리고 평소와 같은 대화(R12) */
   private knockDoor(npcId: string): void {
     const n = this.storyNpcs.find((x) => x.def.npcId === npcId);
     if (!n?.atHome) { this.openDialogue(npcId); return; }
-    playKnock();
+    this.playDoorSound(n.def.home?.labelKo ?? npcId);
     const reason = n.homeReason ?? 'rest';
     this.time.delayedCall(reason === 'sleep' ? 900 : 600, () => {
       if (!this.scene.isActive()) return;
@@ -7561,8 +7567,9 @@ export class RegionFieldScene extends Phaser.Scene {
           // 216차 — 들일 수 있는 집이고 잘 시간이 아니면 「들어가기」(똑똑 → 안으로). 아니면 문 앞에서(214차)
           const canEnter = m.homeReason !== 'sleep' && !!homeLayoutOf(mid);
           const many = mates.length > 1;
+          const knockLabel = doorStyleOf(label).bell ? '벨 누르기' : '문 두드리기';   // 294차 — 벨이 달린 집은 「벨 누르기」
           if (canEnter) opts.push({ label: many ? `${label} — 들어가기 (${mname})` : `${label} — 들어가기`, note: mnote, run: () => this.visitHome(mid), action: 'npc' });
-          else opts.push({ label: many ? `${label} — ${mname} 부르기` : `${label} — 문 두드리기`, note: mnote, run: () => this.knockDoor(mid), action: 'npc' });
+          else opts.push({ label: many ? `${label} — ${mname} 부르기` : `${label} — ${knockLabel}`, note: mnote, run: () => this.knockDoor(mid), action: 'npc' });
         }
       }
       else opts.push({ label: `${nm}${gwa} 대화하기`, note, run: () => this.openDialogue(id), action: 'npc' });

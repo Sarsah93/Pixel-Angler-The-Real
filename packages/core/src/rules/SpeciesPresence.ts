@@ -15,11 +15,11 @@
 import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
 import { TUNING } from '../config/tuning.js';
 
-/** 바다 — 동해 · 남해 · 서해 · 제주 */
-export type SeaKey = 'east' | 'south' | 'west' | 'jeju';
+/** 바다 — 동해 · 남해 · 서해 · 제주 · 울릉(294차 — 동해 먼바다: 울릉도 · 독도. 난류를 타고 오는 돔류 · 등푸른 생선이 연안 동해보다 많다) */
+export type SeaKey = 'east' | 'south' | 'west' | 'jeju' | 'ulleung';
 
-export const SEA_LABEL_KO: Readonly<Record<SeaKey, string>> = { east: '동해', south: '남해', west: '서해', jeju: '제주' };
-export const SEA_LABEL_EN: Readonly<Record<SeaKey, string>> = { east: 'East Sea', south: 'South Sea', west: 'Yellow Sea', jeju: 'Jeju' };
+export const SEA_LABEL_KO: Readonly<Record<SeaKey, string>> = { east: '동해', south: '남해', west: '서해', jeju: '제주', ulleung: '울릉 · 독도' };
+export const SEA_LABEL_EN: Readonly<Record<SeaKey, string>> = { east: 'East Sea', south: 'South Sea', west: 'Yellow Sea', jeju: 'Jeju', ulleung: 'Ulleung · Dokdo' };
 
 /**
  * 지역 id → 바다. 부산은 남해 동부, 울산부터 위는 동해, 태안 · 인천은 서해.
@@ -28,6 +28,7 @@ export const SEA_LABEL_EN: Readonly<Record<SeaKey, string>> = { east: 'East Sea'
 export function seaOf(regionId: string | undefined | null): SeaKey {
   const r = regionId ?? '';
   if (/jeju|seogwipo|moseulpo/.test(r)) return 'jeju';
+  if (/ulleung|dokdo/.test(r)) return 'ulleung';   // 294차 — 동해 먼바다(울릉 · 독도)는 연안 동해와 가른다
   if (/incheon|taean|chungnam|gunsan|jeonbuk|mokpo|boryeong|seosan/.test(r)) return 'west';
   if (/gangwon|sokcho|gangneung|donghae|samcheok|pohang|gyeongbuk|uljin|ulsan|ulleung|dokdo|hometown/.test(r)) return 'east';
   return 'south';   // busan · gyeongnam · geoje · tongyeong · namhae · yeosu · jeonnam · wando — 그 밖도 남해로 둔다
@@ -38,62 +39,62 @@ export function seaOf(regionId: string | undefined | null): SeaKey {
  * 근거: 국립수산과학원 어종 정보 · 해역별 어획 통계 · 낚시 조황(288 감사 §2 F03의 메모 포함). 근사값.
  */
 export const SPECIES_SEA_WEIGHT: Readonly<Record<string, Readonly<Record<SeaKey, number>>>> = {
-  stone_beakperch: { east: 0.5, south: 1, west: 0.25, jeju: 1 },          // 돌돔
-  spotted_knifejaw: { east: 0.08, south: 0.5, west: 0.03, jeju: 1 },      // 강담돔 — 제주 · 남해 먼바다
-  amberjack: { east: 0.5, south: 0.9, west: 0.15, jeju: 1 },              // 부시리
-  red_seabream: { east: 0.5, south: 1, west: 0.6, jeju: 1 },              // 참돔
-  chub_mackerel: { east: 0.8, south: 1, west: 0.6, jeju: 1 },             // 고등어
-  horse_mackerel: { east: 0.7, south: 1, west: 0.4, jeju: 1 },            // 전갱이
-  rainbow_wrasse: { east: 0.7, south: 1, west: 0.5, jeju: 1 },            // 용치놀래기
-  grass_puffer: { east: 0.8, south: 1, west: 0.8, jeju: 0.7 },            // 복섬
-  tiger_puffer: { east: 0.3, south: 1, west: 0.9, jeju: 0.5 },            // 참복(자주복) — 서남해
-  conger_eel: { east: 0.6, south: 1, west: 1, jeju: 0.6 },                // 붕장어
-  yellowfin_goby: { east: 0.4, south: 0.9, west: 1, jeju: 0.1 },          // 문절망둑 — 하구 · 갯벌
-  surfperch: { east: 1, south: 1, west: 0.6, jeju: 0.5 },                 // 망상어
-  scorpionfish: { east: 0.8, south: 1, west: 0.5, jeju: 1 },              // 쏨뱅이
-  fat_greenling: { east: 1, south: 0.8, west: 1, jeju: 0.3 },             // 쥐노래미
-  greenling: { east: 1, south: 0.9, west: 1, jeju: 0.4 },                 // 노래미
-  golden_rockfish: { east: 0.8, south: 0.8, west: 0.3, jeju: 0.6 },       // 황볼락
-  blue_rockfish: { east: 1, south: 1, west: 0.6, jeju: 0.5 },             // 청볼락
-  black_rockfish: { east: 0.8, south: 0.8, west: 1, jeju: 0.3 },          // 조피볼락(우럭) — 서해 대표
-  flatfish: { east: 0.8, south: 1, west: 1, jeju: 1 },                    // 광어
-  flounder: { east: 0.6, south: 1, west: 0.9, jeju: 0.2 },                // 문치가자미
-  frog_flounder: { east: 0.5, south: 1, west: 0.6, jeju: 0.4 },           // 도다리
-  starry_flounder: { east: 1, south: 0.2, west: 0.1, jeju: 0.02 },        // 강도다리 — 동해 냉수
-  tonguefish: { east: 0.05, south: 0.6, west: 1, jeju: 0.1 },             // 개서대 — 서해 갯벌
-  pike_conger: { east: 0.1, south: 1, west: 0.5, jeju: 0.6 },             // 갯장어 — 여수 · 고흥
-  pacific_saury: { east: 1, south: 0.3, west: 0.05, jeju: 0.3 },          // 꽁치 — 동해
-  blackthroat_seaperch: { east: 0.6, south: 0.9, west: 0.3, jeju: 0.8 },  // 눈볼대 — 깊은 바다
-  round_herring: { east: 0.3, south: 0.9, west: 0.2, jeju: 1 },           // 눈퉁멸
-  pacific_cod: { east: 1, south: 0.6, west: 0.5, jeju: 0.02 },            // 태평양 대구 — 동해 · 진해만 겨울 · 서해 깊은 곳
-  korean_pomfret: { east: 0.05, south: 1, west: 0.8, jeju: 0.4 },         // 덕대
-  silver_pomfret: { east: 0.05, south: 0.9, west: 1, jeju: 0.3 },         // 병어
-  sandfish: { east: 1, south: 0.05, west: 0.02, jeju: 0.02 },             // 도루묵 — 동해
-  black_scraper: { east: 0.6, south: 1, west: 0.3, jeju: 0.9 },           // 말쥐치
-  largescale_blackfish: { east: 0.35, south: 1, west: 0.1, jeju: 1 },     // 벵에돔
-  longtail_blackfish: { east: 0.03, south: 0.3, west: 0.01, jeju: 1 },    // 긴꼬리벵에돔 — 제주 · 남해 먼바다 섬(연안은 드물다)
-  hairtail: { east: 0.15, south: 1, west: 0.5, jeju: 1 },                 // 갈치
-  yellowtail: { east: 0.9, south: 0.8, west: 0.15, jeju: 1 },             // 방어 — 강원 · 모슬포
-  red_snapper_rockfish: { east: 1, south: 0.9, west: 0.2, jeju: 0.5 },    // 열기(불볼락)
-  sea_bass: { east: 0.7, south: 1, west: 1, jeju: 0.8 },                  // 농어
-  striped_mullet: { east: 0.9, south: 1, west: 1, jeju: 0.8 },            // 숭어(보리숭어)
-  redlip_mullet: { east: 0.3, south: 0.8, west: 1, jeju: 0.3 },           // 가숭어 — 서해
-  filefish: { east: 0.6, south: 1, west: 0.5, jeju: 0.9 },                // 쥐치
-  black_seabream: { east: 0.5, south: 1, west: 0.85, jeju: 0.9 },         // 감성돔
-  squid: { east: 0.3, south: 1, west: 0.01, jeju: 1 },                    // 무늬오징어 — 남해 · 제주 · 동해 남부 가을
-  octopus: { east: 0.3, south: 1, west: 0.8, jeju: 1 },                   // 돌문어(참문어)
-  giant_octopus: { east: 1, south: 0.15, west: 0.05, jeju: 0.05 },        // 대문어 — 동해 냉수
-  cuttlefish: { east: 0.08, south: 0.9, west: 1, jeju: 0.4 },             // 갑오징어 — 서해 · 남해
-  swordtip_squid: { east: 0.02, south: 0.6, west: 0.01, jeju: 1 },        // 한치 — 제주 여름
-  greater_amberjack: { east: 0.15, south: 0.6, west: 0.05, jeju: 1 },     // 잿방어 — 제주
-  spanish_mackerel: { east: 0.5, south: 1, west: 0.8, jeju: 1 },          // 삼치
-  yellowfin_puffer: { east: 0.6, south: 1, west: 0.7, jeju: 0.5 },        // 까치복
-  bartail_flathead: { east: 0.4, south: 1, west: 1, jeju: 0.5 },          // 양태
-  bluefin_searobin: { east: 0.6, south: 0.9, west: 1, jeju: 0.6 },        // 성대
-  hagfish: { east: 1, south: 0.9, west: 0.4, jeju: 0.3 },                 // 먹장어
-  halfbeak: { east: 0.8, south: 1, west: 0.6, jeju: 0.8 },                // 학꽁치
-  northern_whiting: { east: 0.6, south: 1, west: 0.8, jeju: 0.8 },        // 보리멸
-  flying_squid: { east: 1, south: 0.5, west: 0.02, jeju: 0.4 },           // 살오징어 — 동해 가을 밤
+  stone_beakperch: { east: 0.5, south: 1, west: 0.25, jeju: 1, ulleung: 0.5 },          // 돌돔
+  spotted_knifejaw: { east: 0.08, south: 0.5, west: 0.03, jeju: 1, ulleung: 0.08 },      // 강담돔 — 제주 · 남해 먼바다
+  amberjack: { east: 0.5, south: 0.9, west: 0.15, jeju: 1, ulleung: 0.5 },              // 부시리
+  red_seabream: { east: 0.5, south: 1, west: 0.6, jeju: 1, ulleung: 0.5 },              // 참돔
+  chub_mackerel: { east: 0.8, south: 1, west: 0.6, jeju: 1, ulleung: 0.8 },             // 고등어
+  horse_mackerel: { east: 0.7, south: 1, west: 0.4, jeju: 1, ulleung: 0.7 },            // 전갱이
+  rainbow_wrasse: { east: 0.7, south: 1, west: 0.5, jeju: 1, ulleung: 0.7 },            // 용치놀래기
+  grass_puffer: { east: 0.8, south: 1, west: 0.8, jeju: 0.7, ulleung: 0.8 },            // 복섬
+  tiger_puffer: { east: 0.3, south: 1, west: 0.9, jeju: 0.5, ulleung: 0.3 },            // 참복(자주복) — 서남해
+  conger_eel: { east: 0.6, south: 1, west: 1, jeju: 0.6, ulleung: 0.6 },                // 붕장어
+  yellowfin_goby: { east: 0.4, south: 0.9, west: 1, jeju: 0.1, ulleung: 0.4 },          // 문절망둑 — 하구 · 갯벌
+  surfperch: { east: 1, south: 1, west: 0.6, jeju: 0.5, ulleung: 1 },                 // 망상어
+  scorpionfish: { east: 0.8, south: 1, west: 0.5, jeju: 1, ulleung: 0.8 },              // 쏨뱅이
+  fat_greenling: { east: 1, south: 0.8, west: 1, jeju: 0.3, ulleung: 1 },             // 쥐노래미
+  greenling: { east: 1, south: 0.9, west: 1, jeju: 0.4, ulleung: 1 },                 // 노래미
+  golden_rockfish: { east: 0.8, south: 0.8, west: 0.3, jeju: 0.6, ulleung: 0.8 },       // 황볼락
+  blue_rockfish: { east: 1, south: 1, west: 0.6, jeju: 0.5, ulleung: 1 },             // 청볼락
+  black_rockfish: { east: 0.8, south: 0.8, west: 1, jeju: 0.3, ulleung: 0.8 },          // 조피볼락(우럭) — 서해 대표
+  flatfish: { east: 0.8, south: 1, west: 1, jeju: 1, ulleung: 0.8 },                    // 광어
+  flounder: { east: 0.6, south: 1, west: 0.9, jeju: 0.2, ulleung: 0.6 },                // 문치가자미
+  frog_flounder: { east: 0.5, south: 1, west: 0.6, jeju: 0.4, ulleung: 0.5 },           // 도다리
+  starry_flounder: { east: 1, south: 0.2, west: 0.1, jeju: 0.02, ulleung: 1 },        // 강도다리 — 동해 냉수
+  tonguefish: { east: 0.05, south: 0.6, west: 1, jeju: 0.1, ulleung: 0.05 },             // 개서대 — 서해 갯벌
+  pike_conger: { east: 0.1, south: 1, west: 0.5, jeju: 0.6, ulleung: 0.1 },             // 갯장어 — 여수 · 고흥
+  pacific_saury: { east: 1, south: 0.3, west: 0.05, jeju: 0.3, ulleung: 1 },          // 꽁치 — 동해
+  blackthroat_seaperch: { east: 0.6, south: 0.9, west: 0.3, jeju: 0.8, ulleung: 0.6 },  // 눈볼대 — 깊은 바다
+  round_herring: { east: 0.3, south: 0.9, west: 0.2, jeju: 1, ulleung: 0.3 },           // 눈퉁멸
+  pacific_cod: { east: 1, south: 0.6, west: 0.5, jeju: 0.02, ulleung: 1 },            // 태평양 대구 — 동해 · 진해만 겨울 · 서해 깊은 곳
+  korean_pomfret: { east: 0.05, south: 1, west: 0.8, jeju: 0.4, ulleung: 0.05 },         // 덕대
+  silver_pomfret: { east: 0.05, south: 0.9, west: 1, jeju: 0.3, ulleung: 0.05 },         // 병어
+  sandfish: { east: 1, south: 0.05, west: 0.02, jeju: 0.02, ulleung: 1 },             // 도루묵 — 동해
+  black_scraper: { east: 0.6, south: 1, west: 0.3, jeju: 0.9, ulleung: 0.6 },           // 말쥐치
+  largescale_blackfish: { east: 0.35, south: 1, west: 0.1, jeju: 1, ulleung: 0.35 },     // 벵에돔
+  longtail_blackfish: { east: 0.03, south: 0.3, west: 0.01, jeju: 1, ulleung: 0.03 },    // 긴꼬리벵에돔 — 제주 · 남해 먼바다 섬(연안은 드물다)
+  hairtail: { east: 0.15, south: 1, west: 0.5, jeju: 1, ulleung: 0.15 },                 // 갈치
+  yellowtail: { east: 0.9, south: 0.8, west: 0.15, jeju: 1, ulleung: 0.9 },             // 방어 — 강원 · 모슬포
+  red_snapper_rockfish: { east: 1, south: 0.9, west: 0.2, jeju: 0.5, ulleung: 1 },    // 열기(불볼락)
+  sea_bass: { east: 0.7, south: 1, west: 1, jeju: 0.8, ulleung: 0.7 },                  // 농어
+  striped_mullet: { east: 0.9, south: 1, west: 1, jeju: 0.8, ulleung: 0.9 },            // 숭어(보리숭어)
+  redlip_mullet: { east: 0.3, south: 0.8, west: 1, jeju: 0.3, ulleung: 0.3 },           // 가숭어 — 서해
+  filefish: { east: 0.6, south: 1, west: 0.5, jeju: 0.9, ulleung: 0.6 },                // 쥐치
+  black_seabream: { east: 0.5, south: 1, west: 0.85, jeju: 0.9, ulleung: 0.5 },         // 감성돔
+  squid: { east: 0.3, south: 1, west: 0.01, jeju: 1, ulleung: 0.3 },                    // 무늬오징어 — 남해 · 제주 · 동해 남부 가을
+  octopus: { east: 0.3, south: 1, west: 0.8, jeju: 1, ulleung: 0.3 },                   // 돌문어(참문어)
+  giant_octopus: { east: 1, south: 0.15, west: 0.05, jeju: 0.05, ulleung: 1 },        // 대문어 — 동해 냉수
+  cuttlefish: { east: 0.08, south: 0.9, west: 1, jeju: 0.4, ulleung: 0.08 },             // 갑오징어 — 서해 · 남해
+  swordtip_squid: { east: 0.02, south: 0.6, west: 0.01, jeju: 1, ulleung: 0.02 },        // 한치 — 제주 여름
+  greater_amberjack: { east: 0.15, south: 0.6, west: 0.05, jeju: 1, ulleung: 0.15 },     // 잿방어 — 제주
+  spanish_mackerel: { east: 0.5, south: 1, west: 0.8, jeju: 1, ulleung: 0.5 },          // 삼치
+  yellowfin_puffer: { east: 0.6, south: 1, west: 0.7, jeju: 0.5, ulleung: 0.6 },        // 까치복
+  bartail_flathead: { east: 0.4, south: 1, west: 1, jeju: 0.5, ulleung: 0.4 },          // 양태
+  bluefin_searobin: { east: 0.6, south: 0.9, west: 1, jeju: 0.6, ulleung: 0.6 },        // 성대
+  hagfish: { east: 1, south: 0.9, west: 0.4, jeju: 0.3, ulleung: 1 },                 // 먹장어
+  halfbeak: { east: 0.8, south: 1, west: 0.6, jeju: 0.8, ulleung: 0.8 },                // 학꽁치
+  northern_whiting: { east: 0.6, south: 1, west: 0.8, jeju: 0.8, ulleung: 0.6 },        // 보리멸
+  flying_squid: { east: 1, south: 0.5, west: 0.02, jeju: 0.4, ulleung: 1 },           // 살오징어 — 동해 가을 밤
 };
 
 /**

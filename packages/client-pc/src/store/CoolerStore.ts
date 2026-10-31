@@ -38,6 +38,8 @@ export interface CoolerFish {
   catchMethod?: CatchMethod;
   /** 229차 — 패류독소 채취 금지 기간에 캔 조개류(먹으면 식중독 확률) · 인벤 이송 시 승계 */
   toxin?: boolean;
+  /** 294차 — 잡은 지역(지역 특산 판정 · 인벤 이송 시 승계). 없으면 옛 세이브 — 특산 없음 */
+  originRegion?: string;
   /** 현재 신선도 상태 (매질 규칙에 따라 진행) */
   condition: InvCondition;
   /** 현재 상태에서 누적된 경과 시간 (ms) — 일시정지 구간은 누적되지 않음 */

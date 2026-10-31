@@ -243,7 +243,7 @@ export function devGrantForage(c: ShoreCreature, countGather: boolean, pre?: For
       category: 'food', subCategory: '채집물',
       basePrice: Math.max(500, Math.round((res.weightG / 1000) * c.marketValuePerKg)),
       condition: 'live', equippable: false,
-      speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true,
+      speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true, originRegion: GameState.originRegionId,
       ...(res.sex ? { sex: res.sex } : {}),
     }, 1);
   }
@@ -1043,7 +1043,7 @@ export class ForageSystem {
     let coolerIdx = -1;
     let invId = '';
     if (InventoryStore.hasCooler() && !CoolerStore.isFull()) {
-      coolerIdx = CoolerStore.add({ speciesId: c.id, nameKo: c.nameKo, lengthCm: res.sizeCm, weightG: res.weightG, sex: res.sex ?? 'F', iconTexture: tex, ...(toxin ? { toxin: true } : {}) });
+      coolerIdx = CoolerStore.add({ speciesId: c.id, nameKo: c.nameKo, lengthCm: res.sizeCm, weightG: res.weightG, sex: res.sex ?? 'F', iconTexture: tex, originRegion: GameState.originRegionId, ...(toxin ? { toxin: true } : {}) });
       if (coolerIdx >= 0) where = 'cooler';
     }
     if (where === 'none') {
@@ -1053,7 +1053,7 @@ export class ForageSystem {
         category: 'food', subCategory: '채집물',
         basePrice: Math.max(500, Math.round((res.weightG / 1000) * c.marketValuePerKg)),
         condition: 'live', equippable: false,
-        speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true,
+        speciesId: c.id, lengthCm: res.sizeCm, weightG: res.weightG, forageCatch: true, originRegion: GameState.originRegionId,
         ...(res.sex ? { sex: res.sex } : {}), ...(toxin ? { toxin: true } : {}),
       }, 1);
       if (ok) where = 'inventory';
