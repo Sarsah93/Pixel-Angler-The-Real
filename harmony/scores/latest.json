@@ -1,12 +1,12 @@
 {
- "date": "2026-10-31",
- "audited_commit": "b38da8ed57900f089206c409889bf63693584aca",
+ "date": "2026-11-01",
+ "audited_commit": "7e417e72c18bae57454d9309e7cf30ab10ae2a67",
  "summary": {
-  "harmony_index": 56.6,
-  "balance": 69.3,
+  "harmony_index": 57.4,
+  "balance": 73.0,
   "weakest": "q5-security",
-  "found_today": 2,
-  "fixed_today": 0,
+  "found_today": 0,
+  "fixed_today": 2,
   "scoring_version": 2
  },
  "lanes": {
@@ -57,19 +57,19 @@
   "q3-flow": {
    "name": "③ 플레이 흐름·예외 처리",
    "kind": "product",
-   "health": 80.0,
+   "health": 82.0,
    "scenarios": 42.9,
    "agency": null,
-   "overall": 66.1,
+   "overall": 67.3,
    "scenario_total": 7,
    "scenario_recent": 3,
    "open_findings": {
     "심각": 0,
     "보통": 2,
-    "경미": 4
+    "경미": 3
    },
    "found_today": 0,
-   "fixed_today": 0,
+   "fixed_today": 1,
    "decisions": {
     "merged": 1,
     "closed": 0
@@ -101,19 +101,19 @@
   "q5-security": {
    "name": "⑤ 보안·계정·서비스",
    "kind": "product",
-   "health": 47.0,
+   "health": 53.0,
    "scenarios": 33.3,
    "agency": null,
-   "overall": 41.9,
+   "overall": 45.6,
    "scenario_total": 6,
    "scenario_recent": 2,
    "open_findings": {
     "심각": 1,
-    "보통": 5,
+    "보통": 4,
     "경미": 4
    },
    "found_today": 0,
-   "fixed_today": 0,
+   "fixed_today": 1,
    "decisions": {
     "merged": 1,
     "closed": 0
@@ -134,7 +134,7 @@
     "보통": 2,
     "경미": 4
    },
-   "found_today": 2,
+   "found_today": 0,
    "fixed_today": 0,
    "decisions": {
     "merged": 0,
@@ -187,5 +187,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-10-30"
+ "previous_date": "2026-10-31"
 }

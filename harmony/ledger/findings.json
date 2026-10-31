@@ -1843,8 +1843,10 @@
    "pattern": "BP-45",
    "first_seen": "2026-10-28",
    "last_seen": "2026-10-28",
-   "status": "열림",
-   "pr": 14
+   "status": "해소",
+   "pr": 14,
+   "resolved_at": "2026-11-01",
+   "resolution": "하모니 PR 병합(#14 / #15)"
   },
   {
    "id": "F-0101",
@@ -1860,8 +1862,10 @@
    "pattern": "BP-37",
    "first_seen": "2026-10-30",
    "last_seen": "2026-10-30",
-   "status": "열림",
-   "pr": 15
+   "status": "해소",
+   "pr": 15,
+   "resolved_at": "2026-11-01",
+   "resolution": "하모니 PR 병합(#14 / #15)"
   },
   {
    "lane": "q6-access",
