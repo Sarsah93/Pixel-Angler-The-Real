@@ -1,0 +1,130 @@
+{
+ "_doc": "게임 상호 표 — 키 = 원래 이름 SHA-1 앞 16자 · auto: true = 자동 변환(검토 뒤 고친다)",
+ "aliases": {
+  "1172cbcdd527d501": {
+   "ko": "바다풍걍펜션",
+   "en": "Badapunggyang Pension",
+   "auto": true
+  },
+  "770ed8facfe85d78": {
+   "ko": "휴행복헌펜션",
+   "en": "Hyuhaengbokheon Pension",
+   "auto": true
+  },
+  "5d010f4a8e1fb090": {
+   "ko": "학포웰빙거펜션",
+   "en": "Hakpowelbinggeo Pension",
+   "auto": true
+  },
+  "4e975a5a1b82c342": {
+   "ko": "삼게스트하우스",
+   "en": "Sam Guesthouse",
+   "auto": true
+  },
+  "43dc923b1611b1ac": {
+   "ko": "QU",
+   "en": "QU",
+   "auto": true
+  },
+  "860a897f85ad69a9": {
+   "ko": "산마일식당",
+   "en": "Sanmail Restaurant",
+   "auto": true
+  },
+  "56b26c3f378425cd": {
+   "ko": "Café Ullo",
+   "en": "Café Ullo",
+   "auto": true
+  },
+  "a867541a88bc29cf": {
+   "ko": "독두게스트하우스",
+   "en": "Dokdu Guesthouse",
+   "auto": true
+  },
+  "1588cb02bf0a78bf": {
+   "ko": "울링콘도",
+   "en": "Ulringkondo",
+   "auto": true
+  },
+  "ff6451f6d998757d": {
+   "ko": "울링횟집",
+   "en": "Ulring Sashimi House",
+   "auto": true
+  },
+  "f8c8cfb00b9edc77": {
+   "ko": "송림비츠호텔",
+   "en": "Songrimbicheu Hotel",
+   "auto": true
+  },
+  "24b1943eb010e1a3": {
+   "ko": "오션파키호텔",
+   "en": "Osyeonpaki Hotel",
+   "auto": true
+  },
+  "8f0a326c0950f8c3": {
+   "ko": "울릉도이사보호텔",
+   "en": "Ulreungdoisabo Hotel",
+   "auto": true
+  },
+  "2c6ab06c2c5bc27f": {
+   "ko": "울링호텔",
+   "en": "Ulring Hotel",
+   "auto": true
+  },
+  "e3ffec5cee47d4d4": {
+   "ko": "바다삼모텔",
+   "en": "Badasam Motel",
+   "auto": true
+  },
+  "83e6df5de92ee473": {
+   "ko": "오징어타온",
+   "en": "Ojingeotaon",
+   "auto": true
+  },
+  "d85867bd3c10017f": {
+   "ko": "농민은행",
+   "en": "Farmers Bank",
+   "auto": true
+  },
+  "d1b1a5957a97dee1": {
+   "ko": "우선제과",
+   "en": "Useonjegwa",
+   "auto": true
+  },
+  "a48ab48c6ec60bcb": {
+   "ko": "Hanil Hotal",
+   "en": "Hanil Hotal",
+   "auto": true
+  },
+  "d0a23f3bef793f17": {
+   "ko": "호텔 위디",
+   "en": "Hotel Widi",
+   "auto": true
+  },
+  "fe245c9245e28349": {
+   "ko": "포세이둔모텔",
+   "en": "Poseidun Motel",
+   "auto": true
+  },
+  "e1c435dd68d92765": {
+   "ko": "버거리아",
+   "en": "Burgeria",
+   "auto": true
+  },
+  "b3d69033f39928c3": {
+   "ko": "GX24",
+   "en": "GX24",
+   "auto": true
+  },
+  "65b53164da802777": {
+   "ko": "아리렁식당",
+   "en": "Arireong Restaurant",
+   "auto": true
+  },
+  "520b87a4fabbef93": {
+   "ko": "케이텔플라자 울릉",
+   "en": "K-Tel Plaza Ulreung",
+   "auto": true
+  }
+ }
+}
