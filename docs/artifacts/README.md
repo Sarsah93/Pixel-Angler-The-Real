@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 37 — 293차 기준(§07 293 ✅ 실플레이 피드백 셋). 36 = 292 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 38 — 293차 기준(「해루질 놀이 난이도 · 닿는 선」 DATA · 워크로그 214). 37 = 292 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 36 — 293차 기준 · 채비 문법은 258차(「293차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 91 — 293차(시스템 「해루질 놀이 손맛 · 집 문 식구 · 일감 대사」). 90 = 292 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 38 — 294차 기준(§07 294 ✅ 가족 한집 · 문 소리 · 울릉 · 독도 · 특산 · 추천 1 = 특산 후속 8 결정). 37 = 293 |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 39 — 294차 기준(「울릉도 · 독도 · 동해 먼바다 어종」 · 「지역 특산 · 얻은 곳 꼬리표 · 집마다 문 소리」 DATA · 워크로그 215). 38 = 293 |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 37 — 294차 기준 · 채비 문법은 258차(「294차 기준」 줄) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 92 — 294차(시스템 「울릉도 · 독도 · 지역 특산 · 집마다 문 소리」 · 지도 탭 울릉 · 독도 13장 · 출조 지역 카드 「특산」). 91 = 293 |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

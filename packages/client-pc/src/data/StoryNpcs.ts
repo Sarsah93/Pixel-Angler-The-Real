@@ -162,10 +162,12 @@ export const STORY_NPC_PLACEMENTS: StoryNpcPlacement[] = [
   //  「해녀의 딸」 안내를 따라가면 [F]가 「오세린의 집 — 문 두드리기」로 읽혔다(사용자 캡처). 같은 문을 쓰는 식구는 문 앞 [F]가 저마다 한 줄이다.
   { npcId: 'kang_haesol', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 486, ty: 394, behavior: 'wander', facing: 'right', home: { tx: 543, ty: 411, labelKo: '부순덕 · 강해솔의 집' } },
   { npcId: 'bu_sundeok', regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 491, ty: 394, behavior: 'stall', facing: 'down', home: { tx: 543, ty: 411, labelKo: '부순덕 · 강해솔의 집' } },
-  { npcId: 'oh_sera', regionId: 'ulleungdo' },
-  { npcId: 'yeon_taeo', regionId: 'ulleungdo' },
-  { npcId: 'seok_daeyang', regionId: 'ulleungdo' },
-  { npcId: 'seok_dokgu', regionId: 'ulleungdo' },
+  // 294차 — 울릉도(동남 해안 bbox · OSM 실측): 오세라 = 도동 편의점 앞(밤 장사 — 낮엔 집) · 연태오 = 저동 방파제(하얀등대) 낚시 ·
+  //  석대양 = 행남등대(등대지기 — 늘 밖) · 석독구 = 도동항 선착장 낚시(아이) — 할아버지와 등대 관사 한집(사용자 「가족은 한집」)
+  { npcId: 'oh_sera', regionId: 'ulleungdo', dataRegion: 'ulleung', tx: 591, ty: 717, behavior: 'stall', facing: 'down', home: { tx: 552, ty: 716, labelKo: '오세라의 집' } },
+  { npcId: 'yeon_taeo', regionId: 'ulleungdo', dataRegion: 'ulleung', tx: 684, ty: 406, behavior: 'fishing', home: { tx: 602, ty: 412, labelKo: '연태오가 묵는 방' } },
+  { npcId: 'seok_daeyang', regionId: 'ulleungdo', dataRegion: 'ulleung', tx: 783, ty: 621, behavior: 'wander', home: { tx: 778, ty: 628, labelKo: '행남등대 관사' } },
+  { npcId: 'seok_dokgu', regionId: 'ulleungdo', dataRegion: 'ulleung', tx: 616, ty: 757, behavior: 'fishing', facing: 'down', home: { tx: 778, ty: 628, labelKo: '행남등대 관사' } },
   { npcId: 'dan_cheolho', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 319, ty: 351, behavior: 'fishing', home: { tx: 321, ty: 400, labelKo: '단철호의 집' } },
   // 293차 — 구 (324, 400)은 단철호의 집(321, 400)과 같은 건물이라 문이 붙었다 → 동쪽 아파트로
   { npcId: 'ha_minji', regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 331, ty: 358, behavior: 'wander', home: { tx: 386, ty: 375, labelKo: '하민지의 집' } },
@@ -196,6 +198,7 @@ export const STORY_GUEST_ANCHORS: StoryGuestAnchor[] = [
   { regionId: 'jeju', dataRegion: 'jeju_seogwipo', tx: 513, ty: 397, labelKo: '서귀포항 안쪽' },
   { regionId: 'incheon', dataRegion: 'incheon_yeonan', tx: 333, ty: 361, labelKo: '연안부두' },
   // 294차 — 독도: 동도 접안시설 스폰(280, 236) 서쪽 두 칸(비켜 서는 9칸 전부 땅 — terrain.txt 실측). 울릉은 동남 해안 bbox를 다시 구운 뒤 적는다
+  { regionId: 'ulleungdo', dataRegion: 'ulleung', tx: 600, ty: 720, labelKo: '도동항 여객선터미널 앞' },
   { regionId: 'dokdo', dataRegion: 'dokdo', tx: 278, ty: 236, labelKo: '동도 접안시설' },
 ];
 

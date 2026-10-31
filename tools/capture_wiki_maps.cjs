@@ -39,6 +39,8 @@ const MAPS = {
   jeju_moseulpo: ['jeju', 'jeju_moseulpo_1'],
   jeju_seogwipo: ['jeju', 'jeju_seogwipo_1'],
   incheon_yeonan: ['incheon', 'incheon_yeonan_1'],
+  ulleung: ['ulleungdo', 'ulleung_dodong_1'],   // 294차 — 울릉도 도동
+  dokdo: ['dokdo', 'dokdo_dongdo_1'],   // 294차 — 독도 동도
   hometown: ['hometown', 'hometown_home'],
   // 265차 — 구 맵(레거시 · 타일 20px · 맵 그래프 노드). 심리스로 바뀐 뒤 게임에서는 안 열리지만 「지금 구현한 모든 지역맵」을 보려고 찍는다(씬 `legacy` 플래그)
   sokcho_sokchohang_3: ['gangwon_sokcho', 'sokcho_sokchohang_3', true],

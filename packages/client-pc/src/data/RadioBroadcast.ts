@@ -33,6 +33,9 @@ const SEAS: { id: string; ko: string; en: string }[] = [
   { id: 'chungnam_taean', ko: '서해 중부, 태안 앞바다', en: 'Off Taean, on the central West Sea' },
   { id: 'jeju', ko: '제주 앞바다', en: 'Off Jeju' },
   { id: 'incheon', ko: '서해 중부, 인천 앞바다', en: 'Off Incheon, on the central West Sea' },
+  // 294차 — 배 전용 섬(6 · 7장)
+  { id: 'ulleungdo', ko: '동해 먼바다, 울릉도 앞바다', en: 'Off Ulleungdo, on the far East Sea' },
+  { id: 'dokdo', ko: '동해 먼바다, 독도 앞바다', en: 'Off Dokdo, on the far East Sea' },
 ];
 
 const hm = (d: Date): string => { const p = kstParts(d); return `${p.hh}:${p.mi}`; };

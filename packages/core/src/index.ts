@@ -1006,3 +1006,6 @@ export {
   KAMIS_CROP_ITEMS, PRODUCE_MARKET_TUNING, isProduceMarketSnapshot, snapshotAgeDays, kamisRatioOf,
   setProduceMarket, produceMarketRatio, produceMarketInfo,
 } from './rules/ProduceMarket.js';
+// 294차 — 지역 특산물
+export { REGIONAL_SPECIALTIES, specialtyOf, specialtyInSeason, specialtyPriceMult, specialtiesOfRegion, specialtyRegionsOf } from './db-schema/RegionalSpecialty.js';
+export type { RegionalSpecialtyDef, SpecialtyKind } from './db-schema/RegionalSpecialty.js';

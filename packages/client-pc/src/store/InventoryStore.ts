@@ -29,6 +29,7 @@ import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan }
 // 282차 — 개체 아이템 id(장비 · 단단한 루어는 `<카탈로그 id>#<번호>`)
 import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra/core';
 import { rodSpecFor, reelSpecFor, forageBaitKeyOf, type RodItemSpec, type ReelItemSpec } from '@tra/core';
+import { specialtyPriceMult, parseProduceId as parseProduceIdCore } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER, bagsOfLoose, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -1897,7 +1898,9 @@ class InventoryStoreManager {
       const stateMul = conditionSellMultiplier(item.condition);
       if (stateMul <= 0) return 0;
       const unit = producePrice(item.id, Date.now()) ?? item.basePrice;
-      return Math.max(10, Math.round((unit * stateMul * 0.7) / 10) * 10);
+      // 294차 — 지역 특산(거둔 지역이 주산지면 배율 · 제철 밖은 절반)
+      const spMul = specialtyPriceMult(parseProduceIdCore(item.id).baseId, item.originRegion, new Date().getMonth() + 1);
+      return Math.max(10, Math.round((unit * stateMul * 0.7 * spMul) / 10) * 10);
     }
     if (item.subCategory === '어획물') {
       // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
@@ -1909,8 +1912,10 @@ class InventoryStoreManager {
         const tier = conditionPriceTier(item.condition);
         const cache = ExternalDataStore.getWholesaleCache(speciesId, tier);
         const base = evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
+        // 294차 — 지역 특산(잡은 지역이 그 종의 주산지면 배율 · 제철 밖은 절반) — 위판 · 상점 둘 다
+        const spMul = specialtyPriceMult(speciesId, item.originRegion, new Date().getMonth() + 1);
         // 상점은 시세(경락가)보다 싸게 사들인다 — 시세 그대로 받으려면 위판(수수료 3~6%)
-        return Math.max(0, Math.round(base * stateMul * (shop ? SHOP_BUY_RATE : 1)));
+        return Math.max(0, Math.round(base * stateMul * spMul * (shop ? SHOP_BUY_RATE : 1)));
       }
       // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;

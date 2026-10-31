@@ -1448,13 +1448,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
             const map = r.maps.find(m => m.id === a.dataRegion);
             out.push({
               key: 'ra-' + a.id, name: a.name, meta: r.short + ' · ' + (r.sea || r.sido) + (a.depth ? ' · 수심 ' + a.depth : '') + (a.snag ? ' · ' + a.snag : ''), img: null, price: '',
-              search: r.name + ' ' + a.name + ' ' + a.nameEn + ' ' + a.desc + ' ' + a.details.join(' ') + ' ' + r.pages.map(pg => pg.species).join(' '),
+              search: r.name + ' ' + a.name + ' ' + a.nameEn + ' ' + a.desc + ' ' + a.details.join(' ') + ' ' + r.pages.map(pg => pg.species).join(' ') + ' ' + (r.specialties || []).map(s => s.name).join(' '),
               detail: () => ({
                 title: a.name, sub: r.name + ' · ' + a.nameEn, lede: a.desc, img: null,
-                tags: [r.sea || r.sido, r.chapter ? r.chapter + '장부터 열림' : '', a.depth ? '수심 ' + a.depth : '', a.snag, a.enterable ? '출조 가능' : '필드 준비 중', a.ownSpawn ? '구역마다 내리는 자리' : ''].filter(Boolean),
+                tags: [r.sea || r.sido, r.chapter ? r.chapter + '장부터 열림' : '', r.boat ? '배로만' : '', a.depth ? '수심 ' + a.depth : '', a.snag, a.enterable ? '출조 가능' : '필드 준비 중', a.ownSpawn ? '구역마다 내리는 자리' : ''].filter(Boolean),
                 body: '<div class="ssec"><h3>바다 특성</h3><ul class="plain">' + a.details.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' +
                   (map ? '<div class="ssec"><h3>필드 지도 — ' + esc(map.name) + '</h3>' + kvRows([['지도', '<a class="xl" data-map="map/' + esc(a.dataRegion) + '/area/' + esc(a.id) + '" href="#map/' + esc(a.dataRegion) + '/area/' + esc(a.id) + '">지도 탭에서 이 구역 보기</a>'], ['크기', esc(map.km + ' (' + map.w + ' × ' + map.h + '칸 · 1칸 = 5m)')], ['가게 · 장소', esc(map.shops + ' · ' + map.pois)], ['건물 윤곽', esc(String(map.buildings))], ['항로표지', esc(String(map.lights))]]) + '</div>' : '') +
-                  (r.pages.length ? '<div class="ssec"><h3>조행록(' + esc(r.name) + ')</h3>' + kvRows(r.pages.map(pg => [pg.page + '장 ' + pg.label, esc(pg.species + ' · ' + pg.seasons + ' · ' + pg.how + (pg.cond ? ' · ' + pg.cond : ''))])) + '</div>' : ''),
+                  (r.pages.length ? '<div class="ssec"><h3>조행록(' + esc(r.name) + ')</h3>' + kvRows(r.pages.map(pg => [pg.page + '장 ' + pg.label, esc(pg.species + ' · ' + pg.seasons + ' · ' + pg.how + (pg.cond ? ' · ' + pg.cond : ''))])) + '</div>' : '') +
+                  ((r.specialties || []).length ? '<div class="ssec"><h3>특산(' + esc(r.short) + ') — 이 지역에서 얻은 것만</h3>' + kvRows(r.specialties.map(s => [esc(s.name), esc(s.kind + ' · ' + s.months + ' · 값 ×' + s.mult + (s.gi ? ' · ' + s.gi : '') + (s.fest ? ' · ' + s.fest : '') + ' — ' + s.note)])) + '</div>' : ''),
               }),
             });
           }

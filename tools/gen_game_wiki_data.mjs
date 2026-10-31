@@ -725,6 +725,18 @@ const rules = [
     ],
   },
   {
+    id: 'islands_specialty_294', round: 294, hidden: false, title: '울릉도 · 독도 · 지역 특산 · 집마다 문 소리',
+    lede: '배로만 가는 두 섬이 열려 조행록 16 · 17장과 이야기 22편이 그 땅에서 벌어진다. 동해 먼바다는 부시리 · 방어 · 전갱이 같은 등푸른 물고기가 많고 광어 · 서대는 드물다. 어디서 잡고 캐고 거둔 것인지가 물건에 남아, 그 지역 특산이면 값을 더 쳐주고 상세보기에 유래가 적힌다. 집 문 앞에서는 집마다 다른 소리로 두드리거나 벨을 누른다.',
+    rows: [
+      ['울릉도 도동', '도동항에 내려 걷는다 — 행남등대 아래가 부시리 자리. 오세라 · 연태오 · 석대양 · 석독구가 산다(6장부터 · 배로만)'],
+      ['독도 동도', '동도 접안시설 — 조사선으로 닿는 땅. 이야기로 온 사람이 접안시설 앞에 서 있다(7장부터 · 배로만)'],
+      ['동해 먼바다 어종', '울릉 · 독도는 제주처럼 돔류(참돔 · 돌돔 · 벵에돔)와 등푸른 물고기(부시리 · 방어 · 전갱이 · 고등어)가 흔하고, 모래 바닥 어종(광어 · 서대 · 도루묵)은 드물다. 제주 연안의 감성돔은 드문 쪽이다'],
+      ['지역 특산 44', '속초 도루묵 · 부산 고등어 · 대저 토마토 · 방어진 방어 · 구룡포 꽁치 · 포항초 · 거제 대구 · 여수 갯장어 · 태안 꽃게 · 제주 은갈치 · 구좌 당근 · 울릉 명이 · 독도 대문어 … — 그 지역에서 얻은 것만(가게에서 산 것은 아니다). 제철이면 값 ×1.1~1.5, 제철 밖은 보너스의 절반'],
+      ['얻은 곳 꼬리표', '잡은 · 캔 · 거둔 물건은 얻은 지역을 기억한다. 상세보기에 「특산」 · 「유래」 두 줄(지리적 표시 · 축제 · 주산지)이 붙는다'],
+      ['집마다 문 소리', '문 앞 [F]는 집마다 「문 두드리기」(똑똑 세 가지) 또는 「벨 누르기」(띵동 세 가지) — 아파트 · 민박 · 관사는 벨. 같은 문을 쓰는 식구는 한 줄씩(탁씨 공방 부자 · 고만석 · 고해나 · 부순덕 · 강해솔 · 행남등대 관사)'],
+    ],
+  },
+  {
     id: 'forage_feel_293', round: 293, hidden: false, title: '해루질 놀이 손맛 · 집 문 식구 · 일감 대사',
     lede: '실플레이 피드백으로 해루질 놀이의 손맛을 다시 잡았다. 떼기는 헛짚어도 틈이 덜 줄고, 파기는 도구 끝이 녀석에게 닿는 순간 잡히며, 당기기는 문어가 부풀 때 손을 뗄 시간이 생겼다. 같은 집에 사는 식구는 문 앞에서 따로 부를 수 있고, 일감을 물으면 그 사람이 자기 말투로 답한다.',
     rows: [
@@ -1309,6 +1321,7 @@ const DATA_DIR = path.join(ROOT, 'packages/client-pc/public/data');
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
 const SEA_KO = { east: '동해', south: '남해', west: '서해' };
 const SEASON_KO = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
+const SPEC_KIND_KO = { fish: '수산', forage: '갯것', crop: '작물', processed: '가공' };   // 294차
 const dataRegionStats = (dr) => {
   const meta = readJson(path.join(DATA_DIR, dr, 'meta.json'));
   if (!meta) return null;
@@ -1334,7 +1347,12 @@ const regions = core.WORLD_NODE_DATABASE.map((n) => {
     if (def && !drs.some((d) => d.id === def.dataRegion)) { const st = dataRegionStats(def.dataRegion); if (st) drs.push({ ...st, name: def.name }); }
   }
   return {
-    id: rid, name: n.name, nameEn: n.nameEn, short: n.shortName, sido: n.region, sea: rid === 'jeju' ? '제주' : (SEA_KO[seaKey] ?? ''),
+    id: rid, name: n.name, nameEn: n.nameEn, short: n.shortName, sido: n.region, sea: rid === 'jeju' ? '제주' : ['ulleungdo', 'dokdo'].includes(rid) ? '동해 먼바다' : (SEA_KO[seaKey] ?? ''),   // 294차 — 울릉 · 독도는 「동해 먼바다」
+    // 294차 — 지역 특산(core `REGIONAL_SPECIALTIES` — 그 지역에서 얻은 것만 · 제철 배율)
+    specialties: (core.specialtiesOfRegion ? core.specialtiesOfRegion(rid) : []).map((d) => ({
+      name: d.nameKo, kind: SPEC_KIND_KO[d.kind] ?? d.kind, months: d.months && d.months.length ? d.months.join('·') + '월' : '연중', mult: d.priceMult,
+      note: d.noteKo, gi: d.gi ?? '', fest: d.festivalKo ?? '',
+    })),
     open: areas.length > 0, boat: ['ulleungdo', 'dokdo'].includes(rid), chapter: core.chapterOfRegion ? (core.chapterOfRegion(rid) ?? null) : null,   // 263차 — 이 지역을 여는 장
     areas: areas.map((a) => {
       const def = core.seamlessRegionOf(rid, a.fieldMapId);

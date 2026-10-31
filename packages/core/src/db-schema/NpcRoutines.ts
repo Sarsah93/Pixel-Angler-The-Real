@@ -73,6 +73,11 @@ export const STORY_NPC_ROUTINE: Record<string, NpcRoutineKind> = {
   kang_haesol: 'visitor',
   dan_cheolho: 'day_angler',
   ha_minji: 'visitor',
+  // 294차 — 울릉도(6장): 오세라 = 야간 편의점 · 연태오 = 손님 시간 · 석대양 = 등대지기(늘 밖) · 석독구 = 아이
+  oh_sera: 'night',
+  yeon_taeo: 'visitor',
+  seok_daeyang: 'always',
+  seok_dokgu: 'kid',
 };
 
 export function routineOfNpc(npcId: string): NpcRoutineDef {

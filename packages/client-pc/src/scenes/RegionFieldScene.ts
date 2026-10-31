@@ -6293,6 +6293,26 @@ export class RegionFieldScene extends Phaser.Scene {
    * 출장 자리(`STORY_GUEST_ANCHORS`) 둘레에 세우고, 부른 이야기가 끝나면 돌려보낸다.
    * 말을 거는 중(창 · 장면)에는 바꾸지 않는다 — 대화 상대가 눈앞에서 사라지면 안 된다.
    */
+  /**
+   * 294차 — 지나다니는 사람 상한(땅 넓이). 표본 4,000칸 중 걷는 땅 비율 × 전체 칸 ÷ 1,500 · 최소 6 · 최대 maxCount.
+   *  속초(약 1.2M칸)는 상한에 닿아 그대로 120, 독도(594×325 · 바다 94%)는 6~7명.
+   */
+  private ambientLandCap(maxCount: number): number {
+    const host = this.npcHost;
+    const total = host.cols * host.rows;
+    if (!total) return maxCount;
+    const n = Math.min(4000, total);
+    let seed = (0x9e3779b9 ^ total) >>> 0;
+    const rnd = (): number => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    let land = 0;
+    for (let i = 0; i < n; i++) {
+      const c = Math.floor(rnd() * host.cols), r = Math.floor(rnd() * host.rows);
+      if (host.isWalkable(c, r)) land++;
+    }
+    const landTiles = (land / n) * total;
+    return Math.max(6, Math.min(maxCount, Math.round(landTiles / 1500)));
+  }
+
   private syncStoryGuests(initial = false): void {
     if (!initial && (this.uiBlocked || this.interior)) return;
     const anchor = STORY_GUEST_ANCHORS.find((a) => a.regionId === this.region);
@@ -6353,7 +6373,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 214차 — 지나다니는 사람 수도 시각을 따른다(한밤 ¼ · 늦은 밤/새벽 ½ · 낮 전부). 씬에 들어올 때 정한다.
       const hr = Math.floor(this.routineClock().min / 60);
       const crowd = hr < 5 ? 30 : hr < 7 || hr >= 22 ? 60 : 120;
-      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })), crowd);
+      // 294차 — 땅 넓이 상한: 걷는 땅이 좁은 섬(독도 — 약 1만 칸)에 낮 120명이 몰려 한 화면에 12명이 섰다. 1,500칸당 한 명 · 최소 6.
+      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })), Math.min(crowd, this.ambientLandCap(crowd)));
     }
     this.events.once('shutdown', () => {
       this.sceneExtras = [];   // 씬이 내려가며 오브젝트는 같이 파괴된다

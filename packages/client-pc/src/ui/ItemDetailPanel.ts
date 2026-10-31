@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
-import { getCreatureById, isCrabCreature } from '@tra/core';
+import { getCreatureById, isCrabCreature, specialtyOf, type RegionalSpecialtyDef, getRegionById } from '@tra/core';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import { LINE_MATERIAL_TRAITS, lineMaterialOf, lineStrengthView } from '@tra/core';   // 273차 — 줄 재질 성질(내구도) · 281 세기 = 호수 표
 import {
@@ -54,6 +54,19 @@ export interface ItemDetailRow {
   color?: string;
   /** 229차 — 값 왼쪽에 붙는 16x16 픽셀 아이콘 키(`PixelIconArt` — 독 · 암수) */
   icon?: string;
+}
+
+/**
+ * 294차 — 「특산」 두 줄: 이름(지역 짧은 이름 · 특산 이름 — 이름이 이미 지역으로 시작하면 한 번만) + 유래 한 줄.
+ *  구: 「부산 부산 고등어 — 부산 시어 …」처럼 지역 이름이 겹치고 한 줄이 넘쳐 말줄임됐다(r294 하네스 실측).
+ */
+function specialtyRows(spec: RegionalSpecialtyDef, originRegion: string | undefined): ItemDetailRow[] {
+  const short = getRegionById(originRegion ?? '')?.shortNameKo ?? '';
+  const name = short && !spec.nameKo.startsWith(short) ? `${short} · ${spec.nameKo}` : spec.nameKo;
+  return [
+    { label: '특산', value: name, color: '#ffd93b' },
+    { label: '유래', value: spec.noteKo, color: '#d9c98a' },
+  ];
 }
 
 export interface ItemDetailData {
@@ -269,6 +282,9 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   const raw = rawEatRow(item.id);   // 241차
   if (raw.row) rows.push(raw.row);
   // 284차 — 털어 낸 낱알(g)은 가게가 사지 않는다 — 봉지 값을 보여 준다 · 먹는 부산물은 쓰임
+  // 294차 — 지역 특산(거둔 지역이 그 작물의 주산지면)
+  const spc = specialtyOf(parseProduceId(item.id).baseId, item.originRegion);
+  if (spc) rows.push(...specialtyRows(spc, item.originRegion));
   const loose = item.unitG ? bagsOfLoose(item.id) : [];
   if (loose.length) {
     rows.push({ label: '파는 값 (오늘)', value: '낱알은 사지 않는다 — 봉지에 담아 판다', color: '#ff9a5a' });
@@ -386,7 +402,7 @@ function lineStrengthLabel(item: Pick<InvItem, 'name' | 'lineNo' | 'lineMaterial
   return v ? `${v.lb}lb (${v.kg}kg)` : '-';
 }
 
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack' | 'unitG'>): ItemDetailData {
+export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack' | 'unitG' | 'originRegion'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 229차 — 패류독소: 채취 금지 기간에 캔 조개(또는 그것이 들어간 요리). 모든 갈래의 맨 위에 보라 물방울로
@@ -816,6 +832,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         const rr = fishRarity(item.speciesId, lengthCm);
         rows.push({ label: '희귀도', value: `${rr.ratio.toFixed(2)}×, ${rr.label}`, color: rr.color });
       }
+      // 294차 — 지역 특산(얻은 지역이 그 종의 주산지면) — 값 · 선물 · 위키가 같은 표를 본다
+      const spec = specialtyOf(item.speciesId, item.originRegion);
+      if (spec) rows.push(...specialtyRows(spec, item.originRegion));
       if (lengthCm) rows.push({ label: '길이', value: `${lengthCm} cm` });
       if (weightG) {
         rows.push({ label: '무게', value: weightG >= 1000 ? `${(weightG / 1000).toFixed(2)} kg` : `${weightG} g` });
