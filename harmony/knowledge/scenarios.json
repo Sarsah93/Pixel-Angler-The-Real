@@ -17,9 +17,11 @@
     "title": "가방이 가득 찬 상태에서 넣기 경로를 전부 두드린다(사라지는 물건 0)",
     "how": "`__INV`로 칸을 꽉 채운 뒤 구매 · 퀘스트 보상 · 회수(화구 · 통발 · 거치대) · 거래 · 위판 반환 · 바닥 줍기 · 제작 산출 · 열기(openBundle) · 고장(setFault)을 한 번씩. 앞뒤 물건 총수 비교",
     "mode": "하네스",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-11-02",
+    "result": "발견 1 (위판 찾아오기만 확인)",
+    "findings": [
+     "F-0048"
+    ]
    },
    {
     "id": "S1-03",
@@ -62,8 +64,8 @@
     "title": "재화 증감 경로의 음수 · NaN · 소수 · 반환값 무시",
     "how": "`addCoins` · `spendCoins` · 판매가 · 벌금 · 사용료 호출부 전수. 음수 · 0 · NaN 입력을 하네스로 넣어 잔액이 깨지는지",
     "mode": "정적 + 하네스",
-    "last_run": null,
-    "result": null,
+    "last_run": "2026-11-02",
+    "result": "통과(부분·정적): addCoins isFinite 방어 확인",
     "findings": []
    },
    {
