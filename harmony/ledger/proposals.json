@@ -459,6 +459,21 @@
     "F-0102"
    ],
    "lane": "q6-access"
+  },
+  {
+   "id": "P-0027",
+   "date": "2026-11-02",
+   "domain": "q1-items",
+   "kind": "적용",
+   "title": "가방이 가득 찰 때 위판 찾아오기로 물건이 사라지던 것 막기",
+   "pr": 17,
+   "branch": "harmony/2026-11-02-consign-retrieve-room",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0048"
+   ],
+   "lane": "q1-items"
   }
  ]
 }

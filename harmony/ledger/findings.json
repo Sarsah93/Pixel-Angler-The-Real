@@ -878,10 +878,16 @@
    "why": "addItem 반환을 보지 않고 자리 확인도 없다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-11-02",
    "resolved_at": null,
    "rule": "234차 함정 「넣다 실패하면 사라지는 지급 금지」",
-   "lane": "q1-items"
+   "lane": "q1-items",
+   "repro": "가방 같은 갈래 칸을 가득 채움 → 위판 맡긴 묶음(새 id 2개) 찾아오기(retrieveConsignment)",
+   "expected": "자리가 없으면 묶음이 그대로 남는다",
+   "actual": "반환 2 · 가방에 없음 · 대기열 0 (소실)",
+   "player_impact": "가방이 가득할 때 찾아오기를 누르면 맡긴 물건을 잃는다",
+   "pattern": "BP-07",
+   "note": "찾아오기 경로는 PR #17로 수정. 회차 정산 유찰 반환(settleDueConsignments)은 남음 — 제안"
   },
   {
    "id": "F-0049",
@@ -897,9 +903,10 @@
    "why": "NaN이 들어가면 저장 때 null이 되어 불러오면 0원이 되고, 잔액 부족 차감은 조용히 공짜가 된다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-08",
+   "last_seen": "2026-11-02",
    "resolved_at": null,
-   "lane": "q1-items"
+   "lane": "q1-items",
+   "note": "addCoins에 isFinite 방어 있음(GameState.ts:657) — 반환값 무시 차감만 남음"
   },
   {
    "id": "F-0050",

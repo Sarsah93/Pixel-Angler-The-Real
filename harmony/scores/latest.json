@@ -1,12 +1,12 @@
 {
- "date": "2026-11-01",
- "audited_commit": "7e417e72c18bae57454d9309e7cf30ab10ae2a67",
+ "date": "2026-11-02",
+ "audited_commit": "93b214c57c9f3e2b63e1c99bd03d88fafd0bc172",
  "summary": {
   "harmony_index": 57.4,
   "balance": 73.0,
   "weakest": "q5-security",
   "found_today": 0,
-  "fixed_today": 2,
+  "fixed_today": 0,
   "scoring_version": 2
  },
  "lanes": {
@@ -30,7 +30,7 @@
     "merged": 0,
     "closed": 0
    },
-   "open_proposals": 0
+   "open_proposals": 1
   },
   "q2-art-data": {
    "name": "② 그림·데이터·문구 정합",
@@ -69,7 +69,7 @@
     "경미": 3
    },
    "found_today": 0,
-   "fixed_today": 1,
+   "fixed_today": 0,
    "decisions": {
     "merged": 1,
     "closed": 0
@@ -113,7 +113,7 @@
     "경미": 4
    },
    "found_today": 0,
-   "fixed_today": 1,
+   "fixed_today": 0,
    "decisions": {
     "merged": 1,
     "closed": 0
@@ -187,5 +187,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-10-31"
+ "previous_date": "2026-11-01"
 }
