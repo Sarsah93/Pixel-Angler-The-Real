@@ -58,11 +58,20 @@ export function settleDueConsignments(nowMs = Date.now()): ConsignSettleReport |
   return rep;
 }
 
+/** 하모니 — 찾아오기 전 자리 확인. 가방에 다 들어가지 않으면 사유(한 줄), 괜찮으면 null */
+export function consignRetrieveBlock(batchId: string): string | null {
+  const b = ConsignQueue.serialize().batches.find((x) => x.id === batchId);
+  if (!b) return null;
+  const lack = InventoryStore.slotShortfall(b.items.map((it) => ({ tpl: it, qty: it.qty || 1 })));
+  return Object.keys(lack).length ? '가방에 자리가 없어 찾아올 수 없다.' : null;
+}
+
 /**
  * 214차 — 경매 전에 찾아온다(위판장 창구에서만). 맡긴 그대로 가방에 돌아온다 — 맡긴 동안 신선도는 멈춰 있었다.
  * @returns 돌려준 물건 수(묶음이 없으면 0)
  */
 export function retrieveConsignment(batchId: string): number {
+  if (consignRetrieveBlock(batchId)) return 0;   // 가방이 모자라면 묶음을 그대로 둔다(돌려주다 사라지지 않게)
   const b = ConsignQueue.take(batchId);
   if (!b) return 0;
   returnItems(b.items);
