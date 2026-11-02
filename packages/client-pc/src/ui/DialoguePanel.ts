@@ -60,11 +60,16 @@ import { applyScreenFixed } from './DraggablePanel.js';
 import { t, getLocale } from '../i18n/I18n.js';
 import { applyPortraitMask, type PortraitMaskHandle } from './PortraitMask.js';
 import { PORTRAIT_LAYOUT } from './PortraitLayout.js';
-import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, particle, progressAskOf, PROGRESS_ASK_FALLBACK, fillPlayerName, type ProgressAskDef } from '@tra/core';
+import { voiceOfNpc, paceSentences, SENTENCE_PAUSE_MS, particle, progressAskOf, PROGRESS_ASK_FALLBACK, fillPlayerName, GIFT_AGAIN_LINE, type ProgressAskDef } from '@tra/core';
 import { SHOP_CATALOG, BUILDING_HOURS, BUILDING_LABEL, type BuildingKind } from '../data/ShopCatalog.js';
 import { VoiceTyper } from '../audio/Voice.js';
 import { playUiClick } from '../audio/Sfx.js';
 import { GuideTour, maybeStartTour } from './GuideTour.js';
+import { GiftPickerPanel } from './GiftPickerPanel.js';   // 297차
+import { InventoryStore, type InvItem } from '../store/InventoryStore.js';
+import { isGiftable, giftViewOf } from '../data/GiftTags.js';
+import { specialtyDisplayName } from '../data/SpecialtyTag.js';
+import { playPickup } from '../audio/Sfx.js';
 
 const W = 1040;
 /** 253차 — 372 → 452(답이 3~5개로 늘고 응답이 길어졌다) */
@@ -661,6 +666,10 @@ export class DialoguePanel extends DraggablePanel {
     }
     const shopId = this.npcShopId();
     if (shopId) rows.push({ label: '물건을 볼 수 있을까요?', action: () => this.onTrade?.(shopId) });
+    // 297차 — 선물(사용자 결정 「대화 선택지 선물하기」): 줄 수 있는 것이 가방에 있을 때만 · 어촌계(단체)는 제외
+    if (this.npcId !== 'coop' && this.giftableItems().length > 0) {
+      rows.push({ label: '드리고 싶은 게 있어요.', hint: StoryStore.canGiftTo(this.npcId) ? undefined : '오늘은 이미 드렸다', action: () => this.enterGift() });
+    }
     const jobs = StoryStore.jobsOfNpc(this.npcId, this.regionId);
     if (jobs.length) {
       const can = jobs.filter((j) => !j.locked && j.remaining > 0).length;
@@ -668,6 +677,51 @@ export class DialoguePanel extends DraggablePanel {
     }
     rows.push({ label: '나가기', action: () => this.onClose() });
     this.play(paras, rows, !greet);
+  }
+
+  // ═══════════ 297차 선물 ═══════════
+  private giftableItems(): InvItem[] {
+    return InventoryStore.items.filter((it) => isGiftable(it));
+  }
+
+  /** 「드리고 싶은 게 있어요」 — 오늘 이미 드렸으면 그 사람 말, 아니면 고르기 창 */
+  private enterGift(): void {
+    if (!StoryStore.canGiftTo(this.npcId)) {
+      const [ko, en] = GIFT_AGAIN_LINE;
+      this.play([{ cue: 'line', who: this.npcId, text: DialoguePanel.quote(getLocale() === 'en' ? en : ko) }], [this.backRow(), this.exitRow()], true);
+      return;
+    }
+    const items = this.giftableItems();
+    const picker = new GiftPickerPanel(this.scene, {
+      npcName: getStoryNpc(this.npcId)?.nameKo ?? '',
+      items,
+      onClose: () => { picker.destroy(); this.enterMenu(false); },
+      onPick: (item) => { picker.destroy(); this.giveGift(item); },
+    });
+    this.scene.add.existing(picker);
+  }
+
+  /** 건넨다 — 가방에서 하나 빼고 반응 · 우호도 · 수첩. 새 쪽: (건넨다) → 그 사람 말 → [계속 이야기하기 · 나가기] */
+  private giveGift(item: InvItem): void {
+    const view = giftViewOf(item);
+    const name = specialtyDisplayName(item);
+    const res = StoryStore.giveGift(this.npcId, view);
+    if (!res) { this.enterMenu(false); return; }
+    if (!InventoryStore.removeQty(item.id, 1)) { this.enterMenu(false); return; }
+    playPickup();
+    this.scene.events.emit('inventory-changed');
+    this.refreshPortrait();   // 우호도 막대 · 단계 글자가 바로 따라온다
+    const [ko, en] = res.line;
+    const said = getLocale() === 'en' ? en : ko;
+    const paras: QItem[] = [
+      `(${name}${particle(name, '을', '를')} 건넨다.)`,
+      { cue: 'line', who: this.npcId, text: DialoguePanel.quote(fillPlayerName(said, GameState.player.nickname)) },
+    ];
+    if (res.newLove) paras.push(`${HINT_PREFIX}(아주 좋아하는 것을 처음 건넸다 — 선물 칭호에 한 사람 더.)`);
+    this.play(paras, [
+      { label: '계속 이야기하기', action: () => this.enterMenu(false) },
+      this.exitRow(),
+    ], true);
   }
 
   /** 거래하는 사람인지 — 데이터에 상점이 걸려 있을 때만 '물건 보기'가 뜬다 */

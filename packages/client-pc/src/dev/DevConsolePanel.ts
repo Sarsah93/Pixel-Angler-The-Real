@@ -324,6 +324,11 @@ function buildMailSection(box: HTMLElement): void {
     flash(b, `✓ 편지 ${MailboxStore.all.length}통`);
   };
   body.appendChild(b);
+  const b3 = document.createElement('button');
+  b3.textContent = '선물 하루 제한 풀기 (297)';
+  styleBtn(b3);
+  b3.onclick = () => { StoryStore.devResetGiftDay(); GameState.markDirty(); flash(b3, `✓ 풀림 · 아주 좋아함 ${StoryStore.giftLovedCount()}명`); };
+  body.appendChild(b3);
   const b2 = document.createElement('button');
   b2.textContent = '우편함 비우기';
   styleBtn(b2);

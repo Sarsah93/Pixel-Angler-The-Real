@@ -147,6 +147,7 @@ class TitleStoreImpl {
         else if (ev.activity === 'butcher') this.bump('butcherDone');
         return;
       case 'trap': this.bump('trapHarvest'); return;
+      case 'custom': if (ev.key === 'gift:love') this.bump('giftLoved'); return;   // 297차 — 아주 좋아하는 선물을 받아 본 사람 +1
       default: return;
     }
   }

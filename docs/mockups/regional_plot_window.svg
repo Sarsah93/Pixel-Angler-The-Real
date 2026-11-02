@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640" font-family="'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+  <defs>
+    <pattern id="soil" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#6a4a2c"/><rect y="4" width="8" height="4" fill="#5c3f24"/>
+    </pattern>
+    <pattern id="grass" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#4e8a46"/><rect x="4" y="4" width="4" height="4" fill="#3f7539"/>
+    </pattern>
+  </defs>
+  <!-- 바탕(필드가 비쳐 보이는 느낌) -->
+  <rect width="900" height="640" fill="#1a3a2a"/>
+  <rect width="900" height="640" fill="url(#grass)" opacity="0.35"/>
+
+  <!-- 패널 -->
+  <g transform="translate(60,20)">
+    <rect width="780" height="600" rx="6" fill="#0e1c2a" stroke="#1c3d5a" stroke-width="2"/>
+    <!-- 타이틀바 -->
+    <rect width="780" height="32" rx="6" fill="#16304a"/>
+    <rect y="26" width="780" height="6" fill="#16304a"/>
+    <text x="14" y="22" font-size="15" font-weight="700" fill="#e8f4fd">구룡포 종묘사 — 빌린 밭</text>
+    <text x="760" y="22" font-size="14" fill="#9fb8cc" text-anchor="end">✕</text>
+
+    <!-- 탭 -->
+    <g transform="translate(14,42)">
+      <rect width="92" height="24" rx="4" fill="#1f3045" stroke="#2d4d6a"/>
+      <text x="46" y="16" font-size="12" fill="#9fb8cc" text-anchor="middle">마당(집)</text>
+      <rect x="98" width="140" height="24" rx="4" fill="#1f4d3a" stroke="#7df0b0"/>
+      <text x="168" y="16" font-size="12" font-weight="700" fill="#d8ffe8" text-anchor="middle">빌린 밭 — 구룡포</text>
+      <rect x="244" width="92" height="24" rx="4" fill="#1f3045" stroke="#2d4d6a"/>
+      <text x="290" y="16" font-size="12" fill="#9fb8cc" text-anchor="middle">설비</text>
+    </g>
+
+    <!-- 왼쪽: 밭 칸 2×2 (칸 72px · 사이 8px) -->
+    <g transform="translate(14,80)">
+      <rect width="376" height="400" rx="4" fill="#0b1620" stroke="#1c3d5a"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#ffe28a">밭 한 구획 · 4칸</text>
+      <text x="364" y="22" font-size="11" fill="#6f8ea4" text-anchor="end">해풍 · 사질토</text>
+
+      <!-- 칸 1 포항초 자람 -->
+      <g transform="translate(40,44)">
+        <rect width="144" height="144" fill="url(#soil)"/>
+        <rect width="144" height="144" fill="none" stroke="#2d4d6a"/>
+        <g fill="#4e8a46">
+          <rect x="22" y="40" width="10" height="10"/><rect x="34" y="30" width="10" height="10"/><rect x="46" y="40" width="10" height="10"/>
+          <rect x="82" y="40" width="10" height="10"/><rect x="94" y="30" width="10" height="10"/><rect x="106" y="40" width="10" height="10"/>
+          <rect x="22" y="96" width="10" height="10"/><rect x="34" y="86" width="10" height="10"/><rect x="46" y="96" width="10" height="10"/>
+          <rect x="82" y="96" width="10" height="10"/><rect x="94" y="86" width="10" height="10"/><rect x="106" y="96" width="10" height="10"/>
+        </g>
+        <rect x="6" y="128" width="132" height="8" fill="#16263a"/>
+        <rect x="6" y="128" width="80" height="8" fill="#7df0b0"/>
+        <text x="8" y="16" font-size="11" fill="#ffffff" stroke="#000" stroke-width="2" paint-order="stroke">포항초 · 자람 60%</text>
+      </g>
+      <!-- 칸 2 거둘 때 -->
+      <g transform="translate(196,44)">
+        <rect width="144" height="144" fill="url(#soil)"/>
+        <rect width="144" height="144" fill="none" stroke="#ffd257" stroke-width="2"/>
+        <g fill="#3f7539">
+          <rect x="18" y="26" width="14" height="14"/><rect x="36" y="16" width="14" height="14"/><rect x="54" y="26" width="14" height="14"/>
+          <rect x="78" y="26" width="14" height="14"/><rect x="96" y="16" width="14" height="14"/><rect x="114" y="26" width="14" height="14"/>
+          <rect x="18" y="82" width="14" height="14"/><rect x="36" y="72" width="14" height="14"/><rect x="54" y="82" width="14" height="14"/>
+          <rect x="78" y="82" width="14" height="14"/><rect x="96" y="72" width="14" height="14"/><rect x="114" y="82" width="14" height="14"/>
+        </g>
+        <rect x="6" y="128" width="132" height="8" fill="#16263a"/>
+        <rect x="6" y="128" width="132" height="8" fill="#ffd257"/>
+        <text x="8" y="16" font-size="11" fill="#ffffff" stroke="#000" stroke-width="2" paint-order="stroke">포항 부추 · 거둘 때</text>
+      </g>
+      <!-- 칸 3 빈 칸 -->
+      <g transform="translate(40,200)">
+        <rect width="144" height="144" fill="url(#soil)"/>
+        <rect width="144" height="144" fill="none" stroke="#2d4d6a"/>
+        <text x="72" y="78" font-size="12" fill="#6f8ea4" text-anchor="middle">빈 칸</text>
+      </g>
+      <!-- 칸 4 묵힌 칸 -->
+      <g transform="translate(196,200)">
+        <rect width="144" height="144" fill="url(#soil)"/>
+        <rect width="144" height="144" fill="none" stroke="#2d4d6a"/>
+        <g fill="#8a6a44"><rect x="30" y="60" width="8" height="8"/><rect x="100" y="90" width="8" height="8"/><rect x="60" y="110" width="8" height="8"/></g>
+        <text x="72" y="78" font-size="12" fill="#6f8ea4" text-anchor="middle">묵힌 칸</text>
+      </g>
+      <text x="12" y="372" font-size="11" fill="#8fb3c9">칸을 누르면 심기 · 돌보기 · 거두기가 오른쪽에 뜬다</text>
+    </g>
+
+    <!-- 오른쪽: 이 밭 정보 -->
+    <g transform="translate(404,80)">
+      <rect width="362" height="400" rx="4" fill="#0b1620" stroke="#1c3d5a"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#ffe28a">이 밭</text>
+
+      <text x="12" y="48" font-size="12" fill="#9fb8cc">빌린 곳</text><text x="110" y="48" font-size="12" fill="#e8f4fd">구룡포 종묘사 · 주인 남궁현</text>
+      <text x="12" y="70" font-size="12" fill="#9fb8cc">사용료</text><text x="110" y="70" font-size="12" fill="#e8f4fd">주 3,000원 · 물주기 포함(종묘사가 준다)</text>
+      <text x="12" y="92" font-size="12" fill="#9fb8cc">다음 납부</text><text x="110" y="92" font-size="12" fill="#e8f4fd">11월 6일 · 밀리면 밭이 묵는다</text>
+
+      <line x1="12" y1="106" x2="350" y2="106" stroke="#1c3d5a"/>
+
+      <text x="12" y="128" font-size="13" font-weight="700" fill="#7df0b0">고른 칸 — 포항초</text>
+      <text x="12" y="150" font-size="12" fill="#e8f4fd">여기서 거두면 「포항 포항초」 — 산지 봉인이 찍힌다.</text>
+      <text x="12" y="168" font-size="12" fill="#e8f4fd">제철 10~3월 · 다른 고장 가게에 팔면 ×1.5 × 1.15</text>
+      <text x="12" y="190" font-size="12" fill="#9fb8cc">다음 관리</text><text x="110" y="190" font-size="12" fill="#e8f4fd">솎아 주기 · 3일 뒤(와서 한다)</text>
+      <text x="12" y="212" font-size="12" fill="#9fb8cc">병해</text><text x="110" y="212" font-size="12" fill="#e8f4fd">없음</text>
+
+      <!-- 단추 -->
+      <g transform="translate(12,236)">
+        <rect width="104" height="28" rx="4" fill="#1f4d3a" stroke="#7df0b0"/><text x="52" y="19" font-size="12" font-weight="700" fill="#d8ffe8" text-anchor="middle">돌보기</text>
+        <rect x="116" width="104" height="28" rx="4" fill="#1f3045" stroke="#5cd0ff"/><text x="168" y="19" font-size="12" font-weight="700" fill="#bfe9ff" text-anchor="middle">거두기</text>
+        <rect x="232" width="104" height="28" rx="4" fill="#1f3045" stroke="#2d4d6a"/><text x="284" y="19" font-size="12" fill="#6f8ea4" text-anchor="middle">심기</text>
+      </g>
+
+      <line x1="12" y1="282" x2="350" y2="282" stroke="#1c3d5a"/>
+      <text x="12" y="304" font-size="13" font-weight="700" fill="#ffe28a">이 고장 씨앗(종묘사)</text>
+      <g transform="translate(12,316)">
+        <rect width="106" height="56" rx="4" fill="#16263a" stroke="#2d4d6a"/><rect x="8" y="8" width="24" height="24" fill="#4e8a46"/><text x="38" y="22" font-size="11" fill="#e8f4fd">포항초</text><text x="38" y="38" font-size="10" fill="#9fb8cc">1,200원 · 특산</text>
+        <rect x="114" width="106" height="56" rx="4" fill="#16263a" stroke="#2d4d6a"/><rect x="122" y="8" width="24" height="24" fill="#3f7539"/><text x="152" y="22" font-size="11" fill="#e8f4fd">포항 부추</text><text x="152" y="38" font-size="10" fill="#9fb8cc">900원 · 특산</text>
+        <rect x="228" width="106" height="56" rx="4" fill="#16263a" stroke="#2d4d6a"/><rect x="236" y="8" width="24" height="24" fill="#8fd8a8"/><text x="266" y="22" font-size="11" fill="#e8f4fd">상추</text><text x="266" y="38" font-size="10" fill="#9fb8cc">700원</text>
+      </g>
+      <text x="12" y="392" font-size="11" fill="#8fb3c9">특산 씨앗은 이 고장 종묘사에서만 판다. 다른 고장에서 키우면 그냥 시금치다.</text>
+    </g>
+
+    <!-- 아래 줄 -->
+    <g transform="translate(14,492)">
+      <rect width="752" height="40" rx="4" fill="#0b1620" stroke="#1c3d5a"/>
+      <text x="12" y="25" font-size="12" fill="#b8f5d0">종묘사가 물을 주고 있다 · 다음에 들르면 솎아 주기를 한다 · 거둘 것 1칸</text>
+      <rect x="616" y="7" width="124" height="26" rx="4" fill="#2c1a17" stroke="#e2705f"/><text x="678" y="24" font-size="12" fill="#ffb3a7" text-anchor="middle">밭 돌려주기</text>
+    </g>
+    <text x="14" y="560" font-size="11" fill="#6f8ea4">창 관리형 — 필드에 밭을 그리지 않고 종묘사 계산대 앞 [F]에서 이 창을 연다. 홈타운 마당 창과 칸 · 돌보기 · 거두기가 같은 틀이다.</text>
+    <text x="14" y="580" font-size="11" fill="#6f8ea4">2단계(뒤) — 종묘사 옆 땅에 밭을 그리고 걸어가서 같은 창을 연다.</text>
+  </g>
+</svg>

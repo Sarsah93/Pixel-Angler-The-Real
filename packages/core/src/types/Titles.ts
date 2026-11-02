@@ -78,7 +78,10 @@ export type TitleStatKey =
   /** 가진 자격(면허) 수(지금 값) */
   | 'licenses'
   /** 얻은 다른 타이틀 수(지금 값) */
-  | 'titlesOwned';
+  | 'titlesOwned'
+  // ── 297차 선물 ──
+  /** 아주 좋아하는 선물을 받아 본 사람 수(사람마다 한 번) */
+  | 'giftLoved';
 
 /** 소소한 효과 종류 — 단 타이틀 하나만 적용된다 */
 export type TitleEffectKind =
@@ -101,7 +104,9 @@ export type TitleEffectKind =
   /** 상점 구매가 −N% */
   | 'buyDiscount'
   /** 행동으로 쌓이는 피로 −N%(비율) */
-  | 'fatigueCut';
+  | 'fatigueCut'
+  /** 297차 — 선물 우호도 +N%(선물 보따리 · 동네 산타) */
+  | 'giftWarmth';
 
 /** 조건 한 칸 — 누적 수 ≥ 목표 */
 export interface TitleReq {
@@ -144,4 +149,6 @@ export interface TitleModifiers {
   sellMult: number;
   buyMult: number;
   fatigueMult: number;
+  /** 297차 — 선물 우호도 배율 */
+  giftMult: number;
 }

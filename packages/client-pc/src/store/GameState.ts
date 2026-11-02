@@ -2098,6 +2098,8 @@ StoryStore.bind({
   fatigue: () => GameState.vitals.fatigue,
   // 140차 — 선택지 결과 보상
   hasFlag: (k) => GameState.getFlag(k),
+  // 297차 — 선물 우호도 배율(칭호 「선물 보따리」 · 「동네 산타」)
+  giftMult: () => TitleStore.modifiers().giftMult,
   giveItem: (id, qty, bound) => {
     const e = buildItemWikiCatalog().find((w) => w.id === id);
     if (!e) { console.warn(`[Story] 보상 아이템 카탈로그 없음: ${id}`); return false; }

@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-02 296차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-02 297차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-02 296차) — 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**
+**최근 변경 (2026-11-02 297차) — 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)**
+
+- 사용자 결정 「대화선택지 선물하기 · 우호도만 · 산타클로스 칭호(옵션 추천)」 → core `types/Gift.ts` · `db-schema/NpcGiftPrefs.ts`(44명 · 꼬리표 `item` · `species` · `specialty` · `kind` · 반응 대사 넷 한 · 영) · `rules/Gifts.ts`(반응 차례 · +0.12 / +0.06 / +0.02 / −0.06 · 하루 한 번).
+- 대화창 메뉴 행 「드리고 싶은 게 있어요.」(줄 것이 가방에 있을 때만 · 어촌계 제외 · 오늘 드렸으면 힌트) → `ui/GiftPickerPanel.ts`(모달 · 가이드 `gift`) → 「(막걸리를 건넨다.)」 → 그 사람 말 · 초상 막대 즉시 · 수첩 「선물 취향」 · `story.gifts` 세이브 · 도움말 · 영문 · dev 제한 풀기.
+- 칭호 「선물 보따리」(22 · 드묾) · 「동네 산타」(44 · 전설) — 효과 `giftWarmth` 선물 우호도 +25% / +50% · 통계 `giftLoved`(`custom gift:love`). 타이틀 32종.
+- 검증: core 481(+6) · 하네스 r297 16/16(실클릭 건네기 · 하루 한 번 · 싫어함 · 수첩 · 세이브 · 영어 · pageerror 0) · 빌드 3/3 · 루트 typecheck 4/4. 다음 = 298 축제 달력 · 299 지역 텃밭(예시 창 의견 뒤) — 상세: [297차 워크로그](../docs/wiki/03-WORKLOG/2026-11-02-297-npc-gift-preferences.md).
+
+**이전 변경 (2026-11-02 296차) — 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**
 
 - 하모니 점검의 물음(유찰품 자동 반환이 가방이 차면 사라진다)에 사용자 결정 「유실 경로를 우편함(메일함)으로」 → `store/MailboxStore.ts`(편지 · 첨부 · 세이브 `mailbox`) · `store/MailDeliver.ts`(`mailUnsold` · `addItemOrMail` · `takeMail` — 든 동안 신선도 멈춤).
 - 위판 유찰 · 회차 실패 반환은 **언제나 집 우편함**(`ConsignSettle`) · 걷은 통발 · 화구 용기 넘침도 우편함(F-0009) · 화구 스토브는 자리 확인 뒤 거부.
@@ -332,14 +339,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 특산 50(가공품 5 포함) · 표시 이름 「구룡포 과메기」 · 칸 배지 `mk_origin` · 판매 지역 배율(`specialtySellMult` 밖 1.15) · 직판장 산지 매대 · 위판 원산지 줄.
 - 지역 가공대(가게 종류 `processor` 5지역 · `ProcessQueue` · `ProcessPanel` · 가공품 5 Gemini) · 지역 레시피 4(`mainSpecies` · `learn.questId` — 퀘스트 `unlocks recipe:*` 자동) · 도감 「특산」 탭(열린 지역만).
 - 백로그로: 축제 달력 · 인물 선물 선호 · 지역 텃밭 제한. 검증: core 475 · r295 11/13(둘은 설계대로) · 빌드 3/3 · 루트 typecheck 4/4 — 상세: [295차 워크로그](../docs/wiki/03-WORKLOG/2026-10-31-295-island-species-specialty-followups.md).
-
-**이전 변경 (2026-10-31 294차) — 가족 한집 · 집마다 문 소리 · 울릉도 · 독도 개방(22편) · 동해 먼바다 어종 · 지역 특산 1차**
-
-- 사용자 지시 넷 → 가족 한집(탁씨 공방 부자 · 고만석 · 고해나 · 석씨 조손 관사) · 문 앞 [F]는 집마다 「문 두드리기」(똑똑 3) 또는 「벨 누르기」(띵동 3 — `doorStyleOf`) · 식구는 한 줄씩.
-- 울릉도 도동 · 독도 동도 심리스(워크플로 요청 6 · 7 — 울릉 bbox 동쪽 해안 축소) · 구역 노드 2 · 인물 4 · 출장 자리 2 → 293 점검의 울릉 · 독도 22편 전부 해소(남은 어긋남 = 모진주 장면 배우).
-- 바다 키 「울릉 · 독도」(`SeaKey` ulleung · 56종 열 — 등푸른 · 돔류 높고 모래 바닥 어종 낮음 · 제주 감성돔 0.35) · 웹 조사(돔류 · 등푸른 맞음 · 가다랑어 미확인 · DB 없는 섬 어종 5).
-- 지역 특산 44(`REGIONAL_SPECIALTIES` — 얻은 지역 꼬리표 `originRegion` · 제철 ×1.1~1.5 · 밖은 절반 · 상세보기 「특산」 · 「유래」 · 위키 카드) + 설계 후보 8(사용자 결정 대기).
-- 검증: core 466 · 문 감사 16지역 0 · 하네스 r294 18/18 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개(39 · 39 · 37 · 위키 92) · **main · 99차 배포는 사용자 결정 대기**(main 푸시 권한 거부) — 상세: [294차 워크로그](../docs/wiki/03-WORKLOG/2026-10-31-294-islands-specialties-door-sounds.md).
 
 ---
 

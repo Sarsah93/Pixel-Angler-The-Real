@@ -31,6 +31,7 @@ import { getFireRecipe,
   endingById, endingsOfArc, endingArcOfQuest, npcShopTerms, npcAffinityCap, npcEndingRole,
   type TalkCtx, type StoryTalkDef, type TalkChoiceDef, type TalkEndDef, type NpcShopTerms, type StoryEndingDef,
   questGuestsIn, meetStageOpenIn, npcRegionNow, meetPlaceOf, type MeetingCtx, type QuestGuest,
+  giftPrefOf, giftHomeRegionOf, giftReaction, giftLine, GIFT_AFFINITY, canGiftToday, type GiftItemView, type GiftReaction, type GiftLog,   // 297차
 } from '@tra/core';
 import { npcPlacedIn, npcHomeRegions, STORY_GUEST_ANCHORS, STORY_NPC_PLACEMENTS } from '../data/StoryNpcs.js';
 import {
@@ -88,6 +89,8 @@ export interface StorySaveState {
   talk?: { seen: string[]; at: Record<string, string>; path: Record<string, string[]> };
   /** 254차 — 다다른 이야기 결말 — 이야기 id → 결말 id(영구 — 결말의 효과는 이 표에서 매번 다시 읽는다) */
   endings?: Record<string, string>;
+  /** 297차 — 선물 기록(사람마다 · 하루 한 번 · 알게 된 취향) */
+  gifts?: Record<string, GiftLog>;
 }
 
 /** 254차 — 이어지는 대화에서 말 하나를 고른 결과(대화창이 그린다) */
@@ -104,6 +107,8 @@ export interface TalkStepResult {
 
 export interface StoryHost {
   grantXp(n: number): void;
+  /** 297차 — 선물 우호도 배율(칭호) */
+  giftMult?: () => number;
   addCoins(n: number): void;
   acquireLicense(t: string): boolean;
   heldLicenses(): string[];
@@ -209,6 +214,8 @@ class StoryStoreManager {
   private failed = new Set<string>();
   private offerCooldown: Record<string, number> = {};
   private affinity: AffinityState = {};
+  /** 297차 — 선물 기록 */
+  private gifts: Record<string, GiftLog> = {};
   private choices: Record<string, { offer?: string; complete?: string }> = {};
   /** 206차 — 한 번이라도 끝낸 퀘스트 id(퀘스트 첫 진행 밑걸림 완화 판정) */
   private everDone = new Set<string>();
@@ -244,6 +251,7 @@ class StoryStoreManager {
       inquiry: { learned: [...this.inqLearned], asked: [...this.inqAsked] },
       talk: { seen: [...this.talkSeen], at: { ...this.talkAt }, path: { ...this.talkPath } },
       endings: { ...this.endings },
+      gifts: this.gifts,   // 297차
     };
   }
   deserialize(s?: StorySaveState): void {
@@ -276,6 +284,7 @@ class StoryStoreManager {
     this.talkAt = { ...(s?.talk?.at ?? {}) };
     this.talkPath = { ...(s?.talk?.path ?? {}) };
     this.endings = { ...(s?.endings ?? {}) };
+    this.gifts = { ...(s?.gifts ?? {}) };   // 297차 — 구세이브는 없다
     this.backfillCanonEndings();
     this.refreshAutoQuests();
   }
@@ -702,6 +711,50 @@ class StoryStoreManager {
     this.host?.markDirty();
     return { node, first, learned, advanced };
   }
+  // ═══════════ 297차 선물 ═══════════
+  /** 이 사람에게 오늘(이야기 날짜) 더 줄 수 있는가 */
+  canGiftTo(npcId: string): boolean {
+    const g = this.gifts[npcId];
+    return canGiftToday(g?.day, g?.today, this.day);
+  }
+  /**
+   * 선물을 건넨다 — 반응 · 우호도 변화 · 그 사람 말. 하루 한 번(`canGiftTo`). 물건은 호출자가 뺀다.
+   * 아주 좋아하는 것을 처음 받으면 칭호 통계(`gift:love`)가 오른다. 반응은 수첩에 적힌다(`giftNotes`).
+   */
+  giveGift(npcId: string, view: GiftItemView): { reaction: GiftReaction; delta: number; line: readonly [string, string]; newLove: boolean } | null {
+    if (!this.canGiftTo(npcId)) return null;
+    const pref = giftPrefOf(npcId);
+    const reaction = giftReaction(pref, view, giftHomeRegionOf(npcId));
+    const mult = reaction === 'dislike' ? 1 : (this.host?.giftMult?.() ?? 1);
+    const delta = Math.round(GIFT_AFFINITY[reaction] * mult * 100) / 100;
+    const before = this.affinityOf(npcId);
+    const after = this.addAffinity(npcId, delta);
+    const g: GiftLog = this.gifts[npcId] ?? { day: this.day, count: 0 };
+    if (g.day !== this.day) { g.day = this.day; g.today = 0; }
+    g.today = (g.today ?? 0) + 1;
+    g.count += 1;
+    g.learned = { ...(g.learned ?? {}), [view.nameKo]: reaction };
+    const newLove = reaction === 'love' && !g.loved;
+    if (newLove) g.loved = true;
+    this.gifts[npcId] = g;
+    if (newLove) this.event({ kind: 'custom', key: 'gift:love' });
+    this.host?.markDirty();
+    return { reaction, delta: Math.round((after - before) * 100) / 100, line: giftLine(pref, reaction), newLove };
+  }
+  /** 수첩 — 선물로 알게 된 취향(사람마다 · 물건 이름 → 반응) */
+  giftNotes(): { npcId: string; entries: { name: string; reaction: GiftReaction }[] }[] {
+    const out: { npcId: string; entries: { name: string; reaction: GiftReaction }[] }[] = [];
+    for (const [npcId, g] of Object.entries(this.gifts)) {
+      const entries = Object.entries(g.learned ?? {}).map(([name, reaction]) => ({ name, reaction }));
+      if (entries.length) out.push({ npcId, entries });
+    }
+    return out;
+  }
+  /** 아주 좋아하는 것을 받아 본 사람 수(칭호 진행) */
+  giftLovedCount(): number { return Object.values(this.gifts).filter((g) => g.loved).length; }
+  /** dev — 오늘 준 기록을 지운다(하루 제한 풀기) */
+  devResetGiftDay(): void { for (const g of Object.values(this.gifts)) { g.today = 0; } }
+
   addAffinity(npcId: string, d: number): number {
     const before = this.affinityOf(npcId);
     let v = clampAffinity(before + d);

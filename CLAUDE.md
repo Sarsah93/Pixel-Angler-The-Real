@@ -95,13 +95,21 @@
   → **293 일감 대사(인물 말투 21) · 집 문 식구(강해솔 = 부순덕 집 · 하민지 이동 · 같은 문 [F] 한 줄씩) · 인물 매핑 점검 · 해루질 놀이 손맛(떼기 0.85 · 바탕 하늘 · 바다 · 바위 · 파기 닿는 선 · 당기기 예고 0.7초) · main 반영 · 98차 배포**
   → **294 가족 한집(탁 부자 · 고 부녀 · 석 조손) · 집마다 문 소리(두드림 3 · 벨 3) · 울릉도 도동 · 독도 동도 개방(22편 · 요청 6 · 7) · 바다 「울릉 · 독도」(56종) · 지역 특산 44(얻은 지역 꼬리표 · 제철 배율 · 상세보기 두 줄) · 행인 땅 넓이 상한**
   → **295 섬 어종 5(자리돔 · 혹돔 · 옥돔 · 참다랑어 · 독도새우 통발 전용) · 명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 5 · 지역 레시피 4 · 도감 「특산」 탭**
-  → **296 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**.
+  → **296 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**
+  → **297 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **297차**: **인물 선물 선호 — 대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」** —
+  사용자 결정(「1. 대화선택지 선물하기 2. 우호도만 … 추가 아이디어 1. 산타클로스 칭호 … 옵션은 너가 추천」) →
+  core `types/Gift.ts` · `db-schema/NpcGiftPrefs.ts`(44명 — 꼬리표 `item:` · `species:` · `specialty:` · `kind:` 12갈래 · 반응 대사 넷 한 · 영 · 고향 특산은 좋아함) · `rules/Gifts.ts`(싫어함 > 아주 좋아함 > 좋아함 > 고향 특산 > 보통 · +0.12 / +0.06 / +0.02 / −0.06 · `GIFT_DAILY_CAP` 1 · `giftTitleGoals` 22 · 44) ·
+  client `data/GiftTags.ts`(`isGiftable` — 장비 · 이야기 물건 · 번호 붙은 개체 제외 · `giftViewOf`) · `ui/GiftPickerPanel.ts`(depth 950 · 가이드 `gift`) · `DialoguePanel` 행 「드리고 싶은 게 있어요.」(힌트 「오늘은 이미 드렸다」 → `GIFT_AGAIN_LINE`) · `giveGift`(가방 −1 · 초상 막대 즉시 · 「(…을 건넨다.)」 → 그 사람 말 → 처음 아주 좋아하면 힌트 쪽) ·
+  `StoryStore.gifts`(세이브 `story.gifts` · `giveGift` · `giftNotes` · `devResetGiftDay`) · `JournalPanel` 수첩 「선물 취향」 · `TitleStore` `custom gift:love` → `giftLoved` · 칭호 `gift_bundle`(22 · rare) · `santa`(44 · legend) · 효과 `giftWarmth` +25% / +50%(`giftMult` — 싫어함 제외) · 도움말 「선물하기」 · `i18n/en_gift.ts` · dev F10 「선물 하루 제한 풀기」 ·
+  검증 = core 481 · r297 16/16 · 빌드 3/3 · 루트 typecheck 4/4. 지역 텃밭 예시 창 `docs/mockups/regional_plot_window.svg`(사용자 의견 대기).
+  **다음 = 298 축제 달력(달 + 절정 주 — 사용자 「너가 고민해서 우선 적용」) · 299 지역 텃밭 제한 · 1단계(예시 창 의견 뒤) · 산나물 「산것 캐기」(추천)**. 상세 `docs/wiki/03-WORKLOG/2026-11-02-297-npc-gift-preferences.md`.
 - **296차**: **집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포** —
   하모니 점검의 물음(유찰품 자동 반환이 가방이 차면 사라진다)에 사용자 「집 앞에 '우편함' 그래픽 … 유실 경로를 우편함(메일함)으로 … main 재배포까지 · PR 16과 17은 검토하고 반영」 →
   `store/MailboxStore.ts`(편지 · 첨부 · 세이브 `mailbox` · `__MAIL`) · `store/MailDeliver.ts`(`mailUnsold` · `mailConsignFailed` · `addItemOrMail` · `takeMail` — 든 동안 신선도 멈춤) · `ConsignSettle` 유찰 · 회차 실패 반환은 **언제나 집 우편함** ·
@@ -116,15 +124,6 @@
   client `SpecialtyTag`(「구룡포 과메기」 · 배지 `mk_origin`) · `ProcessedItems` · `RegionStall`(직판장 산지 매대) · `RecipeUnlock` · `ProcessQueue · ProcessActions · ProcessPanel`(가게 종류 `processor` — 구룡포 · 울릉 · 속초 · 거제 · 서귀포 POI `manual`) ·
   `priceOf(item, shop, sellRegion)` · 위판 정산 원산지 줄 · 쿨러 · 상세 · 도감 「특산」 탭(열린 지역만 · dev 「모든 지역 열기」 존중) · 시험 `Specialty295.test.ts` 9 · 검증 = core 475 · r295 11/13 · r295b · 빌드 3/3 · 루트 typecheck 4/4.
   상세 `docs/wiki/03-WORKLOG/2026-10-31-295-island-species-specialty-followups.md`.
-- **294차**: **가족 한집 · 집마다 문 소리 · 울릉도 · 독도 개방(22편) · 동해 먼바다 어종 · 지역 특산 1차** —
-  사용자 「가족인데 집 위치가 다르면 안됨 · 문 두드리기(퉁퉁 퉁) 혹은 벨 누르기(띵~동) 집마다 다르게 · 어느 npc 집에 요청할 건지 선택지 · 울릉도와 독도 개방 및 22편 · 제주/울릉/독도 돔류 · 등푸른 · 지역 특산물 … 우선 웹검색으로」 →
-  탁새벽 = 공방(541, 144) · 고만석 · 고해나 한집(643, 398) · 석대양 · 석독구 = 행남등대 관사(778, 628) · `Sfx.doorStyleOf(labelKo)`(아파트 · 민박 · 관사 … = 벨 · 그 밖은 해시 1/3) · `playKnock` 3 · `playDoorbell` 3 · 혼자 사는 집 [F] 「벨 누르기」/「문 두드리기」 ·
-  심리스 `ulleung`(동쪽 해안 bbox 1,060×1,334 — 섬 전체 12.3M 타일은 못 싣는다) · `dokdo`(597×325) · 구역 노드 `ulleungdo_area_dodong` · `dokdo_area_dongdo` · 울릉 인물 4(오세라 · 연태오 · 석대양 `always` · 석독구) · 출장 자리 2 ·
-  `SeaKey` + `ulleung`(56종 열 — 부시리 0.8 · 방어 0.9 · 전갱이 0.9 · 벵에돔 1 · 광어 0.15 · 서대 0.02 · 제주 감성돔 0.35) · core `db-schema/RegionalSpecialty.ts`(44 · `specialtyPriceMult` 제철 전부 · 밖은 절반) ·
-  `InvItem.originRegion`(잡기 3 · 캐기 3 · 거두기 6 · 쿨러 옮기기 2) · `priceOf` 어획물 · 농산물 · `ItemDetailPanel.specialtyRows`(「특산」 · 「유래」) · `RegionFieldScene.ambientLandCap`(1,500칸당 1 · 최소 6 — 독도 7 · 울릉 95 · 속초 120) ·
-  위키 출조 지역 카드 「특산」 · 「배로만」 · 지도 탭 울릉 9 · 독도 2 시트 · 웹 조사(돔류 · 등푸른 맞음 · 감성돔 제주 드묾 · 가다랑어 미확인 · DB 없는 섬 어종 5) · 특산 설계 후보 8(사용자 결정) ·
-  검증 = core 466 · 문 감사 16지역 0 · 하네스 r294 18/18 · 스토리 매핑 어긋남 1(모진주) · 빌드 3/3 · 루트 typecheck 4/4.
-  main 반영은 296차와 함께(99차 배포). 특산 후속 8 → 295(다섯) + 백로그(셋) · 섬 어종 5 → 295. 상세 `docs/wiki/03-WORKLOG/2026-10-31-294-islands-specialties-door-sounds.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -228,15 +227,15 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main `35c59b9` · 실행 28 · 정적 2,157(소스맵 0) · 기동 15.0초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-02 사용자 지시(「main 재배포까지」)로 작업 브랜치에 빨리 감기했다(296차 · 98차 = `5806b7e` 293차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 93 = 296**(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3 · 92 = 294 · 91 = 293)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 94 = 297**(시스템 「인물 선물 — 드리고 싶은 게 있어요」 · 93 = 296 · 92 = 294)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 142파일 = 심리스 112 + 구 맵 30 · 파일 426).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 41 = 296차 · 추천 순서 1 = 특산 남은 셋 · 우편함 후속) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 40 = 296차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 38 = 296차 기준 · 문법은 258차) · 위키(위 줄 — 93 = 296).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 42 = 297차 · 다음 = 298 축제 달력 · 299 지역 텃밭) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 41 = 297차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 39 = 297차 기준 · 문법은 258차) · 위키(위 줄 — 94 = 297).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

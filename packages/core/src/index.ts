@@ -1012,3 +1012,8 @@ export { REGIONAL_SPECIALTIES, specialtyOf, specialtyInSeason, specialtyPriceMul
 export { PROCESSED_ITEMS, PROCESS_RECIPES, processRecipe, processRecipesOf, processedItem, processQuote } from './rules/RegionalProcessing.js';
 export type { ProcessRecipeDef, ProcessInputDef, ProcessedItemDef, ProcessQuote } from './rules/RegionalProcessing.js';
 export type { RegionalSpecialtyDef, SpecialtyKind } from './db-schema/RegionalSpecialty.js';
+
+// 297차 — 인물 선물 선호
+export type { GiftReaction, GiftKind, GiftTag, GiftItemView, NpcGiftPrefDef, GiftLog } from './types/Gift.js';
+export { NPC_GIFT_PREFS, giftPrefOf, giftHomeRegionOf, GIFT_PREF_NPC_COUNT } from './db-schema/NpcGiftPrefs.js';
+export { GIFT_AFFINITY, GIFT_DAILY_CAP, GIFT_REACTION_LABEL, GIFT_AGAIN_LINE, GIFT_GENERIC_LINES, giftReaction, giftLine, giftTitleGoals, canGiftToday, validateGiftPrefs } from './rules/Gifts.js';

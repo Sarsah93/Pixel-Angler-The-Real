@@ -45,7 +45,7 @@ import { getLocale, t } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { LedgerStore } from '../store/LedgerStore.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
-import { kstYmd, fillPlayerName, type DayLedgerPage } from '@tra/core';
+import { kstYmd, fillPlayerName, particle, GIFT_REACTION_LABEL, type DayLedgerPage, type InquiryTopicDef } from '@tra/core';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -705,7 +705,10 @@ export class JournalPanel extends DraggablePanel {
     const R = PANEL_W - 24;
     const detX = L + listW + 22;
     const detW = R - detX;
-    const topics = StoryStore.inquiryKnownTopics();
+    // 297차 — 선물로 알게 된 취향은 맨 위 「선물 취향」 한 칸(물어보기 화제와 같은 목록)
+    const giftNotes = StoryStore.giftNotes();
+    const GIFT_TOPIC: InquiryTopicDef = { id: '__gifts', kind: 'person', labelKo: '선물 취향', labelEn: 'Gift tastes', noteKo: '선물로 알게 된 것', noteEn: 'Learned from gifts' };
+    const topics: InquiryTopicDef[] = [...(giftNotes.length ? [GIFT_TOPIC] : []), ...StoryStore.inquiryKnownTopics()];
     const heardOf = (id: string) => INQUIRY_NODES.filter((n) => n.topic === id && StoryStore.inquiryAsked(n.id));
     if (!topics.length) {
       c.add(this.scene.add.text(L + 4, top + 8, '아직 알게 된 것이 없다. 사람들에게 말을 걸어 보자.', { fontFamily: FONT, fontSize: '13px', color: C_DIM }));
@@ -754,6 +757,22 @@ export class JournalPanel extends DraggablePanel {
     const sep = this.scene.add.graphics();
     sep.lineStyle(1, 0x1c3d5a, 1); sep.lineBetween(detX, yy - 6, R, yy - 6);
     c.add(sep);
+    if (tp.id === '__gifts') {
+      // 297차 — 사람마다 한 줄씩: 「정옥선 씨 — 막걸리를 아주 좋아함」
+      for (const n of giftNotes) {
+        const who = getStoryNpc(n.npcId)?.nameKo ?? n.npcId;
+        for (const e of n.entries) {
+          const line = this.scene.add.text(detX, yy, `${who} 씨 — ${e.name}${particle(e.name, '을', '를')} ${GIFT_REACTION_LABEL[e.reaction].ko}`, {
+            fontFamily: FONT, fontSize: '12px', color: e.reaction === 'dislike' ? '#ffb3a7' : e.reaction === 'love' ? C_GOLD : C_TEXT,
+          });
+          clampTextWidth(line, detW);
+          if (line.y + line.height > bottom - 4) { line.destroy(); return; }
+          c.add(line);
+          yy += line.height + 4;
+        }
+      }
+      return;
+    }
     const heard = heardOf(tp.id);
     if (!heard.length) {
       c.add(this.scene.add.text(detX, yy, '아직 누구에게도 물어보지 않았다.', { fontFamily: FONT, fontSize: '12px', color: C_DIM }));
