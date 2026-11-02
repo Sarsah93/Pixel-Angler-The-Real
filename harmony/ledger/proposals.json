@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "next_id": 25,
+ "next_id": 29,
  "proposals": [
   {
    "id": "P-0001",
@@ -453,8 +453,8 @@
    "title": "가이드 허브 팁 줄 전구 이모지 교체",
    "pr": 16,
    "branch": "harmony/2026-10-31-guide-emoji",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-11-02",
    "findings": [
     "F-0102"
    ],
@@ -468,12 +468,27 @@
    "title": "가방이 가득 찰 때 위판 찾아오기로 물건이 사라지던 것 막기",
    "pr": 17,
    "branch": "harmony/2026-11-02-consign-retrieve-room",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-11-02",
    "findings": [
     "F-0048"
    ],
    "lane": "q1-items"
+  },
+  {
+   "id": "P-0028",
+   "date": "2026-11-03",
+   "domain": "q2-art-data",
+   "kind": "적용",
+   "title": "지역 가공품 상세 설명 바로잡기",
+   "pr": 18,
+   "branch": "harmony/2026-11-03-processed-desc",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0104"
+   ],
+   "lane": "q2-art-data"
   }
  ]
 }

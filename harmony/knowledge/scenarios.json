@@ -84,17 +84,19 @@
     "title": "아이템 그림이 이름 · 수량 단위와 맞는가(한 켤레 · 한 갑 · 10개입)",
     "how": "`food assets/items` · `public/items` · `public/tackle` 카드를 이름표와 함께 모아 보기(montage 또는 Pillow)로 만들어 직접 본다. 수량 단위(켤레 · 갑 · 곽 · 묶음 · 팩)와 그림 속 개수 대조. 255차 장갑 · 단화 세 켤레가 이 모양",
     "mode": "그림 보기",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-11-03",
+    "result": "발견 1(카드 채비)",
+    "findings": [
+     "F-0105"
+    ]
    },
    {
     "id": "S2-02",
     "title": "같은 물건 두 id · 같은 그림 다른 물건 · 그림 없는 물건",
     "how": "카탈로그 이름 정규화 중복 · `ITEM_ID_ALIAS` 밖 중복 · iconTexture 공유 목록 · 빈 icon(F-0026) · 이모지 폴백(F-0028) 수를 다시 센다",
     "mode": "정적(스크립트)",
-    "last_run": null,
-    "result": null,
+    "last_run": "2026-11-03",
+    "result": "발견 0(중복 이름 0 · 빈 아이콘 0 · 공유는 크기 변종)",
     "findings": []
    },
    {
@@ -102,18 +104,22 @@
     "title": "설명문 · 상세 창 수치가 데이터와 같은가",
     "how": "`ItemDetailPanel.buildItemDetail`을 전 아이템에 돌려 행 값과 데이터 필드(무게 · 호수 · 세기 · 가격 · 신선도 시간 · 수량)를 대조. 설명문(desc) 안 숫자도 뽑아 비교. 줄 세기 두 값(CY · 281)이 이 모양",
     "mode": "하네스(순수 함수)",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-11-03",
+    "result": "발견 1(가공품 5종)",
+    "findings": [
+     "F-0104"
+    ]
    },
    {
     "id": "S2-04",
     "title": "영어 번역 누락 · 원문이 바뀌어 끊긴 번역 키",
     "how": "`setLocale('en', game)` 뒤 주요 창(가방 · 상점 · 채비 · 상세 · 도감 · 일지)을 열어 화면 Text의 한글 잔존을 센다(`__i18nSrc` vs text). i18n 키 중 원문이 코드에 없는 것",
     "mode": "하네스",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-11-03",
+    "result": "부분 발견 1(F-0106 · 영어 화면 실측은 못 함)",
+    "findings": [
+     "F-0106"
+    ]
    },
    {
     "id": "S2-05",

@@ -1910,6 +1910,63 @@
    "expected": "글자 나열 대신 가이드",
    "actual": "상시 안내 줄",
    "player_impact": "규칙 위반이나 처음 하는 사람에게는 유일한 키 단서"
+  },
+  {
+   "lane": "q2-art-data",
+   "first_seen": "2026-11-03",
+   "last_seen": "2026-11-03",
+   "status": "열림",
+   "pattern": "BP-19",
+   "id": "F-0104",
+   "severity": "보통",
+   "title": "지역 가공품 상세 창이 통조림용 공통 설명을 보인다",
+   "evidence": [
+    "packages/client-pc/src/ui/ItemDetailPanel.ts:772",
+    "packages/client-pc/src/data/ProcessedItems.ts:43"
+   ],
+   "why": "가공품 소분류 '가공품'이 옛 통조림 분기와 같아 desc가 공통 문구로 덮이고 processedItemDesc는 호출처 0",
+   "repro": "하네스 buildItemDetail(가공품 5종) → desc 전부 '오래 보관할 수 있는 비상 식량입니다.'",
+   "expected": "각 가공품 자기 설명",
+   "actual": "공통 문구",
+   "player_impact": "유래 설명을 못 보고 영어 설명 사전도 없었음",
+   "pr": 18
+  },
+  {
+   "lane": "q2-art-data",
+   "first_seen": "2026-11-03",
+   "last_seen": "2026-11-03",
+   "status": "열림",
+   "pattern": "BP-15",
+   "id": "F-0105",
+   "severity": "경미",
+   "title": "열기·전갱이 카드 채비 3~7단이 같은 그림(7바늘 상당)을 쓴다",
+   "evidence": [
+    "packages/client-pc/src/data/ShopCatalog.ts:263"
+   ],
+   "why": "단 수가 다른 5종이 한 장 그림 공유",
+   "repro": "wiki_items 덤프 imgKey 공유 대조 + 그림 육안",
+   "expected": "단 수와 그림 속 바늘 수 일치",
+   "actual": "3단도 7바늘쯤 그려짐",
+   "player_impact": "3단 카드를 샀는데 그림은 더 많은 바늘"
+  },
+  {
+   "lane": "q2-art-data",
+   "first_seen": "2026-11-03",
+   "last_seen": "2026-11-03",
+   "status": "열림",
+   "pattern": "BP-19",
+   "id": "F-0106",
+   "severity": "경미",
+   "title": "가공품 영어 이름이 core nameEn과 en_mill 사전에서 서로 다르다",
+   "evidence": [
+    "packages/client-pc/src/i18n/en_mill.ts:73",
+    "packages/core/src/rules/RegionalProcessing.ts:59"
+   ],
+   "why": "이름은 client 사전이 쓰고 core nameEn은 안 쓰임('Half-dried tilefish' vs 'Half-dried red tilefish')",
+   "repro": "정적 대조",
+   "expected": "한 정본",
+   "actual": "두 표기",
+   "player_impact": "영어 표기만 어긋남(기능 영향 없음)"
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."
