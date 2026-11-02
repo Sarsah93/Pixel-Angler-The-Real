@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "tackle",
+  "name": "만리포 미끼",
+  "nameEn": "Manripo Bait",
+  "tx": 534,
+  "ty": 376,
+  "osmId": -9005,
+  "src": "manual"
+ }
+]

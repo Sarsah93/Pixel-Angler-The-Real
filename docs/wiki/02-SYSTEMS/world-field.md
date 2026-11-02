@@ -186,6 +186,9 @@
 
 ## 6. 함정·불변조건
 
+- **손 POI는 `manual_pois.json`이 정본**(296) — `_osm_request.txt`가 바뀐 커밋이 main에 오르면 워크플로가 main에서도 돌아 pois.json을 새로 쓴다(울릉 가공장이 빠졌다 · 작업 브랜치 merge로도 안 살아난다).
+  `merge_capture_pois.py`가 `manual_pois.json`을 되살리므로 손 가게는 거기에 둔다. 러너 커밋이 main에 생기면 `git merge origin/main` 뒤 `grep -c '"manual"' pixelazed/<region>/pois.json`으로 확인한다.
+
 - **OSM 1칸 폭 선은 대각에서 끊긴다(278)** — 보행 다리(`D`) · 보도(`w`) · 방파제 선(`b`)이 대각으로 꺾이면 칸끼리 꼭짓점만 닿는다. 걷기 · 충돌은 4-연결이라 그림만 다리다.
   `build_region_maps.build_seamless`가 패치 뒤에 `bridge_osm_pinches`를 건다(물 모서리 한 칸 · 멱등). **seamless.json을 굽고 나서 손본 지역(속초 — `author_sokcho_coast.py` · `author_yeonggeumjeong.py`)은
   `build_region_maps`로 다시 굽지 않는다** — 손본 1,640칸이 terrain.png 상태로 돌아간다. 그런 지역은 `tools/fix_walk_pinches.py <지역>`로 제자리에서 고친다.

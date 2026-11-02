@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "processor",
+  "name": "지세포 대구 덕장",
+  "nameEn": "Jisepo Cod Racks",
+  "tx": 529,
+  "ty": 385,
+  "osmId": -9009,
+  "src": "manual"
+ }
+]

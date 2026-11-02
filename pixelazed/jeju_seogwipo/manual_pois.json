@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "processor",
+  "name": "서귀포 옥돔 건조장",
+  "nameEn": "Seogwipo Tilefish Drying",
+  "tx": 506,
+  "ty": 389,
+  "osmId": -9010,
+  "src": "manual"
+ }
+]

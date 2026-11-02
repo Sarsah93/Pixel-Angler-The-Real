@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "tackle",
+  "name": "해금강 낚시",
+  "nameEn": "Haegeumgang Tackle",
+  "tx": 319,
+  "ty": 643,
+  "osmId": -9003,
+  "src": "manual"
+ }
+]

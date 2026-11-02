@@ -466,5 +466,15 @@
   "tx": 472,
   "ty": 663,
   "osmId": 1141590339
+ },
+ {
+  "type": "shop",
+  "shopKind": "processor",
+  "name": "울릉 명이 장아찌 공방",
+  "nameEn": "Ulleung Alpine Leek Pickling",
+  "tx": 562,
+  "ty": 694,
+  "osmId": -9007,
+  "src": "manual"
  }
 ]

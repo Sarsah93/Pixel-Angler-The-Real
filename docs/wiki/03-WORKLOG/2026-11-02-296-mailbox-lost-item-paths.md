@@ -42,6 +42,7 @@
 | 수정 | `client/store/GameState.ts` | 세이브 `mailbox` 직렬화 · 복원(구세이브 = 빈 우편함) · 새 게임 초기화 |
 | 수정 | `client/data/HelpContent.ts` · `i18n/en_mail.ts`(신설) · `en.ts` · `ConsignListPanel.ts` · `HomeInteriorScene.ts` | 도움말 「상점 · 경제 › 우편함」 · 영문 · 「안 팔린 것은 집 우편함으로」 문구 |
 | 수정 | `client/dev/DevConsolePanel.ts` | ③-2 우편함 시험 편지(물건 2) · 비우기 |
+| 신설 | `pixelazed/<region>/manual_pois.json`(8지역) · `tools/merge_capture_pois.py` | 손 POI 정본 분리 — OSM 워크플로가 main에서 다시 돌아(`2fabf15` 울릉 재수집) pois.json을 새로 쓰면서 295차 울릉 가공장이 빠졌다 → 스크립트 마지막에 되살린다(시험 = 울릉에서 빼고 돌려 1건 복원) |
 | 병합 | 하모니 PR #16(`bd5ad9e`) · #17(`56f5a57`) | 가이드 허브 팁 줄 이모지 → 「팁 — 」 · 찾아오기 자리 확인(`consignRetrieveBlock`) — squash 병합 뒤 `origin/main`을 작업 브랜치에 merge |
 
 ## 4. 구조상 위치 — 어느 계층의 무엇인가
@@ -74,6 +75,7 @@
 - 유찰품이 가방으로 바로 오지 않는다 — 플레이어는 집에 가서 받는다(사용자 결정). 채널 · 집 안 알림 문구를 「집 우편함으로」로 바꿨다.
 - 첨부의 `conditionSinceMs`는 받을 때 든 시간만큼 뒤로 민다 — 꺼 둔 시간도 포함(완전 정지).
 - 옛 세이브에는 `mailbox` 키가 없다 — 빈 우편함. 홈타운 오브젝트는 초기 목록에 더했으므로 옛 세이브에도 선다(`removedIds`에 없다).
+- **main의 OSM 러너 커밋**(`2fabf15`)은 울릉 pois.json을 통째로 다시 썼다(+471줄 · 손 가게 0) — merge가 충돌 없이 지나가며 가공장을 떨어뜨렸다. 되살리고 `manual_pois.json`으로 정본을 옮겼다(§3). 배포 99차(`35c59b9`)는 그 전 pois.json이라 가공장이 있다 — 다음 배포부터 러너 판 + 손 POI.
 - 하네스 함정: 새 게임은 집 안 프롤로그로 들어간다 — 필드를 보려면 `HomeInteriorScene`을 stop하고 필드를 resume한다. 홈타운은 `TR = 20`(심리스 32 아님).
 
 ## 8. 후속 반영

@@ -14,6 +14,7 @@ OSM 가게 이름을 게임 상호(`name_alias.json` — 실제 상호를 조금
 - 표에 새 가게 추가: `python tools/merge_capture_pois.py --add "원래 이름" "게임 이름" ["영어"]` (원래 이름은 해시만 남는다).
 
 - 몇 번을 돌려도 같다: 앞서 합친 캡처 항목(`src: 'capture'`)을 먼저 지우고 다시 넣는다.
+- 296차 — 손으로 넣은 가게는 `pixelazed/<region>/manual_pois.json`(정본)에 둔다. OSM 빌드가 pois.json을 새로 써도 이 스크립트가 되살린다(`src: 'manual'`).
   OSM 빌드(`build_osm_tilemap.py`)가 pois.json을 새로 쓰면 이 스크립트를 한 번 더 돌린다.
 - 중복: OSM에 같은 이름(공백 · 기호 무시)이 8칸 안에 있으면 캡처 쪽을 버린다(OSM 정본 유지).
   캡처끼리도 같은 이름이 6칸 안이면 하나만(캡처가 겹쳐 같은 가게가 두 번 찍힌다).
@@ -346,6 +347,19 @@ def main() -> None:
                       'osmId': -(n * 1000 + seq[n]), 'src': 'capture'})
 
     merged = base + added
+    # 296차 — 손으로 넣은 가게(`pixelazed/<region>/manual_pois.json` · src manual — 낚시용품점 · 가공장)는 OSM 빌드가 pois.json을
+    #  새로 쓰면 사라진다(main에서 워크플로가 다시 돌아 울릉 가공장이 빠졌다). 여기서 되살린다 — osmId 또는 이름 + 자리로 중복을 뺀다.
+    man_path = os.path.join(ROOT, 'pixelazed', REGION, 'manual_pois.json')
+    restored = 0
+    if os.path.exists(man_path):
+        have_ids = {p.get('osmId') for p in merged}
+        have_keys = {(norm(p.get('name', '')), p.get('tx'), p.get('ty')) for p in merged}
+        for m in json.load(open(man_path, encoding='utf-8')):
+            if m.get('osmId') in have_ids or (norm(m.get('name', '')), m.get('tx'), m.get('ty')) in have_keys:
+                continue
+            merged.append({**m, 'src': 'manual'})
+            restored += 1
+        print(f'[manual] 손 POI {restored}건 되살림 (manual_pois.json)')
     for path in OUTS:
         with open(path, 'w', encoding='utf-8') as f:
             f.write(json.dumps(merged, ensure_ascii=False, indent=1))

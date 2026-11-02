@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "processor",
+  "name": "아바이 오징어순대집",
+  "nameEn": "Abai Squid Sundae Kitchen",
+  "tx": 528,
+  "ty": 122,
+  "osmId": -9008,
+  "src": "manual"
+ }
+]

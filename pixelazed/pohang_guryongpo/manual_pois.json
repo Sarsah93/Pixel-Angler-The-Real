@@ -1,0 +1,32 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "tackle",
+  "name": "구룡포 낚시",
+  "nameEn": "Guryongpo Tackle",
+  "tx": 555,
+  "ty": 387,
+  "osmId": -9001,
+  "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "tackle",
+  "name": "영일 미끼 · 낚시",
+  "nameEn": "Yeongil Bait & Tackle",
+  "tx": 454,
+  "ty": 524,
+  "osmId": -9002,
+  "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "processor",
+  "name": "구룡포 과메기 덕장",
+  "nameEn": "Guryongpo Gwamegi Racks",
+  "tx": 540,
+  "ty": 372,
+  "osmId": -9006,
+  "src": "manual"
+ }
+]
