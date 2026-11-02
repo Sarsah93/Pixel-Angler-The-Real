@@ -15,7 +15,7 @@ import { kstYmd } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { ConsignQueue, type ConsignBatch } from '../store/ConsignQueue.js';
-import { retrieveConsignment } from '../store/ConsignSettle.js';
+import { retrieveConsignment, consignRetrieveBlock } from '../store/ConsignSettle.js';
 import { clampTextWidth, enforceTextBounds } from './TextFit.js';
 import { getLocale } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
@@ -34,6 +34,8 @@ export interface ConsignListConfig {
   canRetrieve: boolean;
   /** 찾아온 뒤(씬이 로그 · 가방 갱신) */
   onRetrieved?: (count: number) => void;
+  /** 가방에 자리가 없어 못 찾아왔다(씬이 안내를 띄운다) */
+  onBlocked?: (reason: string) => void;
 }
 
 export class ConsignListPanel extends DraggablePanel {
@@ -149,6 +151,8 @@ export class ConsignListPanel extends DraggablePanel {
         }).setOrigin(0.5);
         const hit = this.scene.add.rectangle(bx + btnW / 2, by + 13, btnW, 26, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => {
+          const why = consignRetrieveBlock(b.id);
+          if (why) { this.cfg.onBlocked?.(why); return; }
           const n = retrieveConsignment(b.id);
           if (n > 0) { playPickup(); this.cfg.onRetrieved?.(n); }
           this.render(true);

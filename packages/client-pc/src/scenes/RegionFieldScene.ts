@@ -7828,6 +7828,7 @@ export class RegionFieldScene extends Phaser.Scene {
   openConsignList(canRetrieve: boolean): void {
     this.openPopup((close) => new ConsignListPanel(this, {
       onClose: close, canRetrieve,
+      onBlocked: (why) => this.hud?.pushLog(`[위판] ${why}`),
       onRetrieved: (n) => {
         this.hud?.pushLog(`[위판] 맡겨 둔 물건 ${n}개를 찾아왔다`);
         this.shopPanel?.refresh();
