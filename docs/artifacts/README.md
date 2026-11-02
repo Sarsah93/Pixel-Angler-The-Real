@@ -8,7 +8,7 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 40 — 296차 기준(§07 295 ✅ 섬 어종 5 · 특산 후속 다섯 · 296 ✅ 집 앞 우편함 · 하모니 PR 병합 · 「맵 확장 영향 ③」 = 특산 남은 셋 · 우편함 후속 · 기준 줄 「배포 100차 = 296차까지」) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 41 — 296차 기준(§07 295 ✅ 섬 어종 5 · 특산 후속 다섯 · 296 ✅ 집 앞 우편함 · 하모니 PR 병합 · 「맵 확장 영향 ③」 = 특산 남은 셋 · 우편함 후속 · 기준 줄 「배포 99차 = 296차까지」 — Version 41) |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 40 — 296차 기준(「집 앞 우편함」 · 「섬 어종 5 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피 · 도감 특산 탭」 · 머리 숫자 어종 61 · 창 50) |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 38 — 296차 기준 · 채비 문법은 258차(「296차 기준」 줄만) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |

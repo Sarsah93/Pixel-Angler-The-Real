@@ -95,19 +95,19 @@
   → **293 일감 대사(인물 말투 21) · 집 문 식구(강해솔 = 부순덕 집 · 하민지 이동 · 같은 문 [F] 한 줄씩) · 인물 매핑 점검 · 해루질 놀이 손맛(떼기 0.85 · 바탕 하늘 · 바다 · 바위 · 파기 닿는 선 · 당기기 예고 0.7초) · main 반영 · 98차 배포**
   → **294 가족 한집(탁 부자 · 고 부녀 · 석 조손) · 집마다 문 소리(두드림 3 · 벨 3) · 울릉도 도동 · 독도 동도 개방(22편 · 요청 6 · 7) · 바다 「울릉 · 독도」(56종) · 지역 특산 44(얻은 지역 꼬리표 · 제철 배율 · 상세보기 두 줄) · 행인 땅 넓이 상한**
   → **295 섬 어종 5(자리돔 · 혹돔 · 옥돔 · 참다랑어 · 독도새우 통발 전용) · 명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 5 · 지역 레시피 4 · 도감 「특산」 탭**
-  → **296 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 100차 배포**.
+  → **296 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
-- **296차**: **집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 100차 배포** —
+- **296차**: **집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포** —
   하모니 점검의 물음(유찰품 자동 반환이 가방이 차면 사라진다)에 사용자 「집 앞에 '우편함' 그래픽 … 유실 경로를 우편함(메일함)으로 … main 재배포까지 · PR 16과 17은 검토하고 반영」 →
   `store/MailboxStore.ts`(편지 · 첨부 · 세이브 `mailbox` · `__MAIL`) · `store/MailDeliver.ts`(`mailUnsold` · `mailConsignFailed` · `addItemOrMail` · `takeMail` — 든 동안 신선도 멈춤) · `ConsignSettle` 유찰 · 회차 실패 반환은 **언제나 집 우편함** ·
   걷은 통발 · 화구 용기 넘침 → 우편함 · 화구 스토브는 `canRecoverPlaceable`로 거부 · core `HomeBase` `mailbox_1`(24, 10) · 필드 코드 그림(기둥 · 빨간 상자 · 깃발) · 이름표 · 머리 위 느낌표 · 미니맵 · `[F] 우편함 열기` →
   `ui/MailboxPanel.ts`(목록 · 고른 편지 · 받기 · 모두 받기 · 지우기 · 가이드 `mailbox`) · `MillNotifier` 채널 `[우편]` · 시계 알람 · 도움말 「상점 · 경제 › 우편함」 · `i18n/en_mail.ts` · dev F10 「③-2 우편함 시험 편지」 ·
-  PR #16(팁 줄 이모지 → 「팁 — 」) · #17(`consignRetrieveBlock`) squash 병합 → `origin/main` merge · 검증 = r296 13/13(깃발 · [F] · 펌프 · 받기 · 지우기 · 가방 가득 · 위판 회차 실패 · 세이브 왕복 · 영어 · pageerror 0) · core 475 · 빌드 3/3 · 루트 typecheck 4/4.
+  PR #16(팁 줄 이모지 → 「팁 — 」) · #17(`consignRetrieveBlock`) squash 병합 → `origin/main` merge · 검증 = r296 13/13(깃발 · [F] · 펌프 · 받기 · 지우기 · 가방 가득 · 위판 회차 실패 · 세이브 왕복 · 영어 · pageerror 0) · core 475 · 빌드 3/3 · 루트 typecheck 4/4 · main `35c59b9` · 99차 배포(gh-pages `eeb1fe9` · 실행 28 · main `35c59b9` · 정적 2,157 · 소스맵 0 · 기동 15.0초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0).
   **다음 = 사용자 실플레이 확인(우편함 · 가공장 · 지역 레시피 · 도감 특산 탭) · 특산 남은 셋(축제 달력 · 선물 선호 · 지역 텃밭 제한) · 지역 텃밭(설계) · 살아 있는 미끼**. 상세 `docs/wiki/03-WORKLOG/2026-11-02-296-mailbox-lost-item-paths.md`.
 - **295차**: **섬 어종 5 · 특산 후속 다섯(명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 · 지역 레시피 · 도감 특산 탭)** —
   사용자 「자리돔 · 혹돔 · 옥돔 · 참다랑어 · 독도새우 추가 · … 도감 특산탭까지만 우선 진행하고 나머지는 백로그로」 →
@@ -124,7 +124,7 @@
   `InvItem.originRegion`(잡기 3 · 캐기 3 · 거두기 6 · 쿨러 옮기기 2) · `priceOf` 어획물 · 농산물 · `ItemDetailPanel.specialtyRows`(「특산」 · 「유래」) · `RegionFieldScene.ambientLandCap`(1,500칸당 1 · 최소 6 — 독도 7 · 울릉 95 · 속초 120) ·
   위키 출조 지역 카드 「특산」 · 「배로만」 · 지도 탭 울릉 9 · 독도 2 시트 · 웹 조사(돔류 · 등푸른 맞음 · 감성돔 제주 드묾 · 가다랑어 미확인 · DB 없는 섬 어종 5) · 특산 설계 후보 8(사용자 결정) ·
   검증 = core 466 · 문 감사 16지역 0 · 하네스 r294 18/18 · 스토리 매핑 어긋남 1(모진주) · 빌드 3/3 · 루트 typecheck 4/4.
-  main 반영은 296차와 함께(100차 배포). 특산 후속 8 → 295(다섯) + 백로그(셋) · 섬 어종 5 → 295. 상세 `docs/wiki/03-WORKLOG/2026-10-31-294-islands-specialties-door-sounds.md`.
+  main 반영은 296차와 함께(99차 배포). 특산 후속 8 → 295(다섯) + 백로그(셋) · 섬 어종 5 → 295. 상세 `docs/wiki/03-WORKLOG/2026-10-31-294-islands-specialties-door-sounds.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -224,8 +224,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 15 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo` · **`ulleung` 울릉도 도동 · `dokdo` 독도 동도(294 — 배로만 · 6 · 7장)**(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `5806b7e` — **최근 98차 배포 2026-10-30 = 293차 코드까지 포함**(293 일감 대사 · 집 문 식구 · 해루질 놀이 손맛 + 292 지역 일감 · 낚시용품점 + 291 출장 인물 + 290 전 편 대본) —
-  main `5a80a81` · 실행 27 · 정적 2,121(소스맵 0) · 기동 11.3초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-10-30 사용자 지시로 작업 브랜치에 빨리 감기했다(293차 · main CI 초록 · 97차 = `9fa6c6d` 292차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eeb1fe9` — **최근 99차 배포 2026-11-02 = 296차 코드까지 포함**(296 집 앞 우편함 · 하모니 PR #16 · #17 + 295 섬 어종 5 · 특산 후속 다섯 + 294 울릉 · 독도 · 특산 1차) —
+  main `35c59b9` · 실행 28 · 정적 2,157(소스맵 0) · 기동 15.0초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-02 사용자 지시(「main 재배포까지」)로 작업 브랜치에 빨리 감기했다(296차 · 98차 = `5806b7e` 293차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 93 = 296**(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3 · 92 = 294 · 91 = 293)
@@ -234,7 +234,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 40 = 296차 · 추천 순서 1 = 특산 남은 셋 · 우편함 후속) ·
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 41 = 296차 · 추천 순서 1 = 특산 남은 셋 · 우편함 후속) ·
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 40 = 296차 기준) ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 38 = 296차 기준 · 문법은 258차) · 위키(위 줄 — 93 = 296).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.

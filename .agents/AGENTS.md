@@ -319,12 +319,12 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-02 296차) — 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 100차 배포**
+**최근 변경 (2026-11-02 296차) — 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**
 
 - 하모니 점검의 물음(유찰품 자동 반환이 가방이 차면 사라진다)에 사용자 결정 「유실 경로를 우편함(메일함)으로」 → `store/MailboxStore.ts`(편지 · 첨부 · 세이브 `mailbox`) · `store/MailDeliver.ts`(`mailUnsold` · `addItemOrMail` · `takeMail` — 든 동안 신선도 멈춤).
 - 위판 유찰 · 회차 실패 반환은 **언제나 집 우편함**(`ConsignSettle`) · 걷은 통발 · 화구 용기 넘침도 우편함(F-0009) · 화구 스토브는 자리 확인 뒤 거부.
 - 홈타운 집 앞 (24, 10) 우편함(코드 그림 · 깃발 · 머리 위 느낌표 · 미니맵) · `[F] 우편함 열기` → `ui/MailboxPanel.ts`(목록 · 받기 · 지우기 · 가이드 `mailbox`) · 채널 `[우편]` · 시계 알람 · 도움말 · 영문.
-- PR #16(팁 줄 이모지) · #17(찾아오기 자리 확인) squash 병합 → `origin/main` merge. 검증: r296 13/13 · core 475 · 빌드 3/3 · 루트 typecheck 4/4 — 상세: [296차 워크로그](../docs/wiki/03-WORKLOG/2026-11-02-296-mailbox-lost-item-paths.md).
+- PR #16(팁 줄 이모지) · #17(찾아오기 자리 확인) squash 병합 → `origin/main` merge. 검증: r296 13/13 · core 475 · 빌드 3/3 · 루트 typecheck 4/4 · main `35c59b9` · 99차 배포(gh-pages `eeb1fe9` · 실행 28 · main `35c59b9` · 정적 2,157 · 소스맵 0 · 기동 15.0초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0) — 상세: [296차 워크로그](../docs/wiki/03-WORKLOG/2026-11-02-296-mailbox-lost-item-paths.md).
 
 **이전 변경 (2026-10-31 295차) — 섬 어종 5 · 특산 후속 다섯(명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 · 지역 레시피 · 도감 특산 탭)**
 
