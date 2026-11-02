@@ -52,6 +52,23 @@ const LOOKS = {
       + '등은 짙은 청록색 · 남색, 옆구리와 배는 은백색으로 밝게 빛나며 경계가 매끈하게 바뀐다. 등지느러미 하나가 몸 가운데쯤, 배지느러미는 등지느러미보다 뒤에 있고, '
       + '꼬리는 깊게 갈라진 제비꼬리. 옆줄 · 반점 · 줄무늬 없음. 정어리보다 가늘고 길며 옆구리에 검은 점이 없다.',
   },
+  // 295차 — 섬 어종 넷(자리돔 · 혹돔 · 옥돔 · 참다랑어)
+  pearl_spot_chromis: {
+    file: 'pearl_spot_chromis.png', aspect: '4:3', refs: ['black_sea_bream.png', 'red_sea_bream.png', 'dark-banded_rockfish.png'],
+    look: '자리돔(Chromis notata)을 옆에서 본 모습. 손바닥보다 작은 돔으로, 몸이 짧고 높은 타원형이며 옆으로 납작하다. 몸 색은 어두운 회갈색 · 자줏빛 갈색이고 배 쪽은 조금 밝으며, 비늘 하나하나가 그물처럼 또렷하게 보인다. 가슴지느러미 뿌리 바로 위에 작고 검은 점이 하나 있고, 등지느러미 뒤쪽 끝 아래 몸통에 흰 점이 하나 있다. 꼬리지느러미는 깊게 갈라진 제비꼬리 모양이고 위아래 끝이 뾰족하다. 눈이 크다. 등지느러미는 앞의 가시 부분과 뒤의 연한 부분이 하나로 이어진다.',
+  },
+  bulgyhead_wrasse: {
+    file: 'bulgyhead_wrasse.png', aspect: '16:9', refs: ['red_sea_bream.png', 'black_sea_bream.png', 'fat_greenling.png'],
+    look: '혹돔(Semicossyphus reticulatus) 큰 수컷을 옆에서 본 모습. 몸은 길쭉한 타원형으로 두툼하고, 이마에 둥근 혹이 크게 솟아 있으며 아래턱도 불룩하다. 입은 두껍고 앞으로 튀어나온 굵은 송곳니가 보인다. 몸 색은 탁한 붉은 갈색 · 적자색이고 비늘이 크고 거칠며, 머리 쪽은 더 짙은 자주색, 배는 연한 분홍빛. 등지느러미는 길게 이어지고 뒤쪽이 둥글며, 꼬리지느러미는 끝이 거의 반듯하고 각이 졌다. 가슴지느러미는 둥글다. 놀래기류답게 몸통이 통통하다.',
+  },
+  red_tilefish: {
+    file: 'red_tilefish.png', aspect: '21:9', refs: ['red_sea_bream.png', 'northern_whiting.png', 'yellowtail_fish.png'],
+    look: '옥돔(Branchiostegus japonicus)을 옆에서 본 모습. 몸은 길쭉하고 옆으로 납작하며, 머리 앞쪽이 수직에 가깝게 깎여 네모진 얼굴이다. 눈이 머리 위쪽에 붙어 있고 입은 작고 아래쪽. 몸 색은 밝은 주홍빛 · 분홍빛 붉은색이고 등 쪽에 노란 띠가 비스듬히 여러 줄 흐르며, 배는 희다. 등지느러미는 머리 뒤에서 꼬리 자루까지 길게 한 줄로 이어지고 뒷지느러미도 길다. 꼬리지느러미는 끝이 둥글게 깎이고 노란 줄무늬가 있다. 눈 밑에 은백색 삼각형 무늬가 있다.',
+  },
+  bluefin_tuna: {
+    file: 'pacific_bluefin_tuna.png', aspect: '21:9', refs: ['yellowtail_fish.png', 'mackerel.png', 'northern_whiting.png'],
+    look: '참다랑어(Thunnus orientalis)를 옆에서 본 모습. 몸은 방추형으로 가운데가 굵고 양 끝이 뾰족하며, 꼬리 자루는 가늘고 꼬리지느러미는 초승달 모양으로 크게 갈라진다. 등은 짙은 남청색 · 검푸른 금속광택, 옆구리는 은회색, 배는 은백색. 제1등지느러미는 삼각형, 제2등지느러미와 뒷지느러미는 낫 모양이고 노란 기가 돌며, 그 뒤로 작은 토막지느러미가 꼬리까지 줄지어 있다. 가슴지느러미는 짧다. 눈이 둥글고 입은 작다. 꼬리 자루에 작은 용골이 있다.',
+  },
   sandfish: {
     file: 'japanese_sandfish.png', aspect: '21:9', refs: ['fat_greenling.png', 'northern_whiting.png', 'yellowtail_fish.png'],
     look: '도루묵을 옆에서 본 모습. 몸은 길쭉하고 옆으로 납작하며 비늘이 없어 매끈하다. 입이 크고 위로 비스듬히 열려 아래턱이 앞으로 나와 있고, 입술 가장자리에 작은 술이 있다. 눈이 크다. '

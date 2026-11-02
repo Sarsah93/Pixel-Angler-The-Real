@@ -21,6 +21,8 @@ import { millService, cureRecipe, CURE_STATION_LABEL } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MillQueue, type MillOrder } from '../store/MillQueue.js';
 import { CureQueue, type CureBatch } from '../store/CureQueue.js';
+import { ProcessQueue, type ProcessOrder } from '../store/ProcessQueue.js';   // 295차
+import { processRecipe } from '@tra/core';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
 import { playSfx } from '../audio/SfxBank.js';
@@ -54,6 +56,12 @@ export function millReadyLine(o: MillOrder): string {
 }
 
 /** 285차 — 갈무리 알림 한 줄 — 「텃밭 건조 걸대의 「무청 엮어 걸기」가 다 됐습니다 — 거두러 가세요.」 */
+/** 295차 — 가공장 알림 한 줄 */
+export function processReadyLine(o: ProcessOrder): string {
+  const what = `「${processRecipe(o.recipeId)?.nameKo ?? '맡긴 것'}」`;
+  return `${o.shopName}의 ${josa(what, '이', '가')} 다 됐습니다 — 찾으러 가세요.`;
+}
+
 export function cureReadyLine(b: CureBatch): string {
   const what = `「${cureRecipe(b.recipeId)?.nameKo ?? '걸어 둔 것'}」`;
   return `텃밭 ${CURE_STATION_LABEL[b.station].ko}의 ${josa(what, '이', '가')} 다 됐습니다 — 거두러 가세요.`;
@@ -93,15 +101,19 @@ export function pumpMillReady(scene: Phaser.Scene, opts: MillPumpOpts = {}): voi
   if (opts.hold) return;
   const fresh = MillQueue.unnotified(now);
   const cured = CureQueue.unnotified(now);
-  if (fresh.length === 0 && cured.length === 0) return;
+  const proc = ProcessQueue.unnotified(now);   // 295차 — 가공장
+  if (fresh.length === 0 && cured.length === 0 && proc.length === 0) return;
   const millLines = fresh.map(millReadyLine);
   const cureLines = cured.map(cureReadyLine);
-  const lines = [...millLines, ...cureLines];
+  const procLines = proc.map(processReadyLine);
+  const lines = [...millLines, ...cureLines, ...procLines];
   for (const o of fresh) MillQueue.markNotified(o.id);
   for (const b of cured) CureQueue.markNotified(b.id);
+  for (const o of proc) ProcessQueue.markNotified(o.id);
   GameState.markDirty();
   for (const l of millLines) channelLog(scene, `[방앗간] ${l}`);
   for (const l of cureLines) channelLog(scene, `[갈무리] ${l}`);
+  for (const l of procLines) channelLog(scene, `[가공장] ${l}`);
   if (wearingWatch()) {
     playSfx('watch_alarm');
     showWatchAlarm(scene, lines);

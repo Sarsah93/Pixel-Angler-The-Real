@@ -17,7 +17,7 @@
  */
 
 import type Phaser from 'phaser';
-import { FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUESTS } from '@tra/core';
+import { REGIONAL_SPECIALTIES, FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUESTS } from '@tra/core';
 import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
@@ -586,6 +586,7 @@ function buildDiscoverySection(box: HTMLElement): void {
     DiscoveryStore.devUnlockAll('fish', FISH_DATABASE.map((f) => f.id));
     DiscoveryStore.devUnlockAll('creature', SHORE_CREATURE_DATABASE.map((c) => c.id));
     DiscoveryStore.devUnlockAll('item', buildItemWikiCatalog().map((e) => e.id));
+    DiscoveryStore.devUnlockAll('specialty', REGIONAL_SPECIALTIES.map((d) => d.id));   // 295차
     GameState.markDirty();
     refreshStatus();
     flash(unlockAll, '✓ 해금됨');

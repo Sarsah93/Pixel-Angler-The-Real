@@ -82,6 +82,16 @@ const DATASET_LAST_YEAR = 2023;
  */
 export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId: string }[] = [
   { item: '감성돔', speciesId: 'black_seabream' },
+  // 295차 — 섬 어종 넷: 「돔」 포괄 품목보다 앞에(옥돔 · 자리돔 · 혹돔 ⊃ 돔) · 참다랑어는 다랑어류 앞에
+  { item: '옥돔', speciesId: 'red_tilefish' },
+  { item: '돔', variety: '옥돔', speciesId: 'red_tilefish' },
+  { item: '자리돔', speciesId: 'pearl_spot_chromis' },
+  { item: '돔', variety: '자리', speciesId: 'pearl_spot_chromis' },
+  { item: '혹돔', speciesId: 'bulgyhead_wrasse' },
+  { item: '돔', variety: '혹돔', speciesId: 'bulgyhead_wrasse' },
+  { item: '참다랑어', speciesId: 'bluefin_tuna' },
+  { item: '다랑어', variety: '참다랑어', speciesId: 'bluefin_tuna' },
+  { item: '참치', variety: '참다랑어', speciesId: 'bluefin_tuna' },
   { item: '돔', variety: '참돔', speciesId: 'red_seabream' },
   { item: '돔', variety: '돌돔', speciesId: 'stone_beakperch' },
   { item: '돔', variety: '벵어돔', speciesId: 'largescale_blackfish' },

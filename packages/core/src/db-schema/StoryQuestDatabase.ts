@@ -14,6 +14,7 @@
 import type { StoryActionKey, StoryObjective, StoryQuestDef, Season } from '../types/Story.js';
 import { STORY_CHAPTERS } from './StoryChapters.js';
 import { OWN_ONLY_QUEST_IDS, OWN_ONLY_KINDS, QUEST_ITEM_DROPS } from './QuestItemDrops.js';
+import { FIRE_RECIPES } from './FireRecipeDatabase.js';   // 295차 — 지역 레시피 해금
 
 // ── 헬퍼 ──
 const talk = (npcId: string, ko: string, en: string): StoryObjective => ({ kind: 'talk', npcId, labelKo: ko, labelEn: en, manual: true });
@@ -1362,6 +1363,14 @@ const OFFER_POLICY: Record<string, Pick<StoryQuestDef, 'offerPolicy' | 'event'>>
 for (const q of [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138, ...SUB_254]) { const p = OFFER_POLICY[q.id]; if (p) Object.assign(q, p); }
 
 export const STORY_QUESTS: StoryQuestDef[] = [...MAIN, ...SUB, ...SUB_EXTRA, ...SUB_138, ...SUB_254];
+
+// 295차 — 지역 레시피: 레시피 쪽 `learn.questId`가 정본 — 그 편을 끝내면 `unlock.recipe:<id>` 플래그가 선다(StoryStore.complete).
+for (const r of FIRE_RECIPES) {
+  if (!r.learn) continue;
+  const q = STORY_QUESTS.find((x) => x.id === r.learn!.questId);
+  if (!q) throw new Error(`지역 레시피 ${r.id}의 편 ${r.learn.questId}가 없다`);
+  q.unlocks = [...(q.unlocks ?? []), `recipe:${r.id}`];
+}
 
 // 233차 — 까다로운 퀘스트: 손질 · 회 · 요리 · 위판 목표는 직접 마련한 것만 센다(거래품 · 그 계보 제외).
 //   라벨 끝에 조건을 붙여 일지에서 미리 알 수 있게 한다(사람 말로 — R1).

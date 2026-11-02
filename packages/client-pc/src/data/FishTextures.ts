@@ -79,6 +79,11 @@ export const FISH_TEXTURE: Record<string, string> = {
   tonguefish: 'fish_tonguefish',                     // 개서대
   round_herring: 'fish_round_herring',               // 눈퉁멸
   sandfish: 'fish_sandfish',                         // 도루묵
+  // 295차 — 섬 어종 넷(Gemini 그림 → fish_cards)
+  pearl_spot_chromis: 'fish_pearl_spot_chromis',     // 자리돔
+  bulgyhead_wrasse: 'fish_bulgyhead_wrasse',         // 혹돔
+  red_tilefish: 'fish_red_tilefish',                 // 옥돔
+  bluefin_tuna: 'fish_bluefin_tuna',                 // 참다랑어
   black_scraper: 'fish_black_scraper',               // 말쥐치
 };
 
@@ -153,6 +158,10 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
   fish_tonguefish: 'robust_tonguefish.png',               // 개서대
   fish_round_herring: 'round_herring.png',                // 눈퉁멸
   fish_sandfish: 'japanese_sandfish.png',                 // 도루묵
+  fish_pearl_spot_chromis: 'pearl_spot_chromis.png',      // 자리돔 (295)
+  fish_bulgyhead_wrasse: 'bulgyhead_wrasse.png',          // 혹돔 (295)
+  fish_red_tilefish: 'red_tilefish.png',                  // 옥돔 (295)
+  fish_bluefin_tuna: 'pacific_bluefin_tuna.png',          // 참다랑어 (295)
   fish_black_scraper: 'black_scraper.png',                // 말쥐치
 };
 

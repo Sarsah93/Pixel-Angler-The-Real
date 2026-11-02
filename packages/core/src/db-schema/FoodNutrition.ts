@@ -61,6 +61,11 @@ export const FOOD_NUTRITION: Record<string, FoodNutrition> = {
   grill_eel:        { g: 280, kcal: 780, ml: 40 },
   // 284차 — 나물 볶음 1인분(데친 나물 150g + 들기름 반 큰술 · 들깨가루)
   stirfry_namul:    { g: 150, kcal: 130, ml: 90 },
+  // 295차 — 지역 레시피 넷(1인분)
+  stew_cod_geoje:   { g: 700, kcal: 440, ml: 430 },
+  grill_tilefish_jeju: { g: 300, kcal: 400, ml: 40 },
+  braise_saury_guryongpo: { g: 400, kcal: 600, ml: 120 },
+  stew_hamo_yeosu:  { g: 600, kcal: 520, ml: 400 },
 };
 
 /** 영양 → 허기·수분 회복 % (하루 필요량 대비) */

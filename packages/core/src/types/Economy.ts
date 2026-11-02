@@ -301,6 +301,11 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   halfbeak: { itemCode: '100211', defaultPricePerKg: 14000, sizeFactorMultiplier: 0.9 },         // 학꽁치
   northern_whiting: { itemCode: '100114', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.0 }, // 보리멸
   grass_puffer: { itemCode: '100902', defaultPricePerKg: 5000, sizeFactorMultiplier: 0.8 },      // 복섬
+  // 295차 — 섬 어종 넷(품목 코드는 추정 — 실 시세는 품목명 매핑이 잡는다)
+  pearl_spot_chromis: { itemCode: '100409', defaultPricePerKg: 12000, sizeFactorMultiplier: 0.8 },   // 자리돔(작아서 kg 묶음)
+  bulgyhead_wrasse: { itemCode: '100410', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.1, weightExp: 0.6 },   // 혹돔(대형 — 마리당 평탄)
+  red_tilefish: { itemCode: '100406', defaultPricePerKg: 45000, sizeFactorMultiplier: 1.2 },        // 옥돔(제주 — 비싼 생선)
+  bluefin_tuna: { itemCode: '101501', defaultPricePerKg: 30000, sizeFactorMultiplier: 1.0, weightExp: 0.5 },   // 참다랑어(초대형 — kg^0.5)
 };
 
 /**
@@ -641,6 +646,8 @@ export interface ConsignmentLotResult {
   /** 출품 근거가 된 인벤토리 아이템 id — 낙찰이면 소모, 유찰이면 그대로 둔다 */
   sourceItemId: string;
   nameKo: string;
+  /** 295차 — 원산지(얻은 지역 · 특산이면 「○○ 특산」) */
+  origin: string;
   weightKg: number;
   /** 낙찰 단가 (원/kg) — 유찰이면 마지막 호가 */
   hammerPerKg: number;

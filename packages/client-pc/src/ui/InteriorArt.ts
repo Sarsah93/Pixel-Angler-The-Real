@@ -309,6 +309,7 @@ const RISE: Record<FixtureArt, number> = {
   wardrobe: 50, tv: 30, sink: 26, fridge: 50, low_table: 6, cushion: 2, futon: 12, futon_open: 2,
   bed: 14, desk: 28, sofa: 18, rug: 0, suitcase: 22, bamboo: 56, tool_wall: 42, workbench: 14,
   oil_press: 30,   // 284차 — 방앗간 압착기
+  drying_rack: 30,   // 295차 — 가공장 덕장
 };
 
 export function fixtureRise(art: FixtureArt): number { return RISE[art]; }
@@ -821,6 +822,18 @@ function drawFixture(g: Phaser.GameObjects.Graphics, art: FixtureArt, w: number,
       for (let i = 0; i < 16; i++) dot(24 + Math.floor(hash(i, 2) * (w - 50)), 8 + Math.floor(hash(i, 4) * 10), 0xe8d8a8);   // 대팻밥
       rect(w - 30, 6, 16, 4, 0x3a2a1a);                              // 칼
       rect(4, rise + 14, 4, h - 22, 0x5a3a20); rect(w - 8, rise + 14, 4, h - 22, 0x5a3a20);
+      shadow(0, H - 4, w);
+      break;
+    }
+    case 'drying_rack': {
+      // 295차 — 지역 가공장 덕장: 나무 기둥 · 가로대에 반으로 가른 생선 여섯 · 아래 소쿠리
+      rect(2, rise + 2, 4, h - 6, 0x6a4a2a); rect(w - 6, rise + 2, 4, h - 6, 0x6a4a2a);   // 기둥
+      rect(2, rise + 4, w - 4, 3, 0x8a6a3a); rect(2, rise + 16, w - 4, 2, 0x8a6a3a);        // 가로대
+      for (let i = 0; i < 6; i++) {
+        const x = 8 + i * Math.floor((w - 16) / 6);
+        rect(x, rise + 7, 6, 12, 0xd8b090); rect(x + 1, rise + 8, 4, 10, 0xc89070); dot(x + 3, rise + 9, 0x6a3a2a);   // 걸린 생선
+      }
+      rect(10, H - 11, w - 20, 6, 0xb89a6a); rect(12, H - 13, w - 24, 2, 0xd8c08a);        // 소쿠리
       shadow(0, H - 4, w);
       break;
     }

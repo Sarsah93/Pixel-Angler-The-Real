@@ -29,7 +29,7 @@ import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan }
 // 282차 — 개체 아이템 id(장비 · 단단한 루어는 `<카탈로그 id>#<번호>`)
 import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra/core';
 import { rodSpecFor, reelSpecFor, forageBaitKeyOf, type RodItemSpec, type ReelItemSpec } from '@tra/core';
-import { specialtyPriceMult, parseProduceId as parseProduceIdCore } from '@tra/core';
+import { specialtySellMult, parseProduceId as parseProduceIdCore } from '@tra/core';
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER, bagsOfLoose, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -49,6 +49,7 @@ import { applyCookItemFields, COOK_CORNER, cookCornerTemplate } from '../data/Co
 import { PRODUCE_SUB, cropItemTemplate, migrateLegacyPackItem } from '../data/CropItems.js';
 import { millItemTemplate } from '../data/MillItems.js';
 import { cureItemTemplate } from '../data/CureItems.js';
+import { processedItemTemplate, PROCESSED_SUB } from '../data/ProcessedItems.js';   // 295차 — 지역 가공품
 import { StoryStore } from './StoryStore.js';
 import { CoolerStore } from './CoolerStore.js';
 import { migrateCatchItemId, migrateSpeciesId, migrateForageName } from '../data/SpeciesMigration.js';
@@ -1867,7 +1868,7 @@ class InventoryStoreManager {
    * 통째 어획물의 시세(할인 전 값)가 필요하면 `getMarketValue`를 쓴다 — 위판 기준가 · 손질 가치 승계.
    * 회 접시 · 완성 요리는 책정가 그대로다(노력 가치 보전 — 두 함수가 같은 값을 낸다).
    */
-  getSellPrice(item: InvItem): number { return this.priceOf(item, true); }
+  getSellPrice(item: InvItem, sellRegionId?: string | null): number { return this.priceOf(item, true, sellRegionId); }   // 295차 — 파는 가게의 지역(택배 차익)
 
   /**
    * 시세 평가액 — 통째 어획물은 경락 시세 × 신선도 배율 **그대로**(상점 매입 할인 없음).
@@ -1887,7 +1888,7 @@ class InventoryStoreManager {
    * 개체 실측치(speciesId/weightG)가 없는 레거시 어획물은 basePrice 폴백.
    * @param shop true = 상점 매입가(통째 어획물에 `SHOP_BUY_RATE`) / false = 시세 그대로
    */
-  private priceOf(item: InvItem, shop: boolean): number {
+  private priceOf(item: InvItem, shop: boolean, sellRegionId?: string | null): number {
     // 채집물(해루질·통발 생물)은 판매·유통 금지 — 강원 조례 (121차). 요리·자가 소비 sink 전용
     if (item.forageCatch) return 0;
     // 미완성 접시는 판매 불가 (135차 사용자 결정) — 가격표(모듬 고정가·단품 회중량)가
@@ -1899,8 +1900,15 @@ class InventoryStoreManager {
       if (stateMul <= 0) return 0;
       const unit = producePrice(item.id, Date.now()) ?? item.basePrice;
       // 294차 — 지역 특산(거둔 지역이 주산지면 배율 · 제철 밖은 절반)
-      const spMul = specialtyPriceMult(parseProduceIdCore(item.id).baseId, item.originRegion, new Date().getMonth() + 1);
+      // 295차 — 산지 밖 가게면 택배 차익(`SPECIALTY_AWAY_MULT`)
+      const spMul = specialtySellMult(parseProduceIdCore(item.id).baseId, item.originRegion, new Date().getMonth() + 1, sellRegionId);
       return Math.max(10, Math.round((unit * stateMul * 0.7 * spMul) / 10) * 10);
+    }
+    // 295차 — 지역 가공품: 기준가 × 특산 배율(산지 밖이면 택배 차익) · 상점은 8할. 산 것은 되팔지 못한다
+    if (item.subCategory === PROCESSED_SUB) {
+      if (item.catchMethod === 'bought') return 0;
+      const spMul = specialtySellMult(item.id, item.originRegion, new Date().getMonth() + 1, sellRegionId);
+      return Math.max(0, Math.round((item.basePrice * spMul * (shop ? 0.8 : 1)) / 10) * 10);
     }
     if (item.subCategory === '어획물') {
       // 상태별 가치 배율 (부패 = 0, 나쁨 10%, 보통 50%, 그 외 시세 그대로)
@@ -1913,7 +1921,7 @@ class InventoryStoreManager {
         const cache = ExternalDataStore.getWholesaleCache(speciesId, tier);
         const base = evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
         // 294차 — 지역 특산(잡은 지역이 그 종의 주산지면 배율 · 제철 밖은 절반) — 위판 · 상점 둘 다
-        const spMul = specialtyPriceMult(speciesId, item.originRegion, new Date().getMonth() + 1);
+        const spMul = specialtySellMult(speciesId, item.originRegion, new Date().getMonth() + 1, sellRegionId);   // 295차 — 산지 밖 가게면 택배 차익
         // 상점은 시세(경락가)보다 싸게 사들인다 — 시세 그대로 받으려면 위판(수수료 3~6%)
         return Math.max(0, Math.round(base * stateMul * spMul * (shop ? SHOP_BUY_RATE : 1)));
       }
@@ -2183,6 +2191,8 @@ class InventoryStoreManager {
    */
   addItemIds(template: InvItemTemplate, qty: number, opts: { silent?: boolean } = {}): string[] | null {
     template = canonicalizeItem(template);   // 256차 — 옛 id(상점 · 루어 카탈로그 중복)로 들어와도 정본 칸에 쌓인다
+    // 295차 — 얻은 지역의 특산이면 도감 「특산」에 적는다(가게에서 산 것은 꼬리표가 없어 안 적힌다)
+    if (template.originRegion && !opts.silent) DiscoveryStore.noteSpecialty(template, template.catchMethod === 'rod' ? 'catch' : template.catchMethod === 'trap' ? 'trap' : template.forageCatch ? 'night_hunting' : 'inventory');
     if (this.tradedLineage && !template.traded) template = { ...template, traded: true };
     if (isInstanceItem(template)) return this.addInstances(template, qty, opts);
     // 282차 — 소모품은 정확히 같은 id 칸에만 쌓는다(카탈로그 id로 개체를 찾는 `find` 폴백을 타지 않는다)
@@ -2196,6 +2206,7 @@ class InventoryStoreManager {
       }
       existing.qty += qty;
       if (template.traded) existing.traded = true;   // 233차 — 섞이면 보수적으로 거래품 쪽으로
+      if (existing.originRegion !== template.originRegion) existing.originRegion = undefined;   // 295차 — 산지가 다른 것이 섞이면 원산지를 보증하지 못한다(명산지 꼬리표가 빠진다)
       if (!opts.silent) { this.newIds.add(existing.id); this.onGained?.(existing, qty); LedgerStore.gained(existing.name, qty); }
       return [existing.id];
     }
@@ -2289,7 +2300,7 @@ class InventoryStoreManager {
     const base = itemBaseId(id);   // 282차
     const seed = createSeedItems().find((x) => x.id === base);
     // 241차 — 농산물 조각 · 284차 낱알 봉지 → 낱알 · 기름병 → 1큰술(식자재마트 것과 같은 물건)
-    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? millItemTemplate(id) ?? cookCornerTemplate(id) ?? cureItemTemplate(id) ?? null;
+    if (!seed) return InventoryStoreManager.UNPACK_TPL[id] ?? cropItemTemplate(id) ?? millItemTemplate(id) ?? cookCornerTemplate(id) ?? cureItemTemplate(id) ?? processedItemTemplate(id) ?? null;
     const { slot: _slot, qty: _qty, ...tpl } = seed;
     return tpl;
   }

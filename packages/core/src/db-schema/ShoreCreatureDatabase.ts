@@ -6,7 +6,8 @@
  * 계절성, 서식 위치, 법적 채취 제한 등을 포함합니다.
  */
 
-import type { ShoreCreatureCategory } from '../types/Activities.js';
+import type { ShoreCreatureCategory, TrapType } from '../types/Activities.js';
+import type { SeaKey } from '../rules/SpeciesPresence.js';
 import type { ClosedSeason, LegalRegionKey, RegionalLegalRule } from '../types/LegalSeason.js';
 import type { SpotType } from '../types/Environment.js';
 import type { ForageTool, ForageSpotKind, ForageAccess, ForageBehavior } from '../types/Foraging.js';
@@ -97,6 +98,13 @@ export interface ShoreCreature {
   clampsHard?: boolean;
   /** 288차 — 종별 채집 크기 · 무게(조사값) — 굴림 · 그림 크기 배율이 읽는다 */
   size?: ShoreCreatureSize;
+  // ── 295차 — 통발 전용 생물(독도새우) ──
+  /** 해루질 자리에 나오지 않고 통발로만 잡힌다 */
+  trapOnly?: boolean;
+  /** 걸리는 통발 종류(없으면 분류가 맞는 통발 전부) */
+  trapTypes?: TrapType[];
+  /** 걸리는 바다(`seaOf` 키 — 없으면 어디서나) */
+  trapSeas?: SeaKey[];
 }
 
 // ─────────────────────────────────────────────
@@ -220,6 +228,35 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     regional: { jeju: { closedSeasons: [{ from: [10, 1], to: [12, 31] }], minLegalSizeCm: 10 } },
   },
   // ────────── 갑각류 ──────────
+  // ── 295차 — 독도새우(도화새우): 통발 전용 · 울릉 · 독도 바다에서만(사용자 지시 「독도새우 추가」 · 294 조사)
+  {
+    id: 'pandalus_hypsinotus',
+    size: { axis: 'body_length', minCm: 8, maxCm: 20, meanCm: 13, sdCm: 2.2, wA: 0.012, wB: 3.0 },
+    nameKo: '도화새우',
+    nameEn: 'Coral Shrimp (Dokdo shrimp)',
+    scientificName: 'Pandalus hypsinotus',
+    spriteKey: 'creature_pandalus',
+    category: 'crustacean',
+    habitatSpotTypes: ['breakwater', 'rocky_shore'],
+    habitatDesc: '동해 먼바다의 차가운 깊은 물(150~300m)에 산다. 독도 · 울릉 앞바다에서 새우 통발로 올린다 — 「독도새우」 세 종 가운데 가장 크다.',
+    minLegalSizeCm: 0,
+    dailyLimitG: 0,
+    closedSeasonMonths: [],
+    discoveryTime: 'both',
+    minLampLumens: 0,
+    marketValuePerKg: 120000,
+    isRestaurantIngredient: true,
+    canBeUsedAsBait: false,
+    description: '머리에 붉은 점이 꽃잎처럼 박혀 「도화」. 살이 달고 단단해 회로 먹는다. 독도 · 울릉 앞바다의 새우 통발에만 든다.',
+    requiredLicense: null,
+    tools: ['hand'],
+    behavior: 'runner',
+    access: 'dive',
+    substrate: 'rock',
+    eastSeaWeight: 1,
+    agility: 0.5,
+    trapOnly: true, trapTypes: ['shrimp_trap'], trapSeas: ['ulleung'],
+  },
   {
     id: 'portunus_trituberculatus',
     size: { axis: 'carapace_length', minCm: 4.5, maxCm: 10.5, meanCm: 6.6, sdCm: 1.0, wA: 0.6, wB: 3.0 },

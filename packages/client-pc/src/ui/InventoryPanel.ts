@@ -32,6 +32,7 @@ import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore, isMarketFish } from '../store/MarketStore.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { addPixelIcon } from './PixelIcon.js';
+import { specialtyTagOf, specialtyDisplayName } from '../data/SpecialtyTag.js';
 import { GEAR_FAULTS, TUNING, rawEatStatus, packOfLoose, isProducePack, biteNutrition, restoreFromNutrition, FARM_PACK_CONTAINER,
   bagsOfLoose, isProduceBag, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB, looseCountKo, cropItemTemplate } from '../data/CropItems.js';
@@ -593,6 +594,11 @@ export class InventoryPanel extends DraggablePanel {
         const tx = addPixelIcon(this.scene, 'toxin', sx + 11, sy + SLOT - 23, 12);
         if (tx) this.gridContainer.add(tx);
       }
+      // 295차 — 명산지 도장: 얻은 지역의 특산이면 **좌하단**(독소 · 미완성 접시가 없을 때)
+      if (!item.toxin && !item.plateWip && specialtyTagOf(item)) {
+        const seal = addPixelIcon(this.scene, 'mk_origin', sx + 11, sy + SLOT - 23, 12);
+        if (seal) this.gridContainer.add(seal);
+      }
       // 136차 — 고장·파손 배지: **우하단** 빨간 삼각형 안 느낌표 (좌하단 = 미완성 접시 %)
       if (item.fault) {
         const warn = addPixelIcon(this.scene, 'warn_broken', sx + SLOT - 11, sy + SLOT - 24, 12);
@@ -603,7 +609,7 @@ export class InventoryPanel extends DraggablePanel {
       // 188차 — 글씨 축소(7px·setScale) 대신 이름 축약. 하단 기준 배치(10px 높이가 칸 아래 테를 넘지 않게)
       const nameTxt = setSlotLabel(this.scene.add.text(sx + SLOT / 2, sy + SLOT - 2, '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#a8c4d8',
-      }).setOrigin(0.5, 1), item.name, SLOT - 4);
+      }).setOrigin(0.5, 1), specialtyDisplayName(item), SLOT - 4);   // 295차 — 「부산 고등어 (32cm)」
       this.gridContainer.add(nameTxt);
 
       // 155차 — 이야기가 준 물건(귀속)은 금색 테두리, 새로 받은 물건은 우상단 금색 점 + 잠깐 반짝임

@@ -163,6 +163,11 @@ export interface FireRecipeDef {
    * 같은 family라도 재료 구성이 다르면 그림이 달라진다(서더리 ↔ 통생선 매운탕).
    */
   photoKey?: string;
+  // ── 295차 — 지역 레시피 ──
+  /** 주재료로 받는 어종(없으면 어떤 생선이든) — 「거제 대구탕」은 대구만 */
+  mainSpecies?: readonly string[];
+  /** 배워야 쓰는 레시피 — 이 편을 끝내면 `unlock.recipe:<id>` 플래그가 선다(없으면 처음부터 안다) */
+  learn?: { questId: string };
 }
 
 // ─────────────────────────────────────────────

@@ -1007,5 +1007,8 @@ export {
   setProduceMarket, produceMarketRatio, produceMarketInfo,
 } from './rules/ProduceMarket.js';
 // 294차 — 지역 특산물
-export { REGIONAL_SPECIALTIES, specialtyOf, specialtyInSeason, specialtyPriceMult, specialtiesOfRegion, specialtyRegionsOf } from './db-schema/RegionalSpecialty.js';
+export { REGIONAL_SPECIALTIES, specialtyOf, specialtyInSeason, specialtyPriceMult, specialtySellMult, SPECIALTY_AWAY_MULT, specialtiesOfRegion, specialtyRegionsOf } from './db-schema/RegionalSpecialty.js';
+// 295차 — 지역 가공대
+export { PROCESSED_ITEMS, PROCESS_RECIPES, processRecipe, processRecipesOf, processedItem, processQuote } from './rules/RegionalProcessing.js';
+export type { ProcessRecipeDef, ProcessInputDef, ProcessedItemDef, ProcessQuote } from './rules/RegionalProcessing.js';
 export type { RegionalSpecialtyDef, SpecialtyKind } from './db-schema/RegionalSpecialty.js';

@@ -12,7 +12,8 @@ export type DiscoveryKind =
   | 'fish'      // 어종 (FishDatabase speciesId)
   | 'creature'  // 해루질/통발 해양생물 (ShoreCreatureDatabase id)
   | 'item'      // 아이템 (InvItem/상점 카탈로그 id)
-  | 'dish';     // 요리 종류 (156차 — `discovery_<recipe>_<species>`, DishDiscovery.ts)
+  | 'dish'      // 요리 종류 (156차 — `discovery_<recipe>_<species>`, DishDiscovery.ts)
+  | 'specialty';   // 295차 — 지역 특산(RegionalSpecialty id — 그 지역에서 얻어 본 것)
 
 /** 발견 경로 — 도감/위키에 "어떻게 처음 만났나"로 표기 */
 export type DiscoverySource =

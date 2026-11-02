@@ -185,8 +185,8 @@ export class AuctionHousePanel extends DraggablePanel {
     this.bidText.setColor('#4af2a1');
 
     const lines = result.perLot.map((r) => r.status === 'sold'
-      ? `${r.nameKo} ${r.weightKg.toFixed(1)}kg  ${r.hammerPerKg.toLocaleString()}원/kg → ${r.grossWon.toLocaleString()}원`
-      : `${r.nameKo} ${r.weightKg.toFixed(1)}kg  유찰 — 되가져갑니다`);
+      ? `${r.nameKo} (${r.origin}) ${r.weightKg.toFixed(1)}kg  ${r.hammerPerKg.toLocaleString()}원/kg → ${r.grossWon.toLocaleString()}원`
+      : `${r.nameKo} (${r.origin}) ${r.weightKg.toFixed(1)}kg  유찰 — 되가져갑니다`);   // 295차 — 원산지
     lines.push('');
     lines.push(`낙찰 총액 ${result.grossWon.toLocaleString()}원`
       + `   수수료 −${result.feeWon.toLocaleString()}원 (${(this.session.feeRate * 100).toFixed(1)}%)`);

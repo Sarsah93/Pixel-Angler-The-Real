@@ -14,7 +14,10 @@ import {
   FIRE_RECIPES, RECIPE_LORE, isVariantRecipe, dishVariantCandidates, dishDiscoveryId, dishDiscoveryName, dishBaseName,
   dishVariantKind, dishDiscoveryIdsFor,
   resolveLegal, formatSeasons,
+  REGIONAL_SPECIALTIES, isRegionOpenAtChapter, type RegionalSpecialtyDef,   // 295차 — 특산 탭
 } from '@tra/core';
+import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
+import { isAllRegionsOpen } from '../dev/DevMode.js';   // 295차 — 특산 탭도 dev 모든 지역 열기
 import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature, DishVariantKind } from '@tra/core';
 import { TideLoreStore } from '../store/TideLoreStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
@@ -32,7 +35,7 @@ import { clampTextWidth } from '../ui/TextFit.js';
 import { fadeOutThen } from './SceneFade.js';
 import { ensureForageDotTextures, forageSpotTexKey, forageTexKey } from './field/ForageSystem.js';
 
-type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'history';
+type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'specialty' | 'history';   // 295차 — 특산
 
 /** 255차 — 요리 도감: 변형 레시피의 주재료 갈래별 목록 부제 · 미발견 힌트 (조개탕에 「다른 어종을」은 틀린 말이다) */
 const DISH_KIND_SUB: Record<DishVariantKind, string> = {
@@ -136,6 +139,7 @@ export class AnglerLogScene extends Phaser.Scene {
       { key: 'creatures',    label: '해양생물',      w: 130 },
       { key: 'items',        label: '아이템 위키',   w: 140 },
       { key: 'dishes',       label: '요리',          w: 100 },
+      { key: 'specialty',    label: '특산',          w: 90 },   // 295차 — 지역 특산(얻어 본 것)
       { key: 'history',      label: '나의 조과 기록', w: 160 },
     ];
     let tabX = 60;
@@ -183,7 +187,7 @@ export class AnglerLogScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   private buildTour(): TourOptions {
     const { width, height } = this.scale;
-    const tabsW = 140 + 130 + 140 + 100 + 160 + 4 * 10;
+    const tabsW = 140 + 130 + 140 + 100 + 90 + 160 + 5 * 10;   // 295차 — 특산 탭
     const tabs = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(60, 110 - 16, tabsW, 32);
     const historyTab = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(60 + tabsW - 160, 110 - 16, 160, 32);
     const body = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(30, 140, width - 60, height - 200);
@@ -193,7 +197,7 @@ export class AnglerLogScene extends Phaser.Scene {
       alive: () => this.sys.isActive(),
       steps: [
         {
-          text: '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 아이템 · 요리 · 내 조과 기록을 넘겨 본다.',
+          text: '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 아이템 · 요리 · 특산 · 내 조과 기록을 넘겨 본다.',
           target: tabs,
         },
         {
@@ -269,6 +273,7 @@ export class AnglerLogScene extends Phaser.Scene {
       case 'creatures':    this.renderCreatures();    break;
       case 'items':        this.renderItems();        break;
       case 'dishes':       this.renderDishes();       break;
+      case 'specialty':    this.renderSpecialty();    break;   // 295차
       case 'history':      this.renderHistory();      break;
     }
   }
@@ -553,6 +558,92 @@ export class AnglerLogScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────
+  // 1e. 특산 탭 (295차) — 열린 지역의 특산만(R2) · 그 고장에서 얻어 본 것은 카드가 채워진다
+  // ─────────────────────────────────────────────
+  private renderSpecialty(): void {
+    const { width, height } = this.scale;
+    const startX = 40;
+    const startY = 160;
+    const itemW = 220;
+    const itemH = 150;
+    const colCount = 4;
+    const GAP = 20;
+    const KIND_KO: Record<RegionalSpecialtyDef['kind'], string> = { fish: '수산', forage: '갯것', crop: '작물', processed: '가공품' };
+    const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
+    const perPage = rowsPerPage * colCount;
+    const chapter = StoryStore.currentChapter();
+    // 276차 dev 「모든 지역 열기」가 켜져 있으면 장 잠금을 건너뛴다(세계 지도와 같은 규칙)
+    const all = REGIONAL_SPECIALTIES.filter((d) => isAllRegionsOpen() || d.regionIds.some((r) => isRegionOpenAtChapter(r, chapter)));
+    const maxPage = Math.max(0, Math.ceil(all.length / perPage) - 1);
+    this.currentPage = Math.min(this.currentPage, maxPage);
+
+    const found = all.filter((d) => DiscoveryStore.isDiscovered('specialty', d.id)).length;
+    const summary = this.add.text(width - 40, startY - 26,
+      `얻어 본 특산 ${found} / ${all.length} — 그 고장에서 잡고 캐고 거두면 등록`, {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
+      }).setOrigin(1, 0);
+    this.tabContainer?.add(summary);
+
+    const page = all.slice(this.currentPage * perPage, (this.currentPage + 1) * perPage);
+    page.forEach((d, idx) => {
+      const col = idx % colCount;
+      const row = Math.floor(idx / colCount);
+      const x = startX + col * (itemW + GAP);
+      const y = startY + row * (itemH + GAP);
+      const regionShort = d.regionIds.map((r) => getRegionById(r)?.shortNameKo ?? r).join(' · ');
+
+      const card = this.add.graphics();
+      card.fillStyle(0x0e1c2d);
+      card.fillRoundedRect(x, y, itemW, itemH, 4);
+      card.lineStyle(1.5, 0x2a5a8a, 0.8);
+      card.strokeRoundedRect(x, y, itemW, itemH, 4);
+      this.tabContainer?.add(card);
+
+      if (DiscoveryStore.isDiscovered('specialty', d.id)) {
+        const nameText = clampTextWidth(this.add.text(x + 15, y + 12, d.nameKo, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffd93b', fontStyle: 'bold',
+        }), itemW - 27);
+        const sub = clampTextWidth(this.add.text(x + 15, y + 32, `${regionShort} · ${KIND_KO[d.kind]}${d.gi ? ' · 지리적 표시' : ''}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#5a8fab',
+        }), itemW - 27);
+        const months = d.months && d.months.length ? `제철 ${d.months.join('·')}월` : '제철 연중';
+        const discLine = this.discoveryLine('specialty', d.id);
+        const rows: [string, string][] = [
+          [months, '#8faabf'],
+          [`값 ×${d.priceMult}${d.festivalKo ? ` · ${d.festivalKo}` : ''}`, '#c8a060'],
+          [discLine ?? '얻어 봄', '#8fd4b8'],
+        ];
+        rows.forEach(([label, color], i) => {
+          const t = clampTextWidth(this.add.text(x + 15, y + 52 + i * 17, label, {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
+          }), itemW - 27);
+          this.tabContainer?.add(t);
+        });
+        const note = this.add.text(x + 15, y + 106, d.noteKo, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#a8c4d8', wordWrap: { width: itemW - 27 }, lineSpacing: 1,
+        });
+        // 두 줄까지만(카드 아래 테를 넘지 않게)
+        while (note.getWrappedText().length > 2 && note.text.length > 4) note.setText(note.text.slice(0, -4).trimEnd() + '…');
+        this.tabContainer?.add([nameText, sub, note]);
+      } else {
+        const secretText = this.add.text(x + itemW / 2, y + 58, '???', {
+          fontFamily: '"Press Start 2P", monospace', fontSize: '14px', color: '#2a5a8a',
+        }).setOrigin(0.5);
+        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 96, `${regionShort}의 ${KIND_KO[d.kind]} 특산`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a5a78',
+        }).setOrigin(0.5), itemW - 24);
+        const how = clampTextWidth(this.add.text(x + itemW / 2, y + 118,
+          d.kind === 'fish' ? '그 고장 바다에서 낚으면 등록' : d.kind === 'forage' ? '그 고장 물가에서 캐면 등록' : d.kind === 'crop' ? '그 고장 텃밭에서 거두면 등록' : '그 고장 가공장에서 찾으면 등록', {
+            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
+          }).setOrigin(0.5), itemW - 24);
+        this.tabContainer?.add([secretText, hint, how]);
+      }
+    });
+
+    this.renderPageNav(maxPage, width, height);
+  }
+
+  // ─────────────────────────────────────────────
   // 1c. 아이템 위키 탭 (시드 + 상점 전 품목)
   // ─────────────────────────────────────────────
   private renderItems(): void {
@@ -706,14 +797,15 @@ export class AnglerLogScene extends Phaser.Scene {
 
     // 요약 — 전 레시피 합산
     let foundAll = 0, totalAll = 0;
-    for (const r of FIRE_RECIPES) { const p = this.dishProgressOf(r.id); foundAll += p.found; totalAll += p.total; }
+    const known = FIRE_RECIPES.filter(recipeKnown);   // 295차 — 모르는 지역 레시피는 숨긴다(R2)
+    for (const r of known) { const p = this.dishProgressOf(r.id); foundAll += p.found; totalAll += p.total; }
     const summary = this.add.text(width - 40, listY - 28, `발견 ${foundAll} / ${totalAll} — 직접 조리하면 등록`, {
       fontFamily: font, fontSize: '12px', color: '#8faabf',
     }).setOrigin(1, 0);
     this.tabContainer?.add(summary);
 
     // 좌: 레시피 목록
-    FIRE_RECIPES.forEach((r, i) => {
+    known.forEach((r, i) => {
       const y = listY + i * (rowH + 6);
       const sel = this.dishRecipeSel === r.id;
       const p = this.dishProgressOf(r.id);
@@ -737,7 +829,7 @@ export class AnglerLogScene extends Phaser.Scene {
     });
 
     // 우: 상세
-    const r = FIRE_RECIPES.find((x) => x.id === this.dishRecipeSel) ?? FIRE_RECIPES[0];
+    const r = known.find((x) => x.id === this.dishRecipeSel) ?? known[0];
     const pane = this.add.graphics();
     pane.fillStyle(0x0e1c2d); pane.fillRoundedRect(paneX, paneY, paneW, paneH, 4);
     pane.lineStyle(1, 0x1f3d5a, 0.9); pane.strokeRoundedRect(paneX, paneY, paneW, paneH, 4);

@@ -12,13 +12,14 @@
  */
 
 import { cvCss, shapeCuesOn } from '../ui/ColorAssist.js';
-import {
+import { FISH_DATABASE,
   TUNING, getHeatSource, getCookware, getFuel, getFireRecipe, getCookIngredient, ingredientOfItem, reqFor,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
   isVariantRecipe, createDishInstance, cookSpeciesNames, recipeEffectOf, dishDiscoveryId, isFarmProduce, namulVariantOf,
   type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo,
 } from '@tra/core';
+import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvItem, type InvItemTemplate } from './InventoryStore.js';
 import { DiscoveryStore } from './DiscoveryStore.js';
@@ -170,6 +171,7 @@ class CookingStoreClass {
     if (!r) return { ok: false, message: '없는 요리입니다' };
     if (!cw) return { ok: false, message: '용기를 먼저 올리세요' };
     if (!r.cookware.includes(cw.kind)) return { ok: false, message: `${r.nameKo}은(는) ${cw.nameKo}(으)로 만들 수 없습니다` };
+    if (!recipeKnown(r)) return { ok: false, message: `${r.nameKo} — 아직 모르는 요리입니다` };   // 295차 — 지역 레시피
     if (st.session && st.session.contents.length > 0) return { ok: false, message: '먼저 지금 요리를 내리거나 버리세요' };
     st.session = createCookSession(r.id, cw.id);
     st.lastTickMs = Date.now();
@@ -220,6 +222,12 @@ class CookingStoreClass {
     this.syncOne(st, Date.now());
     const chk = canAddIngredient(s, r, cw, ing, units);
     if (!chk.ok) return { ok: false, message: chk.reasonKo ?? '넣을 수 없습니다' };
+    // 295차 — 지역 레시피는 주재료 어종이 정해져 있다(「거제 대구탕」 = 대구만)
+    if (r.mainSpecies && r.required.some((q) => q.role === 'main' && (Array.isArray(q.ing) ? q.ing.includes(ing) : q.ing === ing))
+      && (!speciesId || !r.mainSpecies.includes(speciesId))) {
+      const names = r.mainSpecies.map((id) => FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id).join(' · ');
+      return { ok: false, message: `${r.nameKo}에는 ${names}만 씁니다` };
+    }
     coreAddIngredient(s, ing, units, fresh01, srcItemId, weightG, speciesId, produce);
     GameState.markDirty();
     const def = getCookIngredient(ing);

@@ -87,6 +87,39 @@ export const RECIPE_LORE: Record<string, RecipeLore> = {
     cookingTipKo: '지방이 많아 불 조절이 어렵습니다. 자주 뒤집으세요.',
     cookingTipEn: 'All that fat makes the heat hard to control — turn it often.',
   },
+  // ── 295차 — 지역 레시피 ──
+  stew_cod_geoje: {
+    shortDescriptionKo: '진해만 대구를 무 · 미나리와 맑게 끓인 거제의 겨울 국.',
+    shortDescriptionEn: 'Geoje’s winter soup — Jinhae Bay cod simmered clear with radish and water parsley.',
+    cookingTipKo: '대구는 오래 끓이면 살이 풀립니다. 무가 익은 뒤에 넣고 미나리는 불을 끄기 직전에.',
+    cookingTipEn: 'Cod falls apart if boiled long. Add it after the radish is soft, the parsley just before the fire goes off.',
+    ingredientTipKo: '거제에서 잡은 대구라야 「거제 대구탕」입니다 — 「요리 못 하는 선장」을 끝내면 배웁니다.',
+    ingredientTipEn: 'It is Geoje cod soup only with Geoje cod — learned after “The Captain Who Can’t Cook”.',
+  },
+  grill_tilefish_jeju: {
+    shortDescriptionKo: '소금 간한 제주 옥돔을 센 불에 구운 것. 살이 희고 달다.',
+    shortDescriptionEn: 'Salted Jeju red tilefish grilled over a hot fire — white, sweet flesh.',
+    cookingTipKo: '껍질 쪽을 먼저 굽고 한 번만 뒤집습니다. 기름은 적게.',
+    cookingTipEn: 'Skin side first, turn once. Little oil.',
+    ingredientTipKo: '제주 앞바다 옥돔 — 「해녀의 딸」을 끝내면 부순덕 할머니에게 배웁니다.',
+    ingredientTipEn: 'Red tilefish from Jeju waters — taught by Grandmother Bu after “The Diver’s Daughter”.',
+  },
+  braise_saury_guryongpo: {
+    shortDescriptionKo: '무를 깔고 꽁치를 간장 · 고춧가루 양념에 졸인 덕장 마을의 저녁.',
+    shortDescriptionEn: 'Saury braised over radish in soy and chili — supper in the gwamegi village.',
+    cookingTipKo: '국물이 자작해질 때까지 졸이되 꽁치는 한 번만 뒤집습니다.',
+    cookingTipEn: 'Reduce until the liquid is scant; turn the saury only once.',
+    ingredientTipKo: '구룡포에서 잡은 꽁치 — 「덕장」을 끝내면 배웁니다.',
+    ingredientTipEn: 'Saury caught at Guryongpo — learned after “The Drying Racks”.',
+  },
+  stew_hamo_yeosu: {
+    shortDescriptionKo: '뼈를 잘게 끊은 갯장어를 맑은 국물에 살짝 담갔다 건지는 여름 보양식.',
+    shortDescriptionEn: 'Pike conger, bones finely scored, dipped briefly in clear broth — a summer restorative.',
+    cookingTipKo: '국물이 팔팔 끓을 때 한 점씩. 오래 두면 질깁니다.',
+    cookingTipEn: 'One piece at a time into a rolling boil. Left long, it toughens.',
+    ingredientTipKo: '여수 앞바다 갯장어(하모) — 「잔잔함」을 끝내면 정우미에게 배웁니다.',
+    ingredientTipEn: 'Pike conger (hamo) from Yeosu waters — taught by Jeong Umi after “Stillness”.',
+  },
 };
 
 /** 어종별 변형 전용 설명 (§4 — 매운탕 3종 · 255차 대표 조합). 없으면 `variantDescription()`이 틀(`RECIPE_VARIANT_DESC`)로 문장을 만든다 */

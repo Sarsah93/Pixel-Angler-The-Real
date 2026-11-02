@@ -21,6 +21,8 @@ import Phaser from 'phaser';
 import { rareArrivalInDays, GEAR_FAULTS, gearRepairFee, affinityTier, AFFINITY_TIER_LABEL, getStoryNpc, type AffinityTier, type NpcShopTerms } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore, InvItem, CONDITION_LABEL, CATEGORY_LABEL, type InvCategory } from '../store/InventoryStore.js';
+import { specialtyDisplayName, specialtyOriginLabel } from '../data/SpecialtyTag.js';
+import { regionStallEntries } from '../data/RegionStall.js';
 import { TitleStore } from '../store/TitleStore.js';
 import { ShopCartDialog, type CartLine } from './ShopCartDialog.js';
 import { TextInput } from './TextInput.js';
@@ -115,7 +117,7 @@ export function shopSellUnitPrice(item: InvItem): number {
   const n = npcShopMods();
   const skill = n.noHaggle ? Math.min(1, GameState.skillMult('sell_price')) : GameState.skillMult('sell_price');
   const title = n.noHaggle ? Math.min(1, TitleStore.modifiers().sellMult) : TitleStore.modifiers().sellMult;
-  const base = Math.round(InventoryStore.getSellPrice(item) * skill * title * n.sell);
+  const base = Math.round(InventoryStore.getSellPrice(item, GameState.currentRegionId) * skill * title * n.sell);   // 295차 — 산지 밖 가게면 택배 차익
   return MarketStore.quote(item, base)?.unit ?? base;   // 196차 — 지점 수요 × 시세 하락
 }
 
@@ -738,7 +740,7 @@ export class ShopPanel extends DraggablePanel {
           condition: item.condition,
           trend: this.trendOf(item),
           selected: !!inCart,
-          tooltip: `${item.name}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}${this.marketEyeLine(item)}`,
+          tooltip: `${specialtyDisplayName(item)}\n매입가 ${this.sellPriceOf(item).toLocaleString()}원${item.condition ? ' · ' + CONDITION_LABEL[item.condition] : ''}${this.marketEyeLine(item)}`,
           onSelect: () => {
             // 220차 — 누를 때마다 판매 목록에 넣고 뺀다. 221차 — 여러 개면 몇 개 팔지 먼저 묻는다(구: 가진 만큼 통째로)
             if (this.sellCart.has(item.id)) { this.sellCart.delete(item.id); if (this.lastPick === item.id) this.lastPick = null; this.renderGrid(); }
@@ -785,6 +787,7 @@ export class ShopPanel extends DraggablePanel {
     // 247차 — 아주 까다로운 작물은 들어오는 날(열흘에 한 번꼴)에만
     return this.gated().filter((e) => !e.rareArrival || rareArrivalInDays(e.id, now) === 0)
       .concat(this.npcExtras(now))   // 254차 — 인물 가게만 들이는 귀한 물건
+      .concat(this.shop.kind === 'market' ? regionStallEntries(GameState.currentRegionId) : [])   // 295차 — 산지 매대(그 지역 특산 가공품)
       .concat(ShopStore.usedGoods(this.ctx.key).map(usedShopEntry));   // 224차 — 손님이 판 장비(중고)
   }
 
@@ -1117,7 +1120,7 @@ export class ShopPanel extends DraggablePanel {
 
     const crated = hasCrate();
     const origin = REGION_DATABASE.find((r) => r.id === region)?.shortNameKo ?? '속초';
-    const inputs = items.map((i) => consignInputOf(i, this.reserveMode, origin, crated));
+    const inputs = items.map((i) => consignInputOf(i, this.reserveMode, specialtyOriginLabel(i, origin), crated));   // 295차 — 얻은 지역 · 「○○ 특산」
     this.consignSel.clear();
     this.cbs.onConsign(inputs, items);
   }

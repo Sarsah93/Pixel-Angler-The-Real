@@ -24,6 +24,7 @@ import {
 } from './InventoryStore.js';
 import type { ChumTypeKey, CatchMethod } from '@tra/core';
 import { migrateSpeciesId, migrateForageName } from '../data/SpeciesMigration.js';
+import { DiscoveryStore } from './DiscoveryStore.js';   // 295차
 
 /** 쿨러에 보관되는 어획 개체 (실측치 보존 — 인벤토리 이송 시 그대로 전달) */
 export interface CoolerFish {
@@ -298,6 +299,8 @@ class CoolerStoreImpl {
     this.sync();
     const idx = this.slots.findIndex((s) => s === null);
     if (idx < 0) return -1;
+    // 295차 — 얻은 지역의 특산이면 도감 「특산」에 적는다
+    if (fish.originRegion) DiscoveryStore.noteSpecialty({ id: '', speciesId: fish.speciesId, subCategory: '어획물', originRegion: fish.originRegion }, fish.catchMethod === 'trap' ? 'trap' : 'catch');
     this.slots[idx] = { ...fish, condition: 'live', stateElapsedMs: 0 };
     return idx;
   }

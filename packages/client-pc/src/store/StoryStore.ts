@@ -15,7 +15,7 @@
  */
 
 import { LedgerStore } from './LedgerStore.js';
-import {
+import { getFireRecipe,
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, canConsign, provenanceOf, TUNING,
   spotKindSatisfies, SPOT_KIND_LABEL, QUEST_ITEM_DROPS, getQuestItem,
@@ -1442,6 +1442,8 @@ class StoryStoreManager {
     for (const sh of q.rewards?.shopUnlocks ?? []) { h?.setFlag(`unlock.shop.${sh}`, true); rwl.push('상점 품목 해금'); }
     // 188차 — '지역 개방: busan'처럼 지역 id가 나갔다(R1) → 지역 이름
     if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('region:')).map((u) => `지역 개방: ${getRegionById(u.slice(7))?.nameKo ?? '새 지역'}`));
+    // 295차 — 지역 레시피를 배웠다
+    if (q.unlocks?.length) rwl.push(...q.unlocks.filter((u) => u.startsWith('recipe:')).map((u) => `요리 배움: ${getFireRecipe(u.slice(7))?.nameKo ?? '새 요리'}`));
     this.lastRewardLines = rwl;
     this.lastAction = 'completed';
     if (this.pinned.main === id) this.pinned.main = null;

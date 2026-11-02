@@ -16,6 +16,7 @@ import type { SpotType } from '../types/Environment.js';
 import type { TideInfo } from '../types/Environment.js';
 import { TUNING } from '../config/tuning.js';
 import { closedFor } from '../rules/ClosedSeason.js';
+import { seaOf } from '../rules/SpeciesPresence.js';
 
 // ─────────────────────────────────────────────
 // 통발 설치 컨텍스트
@@ -125,6 +126,9 @@ function calculateTrapCatch(
     if (!spec.targetCategories.includes(creature.category)) return false;
     if (!creature.habitatSpotTypes.includes(context.spotType)) return false;
     if (closedFor(creature, context.month, context.day, context.regionId)) return false;
+    // 295차 — 통발 전용 생물(독도새우)은 정해진 통발 · 바다에서만
+    if (creature.trapTypes && !creature.trapTypes.includes(spec.type)) return false;
+    if (creature.trapSeas && !creature.trapSeas.includes(seaOf(context.regionId))) return false;
     return true;
   });
 

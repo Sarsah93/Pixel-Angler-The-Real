@@ -376,6 +376,7 @@ export function settleConsignment(session: ConsignmentSession): ConsignmentSettl
       lotId: lot.lotId,
       sourceItemId: cl.sourceItemId,
       nameKo: lot.nameKo,
+      origin: lot.origin,   // 295차 — 정산 줄 원산지
       weightKg: lot.weightKg,
       hammerPerKg: lot.currentBidPerKg,
       grossWon: gross,

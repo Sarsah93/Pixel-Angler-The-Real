@@ -503,7 +503,7 @@ const EN_BASE: Record<string, string> = {
   '괴물급': 'Monster', '대물': 'Trophy', '준대물': 'Big', '우량': 'Fine', '평균': 'Average', '소형': 'Small',
 
   // ── 도감 ──
-  '나가기': 'Exit', '어종 도감': 'Fish Codex', '아이템 위키': 'Item Wiki', '나의 조과 기록': 'My Catch Log', '이미지 없음': 'No image', '제철 연중': 'In season all year', '낚시 기록 없음': 'No catch record', '표층': 'Surface',
+  '나가기': 'Exit', '어종 도감': 'Fish Codex', '아이템 위키': 'Item Wiki', '특산': 'Specialties', '나의 조과 기록': 'My Catch Log', '이미지 없음': 'No image', '제철 연중': 'In season all year', '낚시 기록 없음': 'No catch record', '표층': 'Surface',
   '금어기 없음': 'No closed season', '주야': 'Day/Night', '출조지 필터:': 'Spot filter:', '전체': 'All', '정렬 방식:': 'Sort:', '최신순': 'Newest', '최대어순': 'Largest', '무게순': 'Heaviest', '기록된 조과 정보가 없습니다.': 'No catches recorded.',
   '이 카테고리에 등록된 품목이 없습니다.': 'No items in this category.', '조개류': 'Shellfish', '갑각류': 'Crustaceans', '극피동물': 'Echinoderms', '이매패류': 'Bivalves', '복족류': 'Gastropods',
   '도감 & 조과첩 (Angler\'s Log)': "Codex & Angler's Log", 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.': 'Press ESC or [Exit] to return.',

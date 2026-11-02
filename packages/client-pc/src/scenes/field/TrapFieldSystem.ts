@@ -453,7 +453,7 @@ export class TrapFieldSystem {
       : Math.round(Math.max(3, it.countOrWeightG / 20));
     const tex = fish ? resolveFishTexture(fish.id, lengthCm, 'F') : creature ? forageTexKey(creature) : undefined;
     if (InventoryStore.hasCooler() && !CoolerStore.isFull()) {
-      const idx = CoolerStore.add({ speciesId: it.creatureId, nameKo: it.nameKo, lengthCm, weightG: it.countOrWeightG, sex: 'F', iconTexture: tex, catchMethod: 'trap' });
+      const idx = CoolerStore.add({ speciesId: it.creatureId, nameKo: it.nameKo, lengthCm, weightG: it.countOrWeightG, sex: 'F', iconTexture: tex, catchMethod: 'trap', originRegion: GameState.originRegionId });   // 295차 — 통발 어획도 얻은 지역
       if (idx >= 0) return 'cooler';
     }
     const ok = InventoryStore.addItem({
@@ -462,7 +462,7 @@ export class TrapFieldSystem {
       category: 'food', subCategory: fish ? '어획물' : '채집물',
       basePrice: Math.max(500, Math.round((it.countOrWeightG / 1000) * (fish?.sashimiValuePerKg ?? creature?.marketValuePerKg ?? 5000))),
       condition: 'live', equippable: false,
-      speciesId: it.creatureId, lengthCm, weightG: it.countOrWeightG, catchMethod: 'trap', ...(fish ? {} : { forageCatch: true }),
+      speciesId: it.creatureId, lengthCm, weightG: it.countOrWeightG, catchMethod: 'trap', originRegion: GameState.originRegionId, ...(fish ? {} : { forageCatch: true }),
     }, 1);
     return ok ? 'inventory' : 'none';
   }

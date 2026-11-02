@@ -228,6 +228,7 @@ export function rollForageSpots(candidates: ForageCandidate[], opts: RollForageO
   const target = Math.min(opts.maxSpots, Math.max(1, Math.round((candidates.length / 100) * t.spotsPerHundred * tideBonus)));
 
   const pool = SHORE_CREATURE_DATABASE.filter((c) => {
+    if (c.trapOnly) return false;                                       // 295차 — 통발 전용(독도새우)
     if (closedFor(c, opts.month, opts.day, opts.regionId)) return false;
     if (c.absentMonths?.includes(opts.month)) return false;           // 224차 — 여름잠 · 추위
     if (opts.eastSea && (c.eastSeaWeight ?? 1) <= 0) return false;     // 224차 — 동해에 없는 종

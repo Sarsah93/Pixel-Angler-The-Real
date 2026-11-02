@@ -40,7 +40,7 @@ export function seaOf(regionId: string | undefined | null): SeaKey {
  */
 // 294차 — `ulleung` 열(울릉 · 독도): 웹 조사(울릉 삼각망 우점 참돔 · 방어 · 한치 · 전갱이 / 독도 10~20m 조사 방어 · 부시리 · 돌돔 · 참돔 / 울릉 벵에돔 토너먼트 ·
 //  긴꼬리벵에돔 · 강담돔 토종화 / 저동항 광어 「거의 없음」 / 갯벌 종 없음). 제주는 광어 · 우럭 · 감성돔을 낮췄다(돌돔 · 벵에돔 위주 · 우럭은 방류 수준).
-//  DB에 없는 주요 종(자리돔 · 혹돔 · 옥돔 · 참다랑어 · 독도새우)은 잔여 — 이 표에 못 넣었다.
+//  295차 — 자리돔 · 혹돔 · 옥돔 · 참다랑어를 등록해 넣었다(독도새우는 통발 생물 — 어종 표가 아니다).
 export const SPECIES_SEA_WEIGHT: Readonly<Record<string, Readonly<Record<SeaKey, number>>>> = {
   stone_beakperch: { east: 0.5, south: 1, west: 0.25, jeju: 1, ulleung: 0.8 },          // 돌돔
   spotted_knifejaw: { east: 0.08, south: 0.5, west: 0.03, jeju: 1, ulleung: 0.3 },      // 강담돔 — 제주 · 남해 먼바다
@@ -98,6 +98,11 @@ export const SPECIES_SEA_WEIGHT: Readonly<Record<string, Readonly<Record<SeaKey,
   halfbeak: { east: 0.8, south: 1, west: 0.6, jeju: 0.8, ulleung: 0.4 },                // 학꽁치
   northern_whiting: { east: 0.6, south: 1, west: 0.8, jeju: 0.8, ulleung: 0.1 },        // 보리멸
   flying_squid: { east: 1, south: 0.5, west: 0.02, jeju: 0.4, ulleung: 0.9 },           // 살오징어 — 동해 가을 밤
+  // 295차 — 섬 어종 넷(294 조사 — 제주 · 울릉 · 독도)
+  pearl_spot_chromis: { east: 0.05, south: 0.5, west: 0.02, jeju: 1, ulleung: 0.5 },     // 자리돔 — 제주 상징
+  bulgyhead_wrasse: { east: 0.3, south: 0.6, west: 0.05, jeju: 1, ulleung: 0.9 },        // 혹돔 — 울릉 · 제주 암초
+  red_tilefish: { east: 0.1, south: 0.4, west: 0.05, jeju: 1, ulleung: 0.2 },            // 옥돔 — 제주 깊은 바다
+  bluefin_tuna: { east: 0.5, south: 0.7, west: 0.05, jeju: 1, ulleung: 0.9 },            // 참다랑어 — 동해 먼바다 · 제주 남쪽
 };
 
 /**

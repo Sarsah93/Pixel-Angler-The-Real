@@ -148,6 +148,7 @@ import { pumpTitleBanners, TITLE_RARITY_COLOR, titleTagStyle } from '../ui/Title
 import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
 import { pumpMillReady } from '../ui/MillNotifier.js';
 import { MillQueue } from '../store/MillQueue.js';
+import { ProcessQueue } from '../store/ProcessQueue.js';   // 295차
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
@@ -184,6 +185,7 @@ import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { BikeComposite, RiderDir } from '../ui/BikeComposite.js';
 import { ShopPanel, shopBuyUnitPrice, shopSellUnitPrice, entryKey } from '../ui/ShopPanel.js';
 import { MillPanel } from '../ui/MillPanel.js';
+import { ProcessPanel } from '../ui/ProcessPanel.js';   // 295차
 import { ShopStore } from '../store/ShopStore.js';
 import { ConfirmDialog, QuantityDialog } from '../ui/Dialogs.js';
 import { AdvancedCraftPanel } from '../ui/AdvancedCraftPanel.js';
@@ -458,6 +460,7 @@ export class RegionFieldScene extends Phaser.Scene {
   private shopPanel: ShopPanel | null = null;
   /** 284차 — 방앗간 압착기 창 */
   private millPanel: MillPanel | null = null;
+  private processPanel: ProcessPanel | null = null;   // 295차
 
   // ── 건물(상점) ──
   /** 196차 — branch = 판매처(시세 하락·가게 수요를 따로 센다) */
@@ -698,6 +701,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.utilPanel = null;
     this.shopPanel = null;
     this.millPanel = null;   // 284차
+    this.processPanel = null;   // 295차
     this.millMarks = new Map();   // 285차 — 방앗간 「다 됐다」 표시(씬 재사용 — 옛 그림은 씬과 함께 파괴됐다)
     this.buildings = [];
     this.nearBuilding = null;
@@ -1844,6 +1848,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 238차 — 종묘사 · 화원 · 농자재(OSM shop=garden_centre · florist · agrarian · farm): 모종 · 씨앗 · 농약
       if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm') return 'nursery';
       // 284차 — 방앗간(게임 캡처 POI `shopKind: 'mill'` · OSM 가게 이름이 방앗간 · 기름집인 곳)
+      // 295차 — 지역 가공장(손 POI `shopKind: 'processor'` · 덕장 · 장아찌 · 순대집)
+      if (k === 'processor' || /덕장|가공장|장아찌|순대집|건조장/.test(poi.name ?? '')) return 'processor';
       if (k === 'mill' || /방앗간|기름집/.test(poi.name ?? '')) return 'mill';
       return null;
     }
@@ -1938,7 +1944,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (bk === 'market' && interiorTemplateOf('market', name) === 'auction') return { w: 4, h: 3, kind: 'industrial', levels: 1 };
     const size: Record<BuildingKind, [number, number]> = {
       convenience: [2, 2], mart: [3, 2], market: [3, 2], restaurant: [3, 2], cafe: [2, 2], pub: [2, 2], pharmacy: [2, 2], daily: [3, 2], nursery: [3, 2],
-      mill: [2, 2], tackle: [3, 2],
+      mill: [2, 2], tackle: [3, 2], processor: [3, 2],
     };
     const [w, hh] = size[bk];
     return { w, h: hh, kind: 'commercial', levels: bk === 'mart' || bk === 'daily' || bk === 'pharmacy' ? 2 : (h < 0.5 ? 1 : 2) };
@@ -2464,7 +2470,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
         convenience: 0x2f8a57, mart: 0xc8662a, market: 0x2a6aa8, restaurant: 0xa8402a,
-        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a, tackle: 0x2a7ab8,
+        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a, tackle: 0x2a7ab8, processor: 0x9a6a3a,
       };
       const g = this.add.graphics();
       g.fillStyle(0x3a2616, 1); g.fillRect(10, 18, 4, 12);            // 기둥
@@ -3678,6 +3684,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'clinic': this.openClinic(); break;
       case 'schedule': this.openAuctionBoard(); break;
       case 'mill': this.openMill(at.branch); break;
+      case 'process': this.openProcessor(at.branch); break;   // 295차 — 지역 가공대
     }
   }
 
@@ -6556,7 +6563,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 상점 카테고리 → 미니맵 아이콘 키 */
   private static readonly MINI_SHOP_ICON: Record<BuildingKind, string> = {
     convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food',
-    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill', tackle: 'mm_tackle',
+    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill', tackle: 'mm_tackle', processor: 'mm_mill',
   };
 
   /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */
@@ -6673,10 +6680,10 @@ export class RegionFieldScene extends Phaser.Scene {
    * 다 된 일을 찾아 가면(대기열에서 빠지면) 다음 갱신(600ms)에 걷힌다.
    */
   private refreshMillMarks(markers: MiniMarker[]): void {
-    const ready = new Set(MillQueue.ready(Date.now()).map((o) => o.shopName));
+    const ready = new Set([...MillQueue.ready(Date.now()).map((o) => o.shopName), ...ProcessQueue.ready(Date.now()).map((o) => o.shopName)]);   // 295차 — 가공장도
     const want = new Set<string>();
     for (const b of this.buildings) {
-      if (b.kind !== 'mill' || !ready.has(b.branch.name)) continue;
+      if ((b.kind !== 'mill' && b.kind !== 'processor') || !ready.has(b.branch.name)) continue;
       want.add(b.branch.key);
       let img = this.millMarks.get(b.branch.key);
       if (!img || !img.active) {
@@ -7971,6 +7978,21 @@ export class RegionFieldScene extends Phaser.Scene {
         log: (line) => this.hud?.pushLog(line),
       }),
       () => { this.millPanel = null; },
+    );
+  }
+
+  /** 295차 — 지역 가공대 창(덕장 · 장아찌 공방 · 순대집) — 이 지역 가공만 보인다 */
+  private openProcessor(branch?: MarketBranch): void {
+    if (this.processPanel) return;
+    this.dismountBike();
+    const name = branch?.name ?? SHOP_CATALOG.processor.name;
+    this.processPanel = this.openPopup(
+      (close) => new ProcessPanel(this, 40, 60, name, this.region, {
+        onClose: close,
+        onChanged: () => { this.events.emit('inventory-changed'); },
+        log: (line) => this.hud?.pushLog(line),
+      }),
+      () => { this.processPanel = null; },
     );
   }
 

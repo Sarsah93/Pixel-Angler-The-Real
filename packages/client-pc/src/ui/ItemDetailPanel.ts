@@ -9,6 +9,7 @@
 import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
 import { getCreatureById, isCrabCreature, specialtyOf, type RegionalSpecialtyDef, getRegionById } from '@tra/core';
+import { specialtyDisplayName } from '../data/SpecialtyTag.js';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import { LINE_MATERIAL_TRAITS, lineMaterialOf, lineStrengthView } from '@tra/core';   // 273차 — 줄 재질 성질(내구도) · 281 세기 = 호수 표
 import {
@@ -320,7 +321,7 @@ function produceDetail(item: Pick<InvItem, 'id' | 'name' | 'qty' | 'basePrice' |
   rows.push({ label: '보유 수량', value: item.unitG ? qtyWord(item, item.qty) : `${item.qty}개` });
   let desc = (bp ? bp.def.noteKo : crop.noteKo) + variantDesc(crop) + raw.desc + pk.desc;
   if (item.condition) desc += `\n[${CONDITION_LABEL[item.condition]}] ${CONDITION_DESC[item.condition]}`;
-  return { title: item.name, subtitle: '농산물', rows, desc };
+  return { title: specialtyDisplayName(item), subtitle: '농산물', rows, desc };   // 295차 — 명산지 꼬리표
 }
 
 /** 243차 — 포장 줄(낱개 · 팩) + 본문 꼬리 */

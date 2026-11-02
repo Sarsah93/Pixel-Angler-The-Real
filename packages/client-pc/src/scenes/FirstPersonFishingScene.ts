@@ -3801,6 +3801,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       basePrice: Math.max(2000, Math.round(x.weightG * 12)),
       condition: 'live' as const, equippable: false,
       speciesId: x.speciesId, lengthCm: x.lengthCm, weightG: x.weightG, sex: x.sex, catchMethod: 'rod' as const,
+      originRegion: GameState.originRegionId,   // 295차 — 가방으로 보관한 고기도 얻은 지역을 기억한다(294는 쿨러 쪽만 붙였다)
     });
     this.buildDecisionPanel(
       `${lead.nameKo} ${lead.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,

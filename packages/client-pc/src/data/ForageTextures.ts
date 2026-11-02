@@ -18,6 +18,7 @@ export const FORAGE_IMAGE_FILES: Record<string, string> = {
   forage_turbo_cornutus: 'turbo_cornutus.png',             // 소라
   forage_oyster_gigas: 'oyster_gigas.png',                 // 굴
   forage_haliotis_discus: 'haliotis_discus.png',           // 전복
+  forage_pandalus_hypsinotus: 'pandalus_hypsinotus.png',   // 도화새우(독도새우 — 295)
   forage_charybdis_japonica: 'charybdis_japonica.png',     // 민꽃게(돌게)
   forage_octopus_minor: 'octopus_minor.png',               // 낙지
   forage_mytilus_coruscus: 'mytilus_coruscus.png',         // 홍합(섭)

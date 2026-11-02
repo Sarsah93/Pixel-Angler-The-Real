@@ -764,6 +764,52 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     nightBonus: 0.9, tideActivity: flatTide(0.7),
     fight: { basePower: 0.2, patternWeights: { jump: 0.15, dive: 0.25, lateral: 0.6 }, intervalMult: 1.0, mouthFragility: 0.35 },
   },
+  // ── 295차 — 섬 어종 넷(사용자 지시 「자리돔 · 혹돔 · 옥돔 · 참다랑어 추가」 · 294 조사: 제주 · 울릉 · 독도 돔류 · 등푸른)
+  {
+    speciesId: 'pearl_spot_chromis', nameKo: '자리돔', nameEn: 'Pearl-spot Chromis',
+    // 제주 연안 암초 위 무리 — 「자리」(자리그물 · 자리물회) · 자리 방어의 미끼 (294 조사)
+    habitat: ['reef'], minDepthM: 2, maxDepthM: 25, preferredLayers: ['mid', 'surface'],
+    baitPreference: { krill: 60, worm_blue: 35, slater: 25, bread: 20, earthworm: 15 },
+    minCm: 8, maxCm: 20, meanCm: 13, sdCm: 2.5, lwrA: 0.021, lwrB: 3.0, bodyForm: 'deepBody', maleRatio: 0.5,
+    sexNote: '손가락만 한 작은 돔 — 떼로 몰려 찌를 톡톡 친다. 여름 산란기에 수컷이 알 자리를 지킨다',
+    // 주행성 — 해가 지면 바위틈에 숨는다
+    nightBonus: 0.3, tideActivity: flatTide(0.8),
+    fight: { basePower: 0.1, patternWeights: { jump: 0.2, dive: 0.3, lateral: 0.5 }, intervalMult: 1.2, mouthFragility: 0.35 },
+  },
+  {
+    speciesId: 'bulgyhead_wrasse', nameKo: '혹돔', nameEn: 'Bulgyhead Wrasse',
+    // 암초 바닥의 대형 놀래기 — 이마에 혹이 선 수컷. 게 · 조개 · 성게를 이빨로 깨 먹는다 (울릉 · 제주)
+    habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 60, preferredLayers: ['bottom'],
+    baitPreference: { crab: 60, shellfish: 55, urchin: 50, worm_king: 30, fishcut: 20 },
+    minCm: 25, maxCm: 100, meanCm: 55, sdCm: 12, lwrA: 0.019, lwrB: 3.02, bodyForm: 'deepBody',
+    maleRatio: 0.4,
+    sexRule: (len) => (len > 60 ? 0.85 : 0.3),
+    sexNote: '암컷 → 수컷 성전환 — 60cm를 넘긴 수컷은 이마의 혹과 턱이 불룩하다',
+    // 놀래기류 — 밤에는 바위 틈에서 잔다
+    nightBonus: 0.2, tideActivity: sariPeak(0.4, 0.8),
+    fight: { basePower: 0.9, patternWeights: { jump: 0.05, dive: 0.65, lateral: 0.3 }, intervalMult: 0.9, mouthFragility: 0.08 },
+  },
+  {
+    speciesId: 'red_tilefish', nameKo: '옥돔', nameEn: 'Red Tilefish',
+    // 제주 깊은 모래 · 펄 바닥의 외줄낚시 — 30~200m. 금어기 7.21~8.20(수산자원관리법 시행령)
+    habitat: ['sand', 'mud'], minDepthM: 30, maxDepthM: 200, preferredLayers: ['bottom'],
+    baitPreference: { shellfish: 50, fishcut: 50, krill: 35, worm_king: 30, lure: 15 },
+    minCm: 18, maxCm: 60, meanCm: 35, sdCm: 7, lwrA: 0.0125, lwrB: 3.0, bodyForm: 'elongated', maleRatio: 0.5,
+    sexNote: '머리가 네모지고 붉은 몸에 노란 세로줄 — 살이 희고 달아 제주에서는 제사상에 올린다',
+    closedMonths: [7, 8], closedSeasons: [{ from: [7, 21], to: [8, 20] }],
+    nightBonus: 0.7, tideActivity: flatTide(0.7),
+    fight: { basePower: 0.5, patternWeights: { jump: 0.05, dive: 0.6, lateral: 0.35 }, intervalMult: 1.0, mouthFragility: 0.2 },
+  },
+  {
+    speciesId: 'bluefin_tuna', nameKo: '참다랑어', nameEn: 'Pacific Bluefin Tuna',
+    // 먼바다 표층 회유 — 동해(울산 · 울릉 · 독도) 여름 정치망 · 제주 남쪽 캐스팅 · 지깅. 가장 센 물고기
+    habitat: ['open'], minDepthM: 10, maxDepthM: 200, preferredLayers: ['surface', 'mid'],
+    baitPreference: { lure: 70, fishcut: 45, livefish: 60, krill: 10 },
+    minCm: 50, maxCm: 300, meanCm: 110, sdCm: 30, lwrA: 0.019, lwrB: 3.0, bodyForm: 'fusiform', maleRatio: 0.5,
+    sexNote: '한 번 달리면 줄이 수백 미터 풀린다 — 드랙을 잠그면 줄이 끊어지고, 놓아주면 바닥으로 박는다',
+    nightBonus: 0.6, tideActivity: sariPeak(0.5, 0.9),
+    fight: { basePower: 1.5, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 0.55, mouthFragility: 0.05 },
+  },
 ];
 
 /** 스폰/입질 컨텍스트 */

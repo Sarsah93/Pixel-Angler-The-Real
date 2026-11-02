@@ -20,6 +20,7 @@ import { ItemDetailPanel } from './ItemDetailPanel.js';
 import { createItemIcon } from './ItemIcon.js';
 import { setSlotLabel, SLOT_LABEL_PX } from './SlotLabel.js';
 import { getCreatureById } from '@tra/core';
+import { specialtyDisplayName } from '../data/SpecialtyTag.js';
 import {
   CoolerStore, COOLER_CAPACITY, CoolerFish, MEDIUM_LABEL,
 } from '../store/CoolerStore.js';
@@ -276,7 +277,7 @@ export class CoolerPanel extends DraggablePanel {
       this.content.add(createItemIcon(this.scene, cx + CELL / 2, cy + CELL / 2 - 12, this.toInvItem(i, fish), 52));
       const nm = setSlotLabel(this.scene.add.text(cx + CELL / 2, cy + CELL - 22, '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#cfe3f2', fontStyle: 'bold',
-      }).setOrigin(0.5), fish.nameKo, CELL - 8);   // 188차 — maxLines 잘림 대신 이름 축약
+      }).setOrigin(0.5), specialtyDisplayName({ id: '', name: fish.nameKo, speciesId: fish.speciesId, subCategory: '어획물', originRegion: fish.originRegion }), CELL - 8);   // 188차 — 이름 축약 · 295차 명산지
       const sz = this.scene.add.text(cx + CELL / 2, cy + CELL - 10, `${fish.lengthCm}cm · ${(fish.weightG / 1000).toFixed(1)}kg`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '8px', color: '#8fb8d0',
       }).setOrigin(0.5);

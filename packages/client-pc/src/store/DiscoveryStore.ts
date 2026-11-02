@@ -16,6 +16,8 @@ import { discoveryKey, FISH_DATABASE, dishDiscoveryName, itemBaseId } from '@tra
 import { SHORE_CREATURE_DATABASE } from '@tra/core';
 import { migrateSpeciesId } from '../data/SpeciesMigration.js';
 import { canonicalItemId } from './ItemIdAlias.js';
+import { REGIONAL_SPECIALTIES } from '@tra/core';
+import { specialtyTagOf, type SpecialtyTaggable } from '../data/SpecialtyTag.js';   // 295차
 
 /** 세이브 직렬화 형태 */
 export interface DiscoverySaveState {
@@ -69,7 +71,14 @@ class DiscoveryStoreClass {
       return SHORE_CREATURE_DATABASE.find((c) => c.id === id)?.nameKo ?? id;
     }
     if (kind === 'dish') return dishDiscoveryName(id);
+    if (kind === 'specialty') return REGIONAL_SPECIALTIES.find((d) => d.id === id)?.nameKo ?? id;   // 295차
     return id;
+  }
+
+  /** 295차 — 얻은 지역의 특산이면 「특산」 도감에 적는다(잡기 · 캐기 · 거두기 · 가공 · 쿨러) */
+  noteSpecialty(item: SpecialtyTaggable, source: DiscoverySource): boolean {
+    const tag = specialtyTagOf(item);
+    return tag ? this.record('specialty', tag.def.id, source) : false;
   }
 
   // ─── dev 전용 ───────────────────────────────

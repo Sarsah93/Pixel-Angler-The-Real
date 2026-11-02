@@ -136,6 +136,19 @@ export const REGIONAL_SPECIALTIES: readonly RegionalSpecialtyDef[] = [
     noteKo: '독도 어장의 홍해삼', noteEn: 'Red sea cucumber of the Dokdo grounds' },
   { id: 'dokdo_abalone', regionIds: ['dokdo'], kind: 'forage', keys: ['haliotis_discus'], nameKo: '독도 왕전복', nameEn: 'Dokdo giant abalone', priceMult: 1.4,
     noteKo: '1960~70년대 「주먹만한 전복」 — 10년간 13만 마리 방류로 되살리는 중', noteEn: 'Fist-sized abalone of the 60s and 70s — 130,000 released over ten years to bring them back' },
+  { id: 'dokdo_shrimp', regionIds: ['dokdo', 'ulleungdo'], kind: 'forage', keys: ['pandalus_hypsinotus'], nameKo: '독도새우(도화새우)', nameEn: 'Dokdo shrimp (coral shrimp)', months: [10, 11, 12, 1, 2, 3, 4], priceMult: 1.4,
+    noteKo: '독도 · 울릉 앞바다 150~300m 찬 바다의 새우 통발 — 2017년 만찬에 오른 뒤 전국에 이름이 났다', noteEn: 'Shrimp pots in the cold 150–300 m water off Dokdo and Ulleung — famous nationwide since the 2017 state dinner' },
+  // ── 295차 — 가공품(지역 가공대 — `rules/RegionalProcessing.ts`): 그 지역 가공장에서 나온 것만 특산
+  { id: 'pohang_gwamegi', regionIds: ['gyeongbuk_pohang'], kind: 'processed', keys: ['proc_gwamegi'], nameKo: '구룡포 과메기', nameEn: 'Guryongpo gwamegi', months: [11, 12, 1, 2], priceMult: 1.3,
+    noteKo: '구룡포 덕장에서 말린 꽁치 과메기 — 전국의 85%', noteEn: 'Saury gwamegi dried on Guryongpo racks — 85% of the nation', gi: '구룡포과메기(수산 GI 2016)', festivalKo: '구룡포 과메기축제(11월)' },
+  { id: 'ulleung_jangajji', regionIds: ['ulleungdo'], kind: 'processed', keys: ['proc_myeongi_jangajji'], nameKo: '울릉 명이 장아찌', nameEn: 'Ulleung alpine leek pickle', priceMult: 1.3,
+    noteKo: '울릉 산마늘 잎을 간장에 삭힌 장아찌 — 섬의 대표 반찬', noteEn: 'Ulleung alpine leek cured in soy — the island’s signature side dish' },
+  { id: 'sokcho_sundae', regionIds: ['gangwon_sokcho'], kind: 'processed', keys: ['proc_squid_sundae'], nameKo: '아바이 오징어순대', nameEn: 'Abai squid sundae', priceMult: 1.25,
+    noteKo: '아바이마을 실향민의 오징어순대', noteEn: 'Squid sundae of the Abai Village refugees' },
+  { id: 'geoje_daegupo', regionIds: ['gyeongnam_geoje'], kind: 'processed', keys: ['proc_daegupo'], nameKo: '거제 대구포', nameEn: 'Geoje dried cod', months: [12, 1, 2], priceMult: 1.3,
+    noteKo: '외포 · 지세포 덕장에서 겨울 바람에 말린 대구', noteEn: 'Cod dried in the winter wind on Oepo and Jisepo racks' },
+  { id: 'jeju_dried_tilefish', regionIds: ['jeju'], kind: 'processed', keys: ['proc_dried_tilefish'], nameKo: '제주 반건조 옥돔', nameEn: 'Jeju half-dried tilefish', priceMult: 1.3,
+    noteKo: '제주 옥돔을 소금 간 해 하루 말린 것 — 제사상 · 선물', noteEn: 'Jeju tilefish salted and dried a day — for the ancestral table and gifts' },
   { id: 'dokdo_octopus', regionIds: ['dokdo'], kind: 'fish', keys: ['giant_octopus'], nameKo: '독도 대문어', nameEn: 'Dokdo giant octopus', months: [12, 1, 2, 3, 4], priceMult: 1.3,
     noteKo: '「울릉도는 오징어, 독도는 문어」', noteEn: '"Ulleungdo has squid, Dokdo has octopus"' },
 ];
@@ -156,6 +169,19 @@ export function specialtyPriceMult(key: string | undefined | null, originRegion:
   const d = specialtyOf(key, originRegion);
   if (!d) return 1;
   return specialtyInSeason(d, month) ? d.priceMult : 1 + (d.priceMult - 1) / 2;
+}
+
+/** 295차 — 택배 차익: 특산을 **얻은 지역 밖** 가게에 팔 때 더 쳐주는 배율(산지에서 떨어질수록 귀하다 — 신선도는 길에서 깎인다 · 가공품은 안 깎인다) */
+export const SPECIALTY_AWAY_MULT = 1.15;
+
+/**
+ * 295차 — 판매가 배율 한 번에: 특산 제철 배율(`specialtyPriceMult`) × 산지 밖이면 `SPECIALTY_AWAY_MULT`.
+ * `sellRegion`이 없으면(위판 · 시세 조회) 산지 배율만.
+ */
+export function specialtySellMult(key: string | undefined | null, originRegion: string | undefined | null, month: number, sellRegion?: string | null): number {
+  const base = specialtyPriceMult(key, originRegion, month);
+  if (base <= 1 || !sellRegion || !originRegion || sellRegion === originRegion) return base;
+  return base * SPECIALTY_AWAY_MULT;
 }
 
 /** 지역의 특산 전부(위키 · 직판장 매대) */

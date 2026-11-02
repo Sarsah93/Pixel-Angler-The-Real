@@ -1224,7 +1224,7 @@ export class ButcheryPanel extends DraggablePanel {
         basePrice: Math.max(500, Math.round(this.source.basePrice)),
         condition: 'live' as const, conditionSinceMs: Date.now(),
         equippable: false,
-        speciesId, weightG: w, lengthCm: this.source.lengthCm,
+        speciesId, weightG: w, lengthCm: this.source.lengthCm, originRegion: this.source.originRegion,
       };
       if (InventoryStore.addItem(tpl, 1)) this.grantedLog.push({ id: tpl.id, qty: 1 });
       else this.grantFailed.push(tpl.name);
@@ -2018,7 +2018,7 @@ export class ButcheryPanel extends DraggablePanel {
 
     const seq = InventoryStore.nextCatchSeq();
     InventoryStore.addItem({
-      id: `inv_dressed_${speciesId}_${seq}`,
+      id: `inv_dressed_${speciesId}_${seq}`, originRegion: this.source.originRegion,
       name: `${nameKo} 손질 (통마리)`,
       icon: '', iconTexture: this.source.iconTexture,
       category: 'food', subCategory: '손질 통마리',
@@ -4218,7 +4218,7 @@ export class ButcheryPanel extends DraggablePanel {
     const ceph = this.process.cephalopod;
     // 필렛 — pure_pilet 실사 로인 + 어종 색 (P1-2 파라메트릭 → 2026-07-30 실사 에셋)
     if (!ceph) InventoryStore.addItem({
-      id: engawaSrc ? `inv_engawa_${speciesId}_${seq}` : `inv_fillet_${speciesId}_${seq}`,
+      id: engawaSrc ? `inv_engawa_${speciesId}_${seq}` : `inv_fillet_${speciesId}_${seq}`, originRegion: this.source.originRegion,
       name: engawaSrc
         ? `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${outWeight}g`
         : `${nameKo} 순수 필렛 (${yieldRes.grade}) ${outWeight}g`,
@@ -4243,7 +4243,7 @@ export class ButcheryPanel extends DraggablePanel {
         basePrice: Math.max(400, engW * 25),
         condition: outCond, conditionSinceMs: outSince,
         equippable: false,
-        speciesId, lengthCm: this.source.lengthCm, weightG: engW,
+        speciesId, lengthCm: this.source.lengthCm, weightG: engW, originRegion: this.source.originRegion,
       }, 4);
     }
 

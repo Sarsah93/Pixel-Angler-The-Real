@@ -99,6 +99,10 @@ const REGION_TO_SIDO: Record<string, string[]> = {
  */
 const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['감성돔'], speciesIds: ['black_seabream'] },
+  { keywords: ['옥돔'], speciesIds: ['red_tilefish'] },   // 295차 — 섬 어종 넷
+  { keywords: ['자리돔'], speciesIds: ['pearl_spot_chromis'] },
+  { keywords: ['혹돔'], speciesIds: ['bulgyhead_wrasse'] },
+  { keywords: ['참다랑어'], speciesIds: ['bluefin_tuna'] },
   { keywords: ['참돔'], speciesIds: ['red_seabream'] },
   { keywords: ['돌돔', '줄돔'], speciesIds: ['stone_beakperch', 'spotted_knifejaw'] },
   { keywords: ['넙치', '광어'], speciesIds: ['flatfish'] },

@@ -357,6 +357,7 @@ export class InteriorSystem {
       case 'sit': return '[F] 앉기';
       case 'schedule': return '[F] 경매 시간 보기';
       case 'mill': return '[F] 깨 맡기기 · 찾기';
+      case 'process': return '[F] 맡기기 · 찾기';   // 295차 — 가공장
     }
   }
 

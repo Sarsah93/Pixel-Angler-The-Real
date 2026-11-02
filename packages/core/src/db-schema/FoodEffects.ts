@@ -41,6 +41,15 @@ export const RECIPE_EFFECTS: Record<string, FoodEffectDef> = {
     nameKo: '속 편한 반찬', nameEn: 'Easy on the stomach', descKo: '30분 동안 피로 증가량 -6%', descEn: 'Fatigue builds 6% slower for 30 min' },
   grill_eel: { id: 'stamina', kind: 'fatigue_recovery', magnitude: 0.12, durationMin: 60,
     nameKo: '원기회복', nameEn: 'Revitalised', descKo: '60분 동안 피로 감소 속도 +12%', descEn: 'Fatigue recovers 12% faster for 60 min' },
+  // ── 295차 — 지역 레시피 ──
+  stew_cod_geoje: { id: 'warm_bay', kind: 'cold_resistance', magnitude: 0.1, durationMin: 40,
+    nameKo: '뜨끈한 속', nameEn: 'Warm belly', descKo: '40분 동안 추위 체감 -10%', descEn: 'Cold bites -10% for 40 min' },
+  grill_tilefish_jeju: { id: 'island_focus', kind: 'fishing_focus', magnitude: 0.08, durationMin: 30,
+    nameKo: '섬의 밥상', nameEn: 'Island table', descKo: '30분 동안 입질 집중 +8%', descEn: 'Bite focus +8% for 30 min' },
+  braise_saury_guryongpo: { id: 'rack_village', kind: 'satiety', magnitude: 0.1, durationMin: 40,
+    nameKo: '덕장 마을의 저녁', nameEn: 'Supper by the racks', descKo: '40분 동안 허기 감소 속도 -10%', descEn: 'Hunger drains 10% slower for 40 min' },
+  stew_hamo_yeosu: { id: 'summer_restore', kind: 'fatigue_recovery', magnitude: 0.1, durationMin: 35,
+    nameKo: '여름 보양', nameEn: 'Summer restorative', descKo: '35분 동안 피로 감소량 +10%', descEn: 'Fatigue recovers 10% faster for 35 min' },
 };
 
 export function recipeEffectOf(recipeId: string): FoodEffectDef | undefined {

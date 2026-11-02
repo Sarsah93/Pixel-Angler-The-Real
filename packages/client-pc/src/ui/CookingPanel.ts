@@ -16,6 +16,7 @@ import {
   evaluateSession, effectiveHeatW, HEAT_LABEL_KO, RECIPE_FAMILY_KO, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO, fmtUnits,
   type DeployedStove, type HeatLevel, type FireRecipeDef, type CookwareDef, type RecipeIngredientReq,
 } from '@tra/core';
+import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
 import { DraggablePanel } from './DraggablePanel.js';
 import { cv, cvCss, cvText, shapeCuesOn } from './ColorAssist.js';
 import { CookingStore } from '../store/CookingStore.js';
@@ -279,7 +280,7 @@ export class CookingPanel extends DraggablePanel {
     const h2 = sc.add.text(C_X, cy, cw ? `${cw.nameKo}(으)로 만들 수 있는 요리` : '만들 수 있는 요리', { fontFamily: FONT, fontSize: '12px', color: '#e8f4fd', fontStyle: 'bold' });
     clampTextWidth(h2, C_W); this.staticC.add(h2); cy += 24;
     if (cw) {
-      const list = recipesForCookware(cw.kind);
+      const list = recipesForCookware(cw.kind).filter(recipeKnown);   // 295차 — 배운 지역 레시피만
       for (const r of list) {
         const isSel = this.pickRecipe === r.id;
         const bg = sc.add.rectangle(C_X, cy, C_W - 4, 44, isSel ? 0x1f4a6a : 0x122236, 0.95).setOrigin(0, 0).setStrokeStyle(1, isSel ? 0x5cd0ff : 0x2a3a4a, 1);

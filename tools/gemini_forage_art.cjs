@@ -45,6 +45,13 @@ const REF_WORM = ['perinereis_aibuhitensis.png', 'aplysia_kurodai.png', 'halioti
  * `top`이 있으면 위에서 본 그림을 따로 그린다. 이웃 종과 헷갈리기 쉬운 것은 다른 점을 적는다(전복 ↔ 오분자기 · 낙지 ↔ 주꾸미 · 민꽃게 ↔ 꽃게).
  */
 const LOOKS = {
+  // 295차 — 독도새우(도화새우) · 통발 전용
+  pandalus_hypsinotus: {
+    nameKo: '도화새우', nameEn: 'Coral shrimp (Dokdo shrimp)', sci: 'Pandalus hypsinotus', aspect: '16:9', refs: REF_CRAB,
+    look: '도화새우(Pandalus hypsinotus)를 옆에서 본 모습. 손바닥 길이의 큰 새우로 몸이 통통하고, 머리가슴(갑각)이 크며 이마뿔이 길고 위로 휘어 톱니가 있다. '
+      + '몸 색은 붉은 주황색 바탕이고 갑각과 배마디에 흰 점과 흰 줄무늬가 섞여 있으며, 머리 옆에 붉은 점이 꽃잎처럼 박혀 있다. 긴 더듬이 두 쌍이 앞으로 뻗고, 걷는 다리는 가늘고 길며, '
+      + '배는 둥글게 굽고 꼬리부채는 펼쳐져 있다. 눈은 검고 자루에 달렸다. 머리는 왼쪽, 꼬리는 오른쪽.',
+  },
   clam_varicosa: {
     nameKo: '바지락', nameEn: 'Manila clam', sci: 'Ruditapes philippinarum', aspect: '4:3', refs: REF_SHELL,
     // 248차 1판은 꼭지가 가운데인 둥근 삼각형(백합 · 대합 꼴)이었다 — 꼭지 위치와 긴 뒤끝을 짚는다
