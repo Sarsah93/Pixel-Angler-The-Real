@@ -1,1 +1,470 @@
-[{"type":"lodging","name":"독두게스트하우스","nameEn":"Dokdu Guesthouse","tx":529,"ty":640,"osmId":368601305},{"type":"lodging","name":"울링콘도","nameEn":"Ulringkondo","tx":352,"ty":707,"osmId":368663551},{"type":"restaurant","name":"울링횟집","nameEn":"Ulring Sashimi House","tx":573,"ty":714,"osmId":368971860},{"type":"ferry_terminal","name":"도동선착장","nameEn":"","tx":618,"ty":755,"osmId":408727177},{"type":"lighthouse","name":"행남등대","nameEn":"Haengnamdeungdae","tx":784,"ty":621,"osmId":444671209},{"type":"viewpoint","name":"내수전일출전망대","nameEn":"","tx":613,"ty":59,"osmId":4621601006},{"type":"lodging","name":"송림비츠호텔","nameEn":"Songrimbicheu Hotel","tx":595,"ty":720,"osmId":4623907797},{"type":"lodging","name":"오션파키호텔","nameEn":"Osyeonpaki Hotel","tx":577,"ty":718,"osmId":4627180620},{"type":"lodging","name":"울릉도이사보호텔","nameEn":"Ulreungdoisabo Hotel","tx":572,"ty":716,"osmId":4627180621},{"type":"police","name":"울릉경찰서 도동파출소","nameEn":"","tx":529,"ty":695,"osmId":4627208084},{"type":"lodging","name":"울링호텔","nameEn":"Ulring Hotel","tx":525,"ty":671,"osmId":4633925025},{"type":"police","name":"울릉경찰서 저동파출소","nameEn":"","tx":603,"ty":477,"osmId":4635205407},{"type":"lodging","name":"바다삼모텔","nameEn":"Badasam Motel","tx":572,"ty":708,"osmId":4635538094},{"type":"fuel","name":"","nameEn":"","tx":481,"ty":608,"osmId":4635759702},{"type":"fuel","name":"","nameEn":"","tx":521,"ty":566,"osmId":4635772715},{"type":"lighthouse","name":"하얀등대","nameEn":"","tx":678,"ty":409,"osmId":4746839122},{"type":"market","name":"어판장","nameEn":"","tx":623,"ty":487,"osmId":4746839132},{"type":"shop","shopKind":"yes","name":"오징어타온","nameEn":"Ojingeotaon","tx":629,"ty":395,"osmId":4746839133},{"type":"bank","name":"농민은행","nameEn":"Farmers Bank","tx":581,"ty":725,"osmId":5338997825},{"type":"info","name":"","nameEn":"Number 3","tx":350,"ty":563,"osmId":6013033308},{"type":"info","name":"","nameEn":"Number 5","tx":283,"ty":524,"osmId":6013033309},{"type":"info","name":"","nameEn":"Number 4","tx":339,"ty":526,"osmId":6013033313},{"type":"viewpoint","name":"","nameEn":"","tx":614,"ty":748,"osmId":6013033314},{"type":"info","name":"","nameEn":"Number 7","tx":245,"ty":586,"osmId":6013033318},{"type":"info","name":"","nameEn":"Number 8","tx":240,"ty":543,"osmId":6013033319},{"type":"shop","shopKind":"bakery","name":"우선제과","nameEn":"Useonjegwa","tx":518,"ty":684,"osmId":6013033322},{"type":"lodging","name":"Hanil Hotal","nameEn":"Hanil Hotal","tx":584,"ty":708,"osmId":6013033326},{"type":"lighthouse","name":"빨간등대","nameEn":"","tx":692,"ty":383,"osmId":8883522987},{"type":"lodging","name":"호텔 위디","nameEn":"Hotel Widi","tx":604,"ty":507,"osmId":9106639017},{"type":"lodging","name":"포세이둔모텔","nameEn":"Poseidun Motel","tx":605,"ty":510,"osmId":9106639317},{"type":"restaurant","name":"버거리아","nameEn":"Burgeria","tx":536,"ty":692,"osmId":9113577817},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":590,"ty":717,"osmId":9465563652},{"type":"shop","shopKind":"convenience","name":"GX24","nameEn":"GX24","tx":585,"ty":715,"osmId":9465563656},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":485,"ty":663,"osmId":9465563703},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":609,"ty":507,"osmId":9465987585},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":613,"ty":413,"osmId":9466316360},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":66,"ty":1095,"osmId":9466851531},{"type":"ferry_terminal","name":"울릉항여객선터미널","nameEn":"","tx":54,"ty":1193,"osmId":9466851586},{"type":"lighthouse","name":"","nameEn":"","tx":228,"ty":1118,"osmId":9466851769},{"type":"hospital","name":"시온한의원","nameEn":"","tx":553,"ty":466,"osmId":12174442758},{"type":"shop","shopKind":"convenience","name":"GX24","nameEn":"GX24","tx":603,"ty":503,"osmId":12944077365},{"type":"restaurant","name":"아리렁식당","nameEn":"Arireong Restaurant","tx":614,"ty":494,"osmId":12944842980},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":338,"ty":874,"osmId":12944842982},{"type":"toilet","name":"","nameEn":"","tx":624,"ty":509,"osmId":12944847050},{"type":"toilet","name":"","nameEn":"","tx":669,"ty":527,"osmId":12944850928},{"type":"toilet","name":"","nameEn":"","tx":347,"ty":891,"osmId":12944852221},{"type":"shop","shopKind":"convenience","name":"QU","nameEn":"QU","tx":25,"ty":1163,"osmId":12946757966},{"type":"police","name":"","nameEn":"","tx":26,"ty":1175,"osmId":12946794326},{"type":"ferry_terminal","name":"저동항 여객 터미널","nameEn":"","tx":615,"ty":418,"osmId":455183455},{"type":"viewpoint","name":"독도 일출 전망대","nameEn":"Dokdo Observatory","tx":512,"ty":778,"osmId":467676882},{"type":"ferry_terminal","name":"울릉여객선터미널","nameEn":"Ulleung Cruise Terminal","tx":614,"ty":743,"osmId":467677287},{"type":"hospital","name":"울릉군보건의료원","nameEn":"","tx":434,"ty":647,"osmId":467678969},{"type":"ferry_terminal","name":"울릉항여객선터미널","nameEn":"Ulleung Ferry Port Terminal","tx":58,"ty":1184,"osmId":525863361},{"type":"police","name":"울릉경찰서","nameEn":"Ulleung Police Station","tx":546,"ty":683,"osmId":834858216},{"type":"police","name":"저동파출소","nameEn":"","tx":604,"ty":477,"osmId":1026689608},{"type":"market","name":"울릉어판장","nameEn":"","tx":629,"ty":503,"osmId":1026689613},{"type":"shop","shopKind":"telecommunication","name":"케이텔플라자 울릉","nameEn":"K-Tel Plaza Ulreung","tx":472,"ty":663,"osmId":1141590339},{"type":"shop","shopKind":"processor","name":"울릉 명이 장아찌 공방","nameEn":"Ulleung Alpine Leek Pickling","tx":562,"ty":694,"osmId":-9007,"src":"manual"}]
+[
+ {
+  "type": "lodging",
+  "name": "독두게스트하우스",
+  "nameEn": "Dokdu Guesthouse",
+  "tx": 529,
+  "ty": 640,
+  "osmId": 368601305
+ },
+ {
+  "type": "lodging",
+  "name": "울링콘도",
+  "nameEn": "Ulringkondo",
+  "tx": 352,
+  "ty": 707,
+  "osmId": 368663551
+ },
+ {
+  "type": "restaurant",
+  "name": "울링횟집",
+  "nameEn": "Ulring Sashimi House",
+  "tx": 573,
+  "ty": 714,
+  "osmId": 368971860
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "도동선착장",
+  "nameEn": "",
+  "tx": 618,
+  "ty": 755,
+  "osmId": 408727177
+ },
+ {
+  "type": "lighthouse",
+  "name": "행남등대",
+  "nameEn": "Haengnamdeungdae",
+  "tx": 784,
+  "ty": 621,
+  "osmId": 444671209
+ },
+ {
+  "type": "viewpoint",
+  "name": "내수전일출전망대",
+  "nameEn": "",
+  "tx": 613,
+  "ty": 59,
+  "osmId": 4621601006
+ },
+ {
+  "type": "lodging",
+  "name": "송림비츠호텔",
+  "nameEn": "Songrimbicheu Hotel",
+  "tx": 595,
+  "ty": 720,
+  "osmId": 4623907797
+ },
+ {
+  "type": "lodging",
+  "name": "오션파키호텔",
+  "nameEn": "Osyeonpaki Hotel",
+  "tx": 577,
+  "ty": 718,
+  "osmId": 4627180620
+ },
+ {
+  "type": "lodging",
+  "name": "울릉도이사보호텔",
+  "nameEn": "Ulreungdoisabo Hotel",
+  "tx": 572,
+  "ty": 716,
+  "osmId": 4627180621
+ },
+ {
+  "type": "police",
+  "name": "울릉경찰서 도동파출소",
+  "nameEn": "",
+  "tx": 529,
+  "ty": 695,
+  "osmId": 4627208084
+ },
+ {
+  "type": "lodging",
+  "name": "울링호텔",
+  "nameEn": "Ulring Hotel",
+  "tx": 525,
+  "ty": 671,
+  "osmId": 4633925025
+ },
+ {
+  "type": "police",
+  "name": "울릉경찰서 저동파출소",
+  "nameEn": "",
+  "tx": 603,
+  "ty": 477,
+  "osmId": 4635205407
+ },
+ {
+  "type": "lodging",
+  "name": "바다삼모텔",
+  "nameEn": "Badasam Motel",
+  "tx": 572,
+  "ty": 708,
+  "osmId": 4635538094
+ },
+ {
+  "type": "fuel",
+  "name": "",
+  "nameEn": "",
+  "tx": 481,
+  "ty": 608,
+  "osmId": 4635759702
+ },
+ {
+  "type": "fuel",
+  "name": "",
+  "nameEn": "",
+  "tx": 521,
+  "ty": 566,
+  "osmId": 4635772715
+ },
+ {
+  "type": "lighthouse",
+  "name": "하얀등대",
+  "nameEn": "",
+  "tx": 678,
+  "ty": 409,
+  "osmId": 4746839122
+ },
+ {
+  "type": "market",
+  "name": "어판장",
+  "nameEn": "",
+  "tx": 623,
+  "ty": 487,
+  "osmId": 4746839132
+ },
+ {
+  "type": "shop",
+  "shopKind": "yes",
+  "name": "오징어타온",
+  "nameEn": "Ojingeotaon",
+  "tx": 629,
+  "ty": 395,
+  "osmId": 4746839133
+ },
+ {
+  "type": "bank",
+  "name": "농민은행",
+  "nameEn": "Farmers Bank",
+  "tx": 581,
+  "ty": 725,
+  "osmId": 5338997825
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Number 3",
+  "tx": 350,
+  "ty": 563,
+  "osmId": 6013033308
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Number 5",
+  "tx": 283,
+  "ty": 524,
+  "osmId": 6013033309
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Number 4",
+  "tx": 339,
+  "ty": 526,
+  "osmId": 6013033313
+ },
+ {
+  "type": "viewpoint",
+  "name": "",
+  "nameEn": "",
+  "tx": 614,
+  "ty": 748,
+  "osmId": 6013033314
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Number 7",
+  "tx": 245,
+  "ty": 586,
+  "osmId": 6013033318
+ },
+ {
+  "type": "info",
+  "name": "",
+  "nameEn": "Number 8",
+  "tx": 240,
+  "ty": 543,
+  "osmId": 6013033319
+ },
+ {
+  "type": "shop",
+  "shopKind": "bakery",
+  "name": "우선제과",
+  "nameEn": "Useonjegwa",
+  "tx": 518,
+  "ty": 684,
+  "osmId": 6013033322
+ },
+ {
+  "type": "lodging",
+  "name": "Hanil Hotal",
+  "nameEn": "Hanil Hotal",
+  "tx": 584,
+  "ty": 708,
+  "osmId": 6013033326
+ },
+ {
+  "type": "lighthouse",
+  "name": "빨간등대",
+  "nameEn": "",
+  "tx": 692,
+  "ty": 383,
+  "osmId": 8883522987
+ },
+ {
+  "type": "lodging",
+  "name": "호텔 위디",
+  "nameEn": "Hotel Widi",
+  "tx": 604,
+  "ty": 507,
+  "osmId": 9106639017
+ },
+ {
+  "type": "lodging",
+  "name": "포세이둔모텔",
+  "nameEn": "Poseidun Motel",
+  "tx": 605,
+  "ty": 510,
+  "osmId": 9106639317
+ },
+ {
+  "type": "restaurant",
+  "name": "버거리아",
+  "nameEn": "Burgeria",
+  "tx": 536,
+  "ty": 692,
+  "osmId": 9113577817
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 590,
+  "ty": 717,
+  "osmId": 9465563652
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 585,
+  "ty": 715,
+  "osmId": 9465563656
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 485,
+  "ty": 663,
+  "osmId": 9465563703
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 609,
+  "ty": 507,
+  "osmId": 9465987585
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 613,
+  "ty": 413,
+  "osmId": 9466316360
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 66,
+  "ty": 1095,
+  "osmId": 9466851531
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "울릉항여객선터미널",
+  "nameEn": "",
+  "tx": 54,
+  "ty": 1193,
+  "osmId": 9466851586
+ },
+ {
+  "type": "lighthouse",
+  "name": "",
+  "nameEn": "",
+  "tx": 228,
+  "ty": 1118,
+  "osmId": 9466851769
+ },
+ {
+  "type": "hospital",
+  "name": "시온한의원",
+  "nameEn": "",
+  "tx": 553,
+  "ty": 466,
+  "osmId": 12174442758
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "GX24",
+  "nameEn": "GX24",
+  "tx": 603,
+  "ty": 503,
+  "osmId": 12944077365
+ },
+ {
+  "type": "restaurant",
+  "name": "아리렁식당",
+  "nameEn": "Arireong Restaurant",
+  "tx": 614,
+  "ty": 494,
+  "osmId": 12944842980
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 338,
+  "ty": 874,
+  "osmId": 12944842982
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 624,
+  "ty": 509,
+  "osmId": 12944847050
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 669,
+  "ty": 527,
+  "osmId": 12944850928
+ },
+ {
+  "type": "toilet",
+  "name": "",
+  "nameEn": "",
+  "tx": 347,
+  "ty": 891,
+  "osmId": 12944852221
+ },
+ {
+  "type": "shop",
+  "shopKind": "convenience",
+  "name": "QU",
+  "nameEn": "QU",
+  "tx": 25,
+  "ty": 1163,
+  "osmId": 12946757966
+ },
+ {
+  "type": "police",
+  "name": "",
+  "nameEn": "",
+  "tx": 26,
+  "ty": 1175,
+  "osmId": 12946794326
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "저동항 여객 터미널",
+  "nameEn": "",
+  "tx": 615,
+  "ty": 418,
+  "osmId": 455183455
+ },
+ {
+  "type": "viewpoint",
+  "name": "독도 일출 전망대",
+  "nameEn": "Dokdo Observatory",
+  "tx": 512,
+  "ty": 778,
+  "osmId": 467676882
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "울릉여객선터미널",
+  "nameEn": "Ulleung Cruise Terminal",
+  "tx": 614,
+  "ty": 743,
+  "osmId": 467677287
+ },
+ {
+  "type": "hospital",
+  "name": "울릉군보건의료원",
+  "nameEn": "",
+  "tx": 434,
+  "ty": 647,
+  "osmId": 467678969
+ },
+ {
+  "type": "ferry_terminal",
+  "name": "울릉항여객선터미널",
+  "nameEn": "Ulleung Ferry Port Terminal",
+  "tx": 58,
+  "ty": 1184,
+  "osmId": 525863361
+ },
+ {
+  "type": "police",
+  "name": "울릉경찰서",
+  "nameEn": "Ulleung Police Station",
+  "tx": 546,
+  "ty": 683,
+  "osmId": 834858216
+ },
+ {
+  "type": "police",
+  "name": "저동파출소",
+  "nameEn": "",
+  "tx": 604,
+  "ty": 477,
+  "osmId": 1026689608
+ },
+ {
+  "type": "market",
+  "name": "울릉어판장",
+  "nameEn": "",
+  "tx": 629,
+  "ty": 503,
+  "osmId": 1026689613
+ },
+ {
+  "type": "shop",
+  "shopKind": "telecommunication",
+  "name": "케이텔플라자 울릉",
+  "nameEn": "K-Tel Plaza Ulreung",
+  "tx": 472,
+  "ty": 663,
+  "osmId": 1141590339
+ }
+]
