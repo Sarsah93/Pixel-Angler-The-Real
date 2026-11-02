@@ -1,0 +1,34 @@
+[
+ {
+  "type": "viewpoint",
+  "name": "성화대",
+  "nameEn": "Torch Object",
+  "tx": 294,
+  "ty": 249,
+  "osmId": 5808978068
+ },
+ {
+  "type": "police",
+  "name": "경북지방경찰청 독도경비대",
+  "nameEn": "Dokdo Coast Guard of Gyeongbuk Provincial Police Agency",
+  "tx": 292,
+  "ty": 235,
+  "osmId": 420019191
+ },
+ {
+  "type": "lighthouse",
+  "name": "독도등대",
+  "nameEn": "Dokdo Lighthouse",
+  "tx": 300,
+  "ty": 237,
+  "osmId": 853678588
+ },
+ {
+  "type": "lighthouse",
+  "name": "독도항로표지관리소",
+  "nameEn": "Dokdo Lighthouse",
+  "tx": 306,
+  "ty": 230,
+  "osmId": 853678589
+ }
+]

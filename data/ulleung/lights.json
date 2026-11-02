@@ -1,0 +1,30 @@
+[
+{
+"tx": 692,
+"ty": 383,
+"colour": "white",
+"kind": "lighthouse",
+"name": "빨간등대"
+},
+{
+"tx": 678,
+"ty": 409,
+"colour": "white",
+"kind": "lighthouse",
+"name": "하얀등대"
+},
+{
+"tx": 784,
+"ty": 621,
+"colour": "white",
+"kind": "lighthouse",
+"major": true,
+"name": "행남등대"
+},
+{
+"tx": 228,
+"ty": 1118,
+"colour": "green",
+"kind": "lighthouse"
+}
+]
