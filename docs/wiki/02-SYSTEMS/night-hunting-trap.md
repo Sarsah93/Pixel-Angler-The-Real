@@ -79,6 +79,8 @@
 | **놀이 가이드 멈춤 · 오류 · 조작 안내** — 가이드가 세상 안 말풍선(캐스팅 안내)을 밀어냄(`preempt`) · 닫힌 창 가이드 = null · 1.5초 안전망 · 가이드를 닫은 누름은 판에 안 넘김 · 제목줄 「방법」(언제든 다시 보기 · 끈 동안도) · 갈래별 첫 문장에 마우스 · 왼쪽 버튼 · Space · 끝 문장 남은 시간 · ESC · F1 「놀이 조작」 | ✅ | **278** — [워크로그](../03-WORKLOG/2026-10-27-278-forage-game-freeze-guide-footbridge-pinch.md) |
 | **293 놀이 손맛** — 떼기 헛짚음 0.85(단단한 녀석 0.62) · 파기 파는 양 두 배 · 소란 천천히 · 메워짐 1/3 · **닿는 선(`reach`)** · 당기기 예고 0.7초 · 긴장 세기 1.1 · 끌어내는 양 0.34 · 떼기 바탕 `shore`(하늘 · 바다 · 바위) · 틈은 그림 위 층(`gTop`) | ✅ 봇 파기 · 당기기 1.00/0.00 · 하네스 10/10 | 293 — [워크로그](../03-WORKLOG/2026-10-30-293-job-talk-shared-doors-forage-feel.md) |
 | 단서 보기(숨구멍 · 배설 둔덕) | ⬜ 기획 §2 A — 동해엔 갯벌이 거의 없어 후순위 | — |
+| **통발 전용 생물 — 독도새우**(295 — `ShoreCreatureDatabase` `pandalus_hypsinotus` `trapOnly · trapTypes ['shrimp_trap'] · trapSeas ['ulleung']` · `rollForageSpots` 풀 제외 · `harvestTrap`이 통발 종류 · `seaOf(regionId)`로 거름 · 120,000원/kg · 특산(울릉 · 독도 10~4월)) | ✅ | **295** |
+| **걷은 통발이 사라지지 않는다**(296 — `returnTrapItem`이 `recoverPlaceable` 실패 때 `addItemOrMail`로 집 우편함에 보낸다 · 채널 `[통발] … 집 우편함으로` — 하모니 F-0009) | ✅ | **296** |
 
 ## 5. 잔여·차기 (착수 로드맵)
 

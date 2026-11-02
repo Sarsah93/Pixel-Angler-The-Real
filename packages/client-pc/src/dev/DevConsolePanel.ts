@@ -21,6 +21,7 @@ import { REGIONAL_SPECIALTIES, FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUE
 import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
+import { MailboxStore } from '../store/MailboxStore.js';   // 296차
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { DevMode, DevHooks, setAllRegionsOpen } from './DevMode.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
@@ -106,6 +107,7 @@ function buildPanel(): HTMLDivElement {
   buildScriptPilotSection(box);
   buildPlayerSection(box);
   buildItemSection(box);
+  buildMailSection(box);   // 296차
   buildFishSection(box);
   buildForageSection(box);
   buildForageGameSection(box);
@@ -305,6 +307,30 @@ function buildItemSection(box: HTMLElement): void {
 }
 
 /** ④ 어종 어획물 지급 */
+/** ③-2 우편함 — 296차. 시험 편지(물건 둘 붙임)를 넣어 깃발 · 알림 · 받기를 바로 본다(홈타운 집 앞 우편함) */
+function buildMailSection(box: HTMLElement): void {
+  const body = section(box, '③-2 우편함 시험 편지');
+  const b = document.createElement('button');
+  b.textContent = '시험 편지 넣기 (물건 2)';
+  styleBtn(b, true);
+  b.onclick = () => {
+    const picks = buildItemWikiCatalog().filter((e) => e.tpl.category === 'etc').slice(0, 2);
+    MailboxStore.send({
+      kind: 'overflow', from: '시험', title: '시험 편지',
+      body: '우편함 시험용 편지다. 붙어 온 물건을 받아 보고, 다 받으면 지운다.',
+      items: picks.map((e) => ({ tpl: { ...e.tpl }, qty: 1 })),
+    });
+    GameState.markDirty();
+    flash(b, `✓ 편지 ${MailboxStore.all.length}통`);
+  };
+  body.appendChild(b);
+  const b2 = document.createElement('button');
+  b2.textContent = '우편함 비우기';
+  styleBtn(b2);
+  b2.onclick = () => { MailboxStore.resetAll(); GameState.markDirty(); flash(b2, '✓ 비움'); };
+  body.appendChild(b2);
+}
+
 function buildFishSection(box: HTMLElement): void {
   const body = section(box, '④ 어종 어획물 지급 (활어·랜덤 사이즈)');
 

@@ -42,6 +42,7 @@ import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
 import { ConsignQueue, type ConsignQueueSave } from './ConsignQueue.js';
 import { MillQueue, type MillQueueSave } from './MillQueue.js';
 import { ProcessQueue, type ProcessQueueSave } from './ProcessQueue.js';   // 295차
+import { MailboxStore, type MailboxSave } from './MailboxStore.js';   // 296차
 import { CureQueue, type CureQueueSave } from './CureQueue.js';
 import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate, kstParts, getQuestItem } from '@tra/core';
 import { prologueSquid } from './Prologue.js';
@@ -254,6 +255,8 @@ interface SaveData {
   millQueue?: MillQueueSave;
   /** 295차 — 지역 가공대 대기열 */
   processQueue?: ProcessQueueSave;
+  /** 296차 — 집 앞 우편함(유찰품 · 받지 못한 물건) */
+  mailbox?: MailboxSave;
   /** 285차 — 텃밭 걸대 · 장독에 걸어 둔 갈무리(구세이브 = 없음) */
   cureQueue?: CureQueueSave;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
@@ -489,6 +492,7 @@ export class GameStateManager {
     ConsignQueue.deserialize(saved.consignQueue);
     MillQueue.deserialize(saved.millQueue);   // 284차
     ProcessQueue.deserialize(saved.processQueue);   // 295차
+    MailboxStore.deserialize(saved.mailbox);   // 296차
     CureQueue.deserialize(saved.cureQueue);   // 285차
     TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
@@ -1780,6 +1784,7 @@ export class GameStateManager {
       consignQueue: ConsignQueue.serialize(),
       millQueue: MillQueue.serialize(),   // 284차
       processQueue: ProcessQueue.serialize(),   // 295차
+      mailbox: MailboxStore.serialize(),   // 296차
       cureQueue: CureQueue.serialize(),   // 285차
       flags: this._flags,
       worldObjects: this._worldObjects,
@@ -2063,6 +2068,7 @@ export class GameStateManager {
     ConsignQueue.resetAll();   // 213차
     MillQueue.resetAll();      // 284차
     ProcessQueue.resetAll();   // 295차
+    MailboxStore.resetAll();   // 296차
     CureQueue.resetAll();      // 285차
     this._awakeMs = 0; this._lastSleepAtMs = 0; this._wakeNote = null;
     this.syncInventoryDiscoveries();

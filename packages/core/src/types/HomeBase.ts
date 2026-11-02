@@ -23,12 +23,14 @@ import type { RegionTerrain } from './RegionMap.js';
 export type MapObjectType =
   | 'tree' | 'rock' | 'stump' | 'well' | 'tidalRock' | 'farmPlot' | 'pier'
   | 'fence' | 'furniture' | 'aquarium_live' | 'aquarium_display'
-  | 'door' | 'busStop' | 'clinic' | 'workbench';
+  | 'door' | 'busStop' | 'clinic' | 'workbench'
+  | 'mailbox';   // 296차 — 집 앞 우편함(유찰품 · 받지 못한 물건이 온다)
 
 /** 상호작용 종류 (구현 전 예약 포함 — chop=벌목, mine=채굴, gather=해루질/채집, till=개간) */
 export type MapObjectInteract =
   | 'none' | 'chop' | 'mine' | 'gather' | 'till' | 'board'
-  | 'save' | 'storage' | 'aquarium' | 'door' | 'bus' | 'cook' | 'clinic' | 'craft' | 'well';
+  | 'save' | 'storage' | 'aquarium' | 'door' | 'bus' | 'cook' | 'clinic' | 'craft' | 'well'
+  | 'mailbox';   // 296차 — [F] 우편함 열기
 
 /** 맵 오브젝트 인스턴스 — 초기 배치/플레이어 설치 공통 */
 export interface MapObject {
@@ -297,6 +299,9 @@ export const HOMETOWN_SPAWN = { col: 23, row: 9 };
 export const HOMETOWN_OBJECTS: MapObject[] = [
   // 집 문 (집 남쪽 벽 중앙) → 실내 진입
   { instanceId: 'home_door', type: 'door', tx: 23, ty: 7, collides: false, interact: 'door', movable: false, removable: false },
+  // 296차 — 집 앞 우편함(문 앞 길 오른쪽 · 벽 띠(7행) 아래 두 칸 — 깃발 · 느낌표가 벽에 가리지 않는 자리 · 사용자 결정 2026-11-02).
+  //  위판 유찰품 · 가방이 가득해 받지 못한 물건이 여기로 온다
+  { instanceId: 'mailbox_1', type: 'mailbox', tx: 24, ty: 10, collides: true, interact: 'mailbox', movable: false, removable: false },
   // 버스정류장 (남동쪽 길 끝) → 전국 지도(출조)
   { instanceId: 'bus_stop', type: 'busStop', tx: 42, ty: 27, collides: true, interact: 'bus', movable: false, removable: false },
   // 우물 (188차 — [F] 물 마시기 · 프롤로그 「우물물을 한 모금 마신다」)

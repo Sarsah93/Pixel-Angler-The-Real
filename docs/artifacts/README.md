@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 39 — 294차 기준(§07 294 ✅ 가족 한집 · 문 소리 · 울릉 · 독도 · 특산 · 추천 1 = 특산 후속 8 결정 · 39 = 99차 배포 대기 표기). 37 = 293 |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 39 — 294차 기준(「울릉도 · 독도 · 동해 먼바다 어종」 · 「지역 특산 · 얻은 곳 꼬리표 · 집마다 문 소리」 DATA · 워크로그 215). 38 = 293 |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 37 — 294차 기준 · 채비 문법은 258차(「294차 기준」 줄) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 92 — 294차(시스템 「울릉도 · 독도 · 지역 특산 · 집마다 문 소리」 · 지도 탭 울릉 · 독도 13장 · 출조 지역 카드 「특산」). 91 = 293 |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 40 — 296차 기준(§07 295 ✅ 섬 어종 5 · 특산 후속 다섯 · 296 ✅ 집 앞 우편함 · 하모니 PR 병합 · 「맵 확장 영향 ③」 = 특산 남은 셋 · 우편함 후속 · 기준 줄 「배포 100차 = 296차까지」) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 40 — 296차 기준(「집 앞 우편함」 · 「섬 어종 5 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피 · 도감 특산 탭」 · 머리 숫자 어종 61 · 창 50) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 38 — 296차 기준 · 채비 문법은 258차(「296차 기준」 줄만) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

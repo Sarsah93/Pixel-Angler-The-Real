@@ -24,6 +24,7 @@ import { GameState } from '../../store/GameState.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { StoryStore } from '../../store/StoryStore.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
+import { addItemOrMail } from '../../store/MailDeliver.js';   // 296차
 import { CoolerStore, COOLER_CAPACITY } from '../../store/CoolerStore.js';
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { resolveFishTexture } from '../../data/FishTextures.js';
@@ -363,10 +364,12 @@ export class TrapFieldSystem {
     if ((t.durability ?? spec.durability) <= 0) { this.host.pushLog(`[통발] ${spec.nameKo} 파손 — 회수 불가`); return; }
     const id = `inv_trap_${spec.id}`;
     if (!InventoryStore.recoverPlaceable(id)) {
-      InventoryStore.addItem({
+      // 296차 — 가방이 가득하면 사라지던 것(하모니 F-0009)을 집 우편함으로 보낸다
+      const where = addItemOrMail({
         id, name: spec.nameKo, icon: '', iconTexture: `art_${spec.id}`, category: 'etc', subCategory: '통발',
         basePrice: Math.round(spec.priceWon * 0.8), equippable: false, trapSpecId: spec.id,
-      }, 1);
+      }, 1, { from: '통발', title: `걷은 ${spec.nameKo}을(를) 집으로 보냈다`, body: '가방이 가득해 걷은 통발을 집 우편함으로 보냈다. 집 앞 우편함에서 받아 간다.' });
+      if (where === 'mail') this.host.pushLog(`[통발] 가방이 가득해 ${spec.nameKo}을(를) 집 우편함으로 보냈다`);
     }
   }
 

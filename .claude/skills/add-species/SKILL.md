@@ -53,6 +53,11 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 - **dev 테스트 지급**: 손질/UI 검증 대상이면 `createDevFishDefs`(InventoryStore)에 추가 — 기존 세이브도 재로드 시 주입됨.
 - 크기 등급 어종이면 `SIZE_TIER_BOUNDS`(SizeTierRules.ts), 스폰 바인딩 루어면 LuresCatalogDB `spawnBinding`.
 - **core 새 파일을 만들었으면 `core/src/index.ts` export 필수.**
+- **통발로만 드는 생물(독도새우 — 295차)**: 어종이 아니라 **갯것 DB**(`ShoreCreatureDatabase.ts`)에 `trapOnly: true · trapTypes · trapSeas`로 넣는다.
+  `rollForageSpots`가 풀에서 빼고 `harvestTrap`이 통발 종류 · 바다(`seaOf(regionId)`)로 거른다. 그림은 `tools/gemini_forage_art.cjs` LOOKS → `--install` → `node tools/forage_cards.cjs --only <id>`.
+- **그림이 없는 새 어종은 Gemini로**(295차): `tools/gemini_fish_art.cjs`의 `LOOKS`에 한 줄 → `NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <폴더>` → 검수 → `--install` → `node tools/fish_cards.cjs --only <파일>`.
+  ⚠ 도구는 **core dist**에서 어종 DB를 읽는다 — `npx pnpm --filter @tra/core run build`를 먼저 하지 않으면 「어종 DB에 없다」로 건너뛴다.
+- **지역 특산이면 `REGIONAL_SPECIALTIES`에도**(294 · 295 — `db-schema/RegionalSpecialty.ts`): 지역 · 제철 · 배율 · 유래. 다섯 바다 가중(`SPECIES_SEA_WEIGHT`)은 `Presence289.test`가 빠짐을 잡는다.
 
 ## 검증
 

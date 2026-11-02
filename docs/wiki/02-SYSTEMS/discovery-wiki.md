@@ -70,6 +70,7 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 | 인게임 도감 카드 상세 팝업(클릭 확대) | 🔶 | **240** — 아이템 위키 카드 → `ItemDetailPanel`(발견한 것만). 어종 · 해양생물 · 요리 카드는 ⬜ |
 | FP 씬 발견 토스트 (현재 RegionField HUD만) | ⬜ | — |
 | 해양생물 전용 스프라이트 (현재 이모지 — S14 D4와 공유) | ⬜ | 에셋 대기 |
+| **도감 「특산」 탭**(295 — `DiscoveryKind` `specialty` · `DiscoveryStore.noteSpecialty(item, source)`(얻은 지역 꼬리표가 있을 때만 — 가게 구매는 안 적힘) · `AnglerLogScene` `renderSpecialty`(열린 지역만 R2 · dev 「모든 지역 열기」 존중 · 제철 · 배율 · 유래 · 얻은 곳) · 위키 시스템 「섬 어종 다섯 · 명산지 꼬리표 …」 · 「집 앞 우편함」) | ✅ | **295 · 296** |
 
 ## 5. 잔여·차기
 

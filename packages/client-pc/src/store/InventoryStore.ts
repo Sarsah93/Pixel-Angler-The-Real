@@ -2494,6 +2494,14 @@ class InventoryStoreManager {
     return this.addItem(tpl as InvItemTemplate, qty, { silent: true });
   }
 
+  /** 296차 — 설치물을 되살릴 자리가 있는가(`recoverPlaceable`과 같은 판단 · 가방은 건드리지 않는다) */
+  canRecoverPlaceable(itemId: string): boolean {
+    if (this.find(itemId)) return true;
+    const tpl = InventoryStoreManager.PLACEABLE_TPL[itemId] ?? COOK_CORNER.find((c) => c.id === itemId);
+    if (!tpl) return false;
+    return Object.keys(this.slotShortfall([{ tpl: tpl as InvItemTemplate, qty: 1 }])).length === 0;
+  }
+
   recoverPlaceable(itemId: string): boolean {
     const existing = this.find(itemId);
     if (existing) { existing.qty += 1; return true; }

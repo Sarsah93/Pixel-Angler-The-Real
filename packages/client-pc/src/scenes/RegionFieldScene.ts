@@ -149,6 +149,8 @@ import { pumpTideFlow } from '../ui/TideFlowNotifier.js';
 import { pumpMillReady } from '../ui/MillNotifier.js';
 import { MillQueue } from '../store/MillQueue.js';
 import { ProcessQueue } from '../store/ProcessQueue.js';   // 295차
+import { MailboxStore } from '../store/MailboxStore.js';   // 296차
+import { MailboxPanel } from '../ui/MailboxPanel.js';   // 296차
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
@@ -709,6 +711,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.interiorAt = null;
     this.homeObjects = [];
     this.homeObjSprites = new Map();
+    this.mailFlag = undefined; this.mailMark = undefined;   // 296차
     this.nearObject = null;
     this.placing = null;
     this.placeG = undefined;
@@ -3388,9 +3391,10 @@ export class RegionFieldScene extends Phaser.Scene {
     if (r.netWon > 0) playCoin(r.netWon);
     this.events.emit('inventory-changed');
     this.shopPanel?.refresh();
+    // 296차 — 유찰품은 집 우편함으로 온다(가방에 바로 넣지 않는다)
     this.hud?.pushLog(r.soldLots > 0
-      ? `[위판] 맡겨 둔 물건 낙찰 ${r.soldLots}건 · 유찰 ${r.unsoldLots}건 — 실수령 ${r.netWon.toLocaleString()}원 (수수료 ${r.feeWon.toLocaleString()}원)`
-      : `[위판] 맡겨 둔 물건이 유찰돼 가방으로 돌아왔다 (${r.unsoldLots}건)`);
+      ? `[위판] 맡겨 둔 물건 낙찰 ${r.soldLots}건 · 유찰 ${r.unsoldLots}건 — 실수령 ${r.netWon.toLocaleString()}원 (수수료 ${r.feeWon.toLocaleString()}원)${r.mailed ? ' · 유찰품은 집 우편함으로' : ''}`
+      : `[위판] 맡겨 둔 물건이 유찰돼 집 우편함으로 돌아왔다 (${r.unsoldLots}건)`);
   }
 
   /** 최상단(가장 나중에 열린) 팝업 닫기. 닫은 게 있으면 true */
@@ -5573,8 +5577,28 @@ export class RegionFieldScene extends Phaser.Scene {
       const lbl = this.add.text(cx, bottomY + 2, '출조 버스', worldLabelStyle(10)).setOrigin(0.5, 0).setDepth(15);
       objs.push(lbl);
     }
+    if (o.type === 'mailbox') {
+      // 296차 — 이름표 + 깃발(편지가 있으면 올라간다 — `refreshMailMark`가 600ms마다 맞춘다)
+      const lbl = this.add.text(cx, bottomY + 2, '우편함', worldLabelStyle(10)).setOrigin(0.5, 0).setDepth(15);
+      objs.push(lbl);
+      this.ensureMailFlagTexture();
+      const flag = this.add.image(cx + 6, bottomY - 26, 'hobj_mailbox_flag').setOrigin(0, 1).setDepth(img.depth + 0.0001).setVisible(MailboxStore.flagUp);
+      this.mailFlag = flag; objs.push(flag);
+    }
     this.homeObjSprites.set(o.instanceId, objs);
     if (o.type === 'farmPlot') this.renderFarmOverlay(o);   // 235차 — 칸마다 자라는 것
+  }
+
+  /** 296차 — 우편함 깃발(빨강 · 올라간 모양) */
+  private ensureMailFlagTexture(): void {
+    const key = 'hobj_mailbox_flag';
+    if (this.textures.exists(key)) return;
+    const g = this.add.graphics();
+    const dot = (x: number, y: number, c: number): void => { g.fillStyle(c, 1); g.fillRect(x, y, 2, 2); };
+    for (let y = 0; y < 14; y += 2) dot(0, y, 0x3a2a20);                 // 깃대
+    for (let y = 0; y < 8; y += 2) for (let x = 2; x < 10; x += 2) dot(x, y, y === 0 ? 0xff6a5a : 0xe0463a);   // 깃발
+    g.generateTexture(key, 10, 14);
+    g.destroy();
   }
 
   private objTexKey(type: string, o: MapObject): string {
@@ -5731,6 +5755,18 @@ export class RegionFieldScene extends Phaser.Scene {
         for (let y = 2; y < 22; y += 2) for (let x = 2; x < 16; x += 2) dot(x, y, (y % 8 < 4) ? 0x7a5232 : 0x6d4a2d);
         for (let x = 2; x < 16; x += 2) { dot(x, 2, 0x8f6440); dot(x, 20, 0x5a3a22); }
         dot(12, 12, 0xffd257); dot(12, 14, 0xd6a93d);               // 손잡이
+        break;
+      }
+      case 'mailbox': {
+        // 296차 — 집 앞 우편함(앞모습 · 문과 같은 눈높이). 기둥 + 빨간 상자 + 투입구 + 이름판. 깃발은 따로(`hobj_mailbox_flag`)
+        w = 20; h = 32;
+        groundShadow(10, 30, 8);
+        for (let y = 16; y < 32; y += 2) { dot(8, y, 0x6f4a2c); dot(10, y, 0x4a2f1c); }           // 기둥(해 드는 면 · 그늘)
+        for (let y = 4; y < 18; y += 2) for (let x = 2; x < 18; x += 2) dot(x, y, x >= 14 ? 0x8e2a1f : 0xc0392b);   // 상자
+        for (let x = 2; x < 18; x += 2) dot(x, 4, 0xe0574a);                                      // 윗면 빛
+        for (let x = 2; x < 18; x += 2) dot(x, 16, 0x6d1f16);                                     // 아랫단 그늘
+        for (let x = 6; x < 14; x += 2) dot(x, 8, 0x2b1a14);                                      // 투입구
+        for (let x = 6; x < 12; x += 2) dot(x, 12, 0xf0ece2);                                     // 이름판
         break;
       }
       case 'fence': {
@@ -6667,18 +6703,55 @@ export class RegionFieldScene extends Phaser.Scene {
     const pin = MapPinStore.get(this.region);
     if (pin) markers.push({ wx: pin.x, wy: pin.y, icon: 'mm_pin', priority: 4, shape: 'pin', label: '핀', sub: '내가 꽂은 곳' });
     this.refreshMillMarks(markers);   // 285차 — 맡긴 일이 다 된 방앗간(문 위 초록 느낌표 · 미니맵 · 전체 지도)
+    this.refreshMailMark(markers);    // 296차 — 집 우편함(깃발 · 느낌표 · 미니맵)
     this.lastMiniMarkers = markers;
     this.hud?.setMiniMarkers(markers);
   }
 
   /** 285차 — 방앗간 문 위 「다 됐다」 표시(가게 key → 그림) */
   private millMarks = new Map<string, Phaser.GameObjects.Image>();
+  /** 296차 — 집 앞 우편함 깃발(편지가 있으면 보인다) · 머리 위 느낌표 */
+  private mailFlag?: Phaser.GameObjects.Image;
+  private mailMark?: Phaser.GameObjects.Image;
 
   /**
    * 285차 — 맡긴 일이 다 된 방앗간에 초록 느낌표(사용자 「가게 근처나 표지판 쪽에 느낌표 아이콘으로 알림(맵에도 표시)」).
    * 맡긴 방앗간 이름(`MillOrder.shopName`)과 같은 가게에만 — 다른 지역 같은 이름이면 그 지역에서도 뜬다(대기열은 하나다).
    * 다 된 일을 찾아 가면(대기열에서 빠지면) 다음 갱신(600ms)에 걷힌다.
    */
+  /** 296차 — 집 앞 우편함: 편지가 있으면 깃발을 올리고 머리 위 느낌표 · 미니맵 표시(홈타운에서만). 편지를 다 받으면 걷힌다 */
+  private refreshMailMark(markers: MiniMarker[]): void {
+    if (this.region !== 'hometown') return;
+    const o = this.homeObjects.find((h) => h.type === 'mailbox');
+    if (!o) return;
+    const up = MailboxStore.flagUp;
+    if (this.mailFlag?.active) this.mailFlag.setVisible(up);
+    const wx = o.tx * TR + TR / 2, wy = o.ty * TR + TR;
+    if (!up) {
+      if (this.mailMark) { this.mailMark.destroy(); this.mailMark = undefined; }
+      return;
+    }
+    if (!this.mailMark || !this.mailMark.active) {
+      const made = addPixelIcon(this, 'mk_pickup', wx, wy - 46, 16);
+      if (made) {
+        made.setDepth(20 + wy * 0.001 + 0.0009);
+        this.tweens.add({ targets: made, y: wy - 51, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.mailMark = made;
+      }
+    }
+    const n = MailboxStore.withItemsCount;
+    markers.push({ wx, wy: wy - 16, icon: 'mm_pickup', priority: 4, label: '우편함', sub: n ? `물건이 든 편지 ${n}통` : '새 편지' });
+  }
+
+  /** 296차 — 우편함 창(집 앞 우편함 [F]) */
+  openMailbox(): void {
+    this.openPopup((close) => new MailboxPanel(this, {
+      onClose: close,
+      onChanged: () => { this.events.emit('inventory-changed'); this.shopPanel?.refresh(); },
+      log: (line) => this.hud?.pushLog(line),
+    }));
+  }
+
   private refreshMillMarks(markers: MiniMarker[]): void {
     const ready = new Set([...MillQueue.ready(Date.now()).map((o) => o.shopName), ...ProcessQueue.ready(Date.now()).map((o) => o.shopName)]);   // 295차 — 가공장도
     const want = new Set<string>();
@@ -7881,6 +7954,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'door': return '[F] 집으로 들어가기';
       case 'bus': return '[F] 출조 버스 (전국 지도)';
       case 'well': return '[F] 우물물 마시기';
+      case 'mailbox': return '[F] 우편함 열기';   // 296차
       case 'aquarium': return o.placedByPlayer ? '[F] 수조 열기 · [Shift+F] 회수' : '[F] 수조 열기';
       case 'chop': return '[F] 벌목';
       case 'mine': return '[F] 채굴';
@@ -7912,6 +7986,7 @@ export class RegionFieldScene extends Phaser.Scene {
         this.exitToWorldMap();
         break;
       case 'well': this.drinkFromWell(); break;
+      case 'mailbox': this.openMailbox(); break;   // 296차
       case 'aquarium':
         this.floatingHint('수조는 아직 쓸 수 없습니다.');
         break;

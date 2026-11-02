@@ -25,6 +25,7 @@ import { EN_HOME, EN_HOME_RULES } from './en_home.js';
 import { EN_RIG, EN_RIG_RULES } from './en_rig.js';
 import { EN_FARM, EN_FARM_RULES } from './en_farm.js';
 import { EN_MILL, EN_MILL_RULES, EN_MILL_TAIL_RULES } from './en_mill.js';
+import { EN_MAIL, EN_MAIL_RULES } from './en_mail.js';   // 296차 우편함
 import { EN_CURE, EN_CURE_RULES } from './en_cure.js';
 import { EN_TALK, EN_TALK_RULES } from './en_talk.js';
 
@@ -672,7 +673,6 @@ export const EN_DICT: Record<string, string> = {
   '막대가 다 차면 하룻밤을 다 잔 것이다 — 하루가 저물고, 일어나며 저장된다.': 'When the bar fills, I have slept through the night — the day ends and the game saves as I wake.',
   '도중에 일어나면 잔 만큼만 풀린다. 하루는 넘어가지 않고, 저장도 되지 않는다.': 'Wake up early and I only recover for the time I slept. The day does not end, and nothing is saved.',
   '맡길 물건이 없습니다.': 'Nothing to leave.',
-  '위판장에서 연락이 왔다 — 맡긴 물건이 유찰돼 가방으로 돌아왔다.': 'Word from the auction hall — what I left went unsold and is back in my bag.',
   '대사 소리': 'Voice blips', '대화 글자가 찍힐 때 나는 인물 목소리 음량': 'Volume of the character voices played as dialogue types out',
   '캐스팅 · 입질 · 릴 · 드랙 · 돈 · 버튼 같은 효과음 음량': 'Volume of effects — casting, bites, reel, drag, coins, buttons',
   '파도 · 비 · 바람 · 천둥 같은 배경음 음량': 'Volume of background sounds — waves, rain, wind, thunder',
@@ -686,7 +686,7 @@ export const EN_DICT: Record<string, string> = {
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_CURE, ...EN_TALK, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_MAIL, ...EN_CURE, ...EN_TALK, ...EN_BASE,
   // 214차 — 인물의 집 · 문 두드리기
   '정옥선의 집': "Jeong Okseon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeonsu's house",
   '강두철의 집': "Kang Ducheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
@@ -705,8 +705,6 @@ export const EN_DICT: Record<string, string> = {
   '잠으로 마침': 'ended with sleep', '새벽 4시를 넘김': 'ran past 4 AM', '±0원': '±₩0',
   '찾아오기': 'Take back', '선어': 'Fresh', '패류': 'Shellfish', '맡겨 둔 물건이 없다.': 'Nothing left with the hall.',
   '경매 전에 도로 가져오려면 위판장 창구로.': 'To take it back before the auction, go to the auction hall counter.',
-  '위판장에 맡겨 둔 물건이 여기 모인다. 다음 경매가 끝나면 값이 들어오고, 안 팔린 것은 가방으로 돌아온다.':
-    'What you left with the auction hall is listed here. When the next auction ends the money comes in, and anything unsold comes back to your bag.',
   '경매 전에 마음이 바뀌면 여기서 도로 찾아올 수 있다. 맡긴 그대로 돌아온다.':
     'Changed your mind before the auction? Take it back here — it returns just as you left it.',
   '침대에서 다 자고 일어날 때마다 이야기가 한 번씩 넘어간다. 달력 날짜와는 따로 센다.':
@@ -938,7 +936,6 @@ export const EN_RULES: Rule[] = [
   [/^(\d+)건은 경매 시간이 달라 다음 회차에 맡겨 두었습니다\.$/, '$1 lot(s) go to a different auction — left for the next one.'],
   [/^\[위판\] (\d+)건을 위판장에 맡겼다 — 다음 경매에 올라간다$/, '[Auction] Left $1 lot(s) with the hall — they go up at the next auction'],
   [/^\[위판\] 맡겨 둔 물건 낙찰 (\d+)건 · 유찰 (\d+)건 — 실수령 ([\d,]+)원 \(수수료 ([\d,]+)원\)$/, '[Auction] Lots you left: $1 sold · $2 unsold — net ₩$3 (fee ₩$4)'],
-  [/^\[위판\] 맡겨 둔 물건이 유찰돼 가방으로 돌아왔다 \((\d+)건\)$/, '[Auction] What you left went unsold and is back in your bag ($1)'],
   [/^위판장에서 연락이 왔다 — 맡긴 물건 (\d+)건 낙찰, ([\d,]+)원이 들어왔다\.$/, 'Word from the auction hall — $1 lot(s) sold, ₩$2 came in.'],
   // 211차 — 하루 결산 카드
   [/^(\d+)월 (\d+)일 (일|월|화|수|목|금|토)요일$/, (m) => `${['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[1])]} ${m[2]}, ${({ 일: 'Sunday', 월: 'Monday', 화: 'Tuesday', 수: 'Wednesday', 목: 'Thursday', 금: 'Friday', 토: 'Saturday' } as Record<string, string>)[m[3]]}`],
@@ -994,6 +991,7 @@ export const EN_RULES: Rule[] = [
   ...EN_HOME_RULES,    // 189차 집 실내
   ...EN_RIG_RULES,     // 192차 채비 모딩 트리
   ...EN_MILL_RULES,    // 284차 무게 수확 · 봉지 · 부산물 · 방앗간
+  ...EN_MAIL_RULES,    // 296차 우편함
   ...EN_FARM_RULES,    // 235차 텃밭
   // ── 167차 장면 게이트 — 상대가 다른 사람일 때 대화창 안내 ──
   [/^(.+)을\(를\) 직접 찾아가야 한다\.$/, (m, tr) => `You need to go and find ${tr(m[1])} in person.`],

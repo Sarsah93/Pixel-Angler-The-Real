@@ -14,6 +14,7 @@
  * 한 번 알린 일은 `MillOrder.notified`로 세이브에 남는다 — 불러온 뒤 같은 알림을 다시 내지 않는다.
  * 게임을 끈 사이에 다 된 일은 다음에 켰을 때 처음 도는 씬이 알린다.
  * 285차 — 텃밭 걸대 · 장독의 갈무리(`CureQueue`)도 같은 길로 알린다(채널 「[갈무리]」 · 시계 알람). 텃밭 창 설비 칩에는 초록 점.
+ * 296차 — 집 우편함에 편지가 오면(`MailboxStore`) 같은 길(채널 「[우편]」 · 시계 알람). 우편함 깃발 · 미니맵은 홈타운 필드가 그린다.
  */
 
 import Phaser from 'phaser';
@@ -22,6 +23,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MillQueue, type MillOrder } from '../store/MillQueue.js';
 import { CureQueue, type CureBatch } from '../store/CureQueue.js';
 import { ProcessQueue, type ProcessOrder } from '../store/ProcessQueue.js';   // 295차
+import { MailboxStore, type MailLetter } from '../store/MailboxStore.js';   // 296차
 import { processRecipe } from '@tra/core';
 import { InventoryStore } from '../store/InventoryStore.js';
 import { GameState } from '../store/GameState.js';
@@ -60,6 +62,11 @@ export function millReadyLine(o: MillOrder): string {
 export function processReadyLine(o: ProcessOrder): string {
   const what = `「${processRecipe(o.recipeId)?.nameKo ?? '맡긴 것'}」`;
   return `${o.shopName}의 ${josa(what, '이', '가')} 다 됐습니다 — 찾으러 가세요.`;
+}
+
+/** 296차 — 우편함 알림 한 줄 — 「집 우편함에 편지가 왔습니다 — 속초 위판장 「유찰된 물건을 돌려보냅니다」 · 물건 2건」 */
+export function mailArrivedLine(l: MailLetter): string {
+  return `집 우편함에 편지가 왔습니다 — ${l.from} 「${l.title}」${l.items.length ? ` · 물건 ${l.items.length}건` : ''}`;
 }
 
 export function cureReadyLine(b: CureBatch): string {
@@ -102,18 +109,22 @@ export function pumpMillReady(scene: Phaser.Scene, opts: MillPumpOpts = {}): voi
   const fresh = MillQueue.unnotified(now);
   const cured = CureQueue.unnotified(now);
   const proc = ProcessQueue.unnotified(now);   // 295차 — 가공장
-  if (fresh.length === 0 && cured.length === 0 && proc.length === 0) return;
+  const mail = MailboxStore.unnotified();      // 296차 — 우편함
+  if (fresh.length === 0 && cured.length === 0 && proc.length === 0 && mail.length === 0) return;
   const millLines = fresh.map(millReadyLine);
   const cureLines = cured.map(cureReadyLine);
   const procLines = proc.map(processReadyLine);
-  const lines = [...millLines, ...cureLines, ...procLines];
+  const mailLines = mail.map(mailArrivedLine);
+  const lines = [...millLines, ...cureLines, ...procLines, ...mailLines];
   for (const o of fresh) MillQueue.markNotified(o.id);
   for (const b of cured) CureQueue.markNotified(b.id);
   for (const o of proc) ProcessQueue.markNotified(o.id);
+  for (const l of mail) MailboxStore.markNotified(l.id);
   GameState.markDirty();
   for (const l of millLines) channelLog(scene, `[방앗간] ${l}`);
   for (const l of cureLines) channelLog(scene, `[갈무리] ${l}`);
   for (const l of procLines) channelLog(scene, `[가공장] ${l}`);
+  for (const l of mailLines) channelLog(scene, `[우편] ${l}`);
   if (wearingWatch()) {
     playSfx('watch_alarm');
     showWatchAlarm(scene, lines);

@@ -1982,7 +1982,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (r.netWon > 0) playCoin(r.netWon);
     this.flash(r.soldLots > 0
       ? `위판장에서 연락이 왔다 — 맡긴 물건 ${r.soldLots}건 낙찰, ${r.netWon.toLocaleString()}원이 들어왔다.`
-      : '위판장에서 연락이 왔다 — 맡긴 물건이 유찰돼 가방으로 돌아왔다.');
+      : '위판장에서 연락이 왔다 — 맡긴 물건이 유찰돼 집 앞 우편함으로 돌아왔다.');   // 296차
   }
 
   /**

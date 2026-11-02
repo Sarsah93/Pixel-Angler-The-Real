@@ -87,6 +87,8 @@
 | **장비 · 단단한 루어 개체**(`isInstanceItem` — 착용 · 손 도구 + 루어 카탈로그 중 소프트 아닌 것) · id `<카탈로그 id>#<번호>`(core `itemBaseId` · 순번 `instSeq`) · `find` 폴백(착용 개체 → 첫 개체) · `countOf` · 넣기 = 칸 n개 통째로(`addInstances`) · 옛 세이브 나누기(`splitInstanceStacks` — 첫 개체가 착용 · 고장 · 쓴 횟수) · 거래 새 번호 · 채비 창 「같은 물건 · 같은 고장」 묶음 줄 | ✅ | **282** — 하네스 29/29 |
 | **같은 물건 한 id**(`store/ItemIdAlias.ts` — 뜰채 5m · 구멍찌 1.0호 · 카본 목줄 3호 · 지그헤드 3g) · 로드 · `addItem` 정본화 · 같은 id 칸 합치기 · 분류가 바뀐 칸 겹침 옮기기 · 퀵슬롯 · 채비 트리 · 즐겨찾기 · 도감 | ✅ | **256** — 위키 같은 이름 4쌍 → 0 · 지그헤드 0g 버그 |
 | **아이템 그림 고르기**(`ui/ItemIcon.ts` — 작물 초상 · 채소 별칭 → `itemImageKeyOf`(아이템 id → 16px 키 → 같은 음식 별칭 · `ItemImages.ts`) → 코드 그림 → `iconTexture` → 16px) · 옛 세이브 요리 계열 그림 키 → 레시피 사진(`refreshDishPhoto`) | ✅ | **255** — 가방 칸 새 그림 전부 · 이전 10/10 |
+| **특산 배지 · 판매 지역**(295 — 칸 배지 `mk_origin`(얻은 지역 꼬리표가 있고 특산이면) · 표시 이름 `specialtyDisplayName` · `getSellPrice(item, sellRegion)` · `addItemIds` `noteSpecialty` · 같은 id · 다른 꼬리표 합치면 꼬리표 비움 · 가공품 분류 「가공품」 `processedItemTemplate` 백필) | ✅ | **295** |
+| **넣다 실패하면 우편함으로**(296 — `MailDeliver.addItemOrMail(tpl, qty, letter)` · `InventoryStore.canRecoverPlaceable`(화구 회수 자리 확인) — 자동 반환 경로(통발 · 용기)는 사라지지 않는다 · 수동 경로(화구 스토브 · 위판 찾아오기)는 거부) | ✅ | **296** |
 
 ## 5. 잔여·차기
 
@@ -104,6 +106,8 @@
   두 모델을 합칠지 core 쪽을 걷어낼지는 별도 결정.
 
 ## 6. 함정·불변조건
+
+- **넣다 실패하면 사라지는 지급 금지**(234 · 296) — 자동으로 돌아오는 물건(유찰품 · 걷은 통발 · 내린 용기)은 `addItemOrMail`로 우편함에, 사람 앞에서 받는 것(보상 · 찾아오기 · 화구 회수)은 자리를 먼저 확인하고 거부한다. `addItem` 반환값을 버리는 새 코드를 쓰지 않는다.
 
 - **정리는 칸(`slot ≥ 0`)만 다시 놓는다(277)** — 장착(`SLOT_EQUIPPED`) · 퀵슬롯 · 채비 트리는 아이템 id를 가리키므로 그대로다. 칸 번호로 무엇을 가리키는 새 기능을 만들면 정리에 깨진다 — id로 가리킨다.
   무리 차례 표는 `InventorySort.ts` 한 곳(표에 없는 소분류는 뒤에 소분류 이름 순). 이름 비교는 보이는 이름(영어 설정이면 번역)이다.

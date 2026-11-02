@@ -17,11 +17,12 @@ import { FISH_DATABASE,
   createCookSession, canAddIngredient, addIngredient as coreAddIngredient, setHeat as coreSetHeat, flip as coreFlip,
   stepCook, finishCook, dishStarsAt, dishValueKrw, dishVitalsMult, dishItemName, checkComposition,
   isVariantRecipe, createDishInstance, cookSpeciesNames, recipeEffectOf, dishDiscoveryId, isFarmProduce, namulVariantOf,
-  type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo,
-} from '@tra/core';
+  type DeployedStove, type HeatLevel, type DishData, type DishInstance, type CookContent, type CookEnv, type FireRecipeDef, type CookwareDef, type PrimaryIngredientInfo } from '@tra/core';
 import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
 import { GameState } from './GameState.js';
 import { InventoryStore, type InvItem, type InvItemTemplate } from './InventoryStore.js';
+import { addItemOrMail } from './MailDeliver.js';   // 296차
+import { COOK_CORNER } from '../data/CookItems.js';   // 296차 — 용기 되살리기
 import { DiscoveryStore } from './DiscoveryStore.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from './Prologue.js';
 
@@ -120,9 +121,17 @@ class CookingStoreClass {
     if (why) return { ok: false, message: why };
     const idx = GameState.deployedStoves.indexOf(st);
     if (idx < 0) return { ok: false, message: '없는 화구입니다' };
+    // 296차 — 가방 자리를 먼저 본다(하모니 F-0009 — 넣다 실패하면 화구가 사라졌다). 스토브는 거부, 용기는 우편함으로
+    if (st.stoveItemId && !InventoryStore.canRecoverPlaceable(st.stoveItemId)) return { ok: false, message: '가방에 자리가 없다 — 한 칸 비우고 회수한다' };
     const back: string[] = [];
     if (st.stoveItemId && InventoryStore.recoverPlaceable(st.stoveItemId)) back.push('스토브');
-    if (st.cookwareItemId && InventoryStore.recoverPlaceable(st.cookwareItemId)) back.push('용기');
+    if (st.cookwareItemId) {
+      if (InventoryStore.recoverPlaceable(st.cookwareItemId)) back.push('용기');
+      else {
+        const tpl = InventoryStore.seedTemplate(st.cookwareItemId) ?? COOK_CORNER.find((c) => c.id === st.cookwareItemId);
+        if (tpl && addItemOrMail(tpl as InvItemTemplate, 1, { from: '화구', title: '회수한 용기를 집으로 보냈다', body: '가방이 가득해 화구에서 내린 용기를 집 우편함으로 보냈다.' }) === 'mail') back.push('용기(우편함)');
+      }
+    }
     GameState.deployedStoves.splice(idx, 1);
     GameState.markDirty();
     return { ok: true, message: back.length ? `${back.join('·')} 회수` : '회수했습니다' };
