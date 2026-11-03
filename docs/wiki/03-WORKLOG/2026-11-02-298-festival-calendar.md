@@ -110,4 +110,6 @@
 - [x] 위키 생성기 `festivals_298` · 지역 카드 「축제」 · 아티팩트 셋(「298차 기준」 · 항목)
 - [x] 발행 — 남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 **Version 43** · 구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 **Version 42** ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 40**(「298차 기준」 줄만) · 위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c **Version 95**(시스템 「지역 축제 달력」 · 출조 지역 카드 「축제」 표 · 새 그림 없음 · 파일 456)
-- [ ] main 반영 · 배포 — 사용자 결정 대기(297 · 298을 한 번에)
+- [x] main 반영 · 배포 — 2026-11-03 사용자 지시로 297 · 299와 한 번에 —
+  main `b461a07` · **100차 배포(gh-pages `0a98430` · 실행 29 · main `b461a07` · 정적 2,157 · 소스맵 0 · 기동 9.6초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0)**
+  (상세 [299차 §8](2026-11-03-299-wild-greens-gathering.md))

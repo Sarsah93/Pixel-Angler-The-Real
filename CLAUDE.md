@@ -110,7 +110,7 @@
   core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·
   client `ForageSystem.computeHillCandidates`(숲 · 풀밭 안쪽 · 반지름 3 안 길 · 집 · 포장 · 물 · 모래 없음 · 속초 3,857칸) · 바다와 따로 굴림(씨앗 다름) · 표식 = 작물 아이콘(`cropicon_*` 28px) · 산자락은 풍랑 · 미끄러짐 밖 · `deliver` → `cropItemTemplate` 묶음 1~2 + `originRegion` · `devMonth`(검증) · `ForageGamePanel` 제목 · 가이드 문장 셋 · `ForageBoardArt` `meadow` 바탕 · BootScene은 산나물 판 · 점 그림을 싣지 않는다 · 도감 「산나물」 · 알림 「새로운 산나물 발견」 · 도움말 「해루질 › 산나물 캐기」 · 영문 ·
   297(2) = `DialoguePanel` 힌트 쪽 삭제 → `(아주 좋아하는 것 같다.)` · `TitleDatabase` 「산타」(`gift_bundle` · +25%) · 「박애주의자」(`santa` · `giftAndDiscount` = 선물 우호도 +50% + 상점 구매가 −3%) ·
-  검증 = core 492 · r299 10/10 · 빌드 3/3 · 루트 typecheck 4/4. **다음 = main 반영 · 재배포(사용자 지시 4) · 300 지역 텃밭(예시 창 의견 뒤)**. 상세 `docs/wiki/03-WORKLOG/2026-11-03-299-wild-greens-gathering.md`.
+  검증 = core 492 · r299 10/10 · 빌드 3/3 · 루트 typecheck 4/4. main 빨리 감기 `b461a07` · **100차 배포(gh-pages `0a98430` · 기동 9.6초 · 4xx 0 · pageerror 0)**. **다음 = 300 지역 텃밭(예시 창 의견 뒤)**. 상세 `docs/wiki/03-WORKLOG/2026-11-03-299-wild-greens-gathering.md`.
 - **298차**: **지역 축제 달력 — 축제 달 + 절정 주(특산 값 · 축제 매대 · 북적임 · 축제 일손 · 라디오 · 알림 · 일지 「나날」 · 도감 카드)** —
   사용자 「달 단위로 넓히는 쪽 … 너가 고민해서 우선 적용」 → core `db-schema/Festivals.ts`(축제 9 — 속초 양미리·도루묵 11/7~16 · 부산 자갈치 10/17~26 · 구룡포 과메기 11/13~19 · 거제 대구 12/15~23 · 모슬포 방어 11/19~23 · 울릉 오징어 8/3~9 · 안면도 대하 9/20~27 · 소래포구 9/25~28 · 여수 섬슐랭 11/1~3 — 웹 조사 실제 일정 어림) ·
   `festivalPhase`(KST · 끝 날 포함) · 축제 달 ×1.1 · 절정 ×1.3 · **`specialtySellMultAt`**(제철 × 택배 × 축제 — `InventoryStore` 판매가 세 자리의 단일 입구 · 그 고장 가게만 · 위판 제외) · `RegionStall` 축제 매대(20% / 30% 싸게) · 행인 ×2(땅 상한도 — 속초 120 → 240) ·
@@ -224,8 +224,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 15 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo` · **`ulleung` 울릉도 도동 · `dokdo` 독도 동도(294 — 배로만 · 6 · 7장)**(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `eeb1fe9` — **최근 99차 배포 2026-11-02 = 296차 코드까지 포함**(296 집 앞 우편함 · 하모니 PR #16 · #17 + 295 섬 어종 5 · 특산 후속 다섯 + 294 울릉 · 독도 · 특산 1차) —
-  main `35c59b9` · 실행 28 · 정적 2,157(소스맵 0) · 기동 15.0초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-02 사용자 지시(「main 재배포까지」)로 작업 브랜치에 빨리 감기했다(296차 · 98차 = `5806b7e` 293차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `0a98430` — **최근 100차 배포 2026-11-03 = 299차 코드까지 포함**(299 산나물 캐기 · 297(2) 칭호 「산타」 · 「박애주의자」 + 298 지역 축제 달력 + 297 인물 선물 선호) —
+  main `b461a07` · 실행 29 · 정적 2,157(소스맵 0) · 기동 9.6초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-03 사용자 지시(「297 · 298 main 반영하고 재배포」)로 작업 브랜치에 빨리 감기했다(299차 · 99차 = `eeb1fe9` 296차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 96 = 299**(시스템 「산나물 캐기」 · 갯것 카드에 산나물 8 · 선물 칭호 글 · 95 = 298 · 94 = 297)

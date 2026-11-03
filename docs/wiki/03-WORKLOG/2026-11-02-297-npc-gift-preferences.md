@@ -112,4 +112,6 @@
 - [x] 위키 생성기 항목 `gifts_297` · 아티팩트 원본 셋(`docs/artifacts/*.html` — 점검 `check_artifact_page` 3/3 PASS)
 - [x] 발행 — 남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 **Version 42** · 구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 **Version 41**(창 51 · 칭호 32종) ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 **Version 39**(「297차 기준」 줄만) · 위키 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c **Version 94**(시스템 「인물 선물 — 드리고 싶은 게 있어요」 · 새 그림 없음 · 파일 456)
-- [ ] main 반영 · 배포 — **사용자 결정 대기**(297은 main · 배포 지시가 없었다 — 298 축제 달력과 함께 한 번에 올리는 쪽을 권한다)
+- [x] main 반영 · 배포 — 2026-11-03 사용자 지시(「297 · 298 main 반영하고 재배포」)로 299차와 한 번에 —
+  main `b461a07` · **100차 배포(gh-pages `0a98430` · 실행 29 · main `b461a07` · 정적 2,157 · 소스맵 0 · 기동 9.6초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0)**
+  (297(2) 정정 포함 — 상세 [299차 §8](2026-11-03-299-wild-greens-gathering.md))
