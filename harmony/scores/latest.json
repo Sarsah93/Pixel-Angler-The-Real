@@ -1,11 +1,11 @@
 {
- "date": "2026-11-03",
- "audited_commit": "e938dc4cba6ae9147ba279e243f5b8b9fa377ea3",
+ "date": "2026-11-04",
+ "audited_commit": "fbca7181b2a16c7a4f494376d98146009780729f",
  "summary": {
-  "harmony_index": 61.5,
-  "balance": 73.0,
+  "harmony_index": 64.2,
+  "balance": 62.2,
   "weakest": "q5-security",
-  "found_today": 3,
+  "found_today": 0,
   "fixed_today": 0,
   "scoring_version": 2
  },
@@ -46,7 +46,7 @@
     "보통": 3,
     "경미": 6
    },
-   "found_today": 3,
+   "found_today": 0,
    "fixed_today": 0,
    "decisions": {
     "merged": 1,
@@ -58,11 +58,11 @@
    "name": "③ 플레이 흐름·예외 처리",
    "kind": "product",
    "health": 82.0,
-   "scenarios": 42.9,
+   "scenarios": 85.7,
    "agency": null,
-   "overall": 67.3,
+   "overall": 83.4,
    "scenario_total": 7,
-   "scenario_recent": 3,
+   "scenario_recent": 6,
    "open_findings": {
     "심각": 0,
     "보통": 2,
@@ -187,5 +187,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-11-02"
+ "previous_date": "2026-11-03"
 }
