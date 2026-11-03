@@ -113,6 +113,8 @@ export class ForageGamePanel extends DraggablePanel {
   /** 225차 — 사진 도트 판 그림인가(머리 왼쪽) · 필드 도트 16px 대비 배율 · 마지막으로 본 방향 */
   private boardArt = false;
   private imgBase = 1;
+  /** 299(2)차 — 그림이 코드 도트(산나물 포기)면 정수 배율로만 그린다 */
+  private pixelArt = false;
   /** 288차 — 개체 크기 배율(미리 굴린 크기 — 큰 꽃게는 크게) */
   private sizeMul = 1;
   private lastFaceRight = false;
@@ -168,7 +170,9 @@ export class ForageGamePanel extends DraggablePanel {
     this.img = scene.textures.exists(key) ? scene.add.image(0, 0, key).setScale(3) : null;
     if (this.img) {
       const f = this.img.frame;
-      this.imgBase = 16 / Math.max(1, f.width, f.height);
+      this.pixelArt = isWildGreen(creature);   // 299(2)차 — 포기 도트는 정수 배율로만(2px 입자가 뭉개지지 않게)
+      // 포기 도트(30×28)는 16px 점 그림이 아니라 한 칸 크기의 그림이다 — 판에서 2배(60×56) 안팎으로 보이게 기준을 24로
+      this.imgBase = (this.pixelArt ? 24 : 16) / Math.max(1, f.width, f.height);
       this.add(this.img);
     }
     // 229차 — 파기 판의 지렁이는 1자형 도트(구멍 속에 세로로 · 이기면 끌려 나온다)
@@ -409,7 +413,8 @@ export class ForageGamePanel extends DraggablePanel {
     }
     // 도트가 뭉개지지 않게 1배 이상이면 0.5 단위로 맞춘다
     const k = scale * this.imgBase * this.sizeMul;
-    this.img.setPosition(x, y).setScale(k >= 1 ? Math.round(k * 2) / 2 : k).setAngle(angle);
+    const ks = this.pixelArt ? Math.max(2, Math.min(3, Math.round(k))) : k >= 1 ? Math.round(k * 2) / 2 : k;
+    this.img.setPosition(x, y).setScale(ks).setAngle(angle);
     if (this.boardArt) this.img.setFlipX(faceRight === true);   // 판 그림은 머리가 왼쪽 — 오른쪽으로 달리면 뒤집는다
     if (tint !== undefined) this.img.setTint(tint); else this.img.clearTint();
   }

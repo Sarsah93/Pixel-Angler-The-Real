@@ -1,4 +1,4 @@
-# 299차 — 산나물 캐기(산자락에서 뜯고 캐고 꺾는다 — 종 8 · 산자락 스팟 · 지역 · 제철 · 특산 꼬리표) · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」 · main 반영 · 100차 배포
+# 299차 — 산나물 캐기(산자락에서 뜯고 캐고 꺾는다 — 종 8 · 산자락 스팟 · 지역 · 제철 · 특산 꼬리표) · (2) 자리 표식 = 땅에 뿌리내린 포기 도트 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」 · main 반영 · 100차 배포
 
 | | |
 |---|---|
@@ -19,6 +19,19 @@
   「가게 할인율 소급 적용」은 **낮은 칭호의 효과(선물 우호도)를 그대로 안고 가게 할인(`buyDiscount` 전설 눈금 3%)을 더한다**로 읽었다 — 한 번에 하나만 다는 칭호 체계에서 위 칭호가 아래 칭호를 품는다.
 - 3) 산나물은 **갯것과 같은 손놀림 놀이**로 거두되, 거둔 것은 **텃밭 수확물과 같은 물건**(작물 초상 · 농산물 칸 · 특산 꼬리표)으로 들어온다.
 
+### 1-2. 299(2) — 자리 표식(사용자 지적 · 100차 배포 뒤)
+
+100차 배포본을 본 사용자 지적(캡처 2장 — 우리 필드의 묶음 그림 · 스타듀밸리 밭): 「설마 탑다운 필드에서 저렇게 보여주고 있어? 심어져 있는 그림처럼 해놔야지 …
+탑다운 필드 위에 타일에 저런 식으로 야생 산나물 자체가 심어져 있는 것처럼 구현해야지 … 이미지 그래픽을 그대로 필드 위에 배치하면 안되지 … 깊게 고민하고 진행했어야지.」
+
+- 299차는 자리 표식에 **수확한 묶음 그림(작물 아이콘 64px → 28px)** 을 그대로 올려놓았다 — 떨어진 아이템 표시지, 자라는 풀이 아니었다.
+- 고친 것 = 종마다 **자라는 모습을 손으로 찍은 도트**(`data/WildGreenArt.ts` — 15×14 글자 그림 · 입자 2px = 지면 입자) → `scenes/field/WildGreenSprites.ts`가 `wildgreen_<id>`(30×28)로 굽는다.
+  곰취 둥근 잎 로제트 · 산마늘 넓은 두 잎(푸른빛 · 흰 밑동) · 눈개승마 붉은 줄기 깃꼴 잎 · 부지깽이 가는 잎 떨기 · 어수리 손바닥 잎 · 두릅 가시 줄기 끝 순 · 곤드레 가시 잎 로제트(보랏빛 줄기) · 엄나무 가시 줄기 끝 순.
+- 표식은 **밑동 = 칸 아래 변**(origin 0.5 · 1 · 1배 · 자리마다 좌우 뒤집기)이고, 텃밭 포기처럼 **사람 깊이 규칙**(`20 + (밑동 y − 9) × 0.001`)을 받는다 —
+  땅 층(6.5)에 두면 사람이 늘 덮어 심어진 느낌이 죽는다. 사람이 자리 위 칸(뒤)에 서면 포기가 발 앞에 그려진다.
+- 놀이 판 · 도감 · 가이드 그림도 같은 포기를 쓴다(`forageSpotTexKey`) — 판에서는 정수 배율 2~3(`pixelArt`)로만 키운다(2px 입자가 뭉개지지 않게). 작물 아이콘 키는 더 쓰지 않는다.
+- 미리보기 도구 scratchpad `wg_preview.cjs`(ASCII 그대로 풀밭 위 1배 · 6배 시트)로 먼저 다듬었다 — 부지깽이는 첫 판이 덤불 덩어리로 읽혀 가는 잎 부채로 다시 찍었다.
+
 ## 2. 원인 — 설계 근거(버그 아님)
 
 - **종 8은 작물 초상(244 · 84/84)이 있는 산채만** 골랐다 — 곰취 · 산마늘(명이) · 눈개승마 · 부지깽이 · 어수리 · 두릅 · 곤드레 · 엄나무순(`CROP_DATABASE` `category: 'wild'`). 그림을 새로 뽑지 않아도 가방 · 도감 · 위키에 바로 그림이 선다.
@@ -37,8 +50,9 @@
 | 수정 | [`core/src/simulation/ForagingEngine.ts`](../../../packages/core/src/simulation/ForagingEngine.ts) | `creatureTools`(맨손) · `forageBehaviorOf`(leaf) · `forageGameKindOf`(leaf → pick · root → dig · shoot → pry) · `isWildGreen` · `WILD_GREEN_GAME_LABEL` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 |
 | 수정 | [`core/src/config/tuning.ts`](../../../packages/core/src/config/tuning.ts) · [`db-schema/RegionalSpecialty.ts`](../../../packages/core/src/db-schema/RegionalSpecialty.ts) | `forage.hillSpotsPerHundred 0.6 · hillMaxSpots 24` · 특산 「설악 곰취」(51) |
 | 신설 | [`core/src/rules/Greens299.test.ts`](../../../packages/core/src/rules/Greens299.test.ts) | 시험 5 — 표 · 놀이 갈래 · 굴림(산자락만 · 지역 · 달 · 밤) · 갯바위엔 안 남 · 특산 |
-| 수정 | [`client/src/scenes/field/ForageSystem.ts`](../../../packages/client-pc/src/scenes/field/ForageSystem.ts) | `computeHillCandidates` · 따로 굴림 · `forageSpotTexKey`(작물 아이콘 `cropicon_*`) · 잎 도트 폴백 · 산자락은 안전 판정 밖 · `deliver`(작물 묶음 1~2 · `originRegion`) · dev 지급 · `devMonth`(검증) |
-| 수정 | [`client/src/ui/ForageGamePanel.ts`](../../../packages/client-pc/src/ui/ForageGamePanel.ts) · [`ui/ForageBoardArt.ts`](../../../packages/client-pc/src/ui/ForageBoardArt.ts) | 제목 「뜯기 · 캐기 · 꺾기」(`forageGameTitleLabel`) · 산나물 가이드 문장 셋 · 바탕 `meadow`(풀밭 — 캐기는 흙 단면 그대로) |
+| 신설 | [`client/src/data/WildGreenArt.ts`](../../../packages/client-pc/src/data/WildGreenArt.ts) · [`scenes/field/WildGreenSprites.ts`](../../../packages/client-pc/src/scenes/field/WildGreenSprites.ts) | **299(2)** 산나물 포기 도트 8(글자 그림 · 팔레트 · 입자 2px) · 굽기 `wildgreen_<id>` 30×28 · `ensureForageDotTextures`가 함께 굽는다 |
+| 수정 | [`client/src/scenes/field/ForageSystem.ts`](../../../packages/client-pc/src/scenes/field/ForageSystem.ts) | `computeHillCandidates` · 따로 굴림 · `forageSpotTexKey`(**299(2) `wildgreen_<id>`** — 작물 아이콘 · 잎 도트 폴백 삭제) · 표식 밑동 = 칸 아래 변 · 사람 깊이 규칙 · 좌우 뒤집기 · 산자락은 안전 판정 밖 · `deliver`(작물 묶음 1~2 · `originRegion`) · dev 지급 · `devMonth`(검증) |
+| 수정 | [`client/src/ui/ForageGamePanel.ts`](../../../packages/client-pc/src/ui/ForageGamePanel.ts) · [`ui/ForageBoardArt.ts`](../../../packages/client-pc/src/ui/ForageBoardArt.ts) | **299(2)** 포기 도트는 정수 배율 2~3(`pixelArt` · 기준 24px) · 제목 「뜯기 · 캐기 · 꺾기」(`forageGameTitleLabel`) · 산나물 가이드 문장 셋 · 바탕 `meadow`(풀밭 — 캐기는 흙 단면 그대로) |
 | 수정 | [`client/src/scenes/BootScene.ts`](../../../packages/client-pc/src/scenes/BootScene.ts) · [`scenes/AnglerLogScene.ts`](../../../packages/client-pc/src/scenes/AnglerLogScene.ts) · [`scenes/RegionFieldScene.ts`](../../../packages/client-pc/src/scenes/RegionFieldScene.ts) | 산나물은 판 · 점 그림을 싣지 않는다(4xx 0) · 도감 분류 「산나물」 · 요약 줄 · 도감 알림 「새로운 산나물 발견」 |
 | 수정 | [`client/src/data/HelpContent.ts`](../../../packages/client-pc/src/data/HelpContent.ts) · [`i18n/en_panels.ts`](../../../packages/client-pc/src/i18n/en_panels.ts) | 도움말 「해루질 › 산나물 캐기」 · 영문(뜯기 · 캐기 · 꺾기 · 산나물) |
 | 수정 | [`tools/gen_game_wiki_data.mjs`](../../../tools/gen_game_wiki_data.mjs) | 시스템 항목 `wild_greens_299` · 갯것 카드에 산나물(작물 초상 · 나는 고장 · 거두면) · 선물 칭호 글 |
@@ -51,7 +65,7 @@
 - **계약**: `ShoreCreatureCategory` · `ForageBehavior` · `ForageSpotKind` · `ShoreCreature.harvestItemId · harvestQty · regions` · `RollForageOpts.spotsPerHundred` · `TitleEffectKind`.
 - **데이터**: 산나물 8 · 특산 51 · 튜닝 2 · 칭호 이름 · 효과.
 - **판정**: 후보(클라이언트 지형 규칙) · `rollForageSpots`(지역 · 달 · 낮) · 수확(작물 템플릿 + 얻은 지역) · `titleModifiers`.
-- **렌더**: 작물 아이콘 표식 · 놀이 창 제목 · 풀밭 바탕 · 도감 · 도움말.
+- **렌더**: 자리 표식 = 포기 도트(299(2) — 밑동 · 깊이 · 뒤집기) · 놀이 창 제목 · 판 그림 정수 배율 · 풀밭 바탕 · 도감 · 도움말.
 
 ## 5. 검증 — 무엇으로 확인했나
 
@@ -67,15 +81,19 @@
 | dev 놀이 — 두릅 「꺾기」(떼기 판 · 풀밭) | G + `04_game_snap.png` | PASS |
 | 도움말 · 영어(Pluck · Snap off · Gomchwi (wild)) · 특산(설악 곰취 · 울릉 명이) | H | PASS |
 | 4xx 0(바깥 KAMIS 제외) — 산나물 판 · 점 그림을 싣지 않는다 | I | PASS |
+| **299(2)** 텍스처 8종 `wildgreen_*` 30×28 · 작물 아이콘 키 없음 | 하네스 `r299b2.cjs` A | PASS |
+| 299(2) 자리 표식 23 — `wildgreen_*` · 1배 · origin(0.5, 1) · 밑동 = 칸 아래 변 · 자리마다 뒤집기 | B + `01_spot_1x.png` · `02_spot_3x.png` · `03_row_1x.png` · `04_row_3x.png`(8종 나란히 · 사람 52px 대조) | PASS |
+| 299(2) 깊이 — 사람이 자리 위 칸(뒤)이면 포기 38.294 > 사람 38.262 · 아래 칸(앞)이면 포기 < 사람 | B2 + `02b_spot_3x_behind.png`(포기가 발 앞) | PASS |
+| 299(2) 놀이 판 「어수리 — 뜯기」 — 그림 `wildgreen_green_eosuri` · 배율 2(60×56) | D + `05_game_board.png` | PASS |
 | pageerror · 빌드 · 타입체크 | 하네스 · `pnpm run build` · 루트 typecheck | 0 · 3/3 · 4/4 |
 
-하네스 10/10. 재현: 봄(3~7월) 낮에 속초 뒷산 풀밭 · 숲 안쪽을 걷는다 — 작물 그림 표식이 보이면 [F]. 지금(11월)은 dev `__FIELD.forage.devMonth = 5; refreshSpots(true)`.
+하네스 10/10 · 299(2) `r299b2.cjs` 4/4(지금이 KST 저녁 · 11월이라 페이지 `Date`를 2026-05-15 14:00 KST로 옮겨 찍었다 — 산나물은 낮 · 봄에만). 재현: 봄(3~7월) 낮에 속초 뒷산 풀밭 · 숲 안쪽을 걷는다 — 풀밭에 선 포기가 보이면 [F]. 지금(11월)은 dev `__FIELD.forage.devMonth = 5; refreshSpots(true)`.
 
 ## 6. 잔여 — 이번에 안 한 것
 
 - 뿌리 나물(더덕 · 도라지 · 달래 — 「캐기」 = 파기 판)은 작물 초상이 없어 넣지 않았다 — 작물 DB · 초상(Gemini)부터.
 - 산나물 전용 미끼 · 요리 변형 없음(기존 「나물 볶음」 · 장아찌 레시피가 작물 id로 받는다).
-- 산자락 표식은 64px 작물 아이콘을 28px로 줄인 것(정수 배율 아님 — 사진풍 아이콘이라 허용). 점 그림을 따로 구우면 `forage-dot/green_*.png`로 바꾼다.
+- 299(2) 포기 도트는 1차 판이다 — 사용자 육안 뒤 종별 생김새 · 크기(지금 한 칸 0.9 · 사람의 0.55) · 바람 흔들림(두 장 프레임)을 다듬는다. 뿌리 나물이 들어오면 같은 표에 글자 그림 한 장을 더한다.
 - 허가가 필요한 산(국립공원 · 사유림) · 입산 허가 · 하루 상한은 두지 않았다(마을 공동산만 — 도움말에 적음).
 - 울릉 · 독도 실측(울릉 숲 칸이 얼마나 되는지) 미확인 — 울릉 bbox 동쪽 해안이라 산자락이 적을 수 있다.
 - 300 지역 텃밭 제한 · 1단계는 예시 창(`docs/mockups/regional_plot_window.svg`) 사용자 의견 뒤.
@@ -86,6 +104,7 @@
 - 산자락 후보 계산은 지역 입장 때 한 번(속초 757k칸 × 최대 7×7) — 부산 감천(1.17M)에서 체감 지연이 있으면 샘플 간격을 둔다.
 - 작물 묶음은 `cropItemTemplate(id)`(상 등급) — 가방 칸이 농산물 규칙(등급 꼬리 · 포장)을 그대로 따른다.
 - 칭호 id를 바꾸지 않았다 — 얻은 칭호가 세이브에 남아 있어도 이름만 바뀐다.
+- 299(2) — 산나물 표식만 사람 깊이 띠(20~)에 있고 갯것 표식은 땅 층(6.5) 그대로다. 표식 깊이를 한꺼번에 바꾸는 코드가 생기면 산나물을 따로 본다. `SPOT_MAX_PX` 안전망은 산나물에 안 건다(크기를 코드가 안다).
 
 ## 8. 후속 반영
 
@@ -93,6 +112,9 @@
 - [x] `04-BACKLOG.md` · `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 위키 생성기 · 아티팩트 셋 원본(「299차 기준」 · 항목 · 칭호 이름)
 - [x] 발행 판 — 남은 과업 설계 44 · 구현 라이브러리 43 · 채비 모딩 순서도 41 · 위키 96(그림은 작물 초상 재사용 — 새 `files` 없음)
+- [x] **299(2)** 시스템 페이지 §4 · §5 · §6 −1(함정) · 색인 · AGENTS §9 · PLAN · CLAUDE · 위키 생성기 「필드에서」 · 아티팩트 원본(tasks · library — 순서도는 299차 기준 그대로)
+- [x] 299(2) 발행 판 — 남은 과업 설계 45 · 구현 라이브러리 44 · 위키 97(순서도 41 그대로 — 채비 문법 · 차수 변동 없음)
+- [ ] 299(2) main · 재배포 — 아래에 덧붙인다
 - [x] main 빨리 감기(`1f8e536` → `b461a07` — 297 · 298 · 299 세 커밋) ·
   **100차 배포(gh-pages `0a98430` · 실행 29 · main `b461a07` · 정적 2,157 · 소스맵 0 · 기동 9.6초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0)** —
   워크플로가 매긴 번호는 100차(99차 `eeb1fe9` 다음). gh-pages를 로컬로 띄워 점검(scratchpad `deploy299.cjs`) —

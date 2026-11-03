@@ -98,7 +98,7 @@
   → **296 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**
   → **297 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「산타」 · 「박애주의자」)**
   → **298 지역 축제 달력(축제 9 · 축제 달 ×1.1 + 절정 주 ×1.3 · 축제 매대 · 북적임 ×2 · 축제 일손 9 · 라디오 · 알람 · 일지 「나날」)**
-  → **299 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산) · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**.
+  → **299 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산) · (2) 자리 표식 = 땅에 뿌리내린 포기 도트 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
@@ -109,6 +109,7 @@
   사용자 지시 넷(「'선물 칭호에 한 사람 더.' 넣지 마 … '아주 좋아하는 것 같다.'」 · 「선물 보따리 → 산타 · 동네 산타 → 박애주의자 · 선물우호도 및 가게 할인율 소급 적용」 · 「산지에서 나는 나물 작업 시작」 · 「main 반영하고 재배포」) →
   core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·
   client `ForageSystem.computeHillCandidates`(숲 · 풀밭 안쪽 · 반지름 3 안 길 · 집 · 포장 · 물 · 모래 없음 · 속초 3,857칸) · 바다와 따로 굴림(씨앗 다름) · 표식 = 작물 아이콘(`cropicon_*` 28px) · 산자락은 풍랑 · 미끄러짐 밖 · `deliver` → `cropItemTemplate` 묶음 1~2 + `originRegion` · `devMonth`(검증) · `ForageGamePanel` 제목 · 가이드 문장 셋 · `ForageBoardArt` `meadow` 바탕 · BootScene은 산나물 판 · 점 그림을 싣지 않는다 · 도감 「산나물」 · 알림 「새로운 산나물 발견」 · 도움말 「해루질 › 산나물 캐기」 · 영문 ·
+  **299(2)** = 사용자 지적(「심어져 있는 그림처럼」) → 자리 표식을 작물 아이콘에서 **땅에 뿌리내린 포기 도트**(`data/WildGreenArt.ts` 종 8 손 도트 · 2px 입자 · `WildGreenSprites` 굽기 · 밑동 = 칸 아래 변 · 사람 깊이 규칙 · 놀이 판 · 도감 · 가이드 같은 포기 · 정수 배율)로 ·
   297(2) = `DialoguePanel` 힌트 쪽 삭제 → `(아주 좋아하는 것 같다.)` · `TitleDatabase` 「산타」(`gift_bundle` · +25%) · 「박애주의자」(`santa` · `giftAndDiscount` = 선물 우호도 +50% + 상점 구매가 −3%) ·
   검증 = core 492 · r299 10/10 · 빌드 3/3 · 루트 typecheck 4/4. main 빨리 감기 `b461a07` · **100차 배포(gh-pages `0a98430` · 기동 9.6초 · 4xx 0 · pageerror 0)**. **다음 = 300 지역 텃밭(예시 창 의견 뒤)**. 상세 `docs/wiki/03-WORKLOG/2026-11-03-299-wild-greens-gathering.md`.
 - **298차**: **지역 축제 달력 — 축제 달 + 절정 주(특산 값 · 축제 매대 · 북적임 · 축제 일손 · 라디오 · 알림 · 일지 「나날」 · 도감 카드)** —
@@ -228,15 +229,15 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main `b461a07` · 실행 29 · 정적 2,157(소스맵 0) · 기동 9.6초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-03 사용자 지시(「297 · 298 main 반영하고 재배포」)로 작업 브랜치에 빨리 감기했다(299차 · 99차 = `eeb1fe9` 296차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 96 = 299**(시스템 「산나물 캐기」 · 갯것 카드에 산나물 8 · 선물 칭호 글 · 95 = 298 · 94 = 297)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 97 = 299(2)**(「산나물 캐기」 항목 「필드에서」 포기 도트 · 96 = 299 · 95 = 298)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 142파일 = 심리스 112 + 구 맵 30 · 파일 426).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 44 = 299차 · 다음 = 300 지역 텃밭) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 43 = 299차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 41 = 299차 기준 · 문법은 258차) · 위키(위 줄 — 96 = 299).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 45 = 299(2) · 다음 = 300 지역 텃밭) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 44 = 299(2) 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 41 = 299차 기준 · 문법은 258차) · 위키(위 줄 — 97 = 299(2)).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

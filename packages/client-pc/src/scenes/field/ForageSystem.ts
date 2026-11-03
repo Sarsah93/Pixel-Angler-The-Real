@@ -35,6 +35,7 @@ import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
 import { CoolerStore } from '../../store/CoolerStore.js';
 import { cropItemTemplate } from '../../data/CropItems.js';   // 299차 — 산나물은 텃밭 수확물로 들어간다
+import { ensureWildGreenTextures, wildGreenTexKey } from './WildGreenSprites.js';   // 299(2)차 — 산나물은 땅에 뿌리내린 포기 도트
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
@@ -95,8 +96,8 @@ export function forageTexKey(c: ShoreCreature): string {
  *   필드에 그대로 그려진다(167차 실측 — 1881px 게 사진이 화면을 덮었다).
  */
 export function forageSpotTexKey(c: ShoreCreature): string {
-  // 299차 — 산나물은 그 수확물의 작물 아이콘(64px · 244차)을 쓴다 — 갯것 점 그림을 따로 굽지 않는다
-  if (c.harvestItemId) return `cropicon_${c.harvestItemId}`;
+  // 299(2)차 — 산나물은 땅에서 자라는 포기 도트(`WildGreenSprites` — 수확 묶음 그림이 아니다 · 사용자 지적 「심어져 있는 그림처럼」)
+  if (isWildGreen(c)) return wildGreenTexKey(c);
   return `forage_dot_${c.id}`;
 }
 
@@ -107,7 +108,9 @@ export function forageSpotTexKey(c: ShoreCreature): string {
  */
 export function ensureForageDotTextures(scene: Phaser.Scene): void {
   const tex = scene.textures;
+  ensureWildGreenTextures(scene);   // 299(2)차 — 산나물 포기(종마다 손으로 찍은 도트)
   for (const c of SHORE_CREATURE_DATABASE) {
+    if (isWildGreen(c)) continue;
     const key = forageSpotTexKey(c);
     if (tex.exists(key)) continue;
     const g = scene.add.graphics();
@@ -198,12 +201,6 @@ export function ensureForageDotTextures(scene: Phaser.Scene): void {
         g.fillStyle(0xd07060, 1); for (let k = 0; k < 4; k++) g.fillRect(3 + k * 3, 7, 1, 1);
         break;
       default:
-        if (isWildGreen(c)) {   // 299차 — 작물 아이콘이 없을 때의 잎 도트
-          g.fillStyle(0x3f7a3a, 1); g.fillEllipse(6, 9, 8, 5); g.fillEllipse(10, 7, 8, 5);
-          g.fillStyle(0x6fb05a, 1); g.fillEllipse(7, 8, 4, 2); g.fillEllipse(11, 6, 4, 2);
-          g.lineStyle(1, 0x2a4a28, 1); g.lineBetween(8, 13, 8, 6);
-          break;
-        }
         // 조개류 기본
         g.fillStyle(0xc8b898, 1); g.fillEllipse(8, 8, 12, 9);
         g.lineStyle(1, 0x8a7a5a, 1); g.strokeEllipse(8, 8, 12, 9);
@@ -576,11 +573,19 @@ export class ForageSystem {
       if (!c) continue;
       const img = this.host.scene.add.image(s.tx * tr + tr / 2, s.ty * tr + tr * 0.72, forageSpotTexKey(c))
         .setOrigin(0.5, 1).setDepth(6.5).setVisible(false);
-      // 248차 — 그림으로 구운 점 그림(24px · `forage-dot/`)은 1배, 절차 도트(16px 폴백)는 1.5배
-      img.setScale(Math.max(img.width, img.height) > 16 ? 1 : 1.5);
-      // 안전망 — 어떤 이유로든 큰 텍스처가 들어오면 스팟 크기로 줄인다(화면 덮기 방지)
-      const raw = Math.max(img.width, img.height);
-      if (raw > SPOT_MAX_PX) img.setScale(SPOT_MAX_PX / raw);
+      if (isWildGreen(c)) {
+        // 299(2)차 — 산나물 포기는 칸 바닥(y = 칸 아래 변)에 1배로 선다 · 자리마다 좌우를 뒤집어 같은 그림이 늘어서 보이지 않게.
+        //   서 있는 물건이라 사람과 같은 깊이 규칙(20 + 몸 y × 0.001 · 몸 y = 발 − 9 — 텃밭 포기와 같다)으로 앞뒤를 가린다:
+        //   밑동이 사람 발보다 아래면 사람 앞에, 위면 사람 뒤에 선다(땅 층 6.5에 두면 사람이 늘 덮어 심어진 느낌이 죽는다)
+        const baseY = s.ty * tr + tr - 1;
+        img.setY(baseY).setScale(1).setFlipX(((s.tx * 31 + s.ty * 17) & 1) === 1).setDepth(20 + (baseY - 9) * 0.001);
+      } else {
+        // 248차 — 그림으로 구운 점 그림(24px · `forage-dot/`)은 1배, 절차 도트(16px 폴백)는 1.5배
+        img.setScale(Math.max(img.width, img.height) > 16 ? 1 : 1.5);
+        // 안전망 — 어떤 이유로든 큰 텍스처가 들어오면 스팟 크기로 줄인다(화면 덮기 방지)
+        const raw = Math.max(img.width, img.height);
+        if (raw > SPOT_MAX_PX) img.setScale(SPOT_MAX_PX / raw);
+      }
       // 물속 생물은 물빛에 잠겨 보인다
       if (s.kind === 'shallows') img.setAlpha(0.8).setTint(0xb8d8f0);
       this.spotSprites.set(s.id, img);
