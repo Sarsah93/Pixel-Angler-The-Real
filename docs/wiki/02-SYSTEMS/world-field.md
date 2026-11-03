@@ -124,6 +124,7 @@
 | **꼭짓점만 맞닿은 걷기 칸 잇기**(건널 수 없던 보행 다리) — 1칸 폭 대각 데크 `D` · 보도 `w` · 방파제 선 `b`가 꼭짓점만 닿아 4-연결 걷기에서 끊김 → 빌더 `bridge_osm_pinches`(2×2 대각 · 가까이 안 이어짐 · 물 모서리 한 칸) · 사후 손질 지역은 `tools/fix_walk_pinches.py` · 12지역 137칸(태안 나래교 · 서귀포 새연교 → 새섬 · 인천 매립지) | ✅ | **278** — 감사 `bridge_audit.py`(OSM 다리 251 · 물 위 중심 0) · 체감 · 인천 실검증 ⬜(백로그 CU) |
 | **가공장 가게 자리 5**(295 — POI `shopKind: processor` `src: manual` — 구룡포 · 울릉 도동 · 속초 · 거제 · 서귀포 · 땅 칸 탐색으로 앵커 옆 · 실내 틀 덕장 `drying_rack`) | ✅ | **295** |
 | **홈타운 집 앞 우편함 오브젝트**(296 — core `HOMETOWN_OBJECTS` `mailbox_1`(24, 10 · `collides` · `interact: mailbox`) · 코드 그림 20×32 + 깃발 10×14(`ensureObjTexture` · `ensureMailFlagTexture`) · 이름표 · `refreshMailMark`(깃발 · `mk_pickup` 느낌표 · 미니맵 「우편함」) · `[F] 우편함 열기`) | ✅ | **296** |
+| **축제 북적임**(298 — 행인 수 × 절정 주 2 · 축제 달 1.25 · 땅 상한(1,500칸당 1)도 같은 배율 — 속초 낮 120 → 240 · `activeFestivalsOfRegion(GameState.currentRegionId, festivalNow())`) | ✅ | **298** |
 
 ## 5. 잔여·차기
 

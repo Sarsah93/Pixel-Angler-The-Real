@@ -19,7 +19,7 @@ import { getFireRecipe,
   STORY_QUESTS, getStoryQuest, lastMainQuestOfChapter, JOURNAL_PAGES, journalCatchMatches, STORY_ARCS, getStoryArc,
   seasonOfMonth, createDefaultReputation, clampHarbor, clampSea, canSell, canConsign, provenanceOf, TUNING,
   spotKindSatisfies, SPOT_KIND_LABEL, QUEST_ITEM_DROPS, getQuestItem,
-  dayJobsOfNpc, getDayJob,
+  dayJobsOfNpc, getDayJob, jobWageMultAt,
   clampAffinity, affinityRewardMult, affinityJobWageMult, canOfferSubQuest, canOfferJobs, choicesFor, choiceVisible,
   getLicenseByType, getSkillById, getStoryNpc, getRegionById, okseonSpareGift, particle,
   type StoryQuestDef, type StoryObjective, type StoryActionKey, type ReputationState, type CatchMethod, type StorySpotKind, type JournalPageState, type LawVerdict,
@@ -38,6 +38,7 @@ import {
   storyActionSpec, originMatches, isChoiceOrigin, DAILY_ACTION_ORIGINS, type StoryActionChoice, type StoryActionSource,
 } from './StoryActionRegistry.js';
 import { TitleStore } from './TitleStore.js';
+import { festivalNow } from '../data/FestivalClock.js';   // 298차 — 축제 시계
 
 export interface QuestProgress {
   status: 'active' | 'done';
@@ -1844,7 +1845,7 @@ class StoryStoreManager {
    */
   jobsOfNpc(npcId: string, regionId: string): { job: DayJobDef; remaining: number; locked: string | null }[] {
     const hostile = !canOfferJobs(this.affinityOf(npcId));   // 140차 — 적대 NPC는 일을 안 준다
-    return dayJobsOfNpc(npcId, regionId).map((job) => ({
+    return dayJobsOfNpc(npcId, regionId, festivalNow()).map((job) => ({   // 298차 — 축제 일손은 축제 달에만
       job,
       remaining: this.jobRemaining(job.id),
       locked: hostile ? '이 사람은 지금 당신에게 일을 주고 싶지 않습니다' : this.jobLockReason(job),
@@ -1852,7 +1853,7 @@ class StoryStoreManager {
   }
   /** 품삯 배율 — 우호도 × TUNING.job.wageMult (대화창 표기와 지급이 같은 식을 쓴다) */
   jobWage(job: DayJobDef): number {
-    return Math.max(0, Math.round(job.wage * TUNING.job.wageMult * affinityJobWageMult(this.affinityOf(job.npcId))));
+    return Math.max(0, Math.round(job.wage * TUNING.job.wageMult * affinityJobWageMult(this.affinityOf(job.npcId)) * jobWageMultAt(job, festivalNow())));   // 298차 — 절정 주 ×1.3
   }
 
   /** 오늘 남은 근무 횟수 */

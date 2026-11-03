@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-02 297차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-02 298차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,13 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-02 297차) — 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)**
+**최근 변경 (2026-11-02 298차) — 지역 축제 달력(축제 달 + 절정 주 — 특산 값 · 축제 매대 · 북적임 · 축제 일손 · 라디오 · 알림 · 일지 「나날」)**
+
+- 사용자 「달 단위로 넓히는 쪽 … 너가 고민해서 우선 적용」 → 두 겹 — core `db-schema/Festivals.ts` 축제 9(웹 조사 2024~2026 실제 일정 · 절정은 해마다 같은 날짜로 어림) · 축제 달 ×1.1 · 절정 주 ×1.3 · `specialtySellMultAt`(제철 × 택배 × 축제 — 판매가 사슬 단일 입구 · 그 고장 가게만 · 위판 제외).
+- 직판장 축제 매대(가공품 20% / 30% 싸게) · 행인 ×2(땅 상한도) · 축제 일손 9(`DayJobDef.festivalId` · 축제 달에만 · 절정 품삯 ×1.3) · 라디오 한 · 영 · 절정 첫날 채널 「[축제]」 · 시계 알람(플래그 `fest.<id>.<해>`) · 일지 「나날」 넷 · 도감 특산 카드 · 도움말 · dev F10 「축제 시계」(`data/FestivalClock.ts` — 축제를 보는 코드는 전부 `festivalNow()`).
+- 검증: core 487(+6) · 하네스 r298 11/11(시계 · 값 · 매대 · 일손 · 라디오 · 알림 · 일지 · 영어 · 행인 120 → 240 · pageerror 0) · 빌드 3/3 · 루트 typecheck 4/4. 다음 = 299 지역 텃밭(예시 창 의견 뒤) — 상세: [298차 워크로그](../docs/wiki/03-WORKLOG/2026-11-02-298-festival-calendar.md).
+
+**이전 변경 (2026-11-02 297차) — 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)**
 
 - 사용자 결정 「대화선택지 선물하기 · 우호도만 · 산타클로스 칭호(옵션 추천)」 → core `types/Gift.ts` · `db-schema/NpcGiftPrefs.ts`(44명 · 꼬리표 `item` · `species` · `specialty` · `kind` · 반응 대사 넷 한 · 영) · `rules/Gifts.ts`(반응 차례 · +0.12 / +0.06 / +0.02 / −0.06 · 하루 한 번).
 - 대화창 메뉴 행 「드리고 싶은 게 있어요.」(줄 것이 가방에 있을 때만 · 어촌계 제외 · 오늘 드렸으면 힌트) → `ui/GiftPickerPanel.ts`(모달 · 가이드 `gift`) → 「(막걸리를 건넨다.)」 → 그 사람 말 · 초상 막대 즉시 · 수첩 「선물 취향」 · `story.gifts` 세이브 · 도움말 · 영문 · dev 제한 풀기.
@@ -332,13 +338,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 위판 유찰 · 회차 실패 반환은 **언제나 집 우편함**(`ConsignSettle`) · 걷은 통발 · 화구 용기 넘침도 우편함(F-0009) · 화구 스토브는 자리 확인 뒤 거부.
 - 홈타운 집 앞 (24, 10) 우편함(코드 그림 · 깃발 · 머리 위 느낌표 · 미니맵) · `[F] 우편함 열기` → `ui/MailboxPanel.ts`(목록 · 받기 · 지우기 · 가이드 `mailbox`) · 채널 `[우편]` · 시계 알람 · 도움말 · 영문.
 - PR #16(팁 줄 이모지) · #17(찾아오기 자리 확인) squash 병합 → `origin/main` merge. 검증: r296 13/13 · core 475 · 빌드 3/3 · 루트 typecheck 4/4 · main `35c59b9` · 99차 배포(gh-pages `eeb1fe9` · 실행 28 · main `35c59b9` · 정적 2,157 · 소스맵 0 · 기동 15.0초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0) — 상세: [296차 워크로그](../docs/wiki/03-WORKLOG/2026-11-02-296-mailbox-lost-item-paths.md).
-
-**이전 변경 (2026-10-31 295차) — 섬 어종 5 · 특산 후속 다섯(명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 · 지역 레시피 · 도감 특산 탭)**
-
-- 자리돔 · 혹돔 · 옥돔 · 참다랑어 4계층 등록(Gemini 그림 4) · 독도새우 = 갯것 DB `trapOnly`(새우 통발 · 울릉 바다만 — `harvestTrap`이 거른다).
-- 특산 50(가공품 5 포함) · 표시 이름 「구룡포 과메기」 · 칸 배지 `mk_origin` · 판매 지역 배율(`specialtySellMult` 밖 1.15) · 직판장 산지 매대 · 위판 원산지 줄.
-- 지역 가공대(가게 종류 `processor` 5지역 · `ProcessQueue` · `ProcessPanel` · 가공품 5 Gemini) · 지역 레시피 4(`mainSpecies` · `learn.questId` — 퀘스트 `unlocks recipe:*` 자동) · 도감 「특산」 탭(열린 지역만).
-- 백로그로: 축제 달력 · 인물 선물 선호 · 지역 텃밭 제한. 검증: core 475 · r295 11/13(둘은 설계대로) · 빌드 3/3 · 루트 typecheck 4/4 — 상세: [295차 워크로그](../docs/wiki/03-WORKLOG/2026-10-31-295-island-species-specialty-followups.md).
 
 ---
 

@@ -17,7 +17,8 @@
  */
 
 import type Phaser from 'phaser';
-import { REGIONAL_SPECIALTIES, FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUESTS } from '@tra/core';
+import { REGIONAL_SPECIALTIES, FISH_DATABASE, SHORE_CREATURE_DATABASE, STORY_QUESTS, FESTIVALS, festivalById, festivalPeriodLabel, festivalPhase } from '@tra/core';
+import { devSetFestivalDate, festivalDevOverride } from '../data/FestivalClock.js';   // 298차
 import { getLicenseByType, type LicenseType } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { InventoryStore } from '../store/InventoryStore.js';
@@ -329,6 +330,35 @@ function buildMailSection(box: HTMLElement): void {
   styleBtn(b3);
   b3.onclick = () => { StoryStore.devResetGiftDay(); GameState.markDirty(); flash(b3, `✓ 풀림 · 아주 좋아함 ${StoryStore.giftLovedCount()}명`); };
   body.appendChild(b3);
+  // 298차 — 축제 시계(세이브 안 됨): 절정 첫날 · 축제 달 하루로 옮긴다
+  const festRow = document.createElement('div');
+  Object.assign(festRow.style, { marginTop: '6px', display: 'flex', gap: '6px', alignItems: 'center' });
+  const festLabel = document.createElement('span'); festLabel.textContent = '축제 시계 (298)'; festLabel.style.fontSize = '11px';
+  const festSel = document.createElement('select');
+  Object.assign(festSel.style, { background: '#0e1c2d', color: '#e8f4fd', border: '1px solid #2a5a8a', fontSize: '10px', maxWidth: '220px' });
+  const addOpt = (v: string, label: string): void => { const o = document.createElement('option'); o.value = v; o.textContent = label; festSel.appendChild(o); };
+  addOpt('', '축제 시계: 실시간');
+  for (const f of FESTIVALS) { addOpt(`${f.id}:peak`, `${f.nameKo} 절정(${festivalPeriodLabel(f)})`); addOpt(`${f.id}:month`, `${f.nameKo} 축제 달`); }
+  const cur = festivalDevOverride();
+  festSel.onchange = () => {
+    const [id, ph] = festSel.value.split(':');
+    const f = id ? festivalById(id) : undefined;
+    if (!f) { devSetFestivalDate(null); festLabel.textContent = '축제 시계 (298)'; return; }
+    const y = new Date().getFullYear();
+    const pad = (n: number): string => String(n).padStart(2, '0');
+    let ymd = `${y}-${pad(f.peak.from[0])}-${pad(f.peak.from[1])}`;
+    if (ph === 'month') {
+      for (let d = 1; d <= 28; d++) {
+        const probe = new Date(Date.UTC(y, f.month - 1, d, 3));
+        if (festivalPhase(f, probe) === 'month') { ymd = `${y}-${pad(f.month)}-${pad(d)}`; break; }
+      }
+    }
+    devSetFestivalDate(ymd);
+    festLabel.textContent = `축제 시계 ${ymd}`;
+  };
+  if (cur) festLabel.textContent = `축제 시계 ${cur}`;
+  festRow.appendChild(festLabel); festRow.appendChild(festSel);
+  body.appendChild(festRow);
   const b2 = document.createElement('button');
   b2.textContent = '우편함 비우기';
   styleBtn(b2);

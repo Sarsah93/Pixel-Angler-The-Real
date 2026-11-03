@@ -1456,6 +1456,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
                   (map ? '<div class="ssec"><h3>필드 지도 — ' + esc(map.name) + '</h3>' + kvRows([['지도', '<a class="xl" data-map="map/' + esc(a.dataRegion) + '/area/' + esc(a.id) + '" href="#map/' + esc(a.dataRegion) + '/area/' + esc(a.id) + '">지도 탭에서 이 구역 보기</a>'], ['크기', esc(map.km + ' (' + map.w + ' × ' + map.h + '칸 · 1칸 = 5m)')], ['가게 · 장소', esc(map.shops + ' · ' + map.pois)], ['건물 윤곽', esc(String(map.buildings))], ['항로표지', esc(String(map.lights))]]) + '</div>' : '') +
                   (r.pages.length ? '<div class="ssec"><h3>조행록(' + esc(r.name) + ')</h3>' + kvRows(r.pages.map(pg => [pg.page + '장 ' + pg.label, esc(pg.species + ' · ' + pg.seasons + ' · ' + pg.how + (pg.cond ? ' · ' + pg.cond : ''))])) + '</div>' : '') +
                   ((r.specialties || []).length ? '<div class="ssec"><h3>특산(' + esc(r.short) + ') — 이 지역에서 얻은 것만</h3>' + kvRows(r.specialties.map(s => [esc(s.name), esc(s.kind + ' · ' + s.months + ' · 값 ×' + s.mult + (s.gi ? ' · ' + s.gi : '') + (s.fest ? ' · ' + s.fest : '') + ' — ' + s.note)])) + '</div>' : ''),
+                  ((r.festivals || []).length ? '<div class="ssec"><h3>축제(' + esc(r.short) + ') — 축제 달 값 ×1.1 · 절정 주 ×1.3</h3>' + kvRows(r.festivals.map(f => [esc(f.name), esc(f.month + '월 · 절정 ' + f.period + ' · ' + f.place + ' · ' + f.specs + ' — ' + f.note)])) + '</div>' : ''),
               }),
             });
           }

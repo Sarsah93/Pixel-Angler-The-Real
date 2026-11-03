@@ -27,6 +27,7 @@ import {
   holeKindOfBreakwaterClass, evaluateHoleSpot, holeSlipChance, holeGearWarning,
   STAIR_DIR_LABEL,
   getTitleById,
+  activeFestivalsOfRegion, FESTIVAL_PEAK_CROWD,   // 298차 — 축제
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -166,6 +167,7 @@ import {
   rotateEditorPlacement, flipEditorPlacement, toggleEditorOverlap,
 } from '../dev/MapEditorPanel.js';
 import { GameState } from '../store/GameState.js';
+import { festivalNow } from '../data/FestivalClock.js';   // 298차 — 축제 시계
 import { HomeStore } from '../store/HomeStore.js';
 import { characterLook } from '../data/EquipOutfit.js';
 import { registerNames, getLocale } from '../i18n/I18n.js';
@@ -6415,9 +6417,12 @@ export class RegionFieldScene extends Phaser.Scene {
       this.ambientNpcs = new AmbientNpcSystem(this, this.npcHost);
       // 214차 — 지나다니는 사람 수도 시각을 따른다(한밤 ¼ · 늦은 밤/새벽 ½ · 낮 전부). 씬에 들어올 때 정한다.
       const hr = Math.floor(this.routineClock().min / 60);
-      const crowd = hr < 5 ? 30 : hr < 7 || hr >= 22 ? 60 : 120;
+      // 298차 — 축제: 절정 주 두 배 · 축제 달 1.25배(땅 넓이 상한은 그대로)
+      const fest = activeFestivalsOfRegion(GameState.currentRegionId, festivalNow())[0];
+      const festMul = fest?.phase === 'peak' ? FESTIVAL_PEAK_CROWD : fest ? 1.25 : 1;
+      const crowd = Math.round((hr < 5 ? 30 : hr < 7 || hr >= 22 ? 60 : 120) * festMul);
       // 294차 — 땅 넓이 상한: 걷는 땅이 좁은 섬(독도 — 약 1만 칸)에 낮 120명이 몰려 한 화면에 12명이 섰다. 1,500칸당 한 명 · 최소 6.
-      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })), Math.min(crowd, this.ambientLandCap(crowd)));
+      this.ambientNpcs.spawn(`${this.region}:${this.mapId}`, this.storyNpcs.map((n) => ({ c: Math.floor(n.x / TR), r: Math.floor((n.y - 1) / TR) })), Math.min(crowd, Math.round(this.ambientLandCap(crowd) * festMul)));   // 298차 — 절정 주는 땅 상한도 두 배(1,500칸당 2명)
     }
     this.events.once('shutdown', () => {
       this.sceneExtras = [];   // 씬이 내려가며 오브젝트는 같이 파괴된다

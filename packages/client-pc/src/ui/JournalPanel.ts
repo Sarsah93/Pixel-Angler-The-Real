@@ -45,7 +45,9 @@ import { getLocale, t } from '../i18n/I18n.js';
 import { maybeStartTour, type TourOptions } from './GuideTour.js';
 import { LedgerStore } from '../store/LedgerStore.js';
 import { ConsignQueue } from '../store/ConsignQueue.js';
-import { kstYmd, fillPlayerName, particle, GIFT_REACTION_LABEL, type DayLedgerPage, type InquiryTopicDef } from '@tra/core';
+import { kstYmd, fillPlayerName, particle, GIFT_REACTION_LABEL, upcomingFestivals, festivalPeriodLabel, isRegionOpenAtChapter, type DayLedgerPage, type InquiryTopicDef } from '@tra/core';
+import { festivalNow } from '../data/FestivalClock.js';   // 298차 — 축제
+import { isAllRegionsOpen } from '../dev/DevMode.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 656;
@@ -857,6 +859,16 @@ export class JournalPanel extends DraggablePanel {
       const day = kstYmd(new Date(due)) === kstYmd(new Date()) ? '오늘' : '내일';
       const lots = pend.reduce((n, b) => n + b.items.length, 0);
       ahead.push({ name: `위판장에 맡긴 물건 ${lots}개`, sub: `다음 경매 ${day} ${hm}`, right: '목록 보기', color: '#bfe9ff', onClick: this.cfg.onOpenConsign });
+    }
+    // 298차 — 지역 축제(열린 지역만 · 진행 중이 먼저 · 가까운 순 · 넷까지)
+    const chNow = StoryStore.currentChapter();
+    for (const e of upcomingFestivals(festivalNow(), (r) => isAllRegionsOpen() || isRegionOpenAtChapter(r, chNow)).slice(0, 4)) {
+      ahead.push({
+        name: en ? e.def.nameEn : e.def.nameKo,
+        sub: `${en ? e.def.placeEn : e.def.placeKo} · ${festivalPeriodLabel(e.def, en ? 'en' : 'ko')}`,
+        right: e.phase === 'peak' ? '지금 한창' : e.phase === 'month' ? (e.days <= 31 ? `축제 달 · ${e.days}일 뒤 절정` : '축제 달 · 절정 지남') : `${e.days}일 뒤`,
+        color: e.phase === 'peak' ? C_GOLD : e.phase === 'month' ? C_ACT : C_TEXT,
+      });
     }
     const RH = JournalPanel.DAYS_ROW_H;
     const colW = midX - L - 12;

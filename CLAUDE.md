@@ -96,13 +96,21 @@
   → **294 가족 한집(탁 부자 · 고 부녀 · 석 조손) · 집마다 문 소리(두드림 3 · 벨 3) · 울릉도 도동 · 독도 동도 개방(22편 · 요청 6 · 7) · 바다 「울릉 · 독도」(56종) · 지역 특산 44(얻은 지역 꼬리표 · 제철 배율 · 상세보기 두 줄) · 행인 땅 넓이 상한**
   → **295 섬 어종 5(자리돔 · 혹돔 · 옥돔 · 참다랑어 · 독도새우 통발 전용) · 명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 5 · 지역 레시피 4 · 도감 「특산」 탭**
   → **296 집 앞 우편함(유찰품 · 받지 못한 물건의 길) · 하모니 PR #16 · #17 병합 · main 반영 · 99차 배포**
-  → **297 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)**.
+  → **297 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)**
+  → **298 지역 축제 달력(축제 9 · 축제 달 ×1.1 + 절정 주 ×1.3 · 축제 매대 · 북적임 ×2 · 축제 일손 9 · 라디오 · 알람 · 일지 「나날」)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **298차**: **지역 축제 달력 — 축제 달 + 절정 주(특산 값 · 축제 매대 · 북적임 · 축제 일손 · 라디오 · 알림 · 일지 「나날」 · 도감 카드)** —
+  사용자 「달 단위로 넓히는 쪽 … 너가 고민해서 우선 적용」 → core `db-schema/Festivals.ts`(축제 9 — 속초 양미리·도루묵 11/7~16 · 부산 자갈치 10/17~26 · 구룡포 과메기 11/13~19 · 거제 대구 12/15~23 · 모슬포 방어 11/19~23 · 울릉 오징어 8/3~9 · 안면도 대하 9/20~27 · 소래포구 9/25~28 · 여수 섬슐랭 11/1~3 — 웹 조사 실제 일정 어림) ·
+  `festivalPhase`(KST · 끝 날 포함) · 축제 달 ×1.1 · 절정 ×1.3 · **`specialtySellMultAt`**(제철 × 택배 × 축제 — `InventoryStore` 판매가 세 자리의 단일 입구 · 그 고장 가게만 · 위판 제외) · `RegionStall` 축제 매대(20% / 30% 싸게) · 행인 ×2(땅 상한도 — 속초 120 → 240) ·
+  `DayJobs` 축제 일손 9(`festivalId` · 축제 달에만 · 절정 품삯 ×1.3 — 정옥선 구이 좌판 · 채수림 수조 · 한봄 시식 · 채금자 하역 · 유리아 무대 · 오세라 물품 · 마감기 글씨 · 단철호 부스 · 오가윤 안내) · 라디오 · `MillNotifier.festivalNoticesDue`(절정 첫날 「[축제]」 · 알람 · 플래그 `fest.<id>.<해>`) ·
+  일지 「나날」 넷(「지금 한창」 · 「축제 달 · N일 뒤 절정」) · 도감 특산 카드 · 도움말 「지역 축제」 · `i18n/en_fest.ts` · dev F10 「축제 시계」(`data/FestivalClock.ts` `festivalNow()` — 축제를 보는 코드는 전부 이것) ·
+  검증 = core 487 · r298 11/11 · 빌드 3/3 · 루트 typecheck 4/4. 없는 축제 = 울산 · 울릉 산나물 · 독도.
+  **다음 = 299 지역 텃밭 제한 · 1단계(예시 창 `docs/mockups/regional_plot_window.svg` 의견 뒤) · main · 배포(297 · 298 한 번에 — 사용자 결정)**. 상세 `docs/wiki/03-WORKLOG/2026-11-02-298-festival-calendar.md`.
 - **297차**: **인물 선물 선호 — 대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」** —
   사용자 결정(「1. 대화선택지 선물하기 2. 우호도만 … 추가 아이디어 1. 산타클로스 칭호 … 옵션은 너가 추천」) →
   core `types/Gift.ts` · `db-schema/NpcGiftPrefs.ts`(44명 — 꼬리표 `item:` · `species:` · `specialty:` · `kind:` 12갈래 · 반응 대사 넷 한 · 영 · 고향 특산은 좋아함) · `rules/Gifts.ts`(싫어함 > 아주 좋아함 > 좋아함 > 고향 특산 > 보통 · +0.12 / +0.06 / +0.02 / −0.06 · `GIFT_DAILY_CAP` 1 · `giftTitleGoals` 22 · 44) ·
@@ -117,13 +125,6 @@
   `ui/MailboxPanel.ts`(목록 · 고른 편지 · 받기 · 모두 받기 · 지우기 · 가이드 `mailbox`) · `MillNotifier` 채널 `[우편]` · 시계 알람 · 도움말 「상점 · 경제 › 우편함」 · `i18n/en_mail.ts` · dev F10 「③-2 우편함 시험 편지」 ·
   PR #16(팁 줄 이모지 → 「팁 — 」) · #17(`consignRetrieveBlock`) squash 병합 → `origin/main` merge · 검증 = r296 13/13(깃발 · [F] · 펌프 · 받기 · 지우기 · 가방 가득 · 위판 회차 실패 · 세이브 왕복 · 영어 · pageerror 0) · core 475 · 빌드 3/3 · 루트 typecheck 4/4 · main `35c59b9` · 99차 배포(gh-pages `eeb1fe9` · 실행 28 · main `35c59b9` · 정적 2,157 · 소스맵 0 · 기동 15.0초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0).
   **다음 = 사용자 실플레이 확인(우편함 · 가공장 · 지역 레시피 · 도감 특산 탭) · 특산 남은 셋(축제 달력 · 선물 선호 · 지역 텃밭 제한) · 지역 텃밭(설계) · 살아 있는 미끼**. 상세 `docs/wiki/03-WORKLOG/2026-11-02-296-mailbox-lost-item-paths.md`.
-- **295차**: **섬 어종 5 · 특산 후속 다섯(명산지 꼬리표 · 산지 매대 · 택배 차익 · 지역 가공대 · 지역 레시피 · 도감 특산 탭)** —
-  사용자 「자리돔 · 혹돔 · 옥돔 · 참다랑어 · 독도새우 추가 · … 도감 특산탭까지만 우선 진행하고 나머지는 백로그로」 →
-  어종 4계층(오라클 · 도감 · 요리 프로필 · 다섯 바다 가중 · 경락 · MAFRA · KOSIS · Gemini 그림 4 · 카드) · 독도새우 = 갯것 DB `trapOnly · trapTypes · trapSeas`(새우 통발 · 울릉 바다 — `rollForageSpots` 제외 · `harvestTrap` 거름) ·
-  core `RegionalSpecialty` 50(가공품 5) · `specialtySellMult`(밖 `SPECIALTY_AWAY_MULT` 1.15 × 제철) · `rules/RegionalProcessing.ts`(가공품 5 · 레시피 5 · `processQuote`) · `FireRecipeDef.mainSpecies · learn` · 퀘스트 `unlocks recipe:*` 자동 · `DiscoveryKind` `specialty` ·
-  client `SpecialtyTag`(「구룡포 과메기」 · 배지 `mk_origin`) · `ProcessedItems` · `RegionStall`(직판장 산지 매대) · `RecipeUnlock` · `ProcessQueue · ProcessActions · ProcessPanel`(가게 종류 `processor` — 구룡포 · 울릉 · 속초 · 거제 · 서귀포 POI `manual`) ·
-  `priceOf(item, shop, sellRegion)` · 위판 정산 원산지 줄 · 쿨러 · 상세 · 도감 「특산」 탭(열린 지역만 · dev 「모든 지역 열기」 존중) · 시험 `Specialty295.test.ts` 9 · 검증 = core 475 · r295 11/13 · r295b · 빌드 3/3 · 루트 typecheck 4/4.
-  상세 `docs/wiki/03-WORKLOG/2026-10-31-295-island-species-specialty-followups.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -227,15 +228,15 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main `35c59b9` · 실행 28 · 정적 2,157(소스맵 0) · 기동 15.0초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-02 사용자 지시(「main 재배포까지」)로 작업 브랜치에 빨리 감기했다(296차 · 98차 = `5806b7e` 293차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 94 = 297**(시스템 「인물 선물 — 드리고 싶은 게 있어요」 · 93 = 296 · 92 = 294)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 95 = 298**(시스템 「지역 축제 달력」 · 지역 카드 「축제」 표 · 94 = 297 · 93 = 296)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 142파일 = 심리스 112 + 구 맵 30 · 파일 426).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 42 = 297차 · 다음 = 298 축제 달력 · 299 지역 텃밭) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 41 = 297차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 39 = 297차 기준 · 문법은 258차) · 위키(위 줄 — 94 = 297).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 43 = 298차 · 다음 = 299 지역 텃밭) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 42 = 298차 기준) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 40 = 298차 기준 · 문법은 258차) · 위키(위 줄 — 95 = 298).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

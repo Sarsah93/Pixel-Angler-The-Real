@@ -8,10 +8,10 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 42 — 297차 기준(§07 297 ✅ 인물 선물 선호 · 다음 298 축제 달력 · 299 지역 텃밭(예시 창 의견 뒤) · 「맵 확장 영향 ③」 = 산나물 · 우편함 후속) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 41 — 297차 기준(「인물 선물 — 드리고 싶은 게 있어요」 · 칭호 32종 · 머리 숫자 창 51) |
-| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 39 — 297차 기준 · 채비 문법은 258차(「297차 기준」 줄만) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 94 — 297차(시스템 「인물 선물 — 드리고 싶은 게 있어요」 · 새 그림 없음 · 파일 456) · 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 43 — 298차 기준(§07 297 ✅ 선물 · 298 ✅ 축제 달력 · 다음 299 지역 텃밭(예시 창 의견 뒤) · 「맵 확장 영향 ③」 = 산나물 · 우편함 후속) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 42 — 298차 기준(「지역 축제 달력」 · 「인물 선물」 · 칭호 32종 · 창 51) |
+| 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 40 — 298차 기준 · 채비 문법은 258차(「298차 기준」 줄만) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 95 — 298차(시스템 「지역 축제 달력」 · 출조 지역 카드 「축제」 표 · 새 그림 없음 · 파일 456) · 94 — 297차(선물) · 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.

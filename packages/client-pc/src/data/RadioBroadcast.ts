@@ -9,7 +9,7 @@
  */
 
 import {
-  calculateTideInfo, getLunarDayDisplay, kstParts, WEATHER_LABEL, toxinBanLabel, isRegionOpenAtChapter,
+  calculateTideInfo, getLunarDayDisplay, kstParts, WEATHER_LABEL, toxinBanLabel, isRegionOpenAtChapter, activeFestivalsOfRegion, festivalPeriodLabel,
   type KmaWeatherInfo, type KmaDailyOutlook, type WeatherKind,
 } from '@tra/core';
 import { ExternalDataStore } from '../store/ExternalDataStore.js';
@@ -129,6 +129,19 @@ export function buildRadioBroadcast(locale: 'ko' | 'en', now = new Date(), chapt
     out.push(en
       ? `Shellfish toxin advisory for ${sea.en} (${lbl}): do not gather or eat mussels, clams or oysters. Cooking does not remove the toxin.`
       : `${sea.ko} 일대에 패류독소 채취 금지가 내려져 있습니다(${lbl}). 홍합 · 바지락 · 굴은 캐지도, 드시지도 마십시오. 익혀도 독은 없어지지 않습니다.`);
+  }
+  // 298차 — 지역 축제(열린 지역 · 축제 달 · 절정)
+  for (const sea of seas) {
+    for (const { def, phase } of activeFestivalsOfRegion(sea.id, now)) {
+      const period = festivalPeriodLabel(def, en ? 'en' : 'ko');
+      out.push(en
+        ? (phase === 'peak'
+          ? `${def.nameEn} is on now at ${def.placeEn} (${period}). The stalls pay more for the local specialty this week.`
+          : `${def.nameEn} comes to ${def.placeEn} this month (${period}). The local specialty fetches a better price all month.`)
+        : (phase === 'peak'
+          ? `${def.placeKo}에서는 ${def.nameKo}가 한창입니다(${period}). 축제 기간에는 매대에서 그 고장 특산을 더 쳐줍니다.`
+          : `이달 ${def.placeKo}에서 ${def.nameKo}가 열립니다(${period}). 축제 달에는 그 고장 특산 값이 오릅니다.`));
+    }
   }
   out.push(en
     ? 'That was the sea weather and tides. Have a safe trip out on the water. (Static…)'

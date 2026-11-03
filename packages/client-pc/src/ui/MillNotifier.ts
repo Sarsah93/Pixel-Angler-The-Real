@@ -18,7 +18,10 @@
  */
 
 import Phaser from 'phaser';
-import { millService, cureRecipe, CURE_STATION_LABEL } from '@tra/core';
+import { millService, cureRecipe, CURE_STATION_LABEL, FESTIVALS, festivalPhase, festivalPeriodLabel, kstYmdOf, isRegionOpenAtChapter, REGIONAL_SPECIALTIES, particle, type FestivalDef } from '@tra/core';
+import { festivalNow } from '../data/FestivalClock.js';   // 298차
+import { StoryStore } from '../store/StoryStore.js';
+import { isAllRegionsOpen } from '../dev/DevMode.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MillQueue, type MillOrder } from '../store/MillQueue.js';
 import { CureQueue, type CureBatch } from '../store/CureQueue.js';
@@ -75,6 +78,27 @@ export function cureReadyLine(b: CureBatch): string {
 }
 
 /** 손목시계를 찼는가(장비 「시계」 칸) */
+/** 298차 — 축제 절정 첫 알림(열린 지역 · 해마다 한 번 — 세이브 플래그 `fest.<id>.<해>`) */
+export function festivalNoticesDue(): { def: FestivalDef; key: string }[] {
+  const now = festivalNow();
+  const { y } = kstYmdOf(now);
+  const ch = StoryStore.currentChapter();
+  const out: { def: FestivalDef; key: string }[] = [];
+  for (const def of FESTIVALS) {
+    if (!(isAllRegionsOpen() || isRegionOpenAtChapter(def.regionId, ch))) continue;
+    if (festivalPhase(def, now) !== 'peak') continue;
+    const key = `fest.${def.id}.${y}`;
+    if (GameState.getFlag(key)) continue;
+    out.push({ def, key });
+  }
+  return out;
+}
+
+export function festivalOpenLine(def: FestivalDef): string {
+  const specs = def.specialtyIds.map((id) => REGIONAL_SPECIALTIES.find((d) => d.id === id)?.nameKo ?? id).join(' · ');
+  return `${def.nameKo}가 열렸다 — ${def.placeKo} · ${festivalPeriodLabel(def)}. 축제장 매대에서 ${specs}${particle(specs, '을', '를')} 더 쳐준다.`;
+}
+
 export function wearingWatch(): boolean {
   return !!InventoryStore.getEquipped('시계');
 }
@@ -110,21 +134,25 @@ export function pumpMillReady(scene: Phaser.Scene, opts: MillPumpOpts = {}): voi
   const cured = CureQueue.unnotified(now);
   const proc = ProcessQueue.unnotified(now);   // 295차 — 가공장
   const mail = MailboxStore.unnotified();      // 296차 — 우편함
-  if (fresh.length === 0 && cured.length === 0 && proc.length === 0 && mail.length === 0) return;
+  const fests = festivalNoticesDue();          // 298차 — 축제 절정 첫날
+  if (fresh.length === 0 && cured.length === 0 && proc.length === 0 && mail.length === 0 && fests.length === 0) return;
   const millLines = fresh.map(millReadyLine);
   const cureLines = cured.map(cureReadyLine);
   const procLines = proc.map(processReadyLine);
   const mailLines = mail.map(mailArrivedLine);
-  const lines = [...millLines, ...cureLines, ...procLines, ...mailLines];
+  const festLines = fests.map((f) => festivalOpenLine(f.def));
+  const lines = [...millLines, ...cureLines, ...procLines, ...mailLines, ...festLines];
   for (const o of fresh) MillQueue.markNotified(o.id);
   for (const b of cured) CureQueue.markNotified(b.id);
   for (const o of proc) ProcessQueue.markNotified(o.id);
   for (const l of mail) MailboxStore.markNotified(l.id);
+  for (const f of fests) GameState.setFlag(f.key);
   GameState.markDirty();
   for (const l of millLines) channelLog(scene, `[방앗간] ${l}`);
   for (const l of cureLines) channelLog(scene, `[갈무리] ${l}`);
   for (const l of procLines) channelLog(scene, `[가공장] ${l}`);
   for (const l of mailLines) channelLog(scene, `[우편] ${l}`);
+  for (const l of festLines) channelLog(scene, `[축제] ${l}`);
   if (wearingWatch()) {
     playSfx('watch_alarm');
     showWatchAlarm(scene, lines);

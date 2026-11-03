@@ -756,7 +756,14 @@ export { STORY_CHAPTERS, getStoryChapter, chapterOfRegion, isRegionOpenAtChapter
 export { JOURNAL_PAGES, getJournalPage, journalCatchMatches } from './db-schema/JournalPages.js';
 export { STORY_MAIN_NPCS, STORY_ARCS, getStoryArc, getStoryNpc, arcOfNpc } from './db-schema/StoryArcs.js';
 export type { DayJobDef } from './db-schema/DayJobs.js';
-export { DAY_JOBS, dayJobsOfNpc, getDayJob } from './db-schema/DayJobs.js';
+export { DAY_JOBS, dayJobsOfNpc, getDayJob, jobOpenAt, jobWageMultAt } from './db-schema/DayJobs.js';
+// 298차 — 축제 달력
+export type { FestivalDef, FestivalPhase } from './db-schema/Festivals.js';
+export {
+  FESTIVALS, FESTIVAL_MONTH_MULT, FESTIVAL_PEAK_MULT, FESTIVAL_PEAK_CROWD, FESTIVAL_JOB_PEAK_WAGE, FESTIVAL_STALL_OFF,
+  kstYmdOf, inFestivalPeak, festivalPhase, festivalById, festivalsOfRegion, festivalsOfSpecialty, activeFestivalsOfRegion,
+  festivalSellMult, specialtySellMultAt, daysUntilFestivalPeak, upcomingFestivals, festivalPeriodLabel, validateFestivals,
+} from './db-schema/Festivals.js';
 export {
   STORY_QUESTS, getStoryQuest, storyQuestsOfChapter, lastMainQuestOfChapter, validateStoryQuests,
 } from './db-schema/StoryQuestDatabase.js';

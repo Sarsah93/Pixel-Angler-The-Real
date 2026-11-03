@@ -29,7 +29,8 @@ import { planRigLoss, TUNING as TUNING_RL, type RigLossCause, type RigLossPlan }
 // 282차 — 개체 아이템 id(장비 · 단단한 루어는 `<카탈로그 id>#<번호>`)
 import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra/core';
 import { rodSpecFor, reelSpecFor, forageBaitKeyOf, type RodItemSpec, type ReelItemSpec } from '@tra/core';
-import { specialtySellMult, parseProduceId as parseProduceIdCore } from '@tra/core';
+import { specialtySellMultAt, parseProduceId as parseProduceIdCore } from '@tra/core';
+import { festivalNow } from '../data/FestivalClock.js';   // 298차 — 축제 시계
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER, bagsOfLoose, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -1901,13 +1902,13 @@ class InventoryStoreManager {
       const unit = producePrice(item.id, Date.now()) ?? item.basePrice;
       // 294차 — 지역 특산(거둔 지역이 주산지면 배율 · 제철 밖은 절반)
       // 295차 — 산지 밖 가게면 택배 차익(`SPECIALTY_AWAY_MULT`)
-      const spMul = specialtySellMult(parseProduceIdCore(item.id).baseId, item.originRegion, new Date().getMonth() + 1, sellRegionId);
+      const spMul = specialtySellMultAt(parseProduceIdCore(item.id).baseId, item.originRegion, sellRegionId, festivalNow());   // 298차 — 축제 달 · 절정 배율까지
       return Math.max(10, Math.round((unit * stateMul * 0.7 * spMul) / 10) * 10);
     }
     // 295차 — 지역 가공품: 기준가 × 특산 배율(산지 밖이면 택배 차익) · 상점은 8할. 산 것은 되팔지 못한다
     if (item.subCategory === PROCESSED_SUB) {
       if (item.catchMethod === 'bought') return 0;
-      const spMul = specialtySellMult(item.id, item.originRegion, new Date().getMonth() + 1, sellRegionId);
+      const spMul = specialtySellMultAt(item.id, item.originRegion, sellRegionId, festivalNow());
       return Math.max(0, Math.round((item.basePrice * spMul * (shop ? 0.8 : 1)) / 10) * 10);
     }
     if (item.subCategory === '어획물') {
@@ -1921,7 +1922,7 @@ class InventoryStoreManager {
         const cache = ExternalDataStore.getWholesaleCache(speciesId, tier);
         const base = evaluateFishSellPrice(speciesId, item.lengthCm ?? 0, item.weightG, cache).finalPrice;
         // 294차 — 지역 특산(잡은 지역이 그 종의 주산지면 배율 · 제철 밖은 절반) — 위판 · 상점 둘 다
-        const spMul = specialtySellMult(speciesId, item.originRegion, new Date().getMonth() + 1, sellRegionId);   // 295차 — 산지 밖 가게면 택배 차익
+        const spMul = specialtySellMultAt(speciesId, item.originRegion, sellRegionId, festivalNow());   // 295차 — 산지 밖 가게면 택배 차익 · 298차 축제
         // 상점은 시세(경락가)보다 싸게 사들인다 — 시세 그대로 받으려면 위판(수수료 3~6%)
         return Math.max(0, Math.round(base * stateMul * spMul * (shop ? SHOP_BUY_RATE : 1)));
       }

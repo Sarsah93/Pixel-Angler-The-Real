@@ -725,6 +725,18 @@ const rules = [
     ],
   },
   {
+    id: 'festivals_298', round: 298, hidden: false, title: '지역 축제 달력 — 축제 달과 절정 주',
+    lede: '고장마다 해마다 같은 때에 축제가 선다 — 속초 양미리·도루묵(11월) · 부산 자갈치(10월) · 구룡포 과메기(11월) · 거제 대구(12월) · 모슬포 방어(11월) · 울릉도 오징어(8월) · 안면도 대하(9월) · 소래포구(9월) · 여수 섬슐랭(11월). 축제 달 내내 그 고장 가게가 축제 특산을 더 쳐주고, 실제 축제가 열리는 절정 주에는 값이 더 오르고 거리가 붐비고 그 고장 사람이 일손을 부탁한다. 열린 고장의 축제는 일지 「나날」과 라디오로 안다.',
+    rows: [
+      ['축제 달', '달 내내 — 그 고장 가게에서 축제 특산을 팔면 값 ×1.1 · 직판장 축제 매대의 그 고장 가공품 20% 싸게 · 거리 1.25배 · 그 고장 사람이 축제 일손을 부탁한다 · 라디오 「이달 … 열립니다」'],
+      ['절정 주', '실제 축제가 열리는 며칠(해마다 같은 날짜로 어림) — 값 ×1.3 · 축제 매대 30% 싸게 · 거리 두 배(땅 상한도 두 배) · 축제 일손 품삯 ×1.3 · 첫날 손목시계 알람과 채널 「[축제]」(해마다 한 번)'],
+      ['값은 그 고장에서만', '축제 값은 그 고장에서 얻은 특산을 그 고장 가게에서 팔 때만 붙는다. 제철 배율과 곱하고, 다른 고장에 가져가는 택배 차익과는 따로다(위판에는 안 붙는다)'],
+      ['일지 「나날」', '앞으로 칸에 열린 고장의 축제가 가까운 순으로 — 「지금 한창」 · 「축제 달 · N일 뒤 절정」 · 「N일 뒤」. 도감 「특산」 카드에도 축제와 기간이 적힌다'],
+      ['축제 아홉', '속초 양미리·도루묵(속초항 · 11/7~16) · 부산 자갈치(10/17~26) · 구룡포 과메기(아라광장 · 11/13~19) · 거제 대구(외포항 · 12/15~23) · 모슬포 방어(11/19~23) · 울릉도 오징어(저동항 · 8/3~9) · 안면도 백사장 대하(9/20~27) · 소래포구(9/25~28) · 여수 섬슐랭 페스타(11/1~3) — 2024 ~ 2026년 실제 일정에서 어림'],
+      ['없는 곳', '울산(정자 가자미) · 울릉 산나물 · 독도는 확인된 축제가 없어 비워 두었다'],
+    ],
+  },
+  {
     id: 'gifts_297', round: 297, hidden: false, title: '인물 선물 — 드리고 싶은 게 있어요',
     lede: '말을 걸면 「드리고 싶은 게 있어요.」가 선다 — 가방에 줄 수 있는 것이 있을 때만. 먹을거리 · 가공품 · 술 · 커피 · 단것을 하나 고르면 그 사람이 받고 한마디 한다. 아주 좋아하는 것이면 우호도가 크게, 싫어하는 것이면 조금 깎인다. 한 사람에게 하루 한 번이다. 반응을 보면 그 사람 취향이 수첩에 적힌다.',
     rows: [
@@ -1387,6 +1399,11 @@ const regions = core.WORLD_NODE_DATABASE.map((n) => {
     specialties: (core.specialtiesOfRegion ? core.specialtiesOfRegion(rid) : []).map((d) => ({
       name: d.nameKo, kind: SPEC_KIND_KO[d.kind] ?? d.kind, months: d.months && d.months.length ? d.months.join('·') + '월' : '연중', mult: d.priceMult,
       note: d.noteKo, gi: d.gi ?? '', fest: d.festivalKo ?? '',
+    })),
+    // 298차 — 지역 축제(core `FESTIVALS` — 축제 달 + 절정 주)
+    festivals: (core.festivalsOfRegion ? core.festivalsOfRegion(rid) : []).map((f) => ({
+      name: f.nameKo, month: f.month, period: core.festivalPeriodLabel(f), place: f.placeKo, note: f.noteKo,
+      specs: f.specialtyIds.map((id) => core.REGIONAL_SPECIALTIES.find((d) => d.id === id)?.nameKo ?? id).join(' · '),
     })),
     open: areas.length > 0, boat: ['ulleungdo', 'dokdo'].includes(rid), chapter: core.chapterOfRegion ? (core.chapterOfRegion(rid) ?? null) : null,   // 263차 — 이 지역을 여는 장
     areas: areas.map((a) => {

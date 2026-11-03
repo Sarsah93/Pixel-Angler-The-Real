@@ -15,6 +15,7 @@ import {
   dishVariantKind, dishDiscoveryIdsFor,
   resolveLegal, formatSeasons,
   REGIONAL_SPECIALTIES, isRegionOpenAtChapter, type RegionalSpecialtyDef,   // 295차 — 특산 탭
+  festivalsOfSpecialty, festivalPeriodLabel,   // 298차 — 축제
 } from '@tra/core';
 import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
 import { isAllRegionsOpen } from '../dev/DevMode.js';   // 295차 — 특산 탭도 dev 모든 지역 열기
@@ -608,9 +609,11 @@ export class AnglerLogScene extends Phaser.Scene {
         }), itemW - 27);
         const months = d.months && d.months.length ? `제철 ${d.months.join('·')}월` : '제철 연중';
         const discLine = this.discoveryLine('specialty', d.id);
+        const fest = festivalsOfSpecialty(d.id)[0];   // 298차 — 축제 달력의 축제가 있으면 그 기간, 없으면 표의 축제 글
+        const festLine = fest ? `${fest.nameKo} ${festivalPeriodLabel(fest)}` : d.festivalKo ?? '';
         const rows: [string, string][] = [
           [months, '#8faabf'],
-          [`값 ×${d.priceMult}${d.festivalKo ? ` · ${d.festivalKo}` : ''}`, '#c8a060'],
+          [`값 ×${d.priceMult}${festLine ? ` · ${festLine}` : ''}`, '#c8a060'],
           [discLine ?? '얻어 봄', '#8fd4b8'],
         ];
         rows.forEach(([label, color], i) => {

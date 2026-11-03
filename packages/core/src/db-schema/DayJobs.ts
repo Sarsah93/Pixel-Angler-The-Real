@@ -16,6 +16,7 @@
  */
 
 import type { StoryLicenseId } from '../types/Story.js';
+import { festivalById, festivalPhase, FESTIVAL_JOB_PEAK_WAGE } from './Festivals.js';
 
 export interface DayJobDef {
   id: string;
@@ -58,6 +59,8 @@ export interface DayJobDef {
   /** 작업 로그 한 줄 (완료 안내) */
   flavorKo: string;
   flavorEn: string;
+  /** 298차 — 축제 일손: 그 축제 달에만 뜨고 절정 주에는 품삯이 오른다(`FESTIVAL_JOB_PEAK_WAGE`) */
+  festivalId?: string;
 }
 
 export const DAY_JOBS: DayJobDef[] = [
@@ -386,10 +389,125 @@ export const DAY_JOBS: DayJobDef[] = [
     flavorKo: '보면대 서른 개가 바닷바람에 서 있다. 첫 음은 못 들었다.',
     flavorEn: 'Thirty stands standing in the sea wind. I missed the first note.',
   },
+  // ── 298차 축제 일손(축제 달에만 · 절정 주 품삯 ×1.3) ──
+  {
+    id: 'fest_sokcho_grill', npcId: 'okseon', regionId: 'gangwon_sokcho', festivalId: 'sokcho_sandfish_fest',
+    nameKo: '축제 구이 좌판 거들기', nameEn: 'Helping at the Festival Grill Stall',
+    descKo: '속초항 축제장 구이 좌판. 양미리 · 도루묵을 연탄불에 올리고 뒤집고 담는다. 연기 쪽에 서는 사람이 늘 모자라다.',
+    descEn: 'The grill stall at the Sokcho Port festival. Sand lance and sandfish onto the briquettes, flip, serve. Nobody wants the smoky side.',
+    askKo: '축제 좌판에 손이 모자라. 연기 쪽 설 사람이 없어, {player} 씨. 양미리 좀 뒤집어 줘.',
+    askEn: 'The festival stall is short on hands. Nobody will stand on the smoky side, {player}. Come flip some sand lance.',
+    wage: 16000, minutes: 60, fatigue: 9, hunger: 4, hydration: 9, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_sokcho_grill',
+    flavorKo: '연탄불 앞에서 한 시간. 옷에서 도루묵 냄새가 난다.', flavorEn: 'An hour over the briquettes. My clothes smell of sandfish.',
+  },
+  {
+    id: 'fest_busan_inspect', npcId: 'chae_surim', regionId: 'busan', festivalId: 'busan_jagalchi_fest',
+    nameKo: '축제 수조 점검 돕기', nameEn: 'Helping Check the Festival Tanks',
+    descKo: '자갈치축제 활어 수조 백 개. 수온계 읽고 죽은 고기 건지고 산소 호스 확인. 표에 적는 손이 하나 더 필요하다.',
+    descEn: 'A hundred live tanks at the Jagalchi festival. Read the thermometers, net the dead ones, check the air hoses. One more hand on the clipboard.',
+    askKo: '수조 백 개를 혼자 돌 수는 없어요. 표 적는 것만 맡아 주실래요, {player} 씨?',
+    askEn: "I can't walk a hundred tanks alone. Could you take the clipboard, {player}?",
+    wage: 17000, minutes: 60, fatigue: 6, hunger: 4, hydration: 5, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_busan_inspect',
+    flavorKo: '수조 백 개, 수온 백 줄. 고등어 수조가 제일 붐볐다.', flavorEn: 'A hundred tanks, a hundred temperatures. The mackerel tanks were the busiest.',
+  },
+  {
+    id: 'fest_pohang_booth', npcId: 'han_bom', regionId: 'gyeongbuk_pohang', festivalId: 'pohang_gwamegi_fest',
+    nameKo: '과메기 시식 부스 거들기', nameEn: 'Helping at the Gwamegi Tasting Booth',
+    descKo: '아라광장 시식 부스. 과메기 껍질 벗기고 김 · 미역 · 쪽파를 접시에 맞춘다. 줄이 광장 끝까지 선다.',
+    descEn: 'The tasting booth at Ara Plaza. Peel the gwamegi, plate it with laver, seaweed and chives. The line runs to the end of the square.',
+    askKo: '시식 부스 줄이 끝이 안 보여. 접시 맞추는 손 하나만 빌려줘, {player} 씨.',
+    askEn: "The tasting line never ends. Lend me one pair of hands for plating, {player}.",
+    wage: 15000, minutes: 60, fatigue: 7, hunger: 2, hydration: 5, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_pohang_booth',
+    flavorKo: '접시 사백 개. 손끝에 과메기 기름이 배었다.', flavorEn: 'Four hundred plates. Gwamegi oil soaked into my fingertips.',
+  },
+  {
+    id: 'fest_geoje_unload', npcId: 'chae_geumja', regionId: 'gyeongnam_geoje', festivalId: 'geoje_cod_fest',
+    nameKo: '축제 대구 하역', nameEn: 'Unloading Festival Cod',
+    descKo: '외포항 축제장으로 들어오는 대구 상자. 배에서 매대까지 나르고 크기별로 가른다. 새벽 배가 제일 많다.',
+    descEn: 'Cod crates coming into the Oepo festival grounds. Carry them from boat to stall and sort by size. The dawn boats bring the most.',
+    askKo: '대구 상자가 배마다 서른 개야. 매대까지 같이 날라 줘, {player} 씨.',
+    askEn: 'Thirty cod crates a boat. Help me carry them to the stalls, {player}.',
+    wage: 18000, minutes: 60, fatigue: 11, hunger: 6, hydration: 7, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_geoje_unload',
+    flavorKo: '대구 상자 아흔 개. 팔이 대구 무게를 기억한다.', flavorEn: 'Ninety crates of cod. My arms remember the weight.',
+  },
+  {
+    id: 'fest_jeju_stage', npcId: 'yu_ria', regionId: 'jeju', festivalId: 'jeju_mosulpo_yellowtail_fest',
+    nameKo: '방어축제 무대 진행 보조', nameEn: 'Stage Assistant at the Yellowtail Festival',
+    descKo: '모슬포항 본무대. 맨손잡기 참가자 번호표 나눠 주고 큐 카드 들고 마이크 줄 정리. 진행자 옆에 서는 일이다.',
+    descEn: 'The main stage at Moseulpo Port. Hand out bare-hand-catch numbers, hold cue cards, keep the mic cables tidy. You stand beside the host.',
+    askKo: '무대 옆에 설 사람이 필요해요. 큐 카드만 들고 있으면 돼요, {player} 씨. 카메라는 내가 받을게요.',
+    askEn: "I need someone beside the stage. Just hold the cue cards, {player}. I'll take the camera.",
+    wage: 16000, minutes: 60, fatigue: 6, hunger: 4, hydration: 5, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_jeju_stage',
+    flavorKo: '큐 카드 여든 장. 방어 맨손잡기는 한 번도 못 봤다.', flavorEn: 'Eighty cue cards. I never once saw the bare-hand catch.',
+  },
+  {
+    id: 'fest_ulleung_supply', npcId: 'oh_sera', regionId: 'ulleungdo', festivalId: 'ulleung_squid_fest',
+    nameKo: '축제 물품 나르기', nameEn: 'Hauling Festival Supplies',
+    descKo: '저동항 특설무대까지 편의점 물 · 얼음 · 종이컵. 축제 사흘은 가게가 섬 전체를 먹인다.',
+    descEn: 'Water, ice and paper cups from the store to the Jeodong stage. For three festival days the shop feeds the whole island.',
+    askKo: '축제 때는 가게가 섬을 다 먹여요. 얼음 좀 무대까지 날라 줘요, {player} 씨.',
+    askEn: 'During the festival this shop feeds the island. Haul some ice to the stage for me, {player}.',
+    wage: 17000, minutes: 60, fatigue: 10, hunger: 5, hydration: 8, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_ulleung_supply',
+    flavorKo: '얼음 스무 봉지, 물 마흔 짝. 저동항이 오징어 냄새로 가득하다.', flavorEn: 'Twenty bags of ice, forty crates of water. Jeodong Port smells of squid.',
+  },
+  {
+    id: 'fest_taean_sign', npcId: 'ma_gamgi', regionId: 'chungnam_taean', festivalId: 'taean_daeha_fest',
+    nameKo: '축제 매대 글씨 쓰기', nameEn: 'Lettering the Festival Stalls',
+    descKo: '백사장항 매대 서른 곳의 가격표 · 안내판. 붓글씨로 대하 · 꽃게 값을 쓴다. 글은 써도 값은 물어서 쓴다.',
+    descEn: 'Price boards and signs for thirty stalls at Baeksajang Port. Brush the prawn and crab prices. Ask before you write a number.',
+    askKo: '매대 글씨를 서른 장 써야 해요. 저 혼자는 마감이 또 늦어요, {player} 씨.',
+    askEn: "Thirty stall signs to letter. Alone I'll miss another deadline, {player}.",
+    wage: 15000, minutes: 60, fatigue: 5, hunger: 3, hydration: 4, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_taean_sign',
+    flavorKo: '안내판 서른 장. 「꽃게」를 서른 번 썼더니 꽃게가 글자로 보인다.', flavorEn: 'Thirty signs. After writing "crab" thirty times, crabs look like letters.',
+  },
+  {
+    id: 'fest_incheon_booth', npcId: 'dan_cheolho', regionId: 'incheon', festivalId: 'incheon_sorae_fest',
+    nameKo: '동호회 축제 부스 지키기', nameEn: 'Minding the Club Festival Booth',
+    descKo: '소래포구축제 회사 동호회 부스. 낚시 체험 줄 세우고 사은품 나눠 주고 저울 눈금을 손님 앞에서 보여 준다.',
+    descEn: 'The company club booth at the Soraepogu festival. Queue the casting game, hand out prizes, show the scale readings to customers.',
+    askKo: '부스를 혼자 지키고 있어요. 저울 눈금 보여 주는 것만 맡아 줘요, {player} 씨.',
+    askEn: "I'm minding the booth alone. Just show people the scale readings, {player}.",
+    wage: 15000, minutes: 60, fatigue: 6, hunger: 4, hydration: 5, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_incheon_booth',
+    flavorKo: '저울 눈금을 백 번 보여 줬다. 꽃게 값은 한 번도 깎이지 않았다.', flavorEn: 'I showed the scale a hundred times. Nobody haggled the crab price once.',
+  },
+  {
+    id: 'fest_yeosu_guide', npcId: 'oh_gayun', regionId: 'jeonnam_yeosu', festivalId: 'yeosu_seomchelin_fest',
+    nameKo: '페스타 손님 안내', nameEn: 'Guiding Festa Visitors',
+    descKo: '구항 페스타 안내 부스. 섬별 음식 부스 지도 나눠 주고 호텔 셔틀 시간을 외워 답한다.',
+    descEn: 'The information booth at the old-harbor festa. Hand out island food-booth maps and recite the hotel shuttle times.',
+    askKo: '안내 부스에 사람이 하나 더 필요해요. 셔틀 시간표만 외우면 돼요, {player} 씨.',
+    askEn: 'I need one more person at the info booth. Just memorize the shuttle timetable, {player}.',
+    wage: 15000, minutes: 60, fatigue: 5, hunger: 3, hydration: 4, perDay: 2, minLevel: 1, rep: 1,
+    questKey: 'job:fest_yeosu_guide',
+    flavorKo: '지도 삼백 장. 셔틀 시간표가 꿈에 나올 것 같다.', flavorEn: 'Three hundred maps. The shuttle timetable will haunt my dreams.',
+  },
 ];
 
-export function dayJobsOfNpc(npcId: string, regionId: string): DayJobDef[] {
-  return DAY_JOBS.filter((j) => j.npcId === npcId && j.regionId === regionId);
+/** 298차 — 축제 일손은 그 축제 달에만 뜬다(`now` = KST 실시간 · dev가 옮긴 시계) */
+export function dayJobsOfNpc(npcId: string, regionId: string, now: Date = new Date()): DayJobDef[] {
+  return DAY_JOBS.filter((j) => j.npcId === npcId && j.regionId === regionId && jobOpenAt(j, now));
+}
+
+/** 축제 일손이면 축제 달 · 절정 안인가 — 아니면 늘 참 */
+export function jobOpenAt(job: DayJobDef, now: Date): boolean {
+  if (!job.festivalId) return true;
+  const f = festivalById(job.festivalId);
+  return !!f && festivalPhase(f, now) !== 'none';
+}
+
+/** 298차 — 절정 주 축제 일손 품삯 배율(아니면 1) */
+export function jobWageMultAt(job: DayJobDef, now: Date): number {
+  if (!job.festivalId) return 1;
+  const f = festivalById(job.festivalId);
+  return f && festivalPhase(f, now) === 'peak' ? FESTIVAL_JOB_PEAK_WAGE : 1;
 }
 
 export function getDayJob(id: string): DayJobDef | undefined {
