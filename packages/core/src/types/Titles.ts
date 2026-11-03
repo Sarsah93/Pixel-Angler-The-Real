@@ -105,8 +105,10 @@ export type TitleEffectKind =
   | 'buyDiscount'
   /** 행동으로 쌓이는 피로 −N%(비율) */
   | 'fatigueCut'
-  /** 297차 — 선물 우호도 +N%(선물 보따리 · 동네 산타) */
-  | 'giftWarmth';
+  /** 297차 — 선물 우호도 +N%(「산타」) */
+  | 'giftWarmth'
+  /** 297(2) — 「박애주의자」: 선물 우호도 +N%에 상점 구매가 할인까지(사용자 지시 「선물우호도 및 가게 할인율 소급 적용」) */
+  | 'giftAndDiscount';
 
 /** 조건 한 칸 — 누적 수 ≥ 목표 */
 export interface TitleReq {

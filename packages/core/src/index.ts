@@ -304,7 +304,7 @@ export {
   mulberry32, forageSeed, forageSafety, creatureSpotKinds, creatureTools, FORAGE_TOOL_LABEL,
   pickForageTool, forageHoldMs, rollForageSpots, attemptForage, isOrdinanceViolation,
   rollEnforcement, enforcementFineWon, enforcementRepeatMult, trapSeasonViolations,
-  forageBehaviorOf, forageGameKindOf, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
+  forageBehaviorOf, forageGameKindOf, isWildGreen, WILD_GREEN_GAME_LABEL, isEastSeaRegion, rollForageHarvest, forageInjuryRoll, shallowWaterDepthM,
   rollForageSizeCm, forageWeightG, forageImageSizeScale, FORAGE_BAIT_KEY, forageBaitKeyOf, rodFishingClosure,   // 288차 — 종별 크기 · 무게 · 그림 배율
   isCrabCreature, BERRIED_MONTHS, BERRIED_CHANCE,
 } from './simulation/ForagingEngine.js';

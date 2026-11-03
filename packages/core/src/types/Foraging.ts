@@ -25,7 +25,9 @@ export type ForageTool = 'hand' | 'tongs' | 'net' | 'gaff' | 'rake';
  *  - crawler : 느리게 긴다(보말 · 소라 · 해삼 · 군소 · 성게) → 「줍기」
  *  - runner  : 다가가면 달아난다(쫄장게 · 갯강구 · 민꽃게 · 꽃게) → 「덮치기」
  */
-export type ForageBehavior = 'buried' | 'attached' | 'crevice' | 'crawler' | 'runner';
+export type ForageBehavior = 'buried' | 'attached' | 'crevice' | 'crawler' | 'runner'
+  // 299차 — 산나물: leaf(잎을 뜯는다 → 줍기 판) · root(뿌리를 캔다 → 파기 판) · shoot(새순을 꺾는다 → 떼기 판)
+  | 'leaf' | 'root' | 'shoot';
 
 /** 224차 — 채집 손놀림 놀이 갈래 (갈래마다 판정이 다르다 — `ForageMinigame`) */
 export type ForageGameKind = 'snatch' | 'pry' | 'dig' | 'pull' | 'pick';
@@ -42,7 +44,8 @@ export type ForageSpotKind =
   | 'armor_foot'    // 방파제 사석·테트라포드 발밑
   | 'tidepool'      // 간조에 드러나는 웅덩이 (암반 안쪽 물 타일)
   | 'harbor_wall'   // 항만 안벽 아래 (홍합·굴 고착)
-  | 'shallows';     // 224차 — 완만한 물가(모래·자갈·흙·갯바위)의 얕은 물 1칸 (장화로 들어가 잡는다)
+  | 'shallows'      // 224차 — 완만한 물가(모래·자갈·흙·갯바위)의 얕은 물 1칸 (장화로 들어가 잡는다)
+  | 'hill_grass';   // 299차 — 산자락(숲 · 풀밭 안쪽 — 도로 · 건물에서 떨어진 곳). 산나물만 난다
 
 /** 씬이 넘기는 스팟 후보 (걷기 가능한 뭍 타일 — 물에 인접) */
 export interface ForageCandidate {

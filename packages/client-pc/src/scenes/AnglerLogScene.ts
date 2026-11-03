@@ -52,6 +52,7 @@ const DISH_KIND_HINT: Record<DishVariantKind, string> = {
 const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
   shellfish: '조개류', crustacean: '갑각류', cephalopod: '두족류',
   echinoderm: '극피동물', bivalve: '이매패류', gastropod: '복족류', annelid: '갯지렁이류',
+  wild_green: '산나물',   // 299차
 };
 
 /**
@@ -491,7 +492,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
     const found = all.filter((c) => DiscoveryStore.isDiscovered('creature', c.id)).length;
     const summary = this.add.text(width - 40, startY - 26,
-      `발견 ${found} / ${all.length}종 — 해루질·통발로 채집해 발견`, {
+      `발견 ${found} / ${all.length}종 — 해루질 · 통발 · 산자락에서 채집해 발견`, {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
       }).setOrigin(1, 0);
     this.tabContainer?.add(summary);

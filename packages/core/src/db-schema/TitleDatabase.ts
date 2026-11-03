@@ -204,14 +204,14 @@ export const TITLE_DATABASE: TitleDef[] = [
   },
   // ───────── 297차 선물(사용자 제안 「산타클로스 칭호」 — 두 단계 · 효과는 선물 우호도 배율) ─────────
   {
-    id: 'gift_bundle', nameKo: '선물 보따리', nameEn: 'Gift Bundle', rarity: 'rare',
+    id: 'gift_bundle', nameKo: '산타', nameEn: 'Santa', rarity: 'rare',
     paths: [[r('giftLoved', Math.ceil(GIFT_PREF_NPC_COUNT / 2))]], effect: 'giftWarmth',
-    storyKo: '마을 사람 절반이 내가 건넨 것을 제일 좋아한다고 했다. 무엇을 좋아하는지 묻지 않아도 보이기 시작했다.',
-    storyEn: 'Half the people in town said what I handed them was their favorite. I started to see what people like without asking.',
+    storyKo: '마을 사람 절반이 내가 건넨 것을 제일 좋아한다고 했다. 아이들이 등 뒤에서 산타라고 부른다.',
+    storyEn: 'Half the people in town said what I handed them was their favorite. The kids call me Santa behind my back.',
   },
   {
-    id: 'santa', nameKo: '동네 산타', nameEn: 'Town Santa', rarity: 'legend',
-    paths: [[r('giftLoved', GIFT_PREF_NPC_COUNT)]], effect: 'giftWarmth',
+    id: 'santa', nameKo: '박애주의자', nameEn: 'Philanthropist', rarity: 'legend',
+    paths: [[r('giftLoved', GIFT_PREF_NPC_COUNT)]], effect: 'giftAndDiscount',
     storyKo: '아는 사람 모두에게 그 사람이 제일 좋아하는 것을 한 번씩 건넸다. 이 동네에서 내 보따리는 비어 있을 날이 없다.',
     storyEn: 'I have handed everyone I know the one thing they love most. In this town my bag is never empty for long.',
   },
@@ -232,6 +232,8 @@ export const TITLE_EFFECT_SCALE: Record<TitleEffectKind, [number, number, number
   fatigueCut: [0.03, 0.06, 0.09],
   // 297차 — 선물 우호도(드묾 +25% · 전설 +50%)
   giftWarmth: [0.15, 0.25, 0.5],
+  // 297(2) — 박애주의자: 선물 우호도 부분(할인 부분은 `buyDiscount` 눈금을 같이 쓴다)
+  giftAndDiscount: [0.15, 0.25, 0.5],
 };
 
 const RARITY_INDEX: Record<TitleRarity, 0 | 1 | 2> = { common: 0, rare: 1, legend: 2 };
@@ -264,6 +266,7 @@ export function titleEffectLabelKo(def: TitleDef): string {
     case 'buyDiscount': return `상점 구매가 -${p}%`;
     case 'fatigueCut': return `행동 피로 -${p}%`;
     case 'giftWarmth': return `선물 우호도 +${p}%`;
+    case 'giftAndDiscount': return `선물 우호도 +${p}% · 상점 구매가 -${Math.round(TITLE_EFFECT_SCALE.buyDiscount[RARITY_INDEX[def.rarity]] * 100)}%`;
   }
 }
 
@@ -287,6 +290,7 @@ export function titleModifiers(def: TitleDef | null): TitleModifiers {
     case 'buyDiscount': m.buyMult = 1 - v; break;
     case 'fatigueCut': m.fatigueMult = 1 - v; break;
     case 'giftWarmth': m.giftMult = 1 + v; break;
+    case 'giftAndDiscount': m.giftMult = 1 + v; m.buyMult = 1 - TITLE_EFFECT_SCALE.buyDiscount[RARITY_INDEX[def.rarity]]; break;
   }
   return m;
 }

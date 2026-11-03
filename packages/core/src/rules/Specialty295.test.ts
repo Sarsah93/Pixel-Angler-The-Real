@@ -60,7 +60,7 @@ describe('295 — 섬 어종 넷 · 특산 50 · 택배 차익', () => {
     for (const id of ['pearl_spot_chromis', 'bulgyhead_wrasse', 'red_tilefish', 'bluefin_tuna']) expect(FISH_DATABASE.some((f) => f.id === id), id).toBe(true);
   });
   it('특산 50 · 가공품 특산 5 · 산지 밖 가게는 ×1.15', () => {
-    expect(REGIONAL_SPECIALTIES.length).toBe(50);
+    expect(REGIONAL_SPECIALTIES.length).toBe(51);   // 299차 — 설악 곰취
     expect(REGIONAL_SPECIALTIES.filter((d) => d.kind === 'processed').length).toBe(5);
     expect(specialtySellMult('chub_mackerel', 'busan', 10, 'busan')).toBeCloseTo(1.3);
     expect(specialtySellMult('chub_mackerel', 'busan', 10, 'gangwon_sokcho')).toBeCloseTo(1.3 * SPECIALTY_AWAY_MULT);

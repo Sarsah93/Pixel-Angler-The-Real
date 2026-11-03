@@ -365,6 +365,9 @@ export const EN_PANELS: Record<string, string> = {
   '갯지렁이류': 'Worms',
   '갯강구': 'Sea slater',
   '덮치기': 'Pounce', '줍기': 'Pick up', '떼기': 'Pry off', '파기': 'Dig', '당기기': 'Pull out',
+  // 299차 — 산나물
+  '뜯기': 'Pluck', '캐기': 'Dig up', '꺾기': 'Snap off', '산나물': 'Wild greens', '산나물 캐기': 'Gathering wild greens', '산자락에서 뜯고 캐고 꺾는다': 'Pluck, dig and snap on the hillside',
+  '가방이 가득 찼습니다 — 두고 왔다': 'Bag is full — left it behind',
   '들어갈 수 있는 물': 'Water you can enter',
   '완만한 물가의 한 칸 · 1m 미만': 'One step in at a gentle shore · under 1m',
   '물속 걸음': 'Walking in water',

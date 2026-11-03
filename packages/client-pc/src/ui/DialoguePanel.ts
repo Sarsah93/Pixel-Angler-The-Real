@@ -717,7 +717,7 @@ export class DialoguePanel extends DraggablePanel {
       `(${name}${particle(name, '을', '를')} 건넨다.)`,
       { cue: 'line', who: this.npcId, text: DialoguePanel.quote(fillPlayerName(said, GameState.player.nickname)) },
     ];
-    if (res.newLove) paras.push(`${HINT_PREFIX}(아주 좋아하는 것을 처음 건넸다 — 선물 칭호에 한 사람 더.)`);
+    if (res.reaction === 'love') paras.push('(아주 좋아하는 것 같다.)');   // 297(2) — 칭호 조건을 알리는 글은 넣지 않는다(사용자 지시)
     this.play(paras, [
       { label: '계속 이야기하기', action: () => this.enterMenu(false) },
       this.exitRow(),

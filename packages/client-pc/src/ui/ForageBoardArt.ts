@@ -15,7 +15,7 @@ import Phaser from 'phaser';
 import { mulberry32, type ForageGameKind } from '@tra/core';
 import { ensurePixelIcon } from './PixelIcon.js';
 
-export type ForageBedKind = 'rock' | 'water' | 'cut' | 'crevice' | 'shore';
+export type ForageBedKind = 'rock' | 'water' | 'cut' | 'crevice' | 'shore' | 'meadow';   // 299차 — meadow = 산자락 풀밭(산나물)
 
 /** 바닥 텍스처 원본 크기(판은 2배) */
 export const BED_W = 220;
@@ -24,7 +24,8 @@ export const BED_H = 90;
 const CELL = 2;
 
 /** 놀이 갈래 · 물속 여부 → 바닥 종류. 293차 — 떼기는 옆에서 본 물가 바위(하늘 · 바다 · 바위) — 붙어 사는 녀석은 땅속이 아니라 바위 위다(사용자) */
-export function bedKindFor(kind: ForageGameKind, underwater: boolean): ForageBedKind {
+export function bedKindFor(kind: ForageGameKind, underwater: boolean, meadow = false): ForageBedKind {
+  if (meadow && kind !== 'dig') return 'meadow';   // 299차 — 산나물 뜯기 · 꺾기는 풀밭 위(캐기는 흙 단면 그대로)
   if (kind === 'dig') return 'cut';
   if (kind === 'pull') return 'crevice';
   if (kind === 'pry') return 'shore';
@@ -87,6 +88,15 @@ function barnacle(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
 
 const PAINTERS: Record<ForageBedKind, Painter> = {
   // 갯바위 — 회갈색 바위면 · 균열 · 이끼 얼룩 · 따개비 · 젖은 윤기
+  // 299차 — 산자락 풀밭: 초록 풀 결 · 흙 얼룩 · 마른 잎 · 작은 돌 · 아래 그늘
+  meadow: (g, rng) => {
+    noiseFill(g, rng, [0x4f7a3a, 0x5a8a42, 0x46703a, 0x629448]);
+    for (let i = 0; i < 6; i++) blob(g, rng, rng() * COLS, rng() * ROWS, 5 + rng() * 9, 2 + rng() * 3, [0x6b5a3a, 0x7a6644]);
+    for (let i = 0; i < 70; i++) { const x = Math.floor(rng() * COLS), y = Math.floor(rng() * ROWS); cell(g, x, y, 0x7fb455); if (rng() < 0.5) cell(g, x, y - 1, 0x8fc462); }
+    for (let i = 0; i < 18; i++) { const x = Math.floor(rng() * COLS), y = Math.floor(rng() * ROWS); cell(g, x, y, 0xb08a4a); cell(g, x + 1, y, 0x9a763c); }
+    for (let i = 0; i < 8; i++) blob(g, rng, rng() * COLS, rng() * ROWS, 2 + rng() * 3, 1 + rng() * 2, [0x8a8578, 0x9a9588]);
+    g.fillStyle(0x0a100a, 0.22); g.fillRect(0, BED_H - 14, BED_W, 14);
+  },
   rock: (g, rng) => {
     noiseFill(g, rng, [0x55504a, 0x5f5a52, 0x47423b, 0x6b665d]);
     for (let i = 0; i < 6; i++) crack(g, rng, Math.floor(rng() * COLS), Math.floor(rng() * ROWS), 14 + Math.floor(rng() * 22), 0x2a2622);

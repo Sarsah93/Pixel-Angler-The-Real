@@ -16,7 +16,7 @@
 import { colorVisionMode, cv, drawHatch, shapeCuesOn } from './ColorAssist.js';
 import Phaser from 'phaser';
 import {
-  createForageGame, stepForageGame, mulberry32,
+  createForageGame, stepForageGame, mulberry32, isWildGreen, forageBehaviorOf, WILD_GREEN_GAME_LABEL,
   type ForageGameState, type ForageGameInput, type ForageTool, type ShoreCreature, type ForageGameKind,
 } from '@tra/core';
 import { DraggablePanel } from './DraggablePanel.js';
@@ -42,6 +42,31 @@ const BW = W - 40;
 /** 놀이 갈래 이름 — 창 제목 */
 export const FORAGE_GAME_LABEL: Record<ForageGameKind, string> = {
   snatch: '덮치기', pick: '줍기', pry: '떼기', dig: '파기', pull: '당기기',
+};
+
+/** 299차 — 창 제목의 놀이 이름: 산나물은 뜯기 · 캐기 · 꺾기, 갯것은 갈래 이름 */
+export function forageGameTitleLabel(creature: ShoreCreature, kind: ForageGameKind): string {
+  if (isWildGreen(creature)) {
+    const b = forageBehaviorOf(creature);
+    if (b === 'leaf' || b === 'root' || b === 'shoot') return WILD_GREEN_GAME_LABEL[b];
+  }
+  return FORAGE_GAME_LABEL[kind];
+}
+
+/** 299차 — 산나물 가이드 문장(갯것 문장은 바다 이야기라 따로) */
+const GREEN_TOUR_TEXT: Record<'leaf' | 'root' | 'shoot', string[]> = {
+  leaf: [
+    '잎을 뜯는다. 판 위에서 마우스로 손을 잎 위에 가져가 왼쪽 버튼(또는 Space)을 눌러 뜯는다 — 뿌리는 남긴다.',
+    '한 포기에서 한두 잎만. 다 뜯으면 다음 해에 안 난다.',
+  ],
+  root: [
+    '뿌리를 캔다. 왼쪽 버튼(또는 Space)을 누르고 있으면 판다. 오른쪽 막대는 내가 낸 소란이다 — 세게 파면 뿌리가 끊긴다.',
+    '파고 쉬는 박자를 찾자. 도구 끝이 뿌리에 닿으면 캔다.',
+  ],
+  shoot: [
+    '새순을 꺾는다. 손끝이 순 둘레를 저절로 왔다 갔다 한다 — 마디(초록)에 닿는 순간 왼쪽 버튼(또는 Space)을 눌러 꺾는다.',
+    '헛짚으면 순이 흔들려 마디가 좁아진다. 가시 돋은 나무(두릅 · 엄나무)는 맨손이면 찔린다 — 장갑을 끼자.',
+  ],
 };
 
 /** 처음 열 때 가이드 문장(갈래마다 다르다 — R11). 278차 — 첫 문장에 조작(마우스 · 왼쪽 버튼 · Space)을 또렷이, 끝에 남은 시간 · 그만두기 */
@@ -116,10 +141,10 @@ export class ForageGamePanel extends DraggablePanel {
     const state = createForageGame(creature, tool, rng, opts.dex);
     super(scene, {
       x: (GAME_WIDTH - W) / 2, y: 150, width: W, height: H,
-      title: `${creature.nameKo} — ${FORAGE_GAME_LABEL[state.kind]}`, onClose, dim: true, depth: 905,
+      title: `${creature.nameKo} — ${forageGameTitleLabel(creature, state.kind)}`, onClose, dim: true, depth: 905,
     });
     // 제목은 i18n 훅이 바꾸지 못하는 조합 문자열 — 따로 번역해 붙인다
-    this.setTitle(`${t(creature.nameKo)} — ${t(FORAGE_GAME_LABEL[state.kind])}`);
+    this.setTitle(`${t(creature.nameKo)} — ${t(forageGameTitleLabel(creature, state.kind))}`);
     this.gs = state;
     this.creature = creature;
     this.rng = rng;
@@ -131,7 +156,7 @@ export class ForageGamePanel extends DraggablePanel {
       this.pebbles.push({ x: BX + this.rng() * BW, y: this.boardTop + this.rng() * BOARD_H, r: 1.5 + this.rng() * 3, c: this.rng() });
     }
     // 229차 — 구운 바닥(갯바위 · 얕은 물 · 파기 단면 · 바위 틈)을 2배로 깐다. 그 위에 그래픽 · 생물 · 손 도구 순
-    const bedKey = ensureForageBed(scene, bedKindFor(state.kind, opts.underwater));
+    const bedKey = ensureForageBed(scene, bedKindFor(state.kind, opts.underwater, isWildGreen(creature)));   // 299차 — 산나물은 풀밭 바탕
     const bed = scene.add.image(BX, this.boardTop, bedKey).setOrigin(0, 0).setScale(2);
     this.add(bed);
     this.g = scene.add.graphics();
@@ -258,7 +283,9 @@ export class ForageGamePanel extends DraggablePanel {
     // 278차 — 요청 ~ 실행 사이에 창이 닫혔다(ESC로 포기) — 파괴된 창은 `scene`이 없다(「reading 'textures'」 오류 · 화면 멈춤)
     if (!this.active || !this.scene) return null;
     // 251차 — 색 구분 보정(적록)이면 「틈(초록)」이 파랗게 보인다 — 글의 색 이름을 맞춘다
-    const texts = [...TOUR_TEXT[this.gs.kind], TOUR_TAIL].map((t) => (colorVisionMode() === 'redgreen' ? t.replace('(초록)', '(파랑)') : t));
+    const b = isWildGreen(this.creature) ? forageBehaviorOf(this.creature) : null;
+    const base = b === 'leaf' || b === 'root' || b === 'shoot' ? GREEN_TOUR_TEXT[b] : TOUR_TEXT[this.gs.kind];   // 299차
+    const texts = [...base, TOUR_TAIL].map((t) => (colorVisionMode() === 'redgreen' ? t.replace('(초록)', '(파랑)') : t));
     // 229차 — 말풍선마다 그림(바닥 · 생물 · 손 · 화살표)을 넣는다 — 글자만으로 설명하지 않는다
     const boardKey = `forageboard_${this.creature.id}`;
     const picKey = this.wormImg ? 'honmushi_straight_px' : this.scene.textures.exists(boardKey) ? boardKey : forageSpotTexKey(this.creature);

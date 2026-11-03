@@ -72,6 +72,7 @@
 | **지역 특산 2차**(295 — 특산 50(가공품 5) · 표시 이름 「구룡포 과메기」(`data/SpecialtyTag.ts`) · 칸 배지 `mk_origin` · 판매 지역 배율 `specialtySellMult`(밖 `SPECIALTY_AWAY_MULT` 1.15 × 제철) · `priceOf(item, shop, sellRegion)` · 직판장 산지 매대(`data/RegionStall.ts`) · 위판 정산 원산지 줄 · 꼬리표 합치기(다른 지역이면 비움)) | ✅ | **295** |
 | **지역 가공대**(295 — 가게 종류 `processor`(구룡포 · 울릉 · 속초 · 거제 · 서귀포 POI `manual`) · core `rules/RegionalProcessing.ts`(가공품 5 · 레시피 5 · `processQuote`) · `ProcessQueue`(세이브 `processQueue`) · `ProcessActions` · `ProcessPanel`(가이드 `process`) · 알림 `[가공장]` · 가공품은 상하지 않고 그 지역 특산) | ✅ | **295** |
 | **지역 축제 달력**(298 — core `db-schema/Festivals.ts` 9곳 · 축제 달 ×1.1 · 절정 주 ×1.3(해마다 같은 날짜 어림) · `specialtySellMultAt` = 제철 × 택배 × 축제(판매가 사슬 단일 입구 · 위판 제외) · 직판장 축제 매대 20% / 30% 싸게 · 축제 일손 9(절정 품삯 ×1.3) · 행인 ×2 · 라디오 · 「[축제]」 알람 · 일지 「나날」 · 도감 카드 · dev 「축제 시계」) | ✅ | **298** |
+| **산나물 특산 경로**(299 — 특산 51 · 「설악 곰취」 신설 · 울릉 명이 · 삼나물 · 부지깽이는 울릉 산자락에서 뜯으면 바로 특산(작물 특산 가운데 홈타운 텃밭 밖에서 얻는 첫 길)) | ✅ | **299** |
 | **위판 반환은 집 우편함**(296 — 유찰 · 회차 실패 반환 `ConsignSettle` → `MailDeliver.mailUnsold · mailConsignFailed`(언제나 우편함 · 가방이 가득해도 사라지지 않는다) · 보고서 `mailed` · 경매 전 찾아오기는 PR #17 `consignRetrieveBlock`으로 자리 확인 뒤 가방) | ✅ | **296** |
 
 ## 5. 잔여·차기

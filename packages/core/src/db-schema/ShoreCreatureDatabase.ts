@@ -105,6 +105,13 @@ export interface ShoreCreature {
   trapTypes?: TrapType[];
   /** 걸리는 바다(`seaOf` 키 — 없으면 어디서나) */
   trapSeas?: SeaKey[];
+  // ── 299차 — 산나물(산자락에서 뜯고 캐고 꺾는다) ──
+  /** 거두면 이 텃밭 수확물 아이템으로 들어간다(작물 초상 · 특산 꼬리표가 그대로 붙는다) — 산나물만 */
+  harvestItemId?: string;
+  /** 한 번에 거두는 묶음 수 [최소, 최대] — 없으면 1 */
+  harvestQty?: [number, number];
+  /** 나는 지역(WorldMap 지역 id) — 없으면 어디서나. 울릉 삼나물처럼 그 섬에서만 */
+  regions?: string[];
 }
 
 // ─────────────────────────────────────────────
@@ -626,6 +633,79 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     description: '굵고 붉은 최고가 미끼(참갯지렁이). 감성돔 · 돌돔 · 참돔. 놀라면 더 깊이 파고든다.',
     requiredLicense: null, tools: ['rake', 'hand'], spotKinds: ['rock_shore', 'shallows'],
     behavior: 'buried', eastSeaWeight: 0.25, absentMonths: [12, 1, 2], baitItemId: 'inv_honmushi',
+  },
+  // ────────── 299차 산나물 — 산자락(숲 · 풀밭 안쪽)에서 뜯고 캐고 꺾는다. 거두면 텃밭 수확물과 같은 물건(초상 · 특산) ──────────
+  {
+    id: 'green_gomchwi', nameKo: '곰취', nameEn: 'Gomchwi (wild)', scientificName: 'Ligularia fischeri', spriteKey: 'creature_green_gomchwi',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '고랭지 그늘진 산자락. 큰 잎을 한 장씩 뜯는다 — 뿌리는 남긴다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 12000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '쌉싸름한 향이 센 봄 산나물. 생잎에 쌈을 싸고, 데쳐 무치고, 장아찌로 담근다. 설악 자락 · 울릉 산지가 이름났다.',
+    requiredLicense: null, behavior: 'leaf', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 3, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_gomchwi', harvestQty: [1, 2], regions: ['gangwon_sokcho', 'ulleungdo', 'gyeongbuk_pohang', 'ulsan'],
+  },
+  {
+    id: 'green_myeongi', nameKo: '산마늘(명이)', nameEn: 'Alpine leek (wild myeongi)', scientificName: 'Allium ochotense', spriteKey: 'creature_green_myeongi',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '울릉도 · 강원 고지대 숲 바닥. 마늘 냄새가 나는 넓은 잎을 뜯는다 — 한 포기에서 한 잎만.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 20000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '명이나물. 울릉도 사람들이 긴 겨울 끝에 목숨을 이었다 해서 명이(命夷)다. 장아찌가 가장 흔한 길.',
+    requiredLicense: null, behavior: 'leaf', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 6, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_myeongi', harvestQty: [1, 2], regions: ['ulleungdo', 'gangwon_sokcho'],
+  },
+  {
+    id: 'green_samnamul', nameKo: '눈개승마(삼나물)', nameEn: 'Goat\'s beard shoots (wild samnamul)', scientificName: 'Aruncus dioicus', spriteKey: 'creature_green_samnamul',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '울릉도 산비탈 그늘. 고기 맛이 난다는 어린 순을 꺾는다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 30000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '인삼 · 두릅 · 고기 세 가지 맛이 난다는 울릉 삼나물. 봄 한철 어린 순만 먹는다.',
+    requiredLicense: null, behavior: 'shoot', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 3, 6, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_samnamul', harvestQty: [1, 1], regions: ['ulleungdo'],
+  },
+  {
+    id: 'green_bujigaengi', nameKo: '부지깽이(섬쑥부쟁이)', nameEn: 'Ulleung aster (wild bujigaengi)', scientificName: 'Aster pseudoglehnii', spriteKey: 'creature_green_bujigaengi',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '울릉도 볕 드는 산자락 풀밭. 연한 윗잎을 뜯는다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 9000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '울릉도에만 나는 섬쑥부쟁이. 데쳐 말려 묵나물로 두고 먹는다.',
+    requiredLicense: null, behavior: 'leaf', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 6, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_bujigaengi', harvestQty: [1, 2], regions: ['ulleungdo'],
+  },
+  {
+    id: 'green_eosuri', nameKo: '어수리', nameEn: 'Eosuri (wild Heracleum)', scientificName: 'Heracleum moellendorffii', spriteKey: 'creature_green_eosuri',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '해발 높은 산자락 숲 가장자리. 향이 짙은 어린잎을 뜯는다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 18000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '임금님 수라상에 올랐다는 어수리. 향이 세서 조금만 넣어도 나물 맛이 산다.',
+    requiredLicense: null, behavior: 'leaf', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 3, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_eosuri', harvestQty: [1, 1], regions: ['gangwon_sokcho', 'ulleungdo', 'gyeongbuk_pohang'],
+  },
+  {
+    id: 'green_dureup', nameKo: '두릅', nameEn: 'Fatsia shoots (wild dureup)', scientificName: 'Aralia elata', spriteKey: 'creature_green_dureup',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '산자락 볕 드는 숲 가장자리의 두릅나무. 가시 사이 새순을 꺾는다 — 두 번째 순은 남긴다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 25000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '봄나물의 왕. 살짝 데쳐 초장에 찍는다. 나무에 가시가 있어 맨손이면 찔린다.',
+    requiredLicense: null, behavior: 'shoot', spotKinds: ['hill_grass'], tools: ['hand'], handInjury: true, absentMonths: [1, 2, 3, 6, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_dureup', harvestQty: [1, 1], regions: ['gangwon_sokcho', 'gyeongbuk_pohang', 'ulsan', 'gyeongnam_geoje', 'jeonnam_yeosu', 'chungnam_taean', 'incheon', 'busan', 'jeju', 'ulleungdo'],
+  },
+  {
+    id: 'green_gondre', nameKo: '곤드레', nameEn: 'Gondre (wild Korean thistle)', scientificName: 'Cirsium setidens', spriteKey: 'creature_green_gondre',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '강원 산자락 풀밭. 고려엉겅퀴 잎을 뜯는다 — 가시가 없다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 7000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '데쳐 들기름에 버무려 밥에 얹으면 곤드레밥. 정선 · 강원 산골의 봄여름 나물.',
+    requiredLicense: null, behavior: 'leaf', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 3, 4, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_gondre', harvestQty: [1, 2], regions: ['gangwon_sokcho', 'gyeongbuk_pohang', 'ulsan'],
+  },
+  {
+    id: 'green_eomnamu', nameKo: '엄나무순', nameEn: 'Castor aralia shoots (wild eomnamu)', scientificName: 'Kalopanax septemlobus', spriteKey: 'creature_green_eomnamu',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '산자락 숲 가장자리의 음나무. 굵은 가시 사이 새순을 꺾는다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 22000,
+    isRestaurantIngredient: true, canBeUsedAsBait: false,
+    description: '참두릅보다 쌉싸름한 개두릅. 숙회로 초장에 찍는다. 가시가 굵어 장갑이 낫다.',
+    requiredLicense: null, behavior: 'shoot', spotKinds: ['hill_grass'], tools: ['hand'], handInjury: true, absentMonths: [1, 2, 3, 6, 7, 8, 9, 10, 11, 12],
+    harvestItemId: 'crop_eomnamu', harvestQty: [1, 1], regions: ['gangwon_sokcho', 'gyeongbuk_pohang', 'ulsan', 'gyeongnam_geoje', 'jeonnam_yeosu', 'chungnam_taean', 'busan', 'jeju'],
   },
 ];
 

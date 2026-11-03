@@ -160,6 +160,7 @@ export class BootScene extends Phaser.Scene {
     }
     // 248차 — 해루질 생물 전부의 채집 놀이 판 그림(44px · 머리 왼쪽)과 필드 점 그림(24px). 텃밭 땅지렁이도 같은 굽기
     for (const c of SHORE_CREATURE_DATABASE) {
+      if (c.harvestItemId) continue;   // 299차 — 산나물은 작물 아이콘(`cropicon_*`)을 쓴다 — 판 · 점 그림 파일이 없다
       this.load.image(`forageboard_${c.id}`, `forage-board/${c.id}.png`);
       this.load.image(`forage_dot_${c.id}`, `forage-dot/${c.id}.png`);
     }

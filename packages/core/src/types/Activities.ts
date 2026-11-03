@@ -20,7 +20,8 @@ export type ShoreCreatureCategory =
   | 'echinoderm'      // 극피동물 (성게, 해삼)
   | 'bivalve'         // 이매패류 (키조개, 대합)
   | 'gastropod'       // 복족류 (소라, 전복)
-  | 'annelid';        // 224차 — 환형동물 (갯지렁이 · 혼무시)
+  | 'annelid'         // 224차 — 환형동물 (갯지렁이 · 혼무시)
+  | 'wild_green';     // 299차 — 산나물(곰취 · 명이 · 두릅 …) — 산자락에서 뜯고 캐고 꺾는다
 
 /** 해루질 장비 */
 export interface ShoreHuntingGear {

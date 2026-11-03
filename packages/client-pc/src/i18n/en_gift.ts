@@ -19,6 +19,7 @@ export const EN_GIFT: Record<string, string> = {
   '선물로 알게 된 것': 'Learned from gifts',
   '아직 선물을 해 본 적이 없다. 대화에서 「드리고 싶은 게 있어요」로 건넨다.': 'I have not given anyone a gift yet. Hand one over with “I have something for you” in a conversation.',
   '아주 좋아함': 'Loves', '좋아함': 'Likes', '보통': 'Neutral', '싫어함': 'Dislikes',
+  '(아주 좋아하는 것 같다.)': '(They seem to love it.)',
   '오늘은 이미 받았어요. 마음만으로 충분해요.': 'I already got something today. The thought is enough.',
   // 가이드
   '줄 수 있는 것만 보인다 — 먹을거리 · 가공품 · 술 · 커피 · 단것. 장비와 이야기 물건은 선물이 아니다.':
@@ -31,9 +32,9 @@ export const EN_GIFT: Record<string, string> = {
     'Choose “I have something for you” in a conversation to open a picker of giftable things from your bag (food, processed goods, drinks, coffee, sweets). Hand one over and the person reacts; their affinity goes up a little, or down.',
   '사람마다 아주 좋아하는 것, 좋아하는 것, 싫어하는 것이 있습니다. 그 사람 고향의 특산을 그 고장에서 얻어 산지 봉인이 찍힌 채로 주면 좋아합니다. 알게 된 취향은 일지 「수첩」에 적힙니다.':
     'Everyone has things they love, like and dislike. A specialty of their hometown, obtained there with the origin seal, is always welcome. Tastes you learn are written in the journal “Notes.”',
-  '한 사람에게 이야기 날짜 하루에 한 번만 받습니다. 아주 좋아하는 것을 사람마다 한 번씩 건네면 칭호 「선물 보따리」(절반) · 「동네 산타」(전원)를 얻고, 선물 우호도가 더 오릅니다.':
-    'Each person accepts one gift per story day. Hand everyone the thing they love once and you earn the titles “Gift Bundle” (half) and “Town Santa” (everyone), which raise gift affinity further.',
-  '선물 보따리': 'Gift Bundle', '동네 산타': 'Town Santa',
+  '한 사람에게 이야기 날짜 하루에 한 번만 받습니다. 아주 좋아하는 것을 사람마다 한 번씩 건네면 칭호 「산타」(절반) · 「박애주의자」(전원)를 얻습니다. 산타는 선물 우호도가 더 오르고, 박애주의자는 거기에 가게 값까지 깎입니다.':
+    'Each person accepts one gift per story day. Hand everyone the thing they love once and you earn the titles “Santa” (half) and “Philanthropist” (everyone). Santa raises gift affinity; Philanthropist adds a shop discount on top.',
+  '산타': 'Santa', '박애주의자': 'Philanthropist',
 };
 
 export const EN_GIFT_RULES: GiftRule[] = [

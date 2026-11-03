@@ -1,4 +1,4 @@
-# 297차 — 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 하루 한 번 · 수첩 · 칭호 「선물 보따리」 · 「동네 산타」)
+# 297차 — 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44명 · 하루 한 번 · 수첩 · 칭호 「산타」 · 「박애주의자」)
 
 | | |
 |---|---|
@@ -18,7 +18,7 @@
 - 「1. 대화선택지 선물하기」 — 선물은 가방 드래그가 아니라 **대화 선택지**로 건넨다.
 - 「2. 우호도만 권하기」 — 효과는 **우호도만**(값 · 할인 · 보상 배율은 걸지 않는다).
 - 「추가 아이디어 1. 모든 npc에게 npc가 매우 선호하는 선물을 한 번 씩 다 선물했을 때, 산타클로스 칭호를 주는 게 어떨까? 옵션은 너가 추천해줘.」
-  → 두 단계 추천을 그대로 넣었다 — 절반이면 「선물 보따리」(드묾), 전원이면 「동네 산타」(전설). 효과는 선물 우호도 배율.
+  → 두 단계 추천을 그대로 넣었다 — 절반이면 「산타」(드묾), 전원이면 「박애주의자」(전설). 효과는 선물 우호도 배율.
 - 축제 달력(3)은 「달 단위로 넓히는 쪽 … 너가 고민해서 우선 적용」 → **298차**로, 지역 텃밭(4 · 5)은 예시 창(SVG)을 본 뒤 → **299차**로 미뤘다.
 
 ## 2. 원인 — 무엇이 문제였나
@@ -39,7 +39,7 @@
 | 신설 | [`core/src/db-schema/NpcGiftPrefs.ts`](../../../packages/core/src/db-schema/NpcGiftPrefs.ts) | **44명 취향 표**(아주 좋아함 · 좋아함 · 싫어함 · 반응 대사 넷 한 · 영) · `giftPrefOf` · `giftHomeRegionOf`(고향 = 아크 지역 · 주 인물은 속초) · `GIFT_PREF_NPC_COUNT` |
 | 신설 | [`core/src/rules/Gifts.ts`](../../../packages/core/src/rules/Gifts.ts) | `GIFT_AFFINITY`(+0.12 / +0.06 / +0.02 / −0.06) · `GIFT_DAILY_CAP` 1 · `giftReaction`(싫어함 > 아주 좋아함 > 좋아함 > 고향 특산 = 좋아함 > 보통) · `giftLine` · `giftTitleGoals`(22 · 44) · `canGiftToday` · `validateGiftPrefs` · `GIFT_REACTION_LABEL` · `GIFT_AGAIN_LINE` |
 | 신설 | [`core/src/rules/Gifts297.test.ts`](../../../packages/core/src/rules/Gifts297.test.ts) | 시험 6 — 표 무결성 · 반응 차례 · 고향 특산 · 하루 한 번 · 칭호 목표 · 대사 네 벌 |
-| 수정 | [`core/src/types/Titles.ts`](../../../packages/core/src/types/Titles.ts) · [`db-schema/TitleDatabase.ts`](../../../packages/core/src/db-schema/TitleDatabase.ts) | 통계 `giftLoved` · 효과 `giftWarmth`(드묾 +25% · 전설 +50% — `TitleModifiers.giftMult`) · 칭호 「선물 보따리」(`gift_bundle` · 22명 · rare) · 「동네 산타」(`santa` · 44명 · legend) — 타이틀 32종 |
+| 수정 | [`core/src/types/Titles.ts`](../../../packages/core/src/types/Titles.ts) · [`db-schema/TitleDatabase.ts`](../../../packages/core/src/db-schema/TitleDatabase.ts) | 통계 `giftLoved` · 효과 `giftWarmth`(드묾 +25% · 전설 +50% — `TitleModifiers.giftMult`) · 칭호 「산타」(`gift_bundle` · 22명 · rare) · 「박애주의자」(`santa` · 44명 · legend) — 타이틀 32종 |
 | 수정 | [`core/src/index.ts`](../../../packages/core/src/index.ts) | 세 파일 export |
 | 신설 | [`client/src/data/GiftTags.ts`](../../../packages/client-pc/src/data/GiftTags.ts) | 가방 물건 → 선물 갈래(`giftKindOf` — 분류 · 하위 분류 · id 표) · `isGiftable`(장비 · 이야기 물건 · 번호 붙은 개체 · 묶인 것 제외) · `giftViewOf`(태그 item · kind · species · specialty) |
 | 신설 | [`client/src/ui/GiftPickerPanel.ts`](../../../packages/client-pc/src/ui/GiftPickerPanel.ts) | 「선물 고르기」 모달(depth 950 · 7열 · 3줄 보임 · 휠) · 「건네기」 · 「그만두기」 · 첫 열기 가이드 `gift` 2단계 |
@@ -72,7 +72,7 @@
 | dev 제한 풀기 → 아메리카노(싫어함) → −0.06(배율 없음) · 가방 0 · `giftLoved` 그대로 · 수첩 dislike | F · F-2 | PASS |
 | 일지 수첩 「선물 취향」 — 「정옥선 씨 — 막걸리를 아주 좋아함」 · 「아메리카노를 싫어함」 | G + `07_journal_notes.png` | PASS |
 | 세이브 — `story.gifts.okseon`(loved · learned 2) 직렬화 · 역직렬화 동일 · 오늘 제한 유지 · 슬롯 저장 | H | PASS |
-| 칭호 「선물 보따리」(22 · rare) · 「동네 산타」(44 · legend) · `giftMult` 1(미획득) | I | PASS |
+| 칭호 「산타」(22 · rare) · 「박애주의자」(44 · legend) · `giftMult` 1(미획득) | I | PASS |
 | 영어 — 「I have something for you.」 · 「Already gave something today」 · 거절 말 | J · J-2 + `08_en.png` | PASS |
 | 어촌계(단체) 대화에는 행이 없다 | K | PASS |
 | pageerror · 빌드 · 타입체크 | 하네스 · `pnpm run build` · 루트 typecheck | 0 · 3/3 · 4/4 |
@@ -98,6 +98,11 @@
 - 대화창 메뉴에 행이 하나 늘었다(최대 7행 — 일감 · 물어보기 · 거래 · 이어지는 대화 · 선물 · 나가기). 행 높이는 `renderChoiceRows`가 줄 수로 나눠 잡으므로 넘치지 않는다(실측 5행).
 - 우호도 가산은 `addAffinity`를 그대로 타므로 결말 영영 상한(254차)을 넘지 않는다.
 - 세이브 `story.gifts`는 구세이브에 없다 — `?? {}`로 빈 표. 되돌릴 것 없음.
+
+## 7-2. 297(2) 정정(2026-11-03 — 사용자 지시)
+
+- 「(아주 좋아하는 것을 처음 건넸다 — 선물 칭호에 한 사람 더.)」 힌트 쪽을 뺐다(칭호 조건을 알리는 글) → 아주 좋아하는 반응이면 「(아주 좋아하는 것 같다.)」.
+- 칭호 이름 「선물 보따리」 → 「산타」(선물 우호도 +25%) · 「동네 산타」 → 「박애주의자」(선물 우호도 +50% + 상점 구매가 −3% — 효과 `giftAndDiscount`). id는 그대로. 상세 [299](2026-11-03-299-wild-greens-gathering.md) §1 · §3.
 
 ## 8. 후속 반영
 

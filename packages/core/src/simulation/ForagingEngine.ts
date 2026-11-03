@@ -117,6 +117,7 @@ export function creatureTools(c: ShoreCreature): ForageTool[] {
     case 'crustacean': return ['tongs', 'net', 'hand'];
     case 'echinoderm': return ['tongs'];
     case 'annelid': return ['rake', 'hand'];
+    case 'wild_green': return ['hand'];   // 299차 — 산나물은 맨손(뿌리 캐기는 DB `tools`로 갈퀴)
     default: return ['tongs', 'hand'];
   }
 }
@@ -133,6 +134,7 @@ export function forageBehaviorOf(c: ShoreCreature): ForageBehavior {
     case 'crustacean': return 'runner';
     case 'annelid': return 'buried';
     case 'bivalve': return 'buried';
+    case 'wild_green': return 'leaf';   // 299차
     default: return 'crawler';
   }
 }
@@ -144,9 +146,20 @@ export function forageGameKindOf(c: ShoreCreature): ForageGameKind {
     case 'attached': return 'pry';
     case 'buried': return 'dig';
     case 'crevice': return 'pull';
+    // 299차 — 산나물: 잎 뜯기 = 줍기 판 · 뿌리 캐기 = 파기 판 · 순 꺾기 = 떼기 판
+    case 'root': return 'dig';
+    case 'shoot': return 'pry';
     default: return 'pick';
   }
 }
+
+/** 299차 — 산나물인가(산자락 스팟 · 수확물 아이템으로 들어간다) */
+export function isWildGreen(c: Pick<ShoreCreature, 'category'>): boolean {
+  return c.category === 'wild_green';
+}
+
+/** 299차 — 산나물 놀이 제목(뜯기 · 캐기 · 꺾기) — 갯것은 갈래 이름을 그대로 쓴다 */
+export const WILD_GREEN_GAME_LABEL: Readonly<Record<'leaf' | 'root' | 'shoot', string>> = { leaf: '뜯기', root: '캐기', shoot: '꺾기' };
 
 /**
  * 224차 — 물가 한 칸 얕은 물의 지금 수심(m). 물때 수위 0(간조)~1(만조)로 0.25~1.1m.
@@ -213,6 +226,8 @@ export interface RollForageOpts {
   /** 227차 — 오늘 날짜(1~31) · 지역 id — 금어기를 날짜 단위 · 지역 규정(제주)으로 */
   day?: number;
   regionId?: string;
+  /** 299차 — 후보 100칸당 스팟 수(없으면 `TUNING.forage.spotsPerHundred`) — 산자락은 바다보다 성기다 */
+  spotsPerHundred?: number;
 }
 
 /**
@@ -225,10 +240,11 @@ export function rollForageSpots(candidates: ForageCandidate[], opts: RollForageO
   const rng = mulberry32(opts.seed);
   const t = TUNING.forage;
   const tideBonus = 1 + (1 - Math.max(0, Math.min(1, opts.tideLevel01))) * (t.lowTideBonus - 1);
-  const target = Math.min(opts.maxSpots, Math.max(1, Math.round((candidates.length / 100) * t.spotsPerHundred * tideBonus)));
+  const target = Math.min(opts.maxSpots, Math.max(1, Math.round((candidates.length / 100) * (opts.spotsPerHundred ?? t.spotsPerHundred) * tideBonus)));
 
   const pool = SHORE_CREATURE_DATABASE.filter((c) => {
     if (c.trapOnly) return false;                                       // 295차 — 통발 전용(독도새우)
+    if (c.regions && opts.regionId && !c.regions.includes(opts.regionId)) return false;   // 299차 — 그 지역에만 나는 산나물
     if (closedFor(c, opts.month, opts.day, opts.regionId)) return false;
     if (c.absentMonths?.includes(opts.month)) return false;           // 224차 — 여름잠 · 추위
     if (opts.eastSea && (c.eastSeaWeight ?? 1) <= 0) return false;     // 224차 — 동해에 없는 종

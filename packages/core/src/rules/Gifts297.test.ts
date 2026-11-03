@@ -63,6 +63,9 @@ describe('297 반응 판정', () => {
     const santa = TITLE_DATABASE.find((t) => t.id === 'santa')!;
     expect(santa.paths[0][0]).toEqual({ stat: 'giftLoved', goal: 44 });
     expect(titleModifiers(santa).giftMult).toBeCloseTo(1.5);
-    expect(titleEffectLabelKo(santa)).toBe('선물 우호도 +50%');
+    expect(titleModifiers(santa).buyMult).toBeCloseTo(0.97);   // 297(2) — 박애주의자는 가게 값도 깎는다
+    expect(titleEffectLabelKo(santa)).toBe('선물 우호도 +50% · 상점 구매가 -3%');
+    expect(santa.nameKo).toBe('박애주의자');
+    expect(TITLE_DATABASE.find((t) => t.id === 'gift_bundle')?.nameKo).toBe('산타');
   });
 });

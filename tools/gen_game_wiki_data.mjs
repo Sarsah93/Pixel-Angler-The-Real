@@ -252,11 +252,13 @@ const SHORE_GROUP = {
   crustacean: ['crustacean', '십각류'], shellfish: ['crustacean', '만각류'],
   cephalopod: ['cephalopod', '팔완·십완류'], echinoderm: ['other', '극피동물'],
   annelid: ['other', '갯지렁이류'],   // 224차
+  wild_green: ['other', '산나물'],   // 299차 — 산자락에서 뜯고 캐고 꺾는다
 };
 // 224차 — 사는 모양 → 잡는 법(채집 손놀림 놀이)
 const BEHAVIOR_KO = {
   buried: '묻혀 산다 — 파기', attached: '바위에 붙어 산다 — 떼기', crevice: '바위 틈에 숨는다 — 당기기',
   crawler: '느리게 긴다 — 줍기', runner: '다가가면 달아난다 — 덮치기',
+  leaf: '잎을 뜯는다 — 뜯기', root: '뿌리를 캔다 — 캐기', shoot: '새순을 꺾는다 — 꺾기',   // 299차 산나물
 };
 const CEPH_FISH = new Set(['squid', 'cuttlefish', 'swordtip_squid', 'flying_squid', 'octopus', 'giant_octopus']);
 const RARITY_KO = { common: '흔함', uncommon: '드묾', rare: '귀함', epic: '진귀' };
@@ -360,9 +362,9 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
   speciesList.push({
     id: s.id, group, subgroup,
     name: s.nameKo, nameEn: s.nameEn, scientific: s.scientificName,
-    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : []),
+    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : s.harvestItemId && imgOf(`px:${s.harvestItemId}`) ? [{ src: imgOf(`px:${s.harvestItemId}`), label: '' }] : []),   // 299차 — 산나물은 작물 초상
     desc: s.description ?? '',
-    source: '채집 (해루질)',
+    source: s.category === 'wild_green' ? '채집 (산자락 — 산나물)' : '채집 (해루질)',
     valuePerKg: s.marketValuePerKg ?? 0,
     rarity: '—',
     traits: [
@@ -380,6 +382,8 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
       ['필요 허가', shoreLicenseKo(s.requiredLicense)],
       ['미끼 활용', s.canBeUsedAsBait ? '가능' : '불가'],
       ['사는 모양', BEHAVIOR_KO[core.forageBehaviorOf(s)] ?? '—'],
+      ...(s.regions ? [['나는 고장', s.regions.map((r) => core.getRegionById?.(r)?.shortNameKo ?? r).join(' · ')]] : []),   // 299차
+      ...(s.harvestItemId ? [['거두면', '텃밭 수확물과 같은 묶음 — 그 고장 특산이면 산지 봉인']] : []),
       ['들어가는 곳', (s.spotKinds ?? []).includes('shallows') ? ((s.spotKinds ?? []).length === 1 ? '얕은 물(장화)만' : '뭍 · 얕은 물(장화)') : '뭍(갯바위 · 안벽)'],
       ['동해(속초)', (s.eastSeaWeight ?? 1) <= 0 ? '살지 않는다' : (s.eastSeaWeight ?? 1) < 0.5 ? '드물다' : '있다'],
       ['여름잠 · 안 보이는 달', s.absentMonths?.length ? MONTHS(s.absentMonths) : '없음'],
@@ -725,6 +729,17 @@ const rules = [
     ],
   },
   {
+    id: 'wild_greens_299', round: 299, hidden: false, title: '산나물 캐기 — 산자락에서 뜯고 캐고 꺾는다',
+    lede: '봄이 오면 마을 뒤 숲과 풀밭 안쪽(길과 집에서 떨어진 산자락)에 산나물이 난다 — 곰취 · 산마늘(명이) · 눈개승마 · 부지깽이 · 어수리 · 두릅 · 곤드레 · 엄나무순. 낮에만 보이고 종마다 나는 달과 고장이 다르다. 다가가 [F]를 누르면 해루질과 같은 손놀림 놀이가 열리고, 거둔 것은 텃밭 수확물과 같은 묶음으로 들어온다 — 그 고장 특산이면 산지 봉인이 찍힌다.',
+    rows: [
+      ['어디서', '숲 · 풀밭 칸 가운데 둘레가 전부 풀 · 숲 · 맨땅이고 반지름 3칸 안에 길 · 집 · 포장 · 물이 없는 자리(마을 공동산). 바다 자리와 따로 성기게 난다(한 지역 24곳까지)'],
+      ['여덟 가지', '곰취(4~6월 · 강원 · 울릉 · 포항 · 울산) · 산마늘(3~5월 · 울릉 · 속초) · 눈개승마(4~5월 · 울릉만) · 부지깽이(3~5월 · 울릉만) · 어수리(4~6월) · 두릅(4~5월 · 가시) · 곤드레(5~7월) · 엄나무순(4~5월 · 가시)'],
+      ['놀이', '잎은 「뜯기」(줍기 판 · 풀밭 바탕) · 새순은 「꺾기」(떼기 판) · 뿌리는 「캐기」(파기 판). 두릅 · 엄나무는 맨손이면 찔린다 — 장갑'],
+      ['거두면', '텃밭에서 기른 것과 같은 물건 한두 묶음(작물 초상 · 농산물 칸). 울릉 명이 · 삼나물 · 부지깽이 · 설악 곰취는 그 고장에서 뜯으면 특산 — 산지 봉인 · 값 배율 · 택배 차익 · 축제 매대'],
+      ['규칙', '낮에만 · 제철 달에만 · 지역마다 나는 종이 다르다 · 거둔 자리는 하루 이틀 빈다 · 풍랑 · 너울 판정은 받지 않는다(바다가 아니다) · 허가가 필요한 산은 넣지 않았다'],
+    ],
+  },
+  {
     id: 'festivals_298', round: 298, hidden: false, title: '지역 축제 달력 — 축제 달과 절정 주',
     lede: '고장마다 해마다 같은 때에 축제가 선다 — 속초 양미리·도루묵(11월) · 부산 자갈치(10월) · 구룡포 과메기(11월) · 거제 대구(12월) · 모슬포 방어(11월) · 울릉도 오징어(8월) · 안면도 대하(9월) · 소래포구(9월) · 여수 섬슐랭(11월). 축제 달 내내 그 고장 가게가 축제 특산을 더 쳐주고, 실제 축제가 열리는 절정 주에는 값이 더 오르고 거리가 붐비고 그 고장 사람이 일손을 부탁한다. 열린 고장의 축제는 일지 「나날」과 라디오로 안다.',
     rows: [
@@ -745,7 +760,7 @@ const rules = [
       ['우호도', '아주 좋아함 +0.12 · 좋아함 +0.06 · 보통 +0.02 · 싫어함 −0.06. 선물의 효과는 우호도뿐이다 — 값 · 보상 · 품삯은 바뀌지 않는다'],
       ['하루 한 번', '같은 사람에게는 이야기 하루에 한 번만. 다시 누르면 「오늘은 이미 받았어요. 마음만으로 충분해요.」'],
       ['수첩', '일지(J) 수첩 맨 위 「선물 취향」 — 「정옥선 씨 — 막걸리를 아주 좋아함」처럼 건네 본 것만 적힌다'],
-      ['선물 칭호', '아주 좋아하는 것을 처음 받은 사람 수로 센다 — 마을 사람 절반이면 「선물 보따리」(선물 우호도 +25%), 전원이면 「동네 산타」(+50%). 싫어하는 것에는 배율이 걸리지 않는다'],
+      ['선물 칭호', '아주 좋아하는 것을 처음 받은 사람 수로 센다 — 마을 사람 절반이면 「산타」(선물 우호도 +25%), 전원이면 「박애주의자」(선물 우호도 +50% · 상점 구매가 −3%). 싫어하는 것에는 배율이 걸리지 않는다'],
     ],
   },
   {

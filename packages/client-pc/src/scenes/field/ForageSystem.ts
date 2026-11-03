@@ -24,6 +24,7 @@ import {
   calculateTideInfo, isNightNow, checkSlipHazard, TUNING, kstParts,
   tideFlowStateAt, tideWaterLevel01, tideRegionK, forageTideMult, forageFloodWarning,
   forageBehaviorOf, isEastSeaRegion, rollForageHarvest, forageImageSizeScale, resolveLegal, forageInjuryRoll, forageLossLineKo, shallowWaterDepthM,
+  isWildGreen, isWalkableTerrain,   // 299차 — 산나물
   type ForageGameState, type ForageHarvest,
   isToxinShellfish, toxinBanActive, toxinBanLabel,
   advanceRunner, decodeRunnerFlee, encodeRunnerFlee, runnerEpoch, runnerFleeKey,
@@ -33,6 +34,7 @@ import { GameState } from '../../store/GameState.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { InventoryStore } from '../../store/InventoryStore.js';
 import { CoolerStore } from '../../store/CoolerStore.js';
+import { cropItemTemplate } from '../../data/CropItems.js';   // 299차 — 산나물은 텃밭 수확물로 들어간다
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
@@ -93,6 +95,8 @@ export function forageTexKey(c: ShoreCreature): string {
  *   필드에 그대로 그려진다(167차 실측 — 1881px 게 사진이 화면을 덮었다).
  */
 export function forageSpotTexKey(c: ShoreCreature): string {
+  // 299차 — 산나물은 그 수확물의 작물 아이콘(64px · 244차)을 쓴다 — 갯것 점 그림을 따로 굽지 않는다
+  if (c.harvestItemId) return `cropicon_${c.harvestItemId}`;
   return `forage_dot_${c.id}`;
 }
 
@@ -193,7 +197,14 @@ export function ensureForageDotTextures(scene: Phaser.Scene): void {
         g.beginPath(); g.moveTo(1, 9); g.lineTo(5, 5); g.lineTo(10, 10); g.lineTo(15, 6); g.strokePath();
         g.fillStyle(0xd07060, 1); for (let k = 0; k < 4; k++) g.fillRect(3 + k * 3, 7, 1, 1);
         break;
-      default: // 조개류 기본
+      default:
+        if (isWildGreen(c)) {   // 299차 — 작물 아이콘이 없을 때의 잎 도트
+          g.fillStyle(0x3f7a3a, 1); g.fillEllipse(6, 9, 8, 5); g.fillEllipse(10, 7, 8, 5);
+          g.fillStyle(0x6fb05a, 1); g.fillEllipse(7, 8, 4, 2); g.fillEllipse(11, 6, 4, 2);
+          g.lineStyle(1, 0x2a4a28, 1); g.lineBetween(8, 13, 8, 6);
+          break;
+        }
+        // 조개류 기본
         g.fillStyle(0xc8b898, 1); g.fillEllipse(8, 8, 12, 9);
         g.lineStyle(1, 0x8a7a5a, 1); g.strokeEllipse(8, 8, 12, 9);
     }
@@ -229,7 +240,10 @@ export function devGrantForage(c: ShoreCreature, countGather: boolean, pre?: For
   // 288차 — 금지체장은 「이하」라 그 크기 그대로는 못 잡는다 — 0.1cm 위로
   if (res.undersized) res = { ...res, sizeCm: Math.round((resolveLegal(c, regionId).minLegalSizeCm + 0.1) * 10) / 10, undersized: false };
   let ok = false;
-  if (c.baitItemId) {
+  if (c.harvestItemId) {   // 299차 — 산나물: 텃밭 수확물 한 묶음(얻은 지역 꼬리표 → 특산)
+    const tpl = cropItemTemplate(c.harvestItemId);
+    ok = !!tpl && InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, 1);
+  } else if (c.baitItemId) {
     const seed = InventoryStore.seedTemplate(c.baitItemId);
     const extra = BAIT_TEMPLATES[c.baitItemId];
     const tpl = seed ?? (extra ? {
@@ -276,6 +290,10 @@ export class ForageSystem {
   private host: ForageHost;
   private farms: FishFarm[];
   private candidates: ForageCandidate[] = [];
+  /** 299차 — 산자락(산나물) 후보 — 바다 후보와 따로 두고 따로 굴린다(밀도 · 상한이 다르다) */
+  private hillCandidates: ForageCandidate[] = [];
+  /** 299차 dev — 달을 고정한다(산나물 제철 검증 · `__FIELD.forage.devMonth = 5`) */
+  devMonth: number | null = null;
   private spots: ForageSpot[] = [];
   private spotSprites = new Map<string, Phaser.GameObjects.Image>();
   private runners = new Map<string, RunnerState>();
@@ -313,6 +331,7 @@ export class ForageSystem {
     this.farms = farms;
     this.ensureTextures();
     this.candidates = this.computeCandidates();
+    this.hillCandidates = this.computeHillCandidates();   // 299차
     this.drawFarms();
     this.placeSigns();
     this.refreshSpots(true);
@@ -396,9 +415,50 @@ export class ForageSystem {
     return out;
   }
 
+  /**
+   * 299차 — 산자락 후보: 숲('wood') · 풀밭('grass') 안쪽 칸. 둘레 3×3이 전부 숲 · 풀 · 맨땅 · 흙이고,
+   * 반지름 3 안에 도로 · 보도 · 건물 · 포장 · 물 · 모래 · 부두가 없다(마을 공동산 — 길가 · 집 옆은 아니다).
+   * 숲 칸이거나 둘레에 숲이 셋 이상이면 바로, 순 풀밭이면 5×5가 전부 풀 · 숲일 때만(들판 한가운데).
+   */
+  private computeHillCandidates(): ForageCandidate[] {
+    const { cols, rows, terrainAt } = this.host;
+    const out: ForageCandidate[] = [];
+    const bad = new Set<RegionTerrain>(['road', 'sidewalk', 'building', 'paved', 'water', 'sand', 'pier', 'deck', 'tidal', 'cliff', 'farm']);
+    const soft = new Set<RegionTerrain>(['wood', 'grass', 'land', 'dirt']);
+    for (let r = 3; r < rows - 3; r++) {
+      for (let c = 3; c < cols - 3; c++) {
+        const t = terrainAt(c, r);
+        if (!t || !isWalkableTerrain(t) || (t !== 'wood' && t !== 'grass')) continue;
+        let wood = 0, ok = true;
+        for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const tt = terrainAt(c + dx, r + dy);
+          if (!tt || !soft.has(tt)) { ok = false; break; }
+          if (tt === 'wood') wood++;
+        }
+        if (!ok) continue;
+        for (let dy = -3; dy <= 3 && ok; dy++) for (let dx = -3; dx <= 3; dx++) {
+          const tt = terrainAt(c + dx, r + dy);
+          if (!tt || bad.has(tt)) { ok = false; break; }
+        }
+        if (!ok) continue;
+        if (t === 'wood' || wood >= 3) { out.push({ tx: c, ty: r, kind: 'hill_grass' }); continue; }
+        let meadow = true;
+        for (let dy = -2; dy <= 2 && meadow; dy++) for (let dx = -2; dx <= 2; dx++) {
+          const tt = terrainAt(c + dx, r + dy);
+          if (tt !== 'grass' && tt !== 'wood') { meadow = false; break; }
+        }
+        if (meadow) out.push({ tx: c, ty: r, kind: 'hill_grass' });
+      }
+    }
+    return out;
+  }
+
+  /** 299차 — 산자락 후보 수(dev · 검증) */
+  hillCandidateCount(): number { return this.hillCandidates.length; }
+
   /** 후보 통계 (dev/검증용) */
   candidateStats(): Record<ForageSpotKind, number> {
-    const s: Record<ForageSpotKind, number> = { rock_shore: 0, armor_foot: 0, tidepool: 0, harbor_wall: 0, shallows: 0 };
+    const s: Record<ForageSpotKind, number> = { rock_shore: 0, armor_foot: 0, tidepool: 0, harbor_wall: 0, shallows: 0, hill_grass: this.hillCandidates.length };   // 299차 — 산자락
     for (const c of this.candidates) s[c.kind]++;
     return s;
   }
@@ -417,7 +477,7 @@ export class ForageSystem {
     const level = 1 - (1 - tideWaterLevel01(flow)) * k;
     return {
       // 232차 — 월 · 일은 KST(OS 시간대가 다른 사람끼리 금어기 · 스팟 풀이 하루 어긋나지 않게)
-      month: Number(kstParts().mo),
+      month: this.devMonth ?? Number(kstParts().mo),   // 299차 — dev 달 고정
       isNight: isNightNow(),
       windSpeedMs: kma?.windSpeedMs ?? marine?.windSpeedMs ?? 4,
       waveHeightM: ExternalDataStore.getWaveHeightM(this.host.regionId) ?? 0.5,
@@ -464,7 +524,7 @@ export class ForageSystem {
     //   전엔 면허가 있으면 풀이 달라져 같은 칸에 A는 해삼, B는 홍합이 보였다. 이제 모두 같은 표를 굴리고,
     //   면허가 없는 사람에게는 그 생물만 **안 보이게** 거른다. (스킬로 늘어나는 스팟 수는 같은 순서의 앞부분이
     //   겹치므로 그대로 둔다 — 많이 보는 사람만 뒤쪽 몇 개를 더 본다.)
-    const rolled = rollForageSpots(this.candidates, {
+    const seaRolled = rollForageSpots(this.candidates, {
       seed, month: e.month, isNight: e.isNight, tideLevel01: e.tideLevel01,
       hasAdvancedLicense: true, farms: this.farms,
       // 205차 — 간조 시간창(간조 2시간 전 ~ 1시간 뒤)이면 스팟이 더 드러난다
@@ -472,6 +532,13 @@ export class ForageSystem {
       eastSea: isEastSeaRegion(this.host.regionId),   // 224차 — 동해엔 없는 · 드문 종
       day: Number(kstParts().d), regionId: this.host.regionId,   // 227차 — 금어기 날짜 단위 · 지역 규정
     });
+    // 299차 — 산자락(산나물)은 따로 굴린다 — 물때 · 바다 배율과 무관 · 성긴 밀도 · 상한 따로 · 낮에만(DB `discoveryTime`)
+    const hillRolled = this.hillCandidates.length ? rollForageSpots(this.hillCandidates, {
+      seed: (seed ^ 0x9e3779b9) >>> 0, month: e.month, isNight: e.isNight, tideLevel01: 1,
+      hasAdvancedLicense: true, farms: [], maxSpots: TUNING.forage.hillMaxSpots, spotsPerHundred: TUNING.forage.hillSpotsPerHundred,
+      eastSea: false, day: Number(kstParts().d), regionId: this.host.regionId,
+    }) : [];
+    const rolled = [...seaRolled, ...hillRolled];
     this.spots = rolled.filter((s) => !this.isGone(s.id)   // 224차 놓친 것 · 233차 잡은 자리(1~2일) · 232차 남이 가져간 것
       && (e.hasAdvancedLicense || getCreatureById(s.creatureId)?.requiredLicense !== 'shore_hunting_advanced'));
     // 235차 — 러너 앵커: 슬롯이 시작된 공용 시각에 굴린 칸에서 출발한다(늦게 들어온 사람도 같은 걸음을 따라 센다)
@@ -893,7 +960,8 @@ export class ForageSystem {
       return true;
     }
     const e = this.env();
-    const safety = forageSafety({ ...e });
+    // 299차 — 산자락은 풍랑 · 너울 · 미끄러짐 판정 밖(바다가 아니다)
+    const safety = s.kind === 'hill_grass' ? { allowed: true, slipChance: 0 } : forageSafety({ ...e });
     if (!safety.allowed) {
       this.host.floatingHint(safety.danger ?? '지금은 위험합니다');
       this.host.pushLog(`[안전] ${safety.danger}`);
@@ -1015,6 +1083,24 @@ export class ForageSystem {
 
   /** 수확물을 넣는다 — 미끼 갯것은 미끼 아이템으로, 그 밖은 쿨러(활어) 우선 · 인벤토리(채집물) */
   private deliver(spot: ForageSpot, c: ShoreCreature, res: ForageHarvest): void {
+    // 299차 — 산나물: 텃밭 수확물 한두 묶음(작물 초상 · 얻은 지역 꼬리표 → 울릉 명이 · 설악 곰취 특산)
+    if (c.harvestItemId) {
+      const tpl = cropItemTemplate(c.harvestItemId);
+      const [lo, hi] = c.harvestQty ?? [1, 1];
+      const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
+      if (tpl && InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, qty)) {
+        playSfx('forage_get');
+        DiscoveryStore.record('creature', c.id, 'night_hunting');
+        GameState.addActivityXp('forage');
+        this.host.floatingHint(`${c.nameKo} ${qty}묶음 — 가방`);
+        this.host.pushLog(`[채집] ${c.nameKo} ${qty}묶음 — 가방(농산물)`);
+        this.host.scene.cameras.main.flash(120, 90, 160, 60);
+        return;
+      }
+      playSfx('deny');
+      this.host.floatingHint('가방이 가득 찼습니다 — 두고 왔다');
+      return;
+    }
     // 224차 — 직접 잡은 미끼(갯지렁이 · 혼무시 · 쫄장게 · 갯강구)는 바로 바늘에 다는 미끼로
     if (c.baitItemId) {
       const seed = InventoryStore.seedTemplate(c.baitItemId);

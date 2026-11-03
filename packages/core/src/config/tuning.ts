@@ -599,6 +599,9 @@ export interface TuningConfig {
     depleteMaxHours: number;
     /** 한 번에 존재하는 스팟 상한 */
     maxSpots: number;
+    /** 299차 — 산자락(산나물) 후보 100칸당 스팟 수 · 상한(바다와 따로 굴린다) */
+    hillSpotsPerHundred: number;
+    hillMaxSpots: number;
     /** 기본 채집 성공 확률 */
     baseSuccess: number;
     /** 1순위 도구 사용 시 가산 */
@@ -1538,6 +1541,7 @@ export const TUNING: TuningConfig = {
   // 데이터 테이블 (대표값 — 나머지 어종 동일 형식으로 채움)
   forage: {
     spotsPerHundred: 5, lowTideBonus: 1.6, respawnMinutes: 60, maxSpots: 220,
+    hillSpotsPerHundred: 0.6, hillMaxSpots: 24,   // 299차 — 산나물
     depleteMinHours: 24, depleteMaxHours: 48,
     baseSuccess: 0.72, toolMatchBonus: 0.18, octopusEscape: 0.35, handInjuryStamina: 15,
     holdMsBase: 900, lampRadiusPer100lm: 0.55, dayRadiusTiles: 3,

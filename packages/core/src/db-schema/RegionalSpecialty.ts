@@ -44,6 +44,8 @@ export const REGIONAL_SPECIALTIES: readonly RegionalSpecialtyDef[] = [
     noteKo: '오징어철이 끝나면 이어지는 겨울 어종 — 동명항 양미리 부두 · 연탄불 구이', noteEn: 'The winter fish that follows squid season — grilled over briquettes at Dongmyeong Port', festivalKo: '속초 양미리 · 도루묵축제(11월 · 속초항)' },
   { id: 'sokcho_squid', regionIds: ['gangwon_sokcho'], kind: 'fish', keys: ['flying_squid'], nameKo: '속초 오징어', nameEn: 'Sokcho squid', months: [7, 8, 9, 10, 11], priceMult: 1.2,
     noteKo: '함경도 실향민이 돼지 창자 대신 오징어 몸통에 속을 채운 오징어순대의 고장(아바이마을)', noteEn: 'Home of squid sundae — Hamgyeong refugees stuffed squid instead of pig intestine (Abai Village)' },
+  { id: 'sokcho_gomchwi', regionIds: ['gangwon_sokcho'], kind: 'crop', keys: ['crop_gomchwi'], nameKo: '설악 곰취', nameEn: 'Seorak gomchwi', months: [4, 5, 6], priceMult: 1.3,
+    noteKo: '설악 자락 고랭지 그늘에서 뜯는 봄나물 — 양양 · 인제 곰취 축제의 그 잎', noteEn: 'A spring green plucked in the shaded highlands under Seorak — the leaf behind the Yangyang and Inje gomchwi festivals' },
   // ── 부산 ──
   { id: 'busan_mackerel', regionIds: ['busan'], kind: 'fish', keys: ['chub_mackerel'], nameKo: '부산 고등어', nameEn: 'Busan mackerel', months: [9, 10, 11, 12, 1, 2], priceMult: 1.3,
     noteKo: '부산 시어 — 공동어시장(남항)에 전국 고등어 80%가 위판된다', noteEn: "Busan's city fish — 80% of the nation's mackerel is auctioned at the Namhang cooperative market", festivalKo: '부산고등어축제(10~11월)' },

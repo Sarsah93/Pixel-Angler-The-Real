@@ -1036,7 +1036,7 @@ export class RegionFieldScene extends Phaser.Scene {
         if (!w) return;
         shown = w.name;
       }
-      const kindLabel = entry.kind === 'fish' ? '어종' : entry.kind === 'creature' ? '해양생물' : '아이템';
+      const kindLabel = entry.kind === 'fish' ? '어종' : entry.kind === 'creature' ? (getCreatureById(entry.id)?.category === 'wild_green' ? '산나물' : '해양생물') : '아이템';   // 299차
       this.hud?.pushLog(`[도감] 새로운 ${kindLabel} 발견 — ${shown} (N 키로 확인)`);
     };
     this.events.once('shutdown', () => { DiscoveryStore.onNew = null; });

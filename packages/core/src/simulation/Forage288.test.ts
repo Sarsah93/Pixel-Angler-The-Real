@@ -77,7 +77,7 @@ describe('288차 — 지역 규정', () => {
 describe('288차 — 종별 크기 · 무게 · 그림 배율', () => {
   it('21종 모두 크기 자료가 있고 [min, max] 안에서 굴린다', () => {
     const rng = mulberry32(42);
-    for (const c of SHORE_CREATURE_DATABASE) {
+    for (const c of SHORE_CREATURE_DATABASE.filter((x) => x.category !== 'wild_green')) {   // 299차 — 산나물은 크기 자료가 없다(묶음)
       expect(c.size, c.id).toBeTruthy();
       for (let i = 0; i < 300; i++) {
         const v = rollForageSizeCm(c, rng, 0);

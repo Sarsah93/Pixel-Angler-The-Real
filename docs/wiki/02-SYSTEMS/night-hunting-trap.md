@@ -80,9 +80,12 @@
 | **293 놀이 손맛** — 떼기 헛짚음 0.85(단단한 녀석 0.62) · 파기 파는 양 두 배 · 소란 천천히 · 메워짐 1/3 · **닿는 선(`reach`)** · 당기기 예고 0.7초 · 긴장 세기 1.1 · 끌어내는 양 0.34 · 떼기 바탕 `shore`(하늘 · 바다 · 바위) · 틈은 그림 위 층(`gTop`) | ✅ 봇 파기 · 당기기 1.00/0.00 · 하네스 10/10 | 293 — [워크로그](../03-WORKLOG/2026-10-30-293-job-talk-shared-doors-forage-feel.md) |
 | 단서 보기(숨구멍 · 배설 둔덕) | ⬜ 기획 §2 A — 동해엔 갯벌이 거의 없어 후순위 | — |
 | **통발 전용 생물 — 독도새우**(295 — `ShoreCreatureDatabase` `pandalus_hypsinotus` `trapOnly · trapTypes ['shrimp_trap'] · trapSeas ['ulleung']` · `rollForageSpots` 풀 제외 · `harvestTrap`이 통발 종류 · `seaOf(regionId)`로 거름 · 120,000원/kg · 특산(울릉 · 독도 10~4월)) | ✅ | **295** |
+| **산나물 캐기 — 산자락 스팟**(299 — 분류 `wild_green` 8(곰취 · 명이 · 눈개승마 · 부지깽이 · 어수리 · 두릅 · 곤드레 · 엄나무순) · 스팟 `hill_grass`(클라이언트 `computeHillCandidates` — 숲 · 풀밭 안쪽 · 반지름 3 안 길 · 집 · 물 없음) · 바다와 따로 굴림(`spotsPerHundred` 0.6 · 상한 24 · 씨앗 다름) · `regions` · `absentMonths` · 낮만 · 사는 모양 `leaf · root · shoot` → 줍기 · 파기 · 떼기 판(제목 뜯기 · 캐기 · 꺾기 · 풀밭 바탕) · 거두면 `cropItemTemplate(harvestItemId)` 묶음 + `originRegion`(울릉 명이 · 설악 곰취 특산) · 풍랑 · 미끄러짐 밖 · 면허 없음 · 판 · 점 그림 대신 작물 아이콘) | ✅ | **299** |
 | **걷은 통발이 사라지지 않는다**(296 — `returnTrapItem`이 `recoverPlaceable` 실패 때 `addItemOrMail`로 집 우편함에 보낸다 · 채널 `[통발] … 집 우편함으로` — 하모니 F-0009) | ✅ | **296** |
 
 ## 5. 잔여·차기 (착수 로드맵)
+
+- **299 잔여(산나물)** — 뿌리 나물(더덕 · 도라지 · 달래 — 초상 없음) · 산나물 점 그림(지금은 작물 아이콘 28px) · 입산 허가 · 하루 상한 없음(마을 공동산만) · 울릉 산자락 실측 · 부산 감천 후보 계산 지연 확인. 상세 [299](../03-WORKLOG/2026-11-03-299-wild-greens-gathering.md) §6.
 
 > ⚠ **"통발 D2"는 이미 끝난 라벨이다**(147차 확인). §4 표의 D2a~D2d는 전부 **✅ 121차**이고,
 > PLAN·CLAUDE.md에 남아 있던 `통발 심화(D2) ← 현재 지점`은 121차 이전에 쓰인 스테일 표기였다.
