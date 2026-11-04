@@ -1967,6 +1967,27 @@
    "expected": "한 정본",
    "actual": "두 표기",
    "player_impact": "영어 표기만 어긋남(기능 영향 없음)"
+  },
+  {
+   "lane": "q4-balance",
+   "first_seen": "2026-11-05",
+   "last_seen": "2026-11-05",
+   "status": "열림",
+   "pattern": "BP-39",
+   "id": "F-0107",
+   "severity": "보통",
+   "title": "「가장 센 물고기」 참다랑어가 어종군 폴백('other')에 떨어져 방어류보다 약하게 싸운다 · fight.basePower는 어디서도 쓰이지 않는다",
+   "evidence": [
+    "packages/core/src/simulation/FishRarity.ts:31-44",
+    "packages/core/src/simulation/FishSpawningOracle.ts:804-815",
+    "packages/core/src/config/tuning.ts:1444"
+   ],
+   "why": "파이트 물리는 fightGroupOf(speciesId)의 burst만 쓰고 oracle fight.basePower는 소비처가 0이다. 참다랑어는 AMBERJACK 집합에 없어 'other'(burst 2.2)로 폴백한다(방어류 5.5).",
+   "repro": "정적 계산(core dist): 요구 장력 = 체중 × (staticFrac×staticMult + burst×form.burst×pullDive). 참다랑어 평균 110cm 25.3kg → 63.6kg, 같은 체중을 방어류군으로 치면 약 147kg. 잿방어 평균 95cm 10.7kg은 62.3kg. 하네스 실전은 안 돌림.",
+   "expected": "데이터 주석이 「가장 센 물고기」(basePower 1.5 = 전 어종 최대)이니 같은 체중의 방어류 이상으로 당긴다",
+   "actual": "25kg 참다랑어가 10.7kg 잿방어와 같은 요구 장력(약 63kg)이다 — 체중당 힘이 방어류의 0.4배",
+   "player_impact": "먼바다 대물의 정점인 참다랑어가 방어보다 쉽게 올라온다(합사 7호면 평균 개체 안전). 연출 기대와 어긋난다. 어종 fight.basePower 60종 값은 파이트에 전혀 반영되지 않는다.",
+   "decision": "제안만 — 밸런스 값(어종군 배정·burst)"
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."

@@ -489,6 +489,21 @@
     "F-0104"
    ],
    "lane": "q2-art-data"
+  },
+  {
+   "id": "P-0029",
+   "date": "2026-11-05",
+   "domain": "q4-balance",
+   "kind": "제안",
+   "title": "참다랑어를 방어류군(또는 전용 군)으로 — 체중당 힘이 잿방어보다 약한 것 정정",
+   "pr": null,
+   "branch": null,
+   "status": "제안",
+   "decided_at": null,
+   "findings": [
+    "F-0107"
+   ],
+   "lane": "q4-balance"
   }
  ]
 }

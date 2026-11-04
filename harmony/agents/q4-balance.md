@@ -45,6 +45,9 @@
 
 ## 다음 실행 중점
 
+- (2026-11-05) S4-05 완료 — 요구 장력 계산식을 `/tmp/pair.mjs`식 스크립트(core dist의 `ORACLE_FISH_DB` · `TUNING.fightPhys`)로 만들면 5분이다. 발견 F-0107.
+  다음: S4-06 초반 경제 곡선(하네스) → S4-07 작물 수익 → S4-02 웹 시세 대조 → S4-03 신선도·수율.
+
 - (2026-10-29) S4-01 통과 — 기록: 장비 되팔기 0.51~0.6배, 가게 오징어(`shop_squid`)는 `ingredientOfItem`이 null이라 요리 재료가 아님.
   단 `sdl_onion` 씨앗은 판매가 100 > 구매가 80이지만 가게가 사지 않아 무해(`shopBuysItem`).
 - 다음: S4-05를 이어 어종별 `fight.basePower` × 줄 kg 짝표(하네스에서 `FightingPhase` 수치)를 만든다. 그다음 S4-06 · S4-02.

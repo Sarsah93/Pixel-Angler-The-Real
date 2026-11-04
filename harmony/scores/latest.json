@@ -1,11 +1,11 @@
 {
- "date": "2026-11-04",
- "audited_commit": "fbca7181b2a16c7a4f494376d98146009780729f",
+ "date": "2026-11-05",
+ "audited_commit": "2f59d5e86efd9504f82e7bf9fb9b76e8d66c30b3",
  "summary": {
-  "harmony_index": 64.2,
+  "harmony_index": 64.4,
   "balance": 62.2,
   "weakest": "q5-security",
-  "found_today": 0,
+  "found_today": 1,
   "fixed_today": 0,
   "scoring_version": 2
  },
@@ -79,18 +79,18 @@
   "q4-balance": {
    "name": "④ 기획 현실성·밸런스",
    "kind": "product",
-   "health": 88.0,
-   "scenarios": 28.6,
+   "health": 82.0,
+   "scenarios": 42.9,
    "agency": 100.0,
-   "overall": 72.6,
+   "overall": 73.9,
    "scenario_total": 7,
-   "scenario_recent": 2,
+   "scenario_recent": 3,
    "open_findings": {
     "심각": 0,
-    "보통": 1,
+    "보통": 2,
     "경미": 3
    },
-   "found_today": 0,
+   "found_today": 1,
    "fixed_today": 0,
    "decisions": {
     "merged": 3,
@@ -187,5 +187,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-11-03"
+ "previous_date": "2026-11-04"
 }

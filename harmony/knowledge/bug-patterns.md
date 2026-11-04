@@ -202,6 +202,11 @@
 - 사례: 222 스킬 43/92만 배선(→ `pendingSystem` 잠금) · 255 요리 효과 다섯(맑은 속 등) 표시만(백로그 CC ②).
 - 훑는 법: `SkillDatabase` 효과 키 ↔ `GameState.skillMult` · `skillBonus` 호출 키 교차, 버프 id ↔ 소비 코드 교차 — 소비처 0인 키 목록.
 
+**BP-39 분류 집합 누락 → 기본값 폴백 · 죽은 데이터 필드**
+- 기전: 새 종을 데이터에 등록하면서 이름 집합(`fightGroupOf` 등)에 넣지 않으면 조용히 'other'로 폴백한다. 어종 데이터에만 있는 수치(`fight.basePower`)는 소비처가 없다.
+- 사례: F-0107 참다랑어(294~295차 신설) 'other' 폴백 · basePower 소비 0.
+- 훑는 법: 오라클 종 × `fightGroupOf` 결과 표에서 체중·basePower가 큰데 'other'인 종 찾기. 필드 이름 grep으로 소비처 0 확인.
+
 ## ⑤ 보안·계정·서비스
 
 **BP-37 클라이언트가 말한 신원 · 값을 믿음**
