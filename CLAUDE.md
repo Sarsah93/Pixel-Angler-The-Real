@@ -108,7 +108,7 @@
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
 - **300차 A**: **도감 표현 통일 · 사이소 24시간(임시)** — 사용자 지적(「플레이로 입수 · 직판장에서 구매 · 취득하면 등록 … 로직 경로를 글로 보여 주지 마」 · 「아이템 위키 → 아이템」 · 「실루엣으로 통일」) →
   `AnglerLogScene` 탭 「아이템」 · 미발견 실루엣 한 벌 `addSilhouette`(0x152538 · 0.9) · `silhouetteOf` · 요약 「N / M」 · 힌트 「???로 입수」 「???에서 구매」 「주간 · 물가」 「주재료 ???」 · 발견 줄 「11/4 · 처음 얻음」(core `DISCOVERY_SOURCE_LABEL`) · 특산 발견 카드 그림 · 요리 행 사진 아이콘 ·
-  사이소 `BUILDING_HOURS.daily = 'always'`(QA 임시 — 되돌릴 값 10~22 · 백로그 DG) · 검증 r300a 7/7 · core 492 · 빌드 3/3 · typecheck 4/4. **B 지역 텃밭 1단계 진행 중**. 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
+  사이소 `BUILDING_HOURS.daily = 'always'`(QA 임시 — 되돌릴 값 10~22 · 백로그 DG) · 검증 r300a 7/7 · core 492 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 `1daa9ce` · **102차 배포(gh-pages `41e8864` · 실행 31 · 기동 10.4초 · 4xx 0 · pageerror 0)** · 아티팩트(46 · 45 · 42 · 위키 98). **B 지역 텃밭 1단계 진행 중**. 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
 - **299차**: **산나물 캐기 — 산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산 꼬리표 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」** —
   사용자 지시 넷(「'선물 칭호에 한 사람 더.' 넣지 마 … '아주 좋아하는 것 같다.'」 · 「선물 보따리 → 산타 · 동네 산타 → 박애주의자 · 선물우호도 및 가게 할인율 소급 적용」 · 「산지에서 나는 나물 작업 시작」 · 「main 반영하고 재배포」) →
   core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·
@@ -222,8 +222,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 15 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo` · **`ulleung` 울릉도 도동 · `dokdo` 독도 동도(294 — 배로만 · 6 · 7장)**(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `c56cca5` — **최근 101차 배포 2026-11-03 = 299(2)차 코드까지 포함**(299(2) 산나물 포기 도트 + 299 산나물 캐기 · 297(2) 칭호 「산타」 · 「박애주의자」 + 298 지역 축제 달력 + 297 인물 선물 선호) —
-  main `b26d597` · 실행 30 · 정적 2,157(소스맵 0) · 기동 11.7초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0. main은 2026-11-03 사용자 지시(「main 반영하고 재배포해줘」)로 작업 브랜치에 빨리 감기했다(299(2) · 100차 = `0a98430` 299차 · 99차 = `eeb1fe9` 296차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `41e8864` — **최근 102차 배포 2026-11-04 = 300차 A 코드까지 포함**(300 A 도감 실루엣 한 벌 · 사이소 24시간(임시 · QA) + 299(2) 산나물 포기 도트 + 299 산나물 캐기 + 298 축제 달력 + 297 선물) —
+  main `1daa9ce` · 실행 31 · 정적 2,157(소스맵 0) · 기동 10.4초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 배포본 도감 다섯 탭 실루엣 색 · 힌트 · 번들 `daily:"always"` 확인. main은 2026-11-04 사용자 지시(「여기까지 반영하고 main 재배포해줘」)로 작업 브랜치에 빨리 감기했다(300 A · 101차 = `c56cca5` 299(2) · 100차 = `0a98430` 299차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 98 = 300 A**(시스템 「도감은 발견한 것만 — 실루엣 한 벌」 · 97 = 299(2) · 96 = 299)
