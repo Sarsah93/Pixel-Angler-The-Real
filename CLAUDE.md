@@ -229,7 +229,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main `1daa9ce` · 실행 31 · 정적 2,157(소스맵 0) · 기동 10.4초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 배포본 도감 다섯 탭 실루엣 색 · 힌트 · 번들 `daily:"always"` 확인. main은 2026-11-04 사용자 지시(「여기까지 반영하고 main 재배포해줘」)로 작업 브랜치에 빨리 감기했다(300 A · 101차 = `c56cca5` 299(2) · 100차 = `0a98430` 299차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 99 = 300 B**(시스템 「지역 빌린 밭 — 그 고장 종묘사에서 한 구획」 · 98 = 300 A 「도감은 발견한 것만」 · 97 = 299(2))
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 100 = 300**(템플릿 문법 오류 고침 — **95~99판(298~300 B)은 본문이 안 그려졌다** · 99 = 300 B 시스템 「지역 빌린 밭」 · 98 = 300 A 「도감은 발견한 것만」). 생성기가 템플릿 스크립트 문법을 검사한다 — 발행 전 헤드리스 로드 pageerror 0(`docs/artifacts/README.md` 2-b)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 142파일 = 심리스 112 + 구 맵 30 · 파일 426).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
@@ -237,7 +237,7 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
   남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 47 = 300 B ✅ · 다음 = 예시 창 의견 → 2단계) ·
   구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 46 = 300차 B 기준 — 「지역 빌린 밭」 항목) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 42 = 300차 기준 · 문법은 258차) · 위키(위 줄 — 99 = 300 B).
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 42 = 300차 기준 · 문법은 258차) · 위키(위 줄 — 100 = 300 템플릿 고침).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

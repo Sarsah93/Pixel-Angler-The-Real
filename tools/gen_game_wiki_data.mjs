@@ -1722,7 +1722,16 @@ if (Object.keys(manifest).length) {
 const json = JSON.stringify(out);
 if (process.argv.includes('--html')) {
   const tpl = fs.readFileSync(path.join(ROOT, 'tools/game_wiki_template.html'), 'utf8');
-  process.stdout.write(tpl.replace('__DATA__', json.replace(/<\//g, '<\\/')));
+  // 300차 — 템플릿 안 스크립트의 문법 검사(298차에 「특산」 절 줄 끝 `,`가 들어가 95~99판이 본문을 못 그렸다 — 발행 전에 여기서 막는다)
+  const vm = await import('node:vm');
+  const scriptRe = /<script([^>]*)>([\s\S]*?)<\/script>/g;
+  for (let m; (m = scriptRe.exec(tpl));) {
+    if (/application\/json/.test(m[1]) || /\bsrc=/.test(m[1])) continue;
+    try { new vm.Script(m[2], { filename: 'game_wiki_template.html(inline script)' }); }
+    catch (e) { console.error('[위키] 템플릿 스크립트 문법 오류 — 발행하지 말 것:', e.message, (e.stack || '').split('\n')[0]); process.exit(2); }
+  }
+  // 300차 — 바꿔 넣는 글에 `$`가 있으면 String.replace가 치환 패턴으로 읽는다 — 함수 치환으로 그대로 넣는다
+  process.stdout.write(tpl.replace('__DATA__', () => json.replace(/<\//g, '<\\/')));
 } else {
   process.stdout.write(json);
 }

@@ -11,7 +11,7 @@
 | 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 47 — 300 B(§07 300 B ✅ 지역 텃밭 1단계 · 2단계는 예시 창 의견 뒤) · 46 — 300 A(도감 실루엣 한 벌) · 45 — 299(2) |
 | 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 46 — 300차 B(항목 「지역 빌린 밭 — 그 고장 종묘사에서 한 구획」) · 45 — 300차 A(「도감은 발견한 것만 — 실루엣 한 벌」) · 44 — 299(2) |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 42 — 300차 기준 · 채비 문법은 258차(「300차 기준」 줄만) |
-| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 99 — 300 B(시스템 「지역 빌린 밭」 · 텃밭 구획 줄 · 새 그림 없음) · 98 — 300 A(시스템 「도감은 발견한 것만 — 실루엣 한 벌」 · 새 그림 없음) · 97 — 299(2)(「산나물 캐기」 「필드에서」 포기 도트 · 새 그림 없음) · 96 — 299차(시스템 「산나물 캐기」 · 갯것 카드에 산나물 8(작물 초상) · 선물 칭호 글 · 파일 456) · 95 — 298차(시스템 「지역 축제 달력」 · 출조 지역 카드 「축제」 표 · 새 그림 없음 · 파일 456) · 94 — 297차(선물) · 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |
+| 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 100 — 300(템플릿 「특산」 절 `,` → `+` 고침 — **95~99판은 본문이 안 그려졌다** · 생성기 문법 자가 검사) · 99 — 300 B(시스템 「지역 빌린 밭」 · 텃밭 구획 줄 · 새 그림 없음) · 98 — 300 A(시스템 「도감은 발견한 것만 — 실루엣 한 벌」 · 새 그림 없음) · 97 — 299(2)(「산나물 캐기」 「필드에서」 포기 도트 · 새 그림 없음) · 96 — 299차(시스템 「산나물 캐기」 · 갯것 카드에 산나물 8(작물 초상) · 선물 칭호 글 · 파일 456) · 95 — 298차(시스템 「지역 축제 달력」 · 출조 지역 카드 「축제」 표 · 새 그림 없음 · 파일 456) · 94 — 297차(선물) · 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |
 
 - 275차 발행 결과에는 넷 모두 「링크가 있는 사람」 공유로 나온다(남은 과업 설계는 전에 비공개였다). 공유 설정은 페이지의 공유 메뉴에서 사용자가 바꾼다.
 - 원본 HTML은 아티팩트 서비스가 발행 때 씌우는 뼈대(doctype · head · body) 없이 `<title>`부터 시작한다.
@@ -47,6 +47,9 @@ console.log('어종',n(c.FISH_DATABASE),'작물',n(c.CROP_DATABASE),'퀘스트',
 1. 원본 `docs/artifacts/<이름>.html`을 고친다.
 2. 점검 — `node tools/check_artifact_page.cjs docs/artifacts/<이름>.html <출력 접두사> ['#flow']`
    (본문 가로 넘침 · SVG 글자 넘침 · 상자 겹침 · pageerror 0 → `PASS`). 스크린샷(밝음 · 어두움 · 폰)을 눈으로 본다.
+2-b. **위키는 생성한 HTML을 헤드리스로 열어 본다**(300차 — 298차에 템플릿 스크립트 한 글자가 틀려 95~99판이 본문을 못 그렸다. `check_artifact_page.cjs`는 위키를 안 돌린다).
+   생성기(`gen_game_wiki_data.mjs --html`)가 템플릿 스크립트 문법을 검사해 틀리면 종료하지만, 발행 전에 Playwright로 `file://…/index.html`을 열어
+   **pageerror 0 · `document.body.innerText.length`가 수천 자 이상 · 탭 하나를 눌러 카드가 뜨는지**까지 본다(scratchpad `wikicheck2.cjs` 패턴).
 3. Artifact 도구 `publish` — `file_path` = 원본, `url` = 위 표의 주소. 다른 대화에서 처음 발행하면 먼저 `read`로 읽는다.
    ⚠ 위키(3MB)는 `read`에 `path: 'index.html'`을 주면 파일로만 떨어지고 **발행 자격으로 치지 않는다**(261차 실측) — `path` 없이 읽어야 한다.
 4. 워크로그 §8에 네 주소와 새 판(Version)을 적고, 이 표의 「지금 판」을 고친다.

@@ -156,3 +156,7 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
 12. **위키 그림은 게임과 같은 고르기를 쓴다**(255) — `dump_wiki_items.mjs`가 `imgKey`(작물 초상 별칭 → `ItemImages` → 코드 그림)를 계산하고,
     생성기는 `imgKey` → `iconTexture` 순으로 그림을 찾는다. 게임 쪽 그림 표를 바꾸면 덤프 → 그림 → 생성기를 다시 돌린다
     (그림 재료: `gen_wiki_images.py`가 `food assets/items/` · `public/food/`를 읽는다 — Pillow라 `python3.13`).
+13. **위키 템플릿 스크립트 한 글자가 다섯 판을 죽였다**(300 — 298차 `199ebab`에서 `game_wiki_template.html`의 「특산」 절 줄 끝이 `+` 대신 `,`로 들어가
+    95~99판(298 ~ 300 B)이 `SyntaxError: Unexpected token '('`로 본문을 하나도 못 그렸다 — 제호 · 탭만 보였다). `check_artifact_page.cjs`는 위키를 돌리지 않았고,
+    생성기는 JSON만 끼워 넣어 문법을 보지 않았다. 300차부터 `gen_game_wiki_data.mjs --html`이 템플릿 안 스크립트를 `vm.Script`로 검사해 틀리면 종료(exit 2)하고,
+    발행 전에 생성한 HTML을 헤드리스로 열어 **pageerror 0 · 본문 글자 수**를 본다(`docs/artifacts/README.md` 절차 2-b). `String.replace`의 `$` 치환 패턴도 함수 치환으로 막았다.
