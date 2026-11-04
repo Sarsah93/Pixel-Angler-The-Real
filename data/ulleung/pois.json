@@ -476,5 +476,15 @@
   "ty": 694,
   "osmId": -9007,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "도동 종묘사",
+  "nameEn": "Dodong Seed & Seedling",
+  "tx": 483,
+  "ty": 649,
+  "osmId": -9035,
+  "src": "manual"
  }
 ]

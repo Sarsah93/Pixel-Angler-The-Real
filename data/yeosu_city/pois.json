@@ -9919,8 +9919,8 @@
  },
  {
   "type": "restaurant",
-  "name": "멕시칸치킨",
-  "nameEn": "Mexican Chicken",
+  "name": "멕시컨치킨",
+  "nameEn": "Meksikeonchikin",
   "tx": 116,
   "ty": 189,
   "osmId": 12695922438
@@ -11736,5 +11736,15 @@
   "tx": 657,
   "ty": 375,
   "osmId": 1380218127
+ },
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "여수 종묘사",
+  "nameEn": "Yeosu Seed & Seedling",
+  "tx": 244,
+  "ty": 436,
+  "osmId": -9032,
+  "src": "manual"
  }
 ]
