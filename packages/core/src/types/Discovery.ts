@@ -38,13 +38,14 @@ export interface DiscoveryEntry {
 
 /** 발견 경로 한국어 라벨 */
 export const DISCOVERY_SOURCE_LABEL: Record<DiscoverySource, string> = {
-  catch: '낚시로 어획',
-  trap: '통발로 포획',
-  night_hunting: '해루질로 채집',
-  inventory: '아이템 취득',
-  cook: '직접 조리',
-  legacy: '과거 조과 기록',
-  dev: 'dev 해금',
+  // 300차 — 도감 카드 아래 「11/4 · 처음 얻음」처럼 날짜 뒤에 붙는 말(「아이템 취득」 같은 로그 말투가 아니다 — 사용자 지시)
+  catch: '처음 낚음',
+  trap: '통발로 처음',
+  night_hunting: '처음 캠',
+  inventory: '처음 얻음',
+  cook: '처음 만듦',
+  legacy: '옛 기록',
+  dev: 'dev',
 };
 
 /** 발견 키 (스토어 내부 맵 키 규약) */

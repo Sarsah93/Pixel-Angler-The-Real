@@ -71,7 +71,7 @@ export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
   tackle: 'always',   // 292차 — 낚시용품점은 밤낚시꾼을 위해 밤새 연다
   convenience: 'always',
   mart: { open: 10, close: 22 },
-  daily: { open: 10, close: 22 },
+  daily: 'always',   // 300차 임시 — QA가 새벽에 다음 퀘스트(사이소 영수증)를 밟을 수 있게 24시간(사용자 지시 2026-11-04). 되돌릴 값 = { open: 10, close: 22 } — 백로그 참조
   nursery: { open: 8, close: 19 },   // 238차 — 종묘사는 아침 일찍 열고 저녁에 닫는다
   mill: { open: 8, close: 19 },      // 284차 — 방앗간도 아침 일찍 연다(새벽 떡 · 기름 짜기)
   processor: { open: 7, close: 20 },   // 295차 — 덕장은 해 뜰 때부터

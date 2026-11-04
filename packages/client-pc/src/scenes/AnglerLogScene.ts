@@ -19,7 +19,8 @@ import {
 } from '@tra/core';
 import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
 import { isAllRegionsOpen } from '../dev/DevMode.js';   // 295차 — 특산 탭도 dev 모든 지역 열기
-import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature, DishVariantKind } from '@tra/core';
+import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature, DishVariantKind, RegionalSpecialtyDef as SpecialtyDefT } from '@tra/core';
+import { isWildGreen, getCreatureById } from '@tra/core';   // 300차 — 실루엣 그림 고르기
 import { TideLoreStore } from '../store/TideLoreStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
@@ -43,10 +44,6 @@ const DISH_KIND_SUB: Record<DishVariantKind, string> = {
   fish: '주재료 어종별 변형', squid: '오징어 종류별 변형', eel: '장어 종류별 변형', shellfish: '조개 종류별 변형',
   veg: '나물 종류별 변형',   // 285차 — 나물 볶음(토란대 들깨볶음 …)
 };
-const DISH_KIND_HINT: Record<DishVariantKind, string> = {
-  fish: '다른 어종을 사용해 보세요', squid: '다른 오징어를 사용해 보세요', eel: '다른 장어를 사용해 보세요', shellfish: '다른 조개를 사용해 보세요',
-  veg: '다른 나물이나 들깨가루를 넣어 보세요',
-};
 
 /** 해양생물 카테고리 라벨 (위키 카드용) — 188차: 카테고리 이모지 폐기, 생물 도트 그림으로(§8-8) */
 const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
@@ -63,6 +60,13 @@ const CREATURE_CAT_LABEL: Record<ShoreCreatureCategory, string> = {
 function codexFishTexture(speciesId: string): string | undefined {
   return FISH_TEXTURE[speciesId] ?? resolveFishTexture(speciesId, 0, speciesId === 'rainbow_wrasse' ? 'M' : 'F');
 }
+
+/**
+ * 300차 — 미발견 실루엣 한 벌(어종 도감 기준 · 사용자 지시 「어종도감처럼 다른 카테고리들도 전부 실루엣 형태로 통일」):
+ * 그림의 알파만 남겨 한 색으로 채운다. 어종 · 갯것 · 아이템 · 요리 · 특산이 같은 색 · 같은 흐림이다.
+ */
+const SIL_COLOR = 0x152538;
+const SIL_ALPHA = 0.9;
 
 export class AnglerLogScene extends Phaser.Scene {
   private currentTab: LogTab = 'encyclopedia';
@@ -139,7 +143,7 @@ export class AnglerLogScene extends Phaser.Scene {
     const TABS: { key: LogTab; label: string; w: number }[] = [
       { key: 'encyclopedia', label: '어종 도감',     w: 140 },
       { key: 'creatures',    label: '해양생물',      w: 130 },
-      { key: 'items',        label: '아이템 위키',   w: 140 },
+      { key: 'items',        label: '아이템',        w: 120 },   // 300차 — 「아이템 위키」 → 「아이템」(사용자 지시)
       { key: 'dishes',       label: '요리',          w: 100 },
       { key: 'specialty',    label: '특산',          w: 90 },   // 295차 — 지역 특산(얻어 본 것)
       { key: 'history',      label: '나의 조과 기록', w: 160 },
@@ -320,7 +324,57 @@ export class AnglerLogScene extends Phaser.Scene {
     const e = DiscoveryStore.get(kind, id);
     if (!e) return null;
     const d = new Date(e.firstAtMs);
-    return `${DISCOVERY_SOURCE_LABEL[e.source]} · ${d.getMonth() + 1}/${d.getDate()}`;
+    // 300차 — 「아이템 취득 · 11/4」(로그 말투)가 아니라 「11/4 · 처음 얻음」
+    return `${d.getMonth() + 1}/${d.getDate()} · ${DISCOVERY_SOURCE_LABEL[e.source]}`;
+  }
+
+  /**
+   * 300차 — 미발견 실루엣: 사진은 상자에 맞춰 줄이고(카드 · 아이콘 판 선택) 작은 도트는 정수 배율로.
+   * 어종 · 갯것 · 특산 · 요리 카드가 전부 이것을 쓴다(해양생물 탭이 따로 색 · 흐림을 달리 쓰던 것을 없앴다).
+   */
+  private addSilhouette(texKey: string | null | undefined, cx: number, cy: number, boxW: number, boxH: number): Phaser.GameObjects.Image | null {
+    if (!texKey || !this.textures.exists(texKey)) return null;
+    const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
+    let img: Phaser.GameObjects.Image;
+    if (Math.max(src.width, src.height) <= 48) {
+      // 코드 도트(갯것 점 그림 · 산나물 포기)는 정수 배율(§8 비정수 배율 금지)
+      img = this.add.image(cx, cy, texKey).setScale(Math.max(1, Math.floor(Math.min(boxW / src.width, boxH / src.height))));
+    } else {
+      const fit = fitFishTexture(this.textures, texKey, boxW, boxH);
+      img = this.add.image(cx, cy, fit.key).setDisplaySize(Math.round(fit.w), Math.round(fit.h));
+    }
+    return img.setTintFill(SIL_COLOR).setAlpha(SIL_ALPHA);
+  }
+
+  /** 300차 — 이미 만든 아이콘(그림 · 글자 · 묶음)을 같은 실루엣으로 */
+  private silhouetteOf<T extends Phaser.GameObjects.GameObject>(obj: T): T {
+    const paint = (o: Phaser.GameObjects.GameObject): void => {
+      if (o instanceof Phaser.GameObjects.Container) { o.each((c: Phaser.GameObjects.GameObject) => paint(c)); return; }
+      const t = o as Partial<Phaser.GameObjects.Components.Tint & Phaser.GameObjects.Components.Alpha>;
+      t.setTintFill?.(SIL_COLOR);
+      t.setAlpha?.(SIL_ALPHA);
+    };
+    paint(obj);
+    return obj;
+  }
+
+  /** 300차 — 갯것 · 산나물 그림 키: 사진 카드가 있으면 그것, 없으면 필드 자리 그림(점 · 포기) */
+  private creaturePicKey(cr: ShoreCreature): string | null {
+    ensureForageDotTextures(this);
+    const photo = forageTexKey(cr);
+    if (this.textures.exists(photo)) return photo;
+    const spot = forageSpotTexKey(cr);
+    return this.textures.exists(spot) ? spot : null;
+  }
+
+  /** 300차 — 특산 그림 키: 첫 열쇠(어종 · 갯것 · 수확물 · 가공품)의 그림 */
+  private specialtyPicKey(d: SpecialtyDefT): string | null {
+    const key = d.keys[0];
+    if (!key) return null;
+    if (d.kind === 'fish') { const k = codexFishTexture(key); return k && this.textures.exists(k) ? k : null; }
+    if (d.kind === 'forage') { const cr = getCreatureById(key); return cr ? this.creaturePicKey(cr) : null; }
+    for (const k of [`cropimg_${key}`, `cropicon_${key}`, `item_${key}`, key]) if (this.textures.exists(k)) return k;
+    return null;
   }
 
   // ─────────────────────────────────────────────
@@ -347,7 +401,7 @@ export class AnglerLogScene extends Phaser.Scene {
     // 발견 현황 요약 — 발견 = 낚시 어획 + 통발 포획 등 최초 조우 (DiscoveryStore 단일 기준)
     const found = FISH_DATABASE.filter((f) => DiscoveryStore.isDiscovered('fish', f.id)).length;
     const summary = this.add.text(width - 40, startY - 26,
-      `발견 ${found} / ${FISH_DATABASE.length}종`, {
+      `${found} / ${FISH_DATABASE.length}`, {   // 300차 — 수만(「발견 … 종」 같은 설명 말 없이)
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
       }).setOrigin(1, 0);
     this.tabContainer?.add(summary);
@@ -440,18 +494,8 @@ export class AnglerLogScene extends Phaser.Scene {
         });
       } else {
         // ── 미발견 카드: 실루엣 + ??? + 서식 힌트 (어디서 만날 수 있는지만 귀띔) ──
-        const texKey = codexFishTexture(fish.id);
-        if (texKey && this.textures.exists(texKey)) {
-          const src = this.textures.get(texKey).getSourceImage() as { width: number; height: number };
-          const SIL_W = 120, SIL_H = 60;
-          const k = Math.min(SIL_W / src.width, SIL_H / src.height);
-          // setTintFill = 알파만 남기고 단색 채움 → 검은 실루엣
-          const sil = this.add.image(x + itemW / 2, y + 52, texKey)
-            .setDisplaySize(Math.round(src.width * k), Math.round(src.height * k))
-            .setTintFill(0x152538)
-            .setAlpha(0.9);
-          this.tabContainer?.add(sil);
-        }
+        const sil = this.addSilhouette(codexFishTexture(fish.id), x + itemW / 2, y + 52, 120, 60);   // 300차 — 한 벌
+        if (sil) this.tabContainer?.add(sil);
         const secretText = this.add.text(x + itemW / 2, y + 96, '???', {
           fontFamily: '"Press Start 2P", monospace',
           fontSize: '14px',
@@ -492,7 +536,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
     const found = all.filter((c) => DiscoveryStore.isDiscovered('creature', c.id)).length;
     const summary = this.add.text(width - 40, startY - 26,
-      `발견 ${found} / ${all.length}종 — 해루질 · 통발 · 산자락에서 채집해 발견`, {
+      `${found} / ${all.length}`, {   // 300차 — 수만
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
       }).setOrigin(1, 0);
     this.tabContainer?.add(summary);
@@ -541,18 +585,18 @@ export class AnglerLogScene extends Phaser.Scene {
           this.tabContainer?.add(t);
         });
       } else {
-        // 미발견 — 그림을 검은 실루엣으로(어둡게) + 조우 힌트
-        const emoji = this.creaturePic(cr, x + itemW / 2, y + 52, 52).setTintFill(0x0a1a2a).setAlpha(0.55);
-        const secretText = this.add.text(x + itemW / 2, y + 92, '???', {
+        // 미발견 — 어종 도감과 같은 실루엣(300차 — 사진 카드 · 점 그림 · 포기 전부 한 벌) + 때 · 자리 힌트
+        const sil = this.addSilhouette(this.creaturePicKey(cr), x + itemW / 2, y + 52, 120, 60);
+        if (sil) this.tabContainer?.add(sil);
+        const secretText = this.add.text(x + itemW / 2, y + 96, '???', {
           fontFamily: '"Press Start 2P", monospace', fontSize: '14px', color: '#2a5a8a',
         }).setOrigin(0.5);
         const timeHint = cr.discoveryTime === 'night' ? '야간' : cr.discoveryTime === 'day' ? '주간' : '주야';
-        const licHint = cr.requiredLicense ? ' · 심화 면허' : '';
-        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 118,
-          `${timeHint} 해루질·통발${licHint}`, {
-            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
-          }).setOrigin(0.5), itemW - 24);
-        this.tabContainer?.add([emoji, secretText, hint]);
+        const place = isWildGreen(cr) ? '산자락' : cr.trapOnly ? '통발' : '물가';   // 300차 — 방법 · 면허 글 대신 때 · 자리
+        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 120, `${timeHint} · ${place}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
+        }).setOrigin(0.5), itemW - 24);
+        this.tabContainer?.add([secretText, hint]);
       }
     });
 
@@ -581,7 +625,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
     const found = all.filter((d) => DiscoveryStore.isDiscovered('specialty', d.id)).length;
     const summary = this.add.text(width - 40, startY - 26,
-      `얻어 본 특산 ${found} / ${all.length} — 그 고장에서 잡고 캐고 거두면 등록`, {
+      `${found} / ${all.length}`, {   // 300차 — 수만
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
       }).setOrigin(1, 0);
     this.tabContainer?.add(summary);
@@ -602,12 +646,24 @@ export class AnglerLogScene extends Phaser.Scene {
       this.tabContainer?.add(card);
 
       if (DiscoveryStore.isDiscovered('specialty', d.id)) {
+        // 300차 — 카드 오른쪽 위에 그림(어종 · 갯것 · 수확물 · 가공품) — 미발견 실루엣과 같은 그림
+        const picKey = this.specialtyPicKey(d);
+        const PIC_W = 64, PIC_H = 48;
+        if (picKey) {
+          const fit = fitFishTexture(this.textures, picKey, PIC_W, PIC_H);
+          const src = this.textures.get(picKey).getSourceImage() as { width: number; height: number };
+          const pic = Math.max(src.width, src.height) <= 48
+            ? this.add.image(x + itemW - 12 - PIC_W / 2, y + 10 + PIC_H / 2, picKey).setScale(Math.max(1, Math.floor(Math.min(PIC_W / src.width, PIC_H / src.height))))
+            : this.add.image(x + itemW - 12 - PIC_W / 2, y + 10 + PIC_H / 2, fit.key).setDisplaySize(Math.round(fit.w), Math.round(fit.h));
+          this.tabContainer?.add(pic);
+        }
+        const textW = picKey ? itemW - 27 - PIC_W - 8 : itemW - 27;
         const nameText = clampTextWidth(this.add.text(x + 15, y + 12, d.nameKo, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '15px', color: '#ffd93b', fontStyle: 'bold',
-        }), itemW - 27);
+        }), textW);
         const sub = clampTextWidth(this.add.text(x + 15, y + 32, `${regionShort} · ${KIND_KO[d.kind]}${d.gi ? ' · 지리적 표시' : ''}`, {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#5a8fab',
-        }), itemW - 27);
+        }), textW);
         const months = d.months && d.months.length ? `제철 ${d.months.join('·')}월` : '제철 연중';
         const discLine = this.discoveryLine('specialty', d.id);
         const fest = festivalsOfSpecialty(d.id)[0];   // 298차 — 축제 달력의 축제가 있으면 그 기간, 없으면 표의 축제 글
@@ -620,7 +676,7 @@ export class AnglerLogScene extends Phaser.Scene {
         rows.forEach(([label, color], i) => {
           const t = clampTextWidth(this.add.text(x + 15, y + 52 + i * 17, label, {
             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
-          }), itemW - 27);
+          }), i === 0 ? textW : itemW - 27);   // 첫 줄은 그림(아래 끝 y+58) 옆
           this.tabContainer?.add(t);
         });
         const note = this.add.text(x + 15, y + 106, d.noteKo, {
@@ -630,17 +686,16 @@ export class AnglerLogScene extends Phaser.Scene {
         while (note.getWrappedText().length > 2 && note.text.length > 4) note.setText(note.text.slice(0, -4).trimEnd() + '…');
         this.tabContainer?.add([nameText, sub, note]);
       } else {
-        const secretText = this.add.text(x + itemW / 2, y + 58, '???', {
+        // 300차 — 어종 도감과 같은 실루엣 + ??? + 고장 · 갈래만(「…면 등록」 같은 방법 글은 쓰지 않는다)
+        const sil = this.addSilhouette(this.specialtyPicKey(d), x + itemW / 2, y + 52, 120, 60);
+        if (sil) this.tabContainer?.add(sil);
+        const secretText = this.add.text(x + itemW / 2, y + 96, '???', {
           fontFamily: '"Press Start 2P", monospace', fontSize: '14px', color: '#2a5a8a',
         }).setOrigin(0.5);
-        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 96, `${regionShort}의 ${KIND_KO[d.kind]} 특산`, {
-          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#3a5a78',
+        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 120, `${regionShort} · ${KIND_KO[d.kind]}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
         }).setOrigin(0.5), itemW - 24);
-        const how = clampTextWidth(this.add.text(x + itemW / 2, y + 118,
-          d.kind === 'fish' ? '그 고장 바다에서 낚으면 등록' : d.kind === 'forage' ? '그 고장 물가에서 캐면 등록' : d.kind === 'crop' ? '그 고장 텃밭에서 거두면 등록' : '그 고장 가공장에서 찾으면 등록', {
-            fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
-          }).setOrigin(0.5), itemW - 24);
-        this.tabContainer?.add([secretText, hint, how]);
+        this.tabContainer?.add([secretText, hint]);
       }
     });
 
@@ -693,7 +748,7 @@ export class AnglerLogScene extends Phaser.Scene {
     this.currentPage = Math.min(this.currentPage, maxPage);
 
     const foundAll = entries.filter((e) => DiscoveryStore.isDiscovered('item', e.id)).length;
-    const summary = this.add.text(width - 40, filterY, `발견 ${foundAll} / ${entries.length} — 취득하면 등록`, {
+    const summary = this.add.text(width - 40, filterY, `${foundAll} / ${entries.length}`, {   // 300차 — 수만
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#8faabf',
     }).setOrigin(1, 0);
     this.tabContainer?.add(summary);
@@ -741,22 +796,21 @@ export class AnglerLogScene extends Phaser.Scene {
         }
 
         const discLine = this.discoveryLine('item', entry.id);
-        const foot = clampTextWidth(this.add.text(x + 12, y + itemH - 20, discLine ?? '취득', {
+        const foot = clampTextWidth(this.add.text(x + 12, y + itemH - 20, discLine ?? '얻음', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#8fd4b8',
         }), itemW - 24);
         this.tabContainer?.add(foot);
       } else {
-        const secretText = this.add.text(x + itemW / 2, y + 40, '???', {
+        // 300차 — 어종 도감처럼 실루엣(아이콘의 알파만) + ??? + 「???에서 구매」 · 「???로 입수」
+        //   (사용자 지시 — 「가방 — 플레이로 입수」 · 「직판장에서 구매」는 로직 경로를 글로 보여 준 것이다)
+        const sil = this.silhouetteOf(createItemIcon(this, x + itemW / 2, y + 36, entry, 44));
+        const secretText = this.add.text(x + itemW / 2, y + 70, '???', {
           fontFamily: '"Press Start 2P", monospace', fontSize: '13px', color: '#2a5a8a',
         }).setOrigin(0.5);
-        // 입수 힌트 — 판매처(있으면) / 소분류만
-        const hintSrc = entry.soldAt.length > 0
-          ? `${entry.soldAt.join('·')}에서 구매`
-          : `${entry.subCategory} — 플레이로 입수`;
-        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 72, hintSrc, {
+        const hint = clampTextWidth(this.add.text(x + itemW / 2, y + 94, entry.soldAt.length > 0 ? '???에서 구매' : '???로 입수', {
           fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#3a5a78',
         }).setOrigin(0.5), itemW - 24);
-        this.tabContainer?.add([secretText, hint]);
+        this.tabContainer?.add([sil, secretText, hint]);
       }
     });
 
@@ -803,7 +857,7 @@ export class AnglerLogScene extends Phaser.Scene {
     let foundAll = 0, totalAll = 0;
     const known = FIRE_RECIPES.filter(recipeKnown);   // 295차 — 모르는 지역 레시피는 숨긴다(R2)
     for (const r of known) { const p = this.dishProgressOf(r.id); foundAll += p.found; totalAll += p.total; }
-    const summary = this.add.text(width - 40, listY - 28, `발견 ${foundAll} / ${totalAll} — 직접 조리하면 등록`, {
+    const summary = this.add.text(width - 40, listY - 28, `${foundAll} / ${totalAll}`, {   // 300차 — 수만
       fontFamily: font, fontSize: '12px', color: '#8faabf',
     }).setOrigin(1, 0);
     this.tabContainer?.add(summary);
@@ -860,7 +914,7 @@ export class AnglerLogScene extends Phaser.Scene {
 
     // 변형 목록 — 발견한 것은 이름·발견 정보, 나머지는 ??? + 힌트 (§8-10 — 어종 이름을 주지 않는다)
     const entries: { name: string; foot: string | null; found: boolean }[] = [];
-    const kind = dishVariantKind(r.id);
+    // 300차 — 갈래별 안내 말(DISH_KIND_HINT)은 없앴다 — 행 아래는 「주재료 ???」
     if (isVariantRecipe(r.id)) {
       const base = dishBaseName(r.id, r.nameKo, r.nameEn, '???', '???');
       // 255차 — 변형이 되기 전에 만든 기록(generic)은 레시피 이름 그대로 한 줄
@@ -888,19 +942,30 @@ export class AnglerLogScene extends Phaser.Scene {
     this.dishPage = Math.min(Math.max(0, this.dishPage), maxPage);
     if (maxPage > 0) this.renderDishPager(paneX + paneW - 16, hdr.y + hdr.height / 2, maxPage);
     const shown = entries.slice(this.dishPage * perPage, (this.dishPage + 1) * perPage);
+    // 300차 — 행마다 요리 그림(아이콘 판) — 만든 것은 그대로 · 못 만든 것은 어종 도감과 같은 실루엣. 사진 없는 지역 레시피는 글만
+    const dishPic = this.textures.exists(`food_${r.id}__icon`) ? `food_${r.id}__icon` : this.textures.exists(`food_${r.id}`) ? `food_${r.id}` : null;
+    const PIC = dishPic ? 30 : 0;
     shown.forEach((e, i) => {
       const col = i % 2, row = Math.floor(i / 2);
       const x = paneX + 16 + col * (colW + 12), y = cy + row * (eh + 6);
       const g = this.add.graphics();
       g.fillStyle(e.found ? 0x142a40 : 0x0a1522); g.fillRoundedRect(x, y, colW, eh, 3);
       g.lineStyle(1, e.found ? 0x2a5a8a : 0x1a2f45, 0.9); g.strokeRoundedRect(x, y, colW, eh, 3);
-      const nm = clampTextWidth(this.add.text(x + 10, y + 8, e.name, {
+      if (dishPic) {
+        const pic = e.found
+          ? (() => { const fit = fitFishTexture(this.textures, dishPic, PIC, PIC); return this.add.image(x + 6 + PIC / 2, y + eh / 2, fit.key).setDisplaySize(Math.round(fit.w), Math.round(fit.h)); })()
+          : this.addSilhouette(dishPic, x + 6 + PIC / 2, y + eh / 2, PIC, PIC);
+        if (pic) this.tabContainer?.add(pic);
+      }
+      const tx = x + 10 + (dishPic ? PIC + 4 : 0);
+      const nm = clampTextWidth(this.add.text(tx, y + 8, e.name, {
         fontFamily: e.found ? font : '"Press Start 2P", monospace', fontSize: e.found ? '13px' : '10px',
         color: e.found ? '#e8f4fd' : '#2a5a8a', fontStyle: e.found ? 'bold' : 'normal',
-      }), colW - 20);
-      const ft = clampTextWidth(this.add.text(x + 10, y + 25, e.found ? (e.foot ?? '직접 조리') : DISH_KIND_HINT[kind ?? 'fish'], {
+      }), colW - 20 - (dishPic ? PIC + 4 : 0));
+      // 300차 — 「다른 어종을 사용해 보세요」(안내 말) 대신 「주재료 ???」
+      const ft = clampTextWidth(this.add.text(tx, y + 25, e.found ? (e.foot ?? '만듦') : '주재료 ???', {
         fontFamily: font, fontSize: '10px', color: e.found ? '#8fd4b8' : '#3a5a78',
-      }), colW - 20);
+      }), colW - 20 - (dishPic ? PIC + 4 : 0));
       this.tabContainer?.add([g, nm, ft]);
     });
   }

@@ -196,14 +196,21 @@ const CREATURE_DESCS: Record<string, string> = {
  * 날짜는 `SEP_PATTERNS`의 ` · ` 분해가 알아서 떼어내므로 라벨만 있으면 된다.
  */
 const DISCOVERY_SOURCES: Record<string, string> = {
-  '낚시로 어획': 'Caught fishing',
-  '통발로 포획': 'Taken in a trap',
-  '해루질로 채집': 'Gathered gleaning',
-  '아이템 취득': 'Item acquired',
-  '과거 조과 기록': 'From an old catch record',
-  'dev 해금': 'dev unlock',
+  // 300차 — 날짜 뒤에 붙는 말(「11/4 · 처음 얻음」)
+  '처음 낚음': 'first caught',
+  '통발로 처음': 'first in a trap',
+  '처음 캠': 'first gathered',
+  '처음 얻음': 'first obtained',
+  '처음 만듦': 'first made',
+  '옛 기록': 'old record',
   '발견': 'Discovered',
-  '취득': 'Acquired',
+  '얻음': 'Obtained',
+  '만듦': 'Made',
+  '얻어 봄': 'Obtained',
+  '???로 입수': 'Obtained from ???',
+  '주재료 ???': 'Main ingredient ???',
+  '산자락': 'hillside',
+  '물가': 'shore',
 };
 
 export const EN_CONTENT: Record<string, string> = {
