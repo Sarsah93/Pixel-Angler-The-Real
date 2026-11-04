@@ -271,3 +271,5 @@
 - [x] **D** 사용자 리포트 아홉 — 시스템 페이지 `story-quests.md` · `ui-framework.md` · `inventory-equipment.md` · `butchery.md` · `sashimi-cooking.md` · `photo-pixel-art.md` · `04-BACKLOG.md` · `03-WORKLOG/README.md` · AGENTS §9 · PLAN · CLAUDE
 - [x] **D** 위키 생성기 — 아이템 목록 다시 굽기(`dump_wiki_items.mjs` 948건 — 「해동된 급랭 백크릴」) · 아티팩트 원본(tasks 300 D 줄 · library 항목 · 순서도 「300차 기준」 그대로)
 - [x] **D** 발행 판 — 남은 과업 설계 Version 49 · 구현 라이브러리 48 · 위키 101(헤드리스 pageerror 0 · 시스템 · 출조 지역 카드) · 순서도 42 그대로(채비 문법 불변 · 「300차 기준」 줄 그대로)
+- [x] **D** main · 재배포 — 사용자 「300차수에 신규로 추가된 작업들까지 전부 다 하고, main 반영 및 재배포까지」 → 커밋 `f2ca895` · main 빨리 감기 `f2ca895` · **104차 배포** gh-pages `2380666`(실행 33 · 정적 2,157 · 소스맵 0) ·
+  로컬 기동 점검 10.7초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 번들에 해동 백크릴 id · 「봉돌(3호 」 · 키 반복 가드 · 삽화 640×300 · 백팩 · 릴 그림 확인

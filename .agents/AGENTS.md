@@ -333,7 +333,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   ② 막차를 건너뛴 dev 세션 U 잠김 → `prologueKeyAllowed`는 홈타운 밖이면 참 ③ 밑밥 통 경고 글 겹침 → 한 줄 교체(`chumNotice` · 1인칭 존 · 줄 마모) · `floatingHint` 같은 글 중복 금지 · 공용 `ui/ScreenToast.ts`(같은 글 안 띄움 · 아래로 쌓기) ·
   **키 반복 가드**(`game.ts` — U 꾹 → 토글 5 → 1) ④ 「해동된 급랭 백크릴 600g」(마트 · 낚시용품점 · 급랭의 95% = 7,600원 · `condLeftMin` 30분 · 제작 재료 `altIds`) · 크릴 언 시간 240 → 60분 ⑤ 갇힌 흰 섬 `tools/holes.cjs`(둘레 검정 먹 기준 · 6장 12 PNG)
   ⑥ 고등어 = 방어류 흐름(`BUTCHERY_IMPLEMENTED_SPECIES` · `AMBERJACK_SPECIES` · 미구현 38 감사 → butchery §5 ④) ⑦ 가이드 삽화 13장 실물 그림(`tools/render_guide_illustrations.cjs` · 칼 3 · 참돔 · 필렛 · 구멍찌 · 크릴 · 지그 · 감성돔 · 밑밥 봉지)
-  ⑧ 첫 손질 게임 가이드(씬 레벨) ESC 고아 → `onEscIntercept` 가이드 먼저 · `destroy` 치움 · `openButchery` 파괴 가드. 검증 r300d 7/7 · r300d_crash3 · core 499 · 빌드 3/3 · typecheck 4/4.
+  ⑧ 첫 손질 게임 가이드(씬 레벨) ESC 고아 → `onEscIntercept` 가이드 먼저 · `destroy` 치움 · `openButchery` 파괴 가드. 검증 r300d 7/7 · r300d_crash3 · core 499 · 빌드 3/3 · typecheck 4/4. 커밋 `f2ca895` · main 빨리 감기 · **104차 배포**(gh-pages `2380666` · 기동 10.7초 · 4xx 0 · pageerror 0) · 아티팩트(49 · 48 · 42 · 위키 101).
 
 **이전 변경 (2026-11-03 299차) — 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 특산 꼬리표) · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**
 
