@@ -8,8 +8,8 @@
 
 | 아티팩트 | 주소 | 원본 | 지금 판 |
 |---|---|---|---|
-| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 47 — 300 B(§07 300 B ✅ 지역 텃밭 1단계 · 2단계는 예시 창 의견 뒤) · 46 — 300 A(도감 실루엣 한 벌) · 45 — 299(2) |
-| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 46 — 300차 B(항목 「지역 빌린 밭 — 그 고장 종묘사에서 한 구획」) · 45 — 300차 A(「도감은 발견한 것만 — 실루엣 한 벌」) · 44 — 299(2) |
+| 남은 과업 설계 | https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 | [`tasks.html`](tasks.html) | Version 48 — 300 C(§07 300 C ✅ 만들기 초상 미리보기) · 47 — 300 B(지역 텃밭 1단계) · 46 — 300 A(도감 실루엣 한 벌) |
+| 구현 라이브러리 | https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 | [`library.html`](library.html) | Version 47 — 300차 C(「캐릭터 만들기」 항목에 초상 미리보기 · 호버 확대) · 46 — 300차 B(「지역 빌린 밭」) · 45 — 300차 A(「도감은 발견한 것만」) |
 | 채비 모딩 순서도 | https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 | [`rig_flow.html`](rig_flow.html) | Version 42 — 300차 기준 · 채비 문법은 258차(「300차 기준」 줄만) |
 | 전체 위키 | https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c | 생성기 `tools/gen_game_wiki_data.mjs --html` | Version 100 — 300(템플릿 「특산」 절 `,` → `+` 고침 — **95~99판은 본문이 안 그려졌다** · 생성기 문법 자가 검사) · 99 — 300 B(시스템 「지역 빌린 밭」 · 텃밭 구획 줄 · 새 그림 없음) · 98 — 300 A(시스템 「도감은 발견한 것만 — 실루엣 한 벌」 · 새 그림 없음) · 97 — 299(2)(「산나물 캐기」 「필드에서」 포기 도트 · 새 그림 없음) · 96 — 299차(시스템 「산나물 캐기」 · 갯것 카드에 산나물 8(작물 초상) · 선물 칭호 글 · 파일 456) · 95 — 298차(시스템 「지역 축제 달력」 · 출조 지역 카드 「축제」 표 · 새 그림 없음 · 파일 456) · 94 — 297차(선물) · 93 — 296차(시스템 「집 앞 우편함」 · 「섬 어종 다섯 · 명산지 꼬리표 · 산지 매대 · 가공장 · 지역 레시피」 · 새 그림 3(옥돔 · 도화새우 · 반건조 옥돔)을 `files`로 · 파일 456) |
 

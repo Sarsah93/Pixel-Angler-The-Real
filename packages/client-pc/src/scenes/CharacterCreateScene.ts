@@ -8,6 +8,9 @@
  * ⚠ 미리보기는 `CharacterSprite`가 굽는 **실제 게임 시트**를 그대로 쓴다 — 여기서 예쁘게 보이던 것이
  *   인게임에서 달라지는 일이 없도록(별도 프리뷰 렌더러 금지).
  *
+ * 300차 — 무대 오른쪽 위에 **얼굴 초상 미리보기**(대화창 · 일지와 같은 층 합성 초상 `ensureFacePortrait(…, 'player')` — 96px).
+ *   마우스를 올리면 192px(원본 크기)로 커져 눈 · 입 · 머리를 자세히 본다(사용자 지시 「초상화 미리보기 … 호버링하면 확대」). 옵션을 바꾸면 같이 바뀐다.
+ *
  * UI 문법은 HUD와 통일한다(`HudPanelStyle.paintHudPanel` / `paintHudSlot`).
  * 색 항목은 숫자(`3 / 10`)가 아니라 **실제 색 견본**을 깔고 직접 고르게 한다 —
  * 픽셀 팔레트는 이름이 없으므로 숫자로는 무엇을 고르는지 알 수 없다.
@@ -24,13 +27,18 @@ import { TextInput } from '../ui/TextInput.js';
 import { GameState } from '../store/GameState.js';
 import { TUNING } from '@tra/core';
 import { MultiplayerClient } from '../net/MultiplayerClient.js';
-import { ensureCharSheet, charFrameName, CHAR_WALK_MS, WALK_SEQ } from '../ui/CharacterSprite.js';
+import { ensureCharSheet, ensureFacePortrait, charFrameName, CHAR_WALK_MS, WALK_SEQ } from '../ui/CharacterSprite.js';
 import { paintHudPanel, paintHudSlot } from '../ui/HudPanelStyle.js';
 import { clampTextWidth } from '../ui/TextFit.js';
 import { showLoadingThen } from '../ui/LoadingOverlay.js';
 
 const W = 1280, H = 720;
 const PREVIEW_SCALE = 10;
+/** 300차 — 얼굴 초상 미리보기: 무대 안쪽 오른쪽 위 · 평소 96px(192 그림의 절반 — 셀 2px이 1px로 딱 떨어진다) · 올리면 192px */
+const FACE_SMALL = 96, FACE_BIG = 192, FACE_PAD = 10;
+const FACE_RIGHT = 56 + 398 - FACE_PAD, FACE_TOP = 126 + FACE_PAD;
+/** 층 그림이 없을 때의 절차 초상 배율(32칸 × 3 = 96px) */
+const FACE_FALLBACK_SCALE = 6;
 
 /** 프리뷰 회전 순서 — ◀ = 이 순서로 +1(화면상 왼쪽으로 돌아감) · ▶ = −1 */
 const TURN_ORDER: CharDir[] = ['down', 'left', 'up', 'right'];
@@ -121,6 +129,10 @@ export class CharacterCreateScene extends Phaser.Scene {
   private btnG!: Phaser.GameObjects.Graphics;
 
   private previewImg?: Phaser.GameObjects.Image;
+  /** 300차 — 얼굴 초상 미리보기 · 그 틀 · 확대 중인가 */
+  private faceImg?: Phaser.GameObjects.Image;
+  private faceG?: Phaser.GameObjects.Graphics;
+  private faceBig = false;
   private captionText?: Phaser.GameObjects.Text;
   /** 프리뷰 방향 라벨 (◀ ▶ 사이) */
   private dirLabel?: Phaser.GameObjects.Text;
@@ -164,6 +176,9 @@ export class CharacterCreateScene extends Phaser.Scene {
     //   두 번째 캐릭터 만들기에서 [이대로 생성하기] → setText → Frame.updateUVs → "reading 'drawImage'" 로 멈춘다(사용자 리포트).
     this.progressText = undefined;
     this.previewImg = undefined;
+    this.faceImg = undefined;
+    this.faceG = undefined;
+    this.faceBig = false;
     this.captionText = undefined;
     this.dirLabel = undefined;
     this.hintText = undefined;
@@ -245,6 +260,13 @@ export class CharacterCreateScene extends Phaser.Scene {
     g.fillRect(120, 421, 270, 1);
 
     this.previewImg = this.add.image(255, 420 + (32 - 1 - 28) * PREVIEW_SCALE, '__DEFAULT').setOrigin(0.5, 1);
+    // 300차 — 얼굴 초상 미리보기(오른쪽 위 · 올리면 두 배) — 틀은 그림 아래 층, 그림은 무대 캐릭터 위 층(커지면 캐릭터를 덮는다)
+    this.faceG = this.add.graphics().setDepth(4);
+    this.faceImg = this.add.image(FACE_RIGHT, FACE_TOP, '__DEFAULT').setOrigin(1, 0).setDepth(5)
+      .setInteractive({ useHandCursor: true });
+    this.faceImg.on('pointerover', () => this.setFaceBig(true));
+    this.faceImg.on('pointerout', () => this.setFaceBig(false));
+    this.sizeFace(FACE_SMALL);
     this.captionText = this.add.text(255, 438, '', {
       fontFamily: FONT, fontSize: '14px', color: COL.accent,
     }).setOrigin(0.5, 0);
@@ -310,6 +332,45 @@ export class CharacterCreateScene extends Phaser.Scene {
     const frame = this.previewMotion === 'idle' ? 0 : WALK_SEQ[this.previewPhase];
     this.previewImg?.setFrame(charFrameName(this.previewDir, frame));
     this.dirLabel?.setText(DIR_KO[this.previewDir]);
+  }
+
+  /** 300차 — 얼굴 초상을 지금 옵션으로(대화창 · 일지와 같은 합성 — 변형마다 한 번만 굽는다) */
+  private refreshFace(): void {
+    if (!this.faceImg) return;
+    const key = ensureFacePortrait(this, this.cfg(false), FACE_FALLBACK_SCALE, 'player');
+    if (key !== this.faceImg.texture.key) this.faceImg.setTexture(key);
+    this.sizeFace(this.faceBig ? FACE_BIG : FACE_SMALL);
+  }
+
+  private sizeFace(px: number): void {
+    this.faceImg?.setDisplaySize(px, px);
+    this.paintFaceFrame(px);
+  }
+
+  /** 초상 틀 — 대화창 초상 틀과 같은 톤 · 커져 있으면 금색 테 */
+  private paintFaceFrame(px: number): void {
+    const g = this.faceG;
+    if (!g) return;
+    g.clear();
+    const x = FACE_RIGHT - px, y = FACE_TOP;
+    g.fillStyle(0x12263a, 1);
+    g.fillRoundedRect(x - 3, y - 3, px + 6, px + 6, 6);
+    g.lineStyle(2, this.faceBig ? 0xd8b25f : 0x6b9fbc, 0.95);
+    g.strokeRoundedRect(x - 3, y - 3, px + 6, px + 6, 6);
+  }
+
+  /** 마우스를 올리면 두 배(192px · 원본 크기)로 — 오른쪽 위 모서리를 붙박이로 두고 왼쪽 · 아래로 자란다 */
+  private setFaceBig(on: boolean): void {
+    if (this.faceBig === on || !this.faceImg) return;
+    this.faceBig = on;
+    const img = this.faceImg;
+    this.tweens.killTweensOf(img);
+    const to = on ? FACE_BIG : FACE_SMALL;
+    this.tweens.add({
+      targets: img, displayWidth: to, displayHeight: to, duration: 110, ease: 'Quad.easeOut',
+      onUpdate: () => this.paintFaceFrame(img.displayWidth),
+      onComplete: () => { if (img.active) this.sizeFace(to); },
+    });
   }
 
   /** 스테이지 버튼 프레임 — 선택된 동작은 활성 슬롯으로 그린다 */
@@ -513,6 +574,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     const big = ensureCharSheet(this, cfg, PREVIEW_SCALE);
     this.previewImg?.setTexture(big, charFrameName(this.previewDir, 0));
     this.applyPreviewFrame();
+    this.refreshFace();
 
     this.captionText?.setText(`${this.nickname || '한여름'} · ${this.look.sex === 'm' ? '남성' : '여성'} · ${GameState.playerAge}세`);
 

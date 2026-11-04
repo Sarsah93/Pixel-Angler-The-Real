@@ -235,6 +235,7 @@ hairBack → skin → underwear → pants → shirt → outer
 
 ## 7. 잔여
 
+- **만들기 화면 얼굴 초상 미리보기**(300 ✅) — 무대 오른쪽 위 96px(대화창 · 일지와 같은 층 합성 `ensureFacePortrait(…, 'player')` · 옵션 바꾸면 같이) · 마우스를 올리면 192px 원본 크기(오른쪽 위 모서리 고정 · 금색 테). `CharacterCreateScene.refreshFace` · `setFaceBig`.
 - **주인공 나이**(288 ✅ 데이터) — `CharConfig.age`(정본 `PLAYER_CANON_AGE` 22 · 옛 세이브 22 · 만들기 화면 미리보기 줄 「22세」). 고르는 칸 · 나이에 맞춘 얼굴 옵션(흰머리 · 주름 · 수염)은 사용자 설계 뒤.
   호칭을 나이 · 성별로 바꾸려면 인물 나이를 숫자 칸으로(지금은 소개 글 안 「71세」 · 나이 없는 인물 6) + 부름말 자리 표시 — [288 §6](../03-WORKLOG/2026-10-30-288-forage-legal-size-dev-games-bite-audit.md).
 

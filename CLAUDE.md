@@ -111,7 +111,9 @@
   사이소 `BUILDING_HOURS.daily = 'always'`(QA 임시 — 되돌릴 값 10~22 · 백로그 DG) · 검증 r300a 7/7 · core 492 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 `1daa9ce` · **102차 배포(gh-pages `41e8864` · 실행 31 · 기동 10.4초 · 4xx 0 · pageerror 0)** · 아티팩트(46 · 45 · 42 · 위키 98).
   **300차 B 지역 텃밭 1단계(창 관리형)** — 사용자 「착수해줘」(예시 창 의견은 뒤에) → core `db-schema/RegionalPlots.ts`(고장 6 — 포항 · 부산 · 여수 · 태안 · 제주 · 울릉 · 종묘사 · 주인 · 흙 · 주 3,000원 · 칸 4 · `rent:<고장>` · 주 단위 선납 셈) ·
   client `store/RegionalPlotStore.ts`(계약 · `rent` · `settle` 자동 납부 · 잠금 · `returnPlot` · 세이브 `regionalPlots`) · `FarmStore` `rent:` 구획(갈아 둔 4칸 · 빗물통 · deserialize 4칸 유지) · 종묘사 안쪽 탁자 `InteriorAction 'rentPlot'`(그 고장 종묘사 이름일 때만) · `RegionFieldScene.openRegionalPlot`(확인 창 → 빌리기 → 텃밭 창) ·
-  `FarmPanel` 빌린 밭 갈래(제목 · 2×2 · 「이 밭」 칸 · 심기 「특산」 · 칸 자세히 산지 봉인 줄 · 가이드) · 손 POI 종묘사 6 · 도움말 · 영어 · 검증 r300b 13/13 · core 499 · 빌드 3/3 · typecheck 4/4. **2단계(필드 밭 · 묵음 · 알림 · 씨앗 매대)는 예시 창 의견 뒤** — main · 배포도 사용자 결정 뒤. 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
+  `FarmPanel` 빌린 밭 갈래(제목 · 2×2 · 「이 밭」 칸 · 심기 「특산」 · 칸 자세히 산지 봉인 줄 · 가이드) · 손 POI 종묘사 6 · 도움말 · 영어 · 검증 r300b 13/13 · core 499 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 `c945c64` · **103차 배포(gh-pages `4413e49` · 기동 9.9초 · 4xx 0 · pageerror 0)**. **2단계(필드 밭 · 묵음 · 알림 · 씨앗 매대)는 예시 창 의견 뒤**.
+  **300차 위키 고침** — 사용자 「아티팩트 wiki가 열리지 않아」 → 298차부터 템플릿 스크립트 한 글자(`,` → `+`)로 95~99판이 본문을 못 그렸다 → 위키 100 · 생성기 문법 자가 검사 · 발행 전 헤드리스 로드(`docs/artifacts/README.md` 2-b).
+  **300차 C 캐릭터 만들기 얼굴 초상 미리보기** — 사용자 캡처 지시 → `CharacterCreateScene` 무대 오른쪽 위 96px(`ensureFacePortrait(…, 'player')` 층 합성 · 옵션 바꾸면 같이) · 마우스 호버 192px(원본 · 금색 테) · 검증 r300c 5/5 · 빌드 3/3 · typecheck 4/4 — 작업 브랜치에만(main · 배포는 사용자 결정 뒤). 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
 - **299차**: **산나물 캐기 — 산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산 꼬리표 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」** —
   사용자 지시 넷(「'선물 칭호에 한 사람 더.' 넣지 마 … '아주 좋아하는 것 같다.'」 · 「선물 보따리 → 산타 · 동네 산타 → 박애주의자 · 선물우호도 및 가게 할인율 소급 적용」 · 「산지에서 나는 나물 작업 시작」 · 「main 반영하고 재배포」) →
   core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·
@@ -225,8 +227,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 15 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo` · **`ulleung` 울릉도 도동 · `dokdo` 독도 동도(294 — 배로만 · 6 · 7장)**(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `41e8864` — **최근 102차 배포 2026-11-04 = 300차 A 코드까지 포함**(300 A 도감 실루엣 한 벌 · 사이소 24시간(임시 · QA) + 299(2) 산나물 포기 도트 + 299 산나물 캐기 + 298 축제 달력 + 297 선물) —
-  main `1daa9ce` · 실행 31 · 정적 2,157(소스맵 0) · 기동 10.4초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 배포본 도감 다섯 탭 실루엣 색 · 힌트 · 번들 `daily:"always"` 확인. main은 2026-11-04 사용자 지시(「여기까지 반영하고 main 재배포해줘」)로 작업 브랜치에 빨리 감기했다(300 A · 101차 = `c56cca5` 299(2) · 100차 = `0a98430` 299차).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `4413e49` — **최근 103차 배포 2026-11-04 = 300차 B 코드까지 포함**(300 B 지역 빌린 밭(종묘사 탁자) · 위키 템플릿 고침 + 300 A 도감 실루엣 · 사이소 24시간(임시) + 299(2) 산나물 포기 도트 + 299 산나물 캐기) —
+  main `c945c64` · 정적 2,157(소스맵 0) · 기동 9.9초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 `rentPlot` · 종묘사 POI 6 확인. main은 2026-11-04 사용자 지시(「300 B도 main 반영하고 재배포해줘」)로 작업 브랜치에 빨리 감기했다(300 B · 102차 = `41e8864` 300 A · 101차 = `c56cca5` 299(2)). **300 C(만들기 초상 미리보기)는 작업 브랜치에만** — main · 배포는 사용자 결정 뒤.
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 100 = 300**(템플릿 문법 오류 고침 — **95~99판(298~300 B)은 본문이 안 그려졌다** · 99 = 300 B 시스템 「지역 빌린 밭」 · 98 = 300 A 「도감은 발견한 것만」). 생성기가 템플릿 스크립트 문법을 검사한다 — 발행 전 헤드리스 로드 pageerror 0(`docs/artifacts/README.md` 2-b)
@@ -235,8 +237,8 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 47 = 300 B ✅ · 다음 = 예시 창 의견 → 2단계) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 46 = 300차 B 기준 — 「지역 빌린 밭」 항목) ·
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 48 = 300 C ✅ · 다음 = 예시 창 의견 → 2단계) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 47 = 300차 C 기준 — 「캐릭터 만들기」 초상 미리보기 줄) ·
   채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 42 = 300차 기준 · 문법은 258차) · 위키(위 줄 — 100 = 300 템플릿 고침).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
