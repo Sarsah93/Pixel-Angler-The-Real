@@ -8,5 +8,15 @@
   "ty": 365,
   "osmId": -9004,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "안흥 종묘사",
+  "nameEn": "Anheung Seed & Seedling",
+  "tx": 534,
+  "ty": 360,
+  "osmId": -9033,
+  "src": "manual"
  }
 ]

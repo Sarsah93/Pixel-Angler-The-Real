@@ -99,7 +99,7 @@
   → **297 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「산타」 · 「박애주의자」)**
   → **298 지역 축제 달력(축제 9 · 축제 달 ×1.1 + 절정 주 ×1.3 · 축제 매대 · 북적임 ×2 · 축제 일손 9 · 라디오 · 알람 · 일지 「나날」)**
   → **299 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산) · (2) 자리 표식 = 땅에 뿌리내린 포기 도트 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**
-  → **300 A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · B 지역 텃밭 1단계(진행)**.
+  → **300 A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · 102차 배포 · B 지역 텃밭 1단계(종묘사 탁자 · 빌린 밭)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
@@ -108,7 +108,10 @@
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
 - **300차 A**: **도감 표현 통일 · 사이소 24시간(임시)** — 사용자 지적(「플레이로 입수 · 직판장에서 구매 · 취득하면 등록 … 로직 경로를 글로 보여 주지 마」 · 「아이템 위키 → 아이템」 · 「실루엣으로 통일」) →
   `AnglerLogScene` 탭 「아이템」 · 미발견 실루엣 한 벌 `addSilhouette`(0x152538 · 0.9) · `silhouetteOf` · 요약 「N / M」 · 힌트 「???로 입수」 「???에서 구매」 「주간 · 물가」 「주재료 ???」 · 발견 줄 「11/4 · 처음 얻음」(core `DISCOVERY_SOURCE_LABEL`) · 특산 발견 카드 그림 · 요리 행 사진 아이콘 ·
-  사이소 `BUILDING_HOURS.daily = 'always'`(QA 임시 — 되돌릴 값 10~22 · 백로그 DG) · 검증 r300a 7/7 · core 492 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 `1daa9ce` · **102차 배포(gh-pages `41e8864` · 실행 31 · 기동 10.4초 · 4xx 0 · pageerror 0)** · 아티팩트(46 · 45 · 42 · 위키 98). **B 지역 텃밭 1단계 진행 중**. 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
+  사이소 `BUILDING_HOURS.daily = 'always'`(QA 임시 — 되돌릴 값 10~22 · 백로그 DG) · 검증 r300a 7/7 · core 492 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 `1daa9ce` · **102차 배포(gh-pages `41e8864` · 실행 31 · 기동 10.4초 · 4xx 0 · pageerror 0)** · 아티팩트(46 · 45 · 42 · 위키 98).
+  **300차 B 지역 텃밭 1단계(창 관리형)** — 사용자 「착수해줘」(예시 창 의견은 뒤에) → core `db-schema/RegionalPlots.ts`(고장 6 — 포항 · 부산 · 여수 · 태안 · 제주 · 울릉 · 종묘사 · 주인 · 흙 · 주 3,000원 · 칸 4 · `rent:<고장>` · 주 단위 선납 셈) ·
+  client `store/RegionalPlotStore.ts`(계약 · `rent` · `settle` 자동 납부 · 잠금 · `returnPlot` · 세이브 `regionalPlots`) · `FarmStore` `rent:` 구획(갈아 둔 4칸 · 빗물통 · deserialize 4칸 유지) · 종묘사 안쪽 탁자 `InteriorAction 'rentPlot'`(그 고장 종묘사 이름일 때만) · `RegionFieldScene.openRegionalPlot`(확인 창 → 빌리기 → 텃밭 창) ·
+  `FarmPanel` 빌린 밭 갈래(제목 · 2×2 · 「이 밭」 칸 · 심기 「특산」 · 칸 자세히 산지 봉인 줄 · 가이드) · 손 POI 종묘사 6 · 도움말 · 영어 · 검증 r300b 13/13 · core 499 · 빌드 3/3 · typecheck 4/4. **2단계(필드 밭 · 묵음 · 알림 · 씨앗 매대)는 예시 창 의견 뒤** — main · 배포도 사용자 결정 뒤. 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
 - **299차**: **산나물 캐기 — 산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산 꼬리표 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」** —
   사용자 지시 넷(「'선물 칭호에 한 사람 더.' 넣지 마 … '아주 좋아하는 것 같다.'」 · 「선물 보따리 → 산타 · 동네 산타 → 박애주의자 · 선물우호도 및 가게 할인율 소급 적용」 · 「산지에서 나는 나물 작업 시작」 · 「main 반영하고 재배포」) →
   core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·
@@ -226,15 +229,15 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main `1daa9ce` · 실행 31 · 정적 2,157(소스맵 0) · 기동 10.4초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 배포본 도감 다섯 탭 실루엣 색 · 힌트 · 번들 `daily:"always"` 확인. main은 2026-11-04 사용자 지시(「여기까지 반영하고 main 재배포해줘」)로 작업 브랜치에 빨리 감기했다(300 A · 101차 = `c56cca5` 299(2) · 100차 = `0a98430` 299차).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 98 = 300 A**(시스템 「도감은 발견한 것만 — 실루엣 한 벌」 · 97 = 299(2) · 96 = 299)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 99 = 300 B**(시스템 「지역 빌린 밭 — 그 고장 종묘사에서 한 구획」 · 98 = 300 A 「도감은 발견한 것만」 · 97 = 299(2))
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 142파일 = 심리스 112 + 구 맵 30 · 파일 426).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 46 = 300 A · 300 B 지역 텃밭 진행 중) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 45 = 300차 기준) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 42 = 300차 기준 · 문법은 258차) · 위키(위 줄 — 98 = 300 A).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 47 = 300 B ✅ · 다음 = 예시 창 의견 → 2단계) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 46 = 300차 B 기준 — 「지역 빌린 밭」 항목) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 42 = 300차 기준 · 문법은 258차) · 위키(위 줄 — 99 = 300 B).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

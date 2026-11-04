@@ -25,7 +25,7 @@ import type { BuildingKind } from './ShopCatalog.js';
 export type InteriorTemplate = 'store' | 'food' | 'tackle' | 'clinic' | 'auction' | 'home';
 
 /** [F]로 하는 일 — 실제 동작은 필드 씬이 맡는다(거래 · 위판 · 진료 흐름을 그대로 쓴다) */
-export type InteriorAction = 'trade' | 'consign' | 'clinic' | 'sit' | 'schedule' | 'mill' | 'process';   // 295차 — 가공장 덕장(맡기기 · 찾기)   // 284차 — 방앗간 압착기(맡기기 · 찾기)
+export type InteriorAction = 'trade' | 'consign' | 'clinic' | 'sit' | 'schedule' | 'mill' | 'process' | 'rentPlot';   // 300차 — 종묘사 빌린 밭 창구   // 295차 — 가공장 덕장(맡기기 · 찾기)   // 284차 — 방앗간 압착기(맡기기 · 찾기)
 
 /** 가구 · 집기 그림 종류 (`ui/InteriorArt.ts`) */
 export type FixtureArt =
@@ -166,7 +166,10 @@ function storeLayout(kind: BuildingKind): InteriorLayout {
         // 295차 — 가공장은 아래 곤돌라 자리에 덕장(맡기기 · 찾기)
         : kind === 'processor'
           ? { id: 'rack', art: 'drying_rack', tx: 1, ty: 7, fw: 4, fh: 1, action: 'process' }
-          : { id: 'gondola_b', art: 'gondola', tx: 1, ty: 7, fw: 4, fh: 1 },
+          // 300차 — 종묘사는 아래 곤돌라 자리에 밭 빌리는 탁자(그 고장에 빌릴 밭이 있는 종묘사만 [F] — 필드 씬이 `action`을 뗀다)
+          : kind === 'nursery'
+            ? { id: 'plot_desk', art: 'display_table', tx: 1, ty: 7, fw: 4, fh: 1, action: 'rentPlot' }
+            : { id: 'gondola_b', art: 'gondola', tx: 1, ty: 7, fw: 4, fh: 1 },
       { id: 'stock', art: 'stock_boxes', tx: 9, ty: 7, fw: 3, fh: 1 },
     ],
     people: [{ tx: 10.2, ty: 5.7, dir: 'left', role: kind === 'pharmacy' ? 'expert' : 'office', greetKo: v.greet }],

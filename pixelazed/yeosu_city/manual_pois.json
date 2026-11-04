@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "여수 종묘사",
+  "nameEn": "Yeosu Seed & Seedling",
+  "tx": 244,
+  "ty": 436,
+  "osmId": -9032,
+  "src": "manual"
+ }
+]

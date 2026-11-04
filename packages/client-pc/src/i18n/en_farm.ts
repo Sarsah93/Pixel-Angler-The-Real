@@ -16,6 +16,7 @@ import {
   waterLineKo, waterLineEn, toolLineKo, toolLineEn, processLineKo, processLineEn, timingLineKo, timingLineEn, laborLineKo, laborLineEn,
   propagateLineKo, propagateLineEn,
   type CropCare, type CareTaskId, type CareWorkKind, type CropDisease, type RipeStage,
+  REGIONAL_PLOT_OFFERS,   // 300차 — 지역 빌린 밭(종묘사 · 흙 · 주인 영어)
 } from '@tra/core';
 
 const MONTH_EN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -99,6 +100,30 @@ export function harvestTailEn(seg: string, tr: (s: string) => string): string {
 const DZ_EN = (ko: string): string => DISEASE_EN[(Object.keys(DISEASE_KO) as CropDisease[]).find((k) => DISEASE_KO[k] === ko) ?? 'blight'];
 
 export const EN_FARM: Record<string, string> = {
+  // 300차 — 지역 빌린 밭(종묘사 탁자 · 「이 밭」 칸 · 가이드)
+  ...Object.fromEntries(REGIONAL_PLOT_OFFERS.flatMap((o) => [[o.nurseryKo, o.nurseryEn], [o.soilKo, o.soilEn]])),
+  '[F] 밭 빌리기': '[F] Rent a plot',
+  '[F] 빌린 밭': '[F] Rented plot',
+  '빌리기': 'Rent',
+  '이 밭': 'This plot',
+  '빌린 곳': 'Rented from',
+  '사용료': 'Rent',
+  '다음 납부': 'Next payment',
+  '사용료 내기': 'Pay rent',
+  '밭 돌려주기': 'Return plot',
+  '돌려주기': 'Return',
+  '돈이 모자라다': 'Not enough money',
+  '밀린 사용료가 없다': 'No rent is overdue',
+  '돌려줄 수 없다': 'Cannot return it',
+  '여기서는 빌릴 밭이 없다': 'There is no plot to rent here',
+  '이미 빌린 밭이 있다': 'You already rent a plot here',
+  '빌린 밭이 없다': 'You have no rented plot here',
+  '심어 둔 것을 다 거둔 뒤에 돌려줄 수 있다': 'Harvest everything you planted before returning it',
+  '사용료가 밀려 새로 심을 수 없다 — 돈을 마련해 밭 창을 다시 열면 바로 풀린다': 'Rent is overdue, so nothing new can be planted — get the money and reopen the plot window to clear it',
+  '종묘사에서 빌린 밭이다 — 네 칸. 흙은 갈아 두었고 물은 종묘사가 준다. 멀리 가 있어도 실제 시간대로 자란다.': 'A plot rented from the nursery — four cells. The soil is tilled and the nursery waters it. It keeps growing in real time while you are away.',
+  '사용료와 다음 납부일이다. 창을 열 때마다 밀린 주가 저절로 빠지고, 못 내면 새로 심지 못한다 — 돈을 마련해 다시 열면 풀린다.': 'Rent and the next payment date. Overdue weeks are paid automatically whenever you open this window; if you cannot pay, you cannot plant anything new — get the money and reopen it.',
+  '이 고장 특산이 되는 씨앗에는 「특산」이 붙는다. 여기서 거두면 산지 봉인이 찍혀 다른 고장 가게가 값을 더 쳐준다.': 'Seeds that become this town\'s specialty are marked "Specialty". Harvest them here and they are origin-sealed — shops in other towns pay more.',
+  '다 거뒀으면 밭을 돌려줄 수 있다 — 남은 사용료는 돌려받지 않는다.': 'Once everything is harvested you can return the plot — remaining rent is not refunded.',
   // 243차 — 포장(낱개 → 팩)
   '포장하기': 'Pack',
   '포장': 'Packing',
@@ -586,6 +611,21 @@ export const EN_FARM: Record<string, string> = {
 };
 
 export const EN_FARM_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => string][] = [
+  // 300차 — 지역 빌린 밭
+  [/^(.+) — 빌린 밭$/, (m, tr) => `${tr(m[1]!)} — rented plot`],
+  [/^(.+) · 주인 (.+)$/, (m, tr) => `${tr(m[1]!)} · owner ${REGIONAL_PLOT_OFFERS.find((o) => o.ownerKo === m[2])?.ownerEn ?? m[2]}`],
+  [/^주 ([\d,]+)원 · 물은 종묘사가 준다$/, (m) => `₩${m[1]} a week · the nursery waters it`],
+  [/^(\d+)월 (\d+)일 · 밀리면 새로 못 심는다$/, (m) => `${MONTH_EN[Number(m[1])]} ${m[2]} · fall behind and you cannot plant`],
+  [/^(\d+)주 밀렸다 — ([\d,]+)원$/, (m) => `${m[1]} week${m[1] === '1' ? '' : 's'} overdue — ₩${m[2]}`],
+  [/^여기서 거두면 「(.+)」 — 산지 봉인$/, (m, tr) => `Harvest here and it is "${tr(m[1]!)}" — origin-sealed`],
+  [/^사용료 ([\d,]+)원을 냈다$/, (m) => `Paid ₩${m[1]} rent`],
+  [/^첫 주 사용료 ([\d,]+)원이 모자라다$/, (m) => `You are short of the first week\'s rent, ₩${m[1]}`],
+  [/^\[텃밭\] (.+) 밭을 빌렸다 — 첫 주 ([\d,]+)원$/, (m, tr) => `[Farm] Rented a plot at ${tr(m[1]!)} — first week ₩${m[2]}`],
+  [/^\[텃밭\] (.+) 사용료 ([\d,]+)원을 냈다$/, (m, tr) => `[Farm] Paid ₩${m[2]} rent to ${tr(m[1]!)}`],
+  [/^\[텃밭\] (.+) 밭을 돌려줬다$/, (m, tr) => `[Farm] Returned the plot to ${tr(m[1]!)}`],
+  [/^(.+) 뒤 밭 한 구획\((\d+)칸\)을 빌립니다\.\n사용료는 주 ([\d,]+)원 — 첫 주 ([\d,]+)원을 지금 냅니다\.\n물은 종묘사가 줍니다\.$/,
+    (m, tr) => `Rent one plot (${m[2]} cells) behind ${tr(m[1]!)}.\nRent is ₩${m[3]} a week — you pay the first week, ₩${m[4]}, now.\nThe nursery waters it.`],
+  [/^(.+) 밭을 돌려줍니다\.\n남은 사용료는 돌려받지 않습니다\.$/, (m, tr) => `Return the plot to ${tr(m[1]!)}.\nRemaining rent is not refunded.`],
   // 237차 — 작물 난이도 · 기를 자격 · 까다로운 점 · 심기 거부(core `cropGateBlock`)
   [/^(쉬움|보통|까다로움|아주 까다로움) — 모종이면 (쉬움|보통|까다로움|아주 까다로움)$/, (m, tr) => `${tr(m[1])} — ${tr(m[2])} as a seedling`],
   [/^레벨 (\d+) · 유기농업기능사( — 갖췄다)?$/, (m) => `Level ${m[1]} + Craftsman Organic Agriculture${m[2] ? ' — met' : ''}`],

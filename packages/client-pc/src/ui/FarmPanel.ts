@@ -15,6 +15,8 @@
  *   거두기 단추 이름은 거두는 손(따기 · 베기 · 캐기 · 뽑기 · 모종 꺼내기)이고, 깨 · 콩 · 보리 · 땅콩 · 마늘 · 양파는 베어(캐어) 칸에서 말린 뒤
  *   털기(작업 장면) → 키질(키가 있으면) → 가방. 육묘 트레이는 꺼내기 창(`TrayPullPanel`)으로 한 포기씩 · 한 줄씩 꺼낸다.
  *   「기르는 법」은 그 작물의 물 · 거름 · 품 · 도구 · 거둔 뒤 손질 · 알맞은 철 · 늘리기를 한 장에 보인다. 저절로 난 싹은 자라기 전까지 「이름 모를 싹」.
+ * - 300차 — **지역 빌린 밭**(구획 id `rent:<고장>` · 그 고장 종묘사 탁자에서 연다): 제목 「○○ 종묘사 — 빌린 밭」 · 칸 2×2 · 칸 아래 「이 밭」 칸(빌린 곳 · 흙 · 사용료 ·
+ *   다음 납부 · 사용료 내기 · 밭 돌려주기) · 설비 단추 없음(종묘사 것) · 심기 목록과 칸 자세히에 그 고장 특산 표시. 예시 창 `docs/mockups/regional_plot_window.svg`(사용자 의견 뒤 손본다).
  */
 
 import Phaser from 'phaser';
@@ -26,7 +28,9 @@ import {
   cultivationOf, waterLineKo, toolLineKo, processLineKo, timingLineKo, laborLineKo, propagateLineKo, OFF_TIMING_KO, MOISTURE_STATE_KO,
   processHoursLeft, wildUnknown, WATER_AMOUNT_KO, WATER_AMOUNT_EN,
   CURE_STATION_FACILITY,
-  type FarmCellState, type FarmFacility, type FarmPlotState, type LicenseType, type WaterAmount,
+  // 300차 — 지역 빌린 밭
+  isRegionalPlotId, regionOfRegionalPlot, regionalPlotOffer, plotRentDueWeeks, specialtyOf, kstYmdOf,
+  type FarmCellState, type FarmFacility, type FarmPlotState, type LicenseType, type WaterAmount, type RegionalPlotOffer, type RegionalSpecialtyDef,
 } from '@tra/core';
 import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { cv, cvCss } from './ColorAssist.js';
@@ -45,6 +49,7 @@ import { playSfx } from '../audio/SfxBank.js';
 import { qtyWord } from './QtyLabel.js';
 import { CurePanel } from './CurePanel.js';
 import { CureQueue } from '../store/CureQueue.js';
+import { RegionalPlotStore } from '../store/RegionalPlotStore.js';   // 300차
 
 const PANEL_W = 780;
 /** 238차 — 관리 작업 줄(단계 · 병 · 할 일)이 붙어 조금 높다 · 247차 이 칸 물 주기 줄 */
@@ -56,6 +61,8 @@ const GAP = 8;
 const GRID_X = 18;
 const PANE_X = GRID_X + FARM_COLS * (CELL + GAP) + 10;
 const PANE_W = PANEL_W - PANE_X - 18;
+/** 300차 — 왼쪽 열(격자 자리) 폭 — 빌린 밭의 「이 밭」 칸이 격자 아래 이 폭으로 선다 */
+const LEFT_W = FARM_COLS * (CELL + GAP) - GAP;
 const ROW_H = 40;
 const FONT = '"Noto Sans KR", sans-serif';
 
@@ -111,13 +118,19 @@ export class FarmPanel extends DraggablePanel {
   private did = { till: 0, plant: 0, water: 0, care: 0 };
   /** 단추 자리(가이드가 짚는다) */
   private btnRects = new Map<string, Phaser.Geom.Rectangle>();
+  /** 300차 — 지역 빌린 밭이면 그 고장의 빌릴 밭(종묘사 · 사용료) · 「이 밭」 칸 자리(가이드) */
+  private offer?: RegionalPlotOffer;
+  private rentBox = new Phaser.Geom.Rectangle(0, 0, 0, 0);
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: FarmPanelOpts) {
     const indoor = opts.plotId === INDOOR_PLOT;
+    // 300차 — 지역 빌린 밭(`rent:<고장>`)은 그 종묘사 이름이 제목
+    const offer = isRegionalPlotId(opts.plotId) ? regionalPlotOffer(regionOfRegionalPlot(opts.plotId)) : undefined;
     // 236차 — 마당 두 구획을 넘는 텃밭은 마을 농지를 빌린 것이다(사용료 · 밀리면 새로 못 심음)
-    const title = indoor ? '집 안 선반' : GameState.isRentedPlot(opts.plotId) ? '빌린 텃밭' : '텃밭';
+    const title = indoor ? '집 안 선반' : offer ? `${offer.nurseryKo} — 빌린 밭` : GameState.isRentedPlot(opts.plotId) ? '빌린 텃밭' : '텃밭';
     super(scene, { x, y, width: PANEL_W, height: indoor ? PANEL_H_INDOOR : PANEL_H, title, onClose: opts.onClose, depth: 846 });
     this.opts = opts;
+    this.offer = offer;
     FarmStore.advanceAll();
     // 처음 열면 무엇이 자라는 첫 칸을 고른다(없으면 첫 칸)
     const cells = this.plot().cells;
@@ -150,6 +163,16 @@ export class FarmPanel extends DraggablePanel {
 
   private plot(): FarmPlotState { return FarmStore.plot(this.opts.plotId); }
   private get indoor(): boolean { return this.opts.plotId === INDOOR_PLOT; }
+  /** 300차 — 지역 빌린 밭인가 · 그 고장 · 격자 열 수(빌린 밭은 2×2) */
+  private get regional(): boolean { return !!this.offer; }
+  private get regionId(): string { return this.offer?.regionId ?? ''; }
+  private get cols(): number { return this.regional ? 2 : FARM_COLS; }
+  /** 300차 — 이 씨앗 · 모종을 여기서 거두면 그 고장 특산인가 */
+  private specialtyOfStart(itemId: string): RegionalSpecialtyDef | undefined {
+    if (!this.regional) return undefined;
+    const f = cropStartOfItem(itemId);
+    return f ? specialtyOf(f.crop.harvest.itemId, this.regionId) : undefined;
+  }
   /** 창 높이(집 안 선반은 낮다) */
   private get ph(): number { return this.indoor ? PANEL_H_INDOOR : PANEL_H; }
 
@@ -157,9 +180,11 @@ export class FarmPanel extends DraggablePanel {
 
   gridRect(): Phaser.Geom.Rectangle {
     const n = this.plot().cells.length;
-    const rows = Math.ceil(n / FARM_COLS);
-    return this.localRect(GRID_X - 4, this.gridY - 4, FARM_COLS * (CELL + GAP) - GAP + 8, rows * (CELL + GAP) - GAP + 8);
+    const rows = Math.ceil(n / this.cols);
+    return this.localRect(GRID_X - 4, this.gridY - 4, Math.min(n, this.cols) * (CELL + GAP) - GAP + 8, rows * (CELL + GAP) - GAP + 8);
   }
+  /** 300차 — 「이 밭」 칸(가이드) */
+  rentRect(): Phaser.Geom.Rectangle { return this.localRect(this.rentBox.x, this.rentBox.y, this.rentBox.width, this.rentBox.height); }
   paneRect(): Phaser.Geom.Rectangle { return this.localRect(PANE_X - 4, this.contentTop + 36, PANE_W + 8, this.ph - this.contentTop - 70); }
   buttonRect(key: string): Phaser.Geom.Rectangle | null {
     const r = this.btnRects.get(key);
@@ -204,6 +229,7 @@ export class FarmPanel extends DraggablePanel {
     this.btnRects.clear();
     this.renderTopBar();
     this.renderGrid();
+    if (this.regional) this.renderRentBlock();   // 300차
     if (this.mode === 'cell') this.renderCellPane();
     else if (this.mode === 'plant') this.renderPlantList();
     else if (this.mode === 'facility') this.renderFacilityList();
@@ -251,7 +277,7 @@ export class FarmPanel extends DraggablePanel {
     };
     const toggle = (m: Mode): void => { this.mode = this.mode === m ? 'cell' : m; this.scroll = 0; this.render(); };
     if (GameState.skillBonus('farm_calendar') >= 1) btn('almanac', this.mode === 'almanac' ? '칸 보기' : '달력', () => toggle('almanac'));
-    if (!this.indoor) btn('facility', this.mode === 'facility' ? '칸 보기' : '설비', () => toggle('facility'));
+    if (!this.indoor && !this.regional) btn('facility', this.mode === 'facility' ? '칸 보기' : '설비', () => toggle('facility'));   // 300차 — 빌린 밭 설비는 종묘사 것
     // 247차 — 고른 칸 작물의 기르는 법
     const selCrop = this.plot().cells[this.sel]?.cropId;
     if (selCrop && !wildUnknown(this.plot().cells[this.sel])) btn('guide', this.mode === 'guide' ? '칸 보기' : '기르는 법', () => toggle('guide'));
@@ -274,8 +300,8 @@ export class FarmPanel extends DraggablePanel {
     const p = this.plot();
     const now = Date.now();
     p.cells.forEach((c, i) => {
-      const cx = GRID_X + (i % FARM_COLS) * (CELL + GAP);
-      const cy = this.gridY + Math.floor(i / FARM_COLS) * (CELL + GAP);
+      const cx = GRID_X + (i % this.cols) * (CELL + GAP);
+      const cy = this.gridY + Math.floor(i / this.cols) * (CELL + GAP);
       const g = scene.add.graphics();
       this.paintSoil(g, cx, cy, c);
       if (i === this.sel) { g.lineStyle(2, 0xffd257, 1); g.strokeRoundedRect(cx - 1, cy - 1, CELL + 2, CELL + 2, 5); }
@@ -397,6 +423,11 @@ export class FarmPanel extends DraggablePanel {
       y += 22;
     };
 
+    // 300차 — 빌린 밭에서 그 고장 특산을 기르면 거둘 때 산지 봉인이 찍힌다
+    if (this.regional && crop && !unknown) {
+      const sp = specialtyOf(crop.harvest.itemId, this.regionId);
+      if (sp) row('특산', `여기서 거두면 「${sp.nameKo}」 — 산지 봉인`, '#ffe28a');
+    }
     if (crop && unknown) {
       // 247차 — 이름 모를 싹: 묵힌 칸에 저절로 났다(바람 · 새가 옮긴 씨 · 지난해 떨어진 씨)
       const days = c.plantedAt ? Math.floor((Date.now() - c.plantedAt) / 86_400_000) : 0;
@@ -695,7 +726,10 @@ export class FarmPanel extends DraggablePanel {
       this.content.add(g);
       this.content.add(createItemIcon(scene, PANE_X + 18, ry + (ROW_H - 4) / 2, it, 24));
       const name = scene.add.text(PANE_X + 38, ry + 3, `${it.name}  ${qtyWord(it, it.qty)}`, { fontFamily: FONT, fontSize: '12px', color: chk.ok ? '#e8f2fa' : '#7f93a3', fontStyle: 'bold' });
-      clampTextWidth(name, PANE_W - 46);
+      // 300차 — 빌린 밭에서 그 고장 특산이 되는 씨앗 · 모종은 오른쪽에 「특산」
+      const sp = this.specialtyOfStart(it.id);
+      if (sp) this.content.add(scene.add.text(PANE_X + PANE_W - 8, ry + 4, t('특산'), { fontFamily: FONT, fontSize: '11px', color: '#ffe28a', fontStyle: 'bold' }).setOrigin(1, 0));
+      clampTextWidth(name, PANE_W - 46 - (sp ? 44 : 0));
       this.content.add(name);
       // 247차 — 심을 수는 있어도 알려 줄 것(알맞은 철 밖 · 거름이 많거나 모자라다)
       const note = chk.ok ? FarmStore.plantNoteKo(this.opts.plotId, this.sel, it.id) : null;
@@ -717,6 +751,82 @@ export class FarmPanel extends DraggablePanel {
         fontFamily: FONT, fontSize: '11px', color: '#7f93a3',
       }).setOrigin(1, 0));
     }
+  }
+
+  /**
+   * 300차 — 「이 밭」 칸(격자 아래 · 빌린 밭만): 빌린 곳 · 흙 · 사용료 · 다음 납부(밀렸으면 붉게) · 「사용료 내기」(밀렸을 때) · 「밭 돌려주기」.
+   * 예시 창(`docs/mockups/regional_plot_window.svg`)의 오른쪽 「이 밭」을 왼쪽 격자 아래로 옮긴 것 — 오른쪽은 칸 자세히 · 심기 목록이 그대로 쓴다.
+   */
+  private renderRentBlock(): void {
+    const scene = this.scene;
+    const offer = this.offer;
+    if (!offer) return;
+    const c = RegionalPlotStore.contract(offer.regionId);
+    const rows = Math.ceil(this.plot().cells.length / this.cols);
+    const x0 = GRID_X, w = LEFT_W;
+    const top = this.gridY + rows * (CELL + GAP) + 4;
+    let y = top + 6;
+    const bg = scene.add.graphics();
+    this.content.add(bg);
+    this.content.add(scene.add.text(x0 + 6, y, t('이 밭'), { fontFamily: FONT, fontSize: '13px', color: '#ffe28a', fontStyle: 'bold' }));
+    y += 24;
+    const row = (label: string, value: string, color = '#e8f2fa'): void => {
+      this.content.add(scene.add.text(x0 + 6, y, t(label), { fontFamily: FONT, fontSize: '11px', color: '#8fb4cc' }));
+      const v = scene.add.text(x0 + 72, y, value, { fontFamily: FONT, fontSize: '11px', color, wordWrap: { width: w - 78 } });
+      this.content.add(v);
+      y += Math.max(18, v.height + 3);
+    };
+    row('빌린 곳', `${offer.nurseryKo} · 주인 ${offer.ownerKo}`);
+    row('흙', offer.soilKo);
+    row('사용료', `주 ${offer.weeklyFeeWon.toLocaleString()}원 · 물은 종묘사가 준다`);
+    const due = c ? plotRentDueWeeks(c, Date.now()) : 0;
+    if (c) {
+      if (due > 0) row('다음 납부', `${due}주 밀렸다 — ${(due * offer.weeklyFeeWon).toLocaleString()}원`, '#ff9a7a');
+      else { const d = kstYmdOf(new Date(c.paidUntilMs)); row('다음 납부', `${d.m}월 ${d.d}일 · 밀리면 새로 못 심는다`); }
+    }
+    y += 4;
+    if (due > 0) this.button('payrent', x0 + 2, y, 100, 24, '사용료 내기', () => this.payRent());
+    this.button('return', x0 + w - 102, y, 100, 24, '밭 돌려주기', () => this.returnPlot());
+    y += 30;
+    bg.fillStyle(0x0b1620, 0.9); bg.fillRoundedRect(x0 - 4, top, w + 8, y - top, 4);
+    bg.lineStyle(1, 0x1c3d5a, 1); bg.strokeRoundedRect(x0 - 4, top, w + 8, y - top, 4);
+    this.rentBox.setTo(x0 - 4, top, w + 8, y - top);
+  }
+
+  /** 300차 — 밀린 사용료를 낸다(돈이 있는 만큼) */
+  private payRent(): void {
+    if (!this.offer) return;
+    const r = RegionalPlotStore.settle(this.offer.regionId);
+    if (r.paidWeeks > 0) {
+      this.setStatus(`사용료 ${r.paidWon.toLocaleString()}원을 냈다`);
+      this.opts.log?.(`[텃밭] ${this.offer.nurseryKo} 사용료 ${r.paidWon.toLocaleString()}원을 냈다`);
+      this.opts.onChanged?.();
+    } else {
+      this.setStatus(r.overdue ? '돈이 모자라다' : '밀린 사용료가 없다', !r.overdue);
+      if (r.overdue) playSfx('deny');
+    }
+    this.render();
+    restoreHandCursor(this.scene);
+  }
+
+  /** 300차 — 밭을 돌려준다(확인 창 · 심어 둔 것이 없을 때만) — 창을 닫는다 */
+  private returnPlot(): void {
+    const offer = this.offer;
+    if (!offer) return;
+    const doIt = (): void => {
+      const r = RegionalPlotStore.returnPlot(offer.regionId);
+      if (r.ok) {
+        this.opts.log?.(`[텃밭] ${offer.nurseryKo} 밭을 돌려줬다`);
+        this.opts.onChanged?.();
+        this.opts.onClose();
+        return;
+      }
+      this.setStatus(r.message ?? '돌려줄 수 없다', false);
+      playSfx('deny');
+      restoreHandCursor(this.scene);
+    };
+    if (this.opts.confirm) this.opts.confirm(`${offer.nurseryKo} 밭을 돌려줍니다.\n남은 사용료는 돌려받지 않습니다.`, doIt, { yes: '돌려주기', no: '취소', danger: true });
+    else doIt();
   }
 
   /**
@@ -882,10 +992,19 @@ export class FarmPanel extends DraggablePanel {
   private buildTour(): TourOptions {
     const indoor = this.indoor;
     return {
-      id: indoor ? 'farm_indoor' : 'farm_plot',
+      id: indoor ? 'farm_indoor' : this.regional ? 'farm_rented' : 'farm_plot',
       anchor: () => this.panelBounds(),
       alive: () => this.active,
-      steps: indoor ? [
+      steps: this.regional ? [
+        // 300차 — 빌린 밭
+        { text: '종묘사에서 빌린 밭이다 — 네 칸. 흙은 갈아 두었고 물은 종묘사가 준다. 멀리 가 있어도 실제 시간대로 자란다.', target: () => this.gridRect() },
+        { text: '사용료와 다음 납부일이다. 창을 열 때마다 밀린 주가 저절로 빠지고, 못 내면 새로 심지 못한다 — 돈을 마련해 다시 열면 풀린다.', target: () => this.rentRect() },
+        {
+          text: '이 고장 특산이 되는 씨앗에는 「특산」이 붙는다. 여기서 거두면 산지 봉인이 찍혀 다른 고장 가게가 값을 더 쳐준다.',
+          target: () => this.buttonRect('plant') ?? this.paneRect(),
+        },
+        { text: '다 거뒀으면 밭을 돌려줄 수 있다 — 남은 사용료는 돌려받지 않는다.', target: () => this.buttonRect('return') ?? this.rentRect() },
+      ] : indoor ? [
         { text: '집 안 선반이다. 시루에는 콩나물 · 숙주 · 새싹을, 수경 재배기에는 잎채소를 기른다. 철을 타지 않는다.', target: () => this.gridRect() },
         { text: '칸을 누르면 오른쪽에 자라는 정도와 거둘 때가 보인다.', target: () => this.paneRect() },
         { text: '시루는 자주 물을 줘야 곧게 자란다. 물을 한 번 줘 보자.', target: () => this.buttonRect('water'), wait: () => this.did.water > 0 },

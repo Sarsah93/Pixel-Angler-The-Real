@@ -43,6 +43,7 @@ import { ConsignQueue, type ConsignQueueSave } from './ConsignQueue.js';
 import { MillQueue, type MillQueueSave } from './MillQueue.js';
 import { ProcessQueue, type ProcessQueueSave } from './ProcessQueue.js';   // 295차
 import { MailboxStore, type MailboxSave } from './MailboxStore.js';   // 296차
+import { RegionalPlotStore, type RegionalPlotSave } from './RegionalPlotStore.js';   // 300차 — 지역 빌린 밭
 import { CureQueue, type CureQueueSave } from './CureQueue.js';
 import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate, kstParts, getQuestItem } from '@tra/core';
 import { prologueSquid } from './Prologue.js';
@@ -257,6 +258,8 @@ interface SaveData {
   processQueue?: ProcessQueueSave;
   /** 296차 — 집 앞 우편함(유찰품 · 받지 못한 물건) */
   mailbox?: MailboxSave;
+  /** 300차 — 그 고장 종묘사에서 빌린 밭 계약(구세이브 = 없음 · 구획 칸은 `farm.plots`) */
+  regionalPlots?: RegionalPlotSave;
   /** 285차 — 텃밭 걸대 · 장독에 걸어 둔 갈무리(구세이브 = 없음) */
   cureQueue?: CureQueueSave;
   /** 1회성 안내 플래그 (chumGuideSeen 등 — 최초 표시 여부) */
@@ -493,6 +496,7 @@ export class GameStateManager {
     MillQueue.deserialize(saved.millQueue);   // 284차
     ProcessQueue.deserialize(saved.processQueue);   // 295차
     MailboxStore.deserialize(saved.mailbox);   // 296차
+    RegionalPlotStore.deserialize(saved.regionalPlots);   // 300차 — 텃밭 뒤(구획이 있어야 잠금을 건다)
     CureQueue.deserialize(saved.cureQueue);   // 285차
     TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
@@ -1785,6 +1789,7 @@ export class GameStateManager {
       millQueue: MillQueue.serialize(),   // 284차
       processQueue: ProcessQueue.serialize(),   // 295차
       mailbox: MailboxStore.serialize(),   // 296차
+      regionalPlots: RegionalPlotStore.serialize(),   // 300차
       cureQueue: CureQueue.serialize(),   // 285차
       flags: this._flags,
       worldObjects: this._worldObjects,
@@ -2069,6 +2074,7 @@ export class GameStateManager {
     MillQueue.resetAll();      // 284차
     ProcessQueue.resetAll();   // 295차
     MailboxStore.resetAll();   // 296차
+    RegionalPlotStore.resetAll();   // 300차
     CureQueue.resetAll();      // 285차
     this._awakeMs = 0; this._lastSleepAtMs = 0; this._wakeNote = null;
     this.syncInventoryDiscoveries();

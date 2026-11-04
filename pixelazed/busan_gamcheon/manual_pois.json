@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "명지 종묘사",
+  "nameEn": "Myeongji Seed & Seedling",
+  "tx": 465,
+  "ty": 614,
+  "osmId": -9031,
+  "src": "manual"
+ }
+]

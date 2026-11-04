@@ -10,6 +10,15 @@
  * 여기서 고친 번역이 안 먹으면 뒤쪽 사전에 같은 키가 있는지 먼저 본다.
  */
 export const EN_HELP: Record<string, string> = {
+  // 300차 — 지역 빌린 밭
+  '다른 고장에서 밭 빌리기': 'Renting a plot in another town',
+  '종묘사 안쪽 탁자': 'The desk at the back of the nursery',
+  '포항 · 부산 · 여수 · 태안 · 제주 · 울릉도의 종묘사에는 안쪽에 밭 빌리는 탁자가 있습니다. [F]로 그 고장 밭 한 구획(네 칸)을 빌립니다 — 사용료는 주 3,000원이고 첫 주를 빌릴 때 냅니다. 흙은 종묘사가 갈아 두었고 물도 종묘사가 줍니다(흙이 절반 아래로 마르지 않습니다).':
+    'The nurseries in Pohang, Busan, Yeosu, Taean, Jeju and Ulleungdo have a plot-rental desk at the back. Press [F] to rent one plot (four cells) in that town — rent is ₩3,000 a week, and you pay the first week when you sign. The nursery has tilled the soil and waters it for you (the soil never dries below halfway).',
+  '빌린 밭은 같은 탁자에서 텃밭 창으로 엽니다. 심기 · 돌보기 · 거두기는 마당 텃밭과 같고, 멀리 가 있어도 실제 시간대로 자랍니다. 그 고장 특산 작물(포항초 · 포항 부추 · 대저 토마토 · 구좌 당근 같은 것)을 여기서 거두면 산지 봉인이 찍혀 다른 고장 가게에서 값을 더 쳐줍니다 — 심기 목록에 「특산」이 붙습니다.':
+    'Open the rented plot from the same desk as a farm window. Planting, care and harvest work like the yard plot, and it keeps growing in real time while you are away. Harvest that town\'s specialty crops here (Pohang spinach, Pohang chives, Daejeo tomatoes, Gujwa carrots and the like) and they are origin-sealed, fetching more in other towns\' shops — such seeds are marked "Specialty" in the planting list.',
+  '창을 열 때마다 밀린 주 사용료가 저절로 빠집니다. 돈이 모자라 못 내면 새로 심지 못하고(거두기 · 물 주기는 됩니다), 돈을 마련해 창을 다시 열면 바로 풀립니다. 심어 둔 것을 다 거뒀으면 「밭 돌려주기」로 계약을 끝냅니다 — 남은 사용료는 돌려받지 않습니다.':
+    'Each time you open the window, any overdue weeks are paid automatically. If you cannot pay, you cannot plant anything new (harvesting and watering still work); get the money and reopen the window and it clears at once. Once everything is harvested, "Return plot" ends the contract — remaining rent is not refunded.',
   // 233차
   '잡은 자리는 하루~이틀 동안 아무것도 나오지 않습니다. 놓치거나 숨어 버린 자리는 그 시간대(약 한 시간)가 지나면 다시 찹니다. 이 기록은 저장에 남아 게임을 껐다 켜도 이어집니다.': 'A spot you harvested stays empty for one to two days. A spot where the creature escaped or hid fills again once that time slot (about an hour) passes. This is kept in your save, so it carries over after you quit and come back.',
   '채집 스팟도 함께 봅니다 — 누가 잡거나 놓치면 모두의 화면에서 사라지고, 누가 채집하는 중이면 그 스팟이 흐려지며 손댈 수 없습니다. 채집 중인 사람에게는 거래를 걸 수 없습니다.': 'Foraging spots are shared too — when someone harvests or loses one, it disappears from everyone\'s screen, and while someone is gathering it the spot fades and nobody else can touch it. You can\'t offer a trade to someone who is gathering.',

@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "제주 종묘사",
+  "nameEn": "Jeju Seed & Seedling",
+  "tx": 502,
+  "ty": 406,
+  "osmId": -9034,
+  "src": "manual"
+ }
+]

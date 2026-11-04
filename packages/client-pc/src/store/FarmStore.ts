@@ -28,6 +28,7 @@
 import {
   FARM_CELLS, FARM_COLS, INDOOR_SLOTS, advancePlot, canPlant, cellReady, clearCell, climateRainAt, compostCell,
   cropStartOfItem, getCrop, getFarmSupply, harvestCell, interimHarvestCell, interimOpen, kstMonthOf, newFarmPlot,
+  isRegionalPlotId, regionOfRegionalPlot, regionalPlotOffer,   // 300차 — 지역 빌린 밭
   plantCell, produceItemId, supplyOfFacility, tillCell, waterCell, newFarmCell, gradeOf, harvestPreview,
   careStatusList, careDue, doCare as coreDoCare, inEstablishment, cellDiseases, CARE_TASK_KO, DISEASE_KO, DISEASE_CONTROL_KO, TRAY_ID, variantsOf,
   planOfCell, settleCareRounds, diseaseOnsetKo, DISEASE_DEFS,
@@ -151,15 +152,52 @@ class FarmStoreImpl {
 
   // ── 구획 ──────────────────────────────────
 
-  /** 구획(없으면 만든다 — 마당 텃밭은 설치물 instanceId, 집 안은 `indoor`) */
+  /** 300차 — 구획 잠금(지역 빌린 밭 사용료 밀림 — `RegionalPlotStore`가 켜고 끈다 · 세이브하지 않는다) */
+  private locks = new Map<string, string>();
+
+  /** 구획(없으면 만든다 — 마당 텃밭은 설치물 instanceId, 집 안은 `indoor`, 지역 빌린 밭은 `rent:<고장>`) */
   plot(id: string): FarmPlotState {
     let p = this.plots.get(id);
     if (!p) {
-      p = newFarmPlot(id === INDOOR_PLOT ? 'indoor' : 'plot', Date.now());
+      p = isRegionalPlotId(id)
+        ? this.ensureRegionalPlot(id, regionalPlotOffer(regionOfRegionalPlot(id))?.cells ?? 4)
+        : newFarmPlot(id === INDOOR_PLOT ? 'indoor' : 'plot', Date.now());
       this.plots.set(id, p);
     }
     return p;
   }
+
+  /**
+   * 300차 — 지역 빌린 밭 구획(없으면 만든다): 종묘사가 갈아 둔 흙(칸 수만큼 · `tilled`) + 빗물통(종묘사가 물을 준다 — 흙이 절반 아래로 마르지 않는다).
+   * 마당 구획과 같은 `FarmPlotState`라 자람 · 할 일 · 병해 · 세이브가 전부 같은 길을 탄다.
+   */
+  ensureRegionalPlot(id: string, cells: number): FarmPlotState {
+    let p = this.plots.get(id);
+    if (p) return p;
+    const base = newFarmPlot('plot', Date.now());
+    p = { ...base, cells: base.cells.slice(0, Math.max(1, Math.min(cells, base.cells.length))).map((c) => ({ ...c, tilled: true })), facilities: ['rainBarrel'] };
+    this.plots.set(id, p);
+    GameState.markDirty();
+    return p;
+  }
+
+  /** 300차 — 빌린 밭을 돌려준다(구획 삭제) — 설비는 종묘사 것이라 돌려주지 않는다. 심어 둔 것 · 갈무리가 있으면 거부 */
+  removeRegionalPlot(id: string): { ok: boolean; message?: string } {
+    const p = this.plots.get(id);
+    if (!p) return { ok: true };
+    if (p.cells.some((c) => !!c.cropId)) return { ok: false, message: '심어 둔 것을 다 거둔 뒤에 돌려줄 수 있다' };
+    if (CureQueue.at(id).length) return { ok: false, message: '걸대 · 장독에 걸어 둔 것을 먼저 거둔다' };
+    this.plots.delete(id);
+    this.locks.delete(id);
+    GameState.markDirty();
+    return { ok: true };
+  }
+
+  /** 300차 — 구획 잠금(새로 심지 못하는 까닭 · null = 풀기) */
+  setPlotLock(id: string, reasonKo: string | null): void {
+    if (reasonKo) this.locks.set(id, reasonKo); else this.locks.delete(id);
+  }
+  plotLock(id: string): string | null { return this.locks.get(id) ?? null; }
 
   has(id: string): boolean { return this.plots.has(id); }
 
@@ -314,7 +352,7 @@ class FarmStoreImpl {
    */
   private scanNotices(nowMs: number): void {
     for (const [pid, p] of this.plots) {
-      const place = pid === INDOOR_PLOT ? '집 안 선반' : '텃밭';
+      const place = pid === INDOOR_PLOT ? '집 안 선반' : isRegionalPlotId(pid) ? `${regionalPlotOffer(regionOfRegionalPlot(pid))?.nurseryKo ?? ''} 빌린 밭`.trim() : '텃밭';   // 300차
       const groups = new Map<string, { cells: number[]; line: (where: string) => string }>();
       const add = (key: string, gkey: string, cell: number, line: (where: string) => string): void => {
         if (this.noticed.has(key)) return;
@@ -672,6 +710,9 @@ class FarmStoreImpl {
     if (plotId !== INDOOR_PLOT && GameState.isRentedPlot(plotId) && GameState.farmRentOverdue()) {
       return { ok: false, reasonKo: '농지 사용료가 밀려 빌린 텃밭에는 새로 심을 수 없다', crop };
     }
+    // 300차 — 지역 빌린 밭 사용료가 밀리면 새로 심지 못한다(거두기 · 물 주기는 된다)
+    const lock = this.locks.get(plotId);
+    if (lock) return { ok: false, reasonKo: lock, crop };
     const p = this.plot(plotId);
     const cell = p.cells[idx];
     if (!cell) return { ok: false, reasonKo: '칸이 없다' };
@@ -1116,9 +1157,10 @@ class FarmStoreImpl {
     if (!s?.plots) return;
     for (const [k, p] of Object.entries(s.plots)) {
       if (!p || !Array.isArray(p.cells)) continue;
-      const want = k === INDOOR_PLOT ? INDOOR_SLOTS : FARM_CELLS;
+      // 300차 — 지역 빌린 밭은 그 고장 표의 칸 수(4) — 마당 구획(12)으로 늘리지 않는다
+      const want = k === INDOOR_PLOT ? INDOOR_SLOTS : isRegionalPlotId(k) ? (regionalPlotOffer(regionOfRegionalPlot(k))?.cells ?? p.cells.length) : FARM_CELLS;
       const cells = p.cells.slice(0, want);
-      while (cells.length < want) cells.push({ ...newFarmCell(Date.now()), tilled: k === INDOOR_PLOT });
+      while (cells.length < want) cells.push({ ...newFarmCell(Date.now()), tilled: k === INDOOR_PLOT || isRegionalPlotId(k) });
       this.plots.set(k, {
         site: k === INDOOR_PLOT ? 'indoor' : 'plot', cells, facilities: Array.isArray(p.facilities) ? p.facilities : [],
         // 247차 — 구획 난수 씨 · 흙에 떨어진 씨(구세이브는 없다 — 0 · 빈 은행)

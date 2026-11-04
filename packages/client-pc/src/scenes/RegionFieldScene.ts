@@ -110,6 +110,7 @@ import { FarmPanel } from '../ui/FarmPanel.js';
 import { FarmFieldSystem } from './field/FarmFieldSystem.js';
 import { worldLabelStyle } from '../ui/WorldLabel.js';
 import { FarmStore } from '../store/FarmStore.js';
+import { RegionalPlotStore } from '../store/RegionalPlotStore.js';   // 300차 — 지역 빌린 밭
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
 import { MonologuePanel, OPENING_MONOLOGUE } from '../ui/MonologuePanel.js';
@@ -155,6 +156,7 @@ import { MailboxPanel } from '../ui/MailboxPanel.js';   // 296차
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
+import { regionalPlotOffer, regionalPlotId } from '@tra/core';   // 300차 — 지역 빌린 밭
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
 import { AuctionHousePanel } from '../ui/AuctionHousePanel.js';
@@ -1851,7 +1853,8 @@ export class RegionFieldScene extends Phaser.Scene {
       if (k === 'general' || k === 'variety_store' || k === 'houseware' || k === 'hardware'
         || k === 'department_store' || k === 'kiosk') return 'daily';
       // 238차 — 종묘사 · 화원 · 농자재(OSM shop=garden_centre · florist · agrarian · farm): 모종 · 씨앗 · 농약
-      if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm') return 'nursery';
+      // 300차 — 손 POI `shopKind: 'nursery'`(빌릴 밭이 있는 고장의 종묘사)
+      if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm' || k === 'nursery') return 'nursery';
       // 284차 — 방앗간(게임 캡처 POI `shopKind: 'mill'` · OSM 가게 이름이 방앗간 · 기름집인 곳)
       // 295차 — 지역 가공장(손 POI `shopKind: 'processor'` · 덕장 · 장아찌 · 순대집)
       if (k === 'processor' || /덕장|가공장|장아찌|순대집|건조장/.test(poi.name ?? '')) return 'processor';
@@ -3634,10 +3637,16 @@ export class RegionFieldScene extends Phaser.Scene {
       this.dismountBike();   // 실내에선 자전거에서 내린다
       this.charging = false;
       this.chargeBar?.clear();
-      const layout = home?.layout ?? interiorLayoutOf(kind, name);
+      const layout0 = home?.layout ?? interiorLayoutOf(kind, name);
+      // 300차 — 종묘사의 밭 빌리는 탁자는 그 고장에 빌릴 밭이 있고 그 종묘사일 때만 [F]가 된다(다른 종묘사 · 화원은 그냥 탁자)
+      const offer = kind === 'nursery' ? regionalPlotOffer(this.region) : undefined;
+      const layout = kind === 'nursery' && !(offer && offer.nurseryKo === name)
+        ? { ...layout0, fixtures: layout0.fixtures.map((f) => (f.action === 'rentPlot' ? { ...f, action: undefined } : f)) }
+        : layout0;
       this.interiorAt = { kind, branch, name, npcId: home?.npcId };
       this.interior = new InteriorSystem(this, {
         onAction: (a) => this.onInteriorAction(a),
+        actionHint: (a) => (a === 'rentPlot' ? (RegionalPlotStore.has(this.region) ? '[F] 빌린 밭' : '[F] 밭 빌리기') : undefined),   // 300차
         onMeal: () => { GameState.mealAtTable = true; this.openMealBag(); },
         onLeave: () => this.leaveInterior(),
         onTalk: (id) => this.openDialogue(id, 'inside'),
@@ -3691,6 +3700,7 @@ export class RegionFieldScene extends Phaser.Scene {
       case 'schedule': this.openAuctionBoard(); break;
       case 'mill': this.openMill(at.branch); break;
       case 'process': this.openProcessor(at.branch); break;   // 295차 — 지역 가공대
+      case 'rentPlot': this.openRegionalPlot(); break;   // 300차 — 종묘사 빌린 밭
     }
   }
 
@@ -5562,6 +5572,44 @@ export class RegionFieldScene extends Phaser.Scene {
       },
       openPopup: (build) => { this.openPopup(build); },   // 238차 — 작업 장면
     }), () => this.renderFarmOverlay(o));
+  }
+
+  /**
+   * 300차 — 종묘사 안 탁자 [F]: 그 고장 밭 한 구획을 빌리거나(확인 창 · 첫 주 선납), 이미 빌렸으면 밀린 사용료를 내고 텃밭 창을 연다.
+   * 필드에 밭을 그리지 않는다(1단계 — 창 관리형). 구획 id는 `rent:<고장>`.
+   */
+  private openRegionalPlot(): void {
+    const offer = regionalPlotOffer(this.region);
+    if (!offer) { this.floatingHint('여기서는 빌릴 밭이 없다'); return; }
+    const open = (): void => {
+      const r = RegionalPlotStore.settle(this.region);
+      if (r.paidWon > 0) this.hud?.pushLog(`[텃밭] ${offer.nurseryKo} 사용료 ${r.paidWon.toLocaleString()}원을 냈다`);
+      this.openPopup((close) => new FarmPanel(this, GAME_WIDTH / 2 - 390, 60, {
+        plotId: regionalPlotId(this.region),
+        onClose: close,
+        onChanged: () => { this.events.emit('inventory-changed'); },
+        log: (line) => this.hud?.pushLog(line),
+        confirm: (msg, yes, labels) => {
+          this.openPopup((c2) => new ConfirmDialog(this, msg, () => { c2(); yes(); }, c2, labels));
+        },
+        openPopup: (build) => { this.openPopup(build); },
+      }));
+    };
+    if (RegionalPlotStore.has(this.region)) { open(); return; }
+    const fee = offer.weeklyFeeWon.toLocaleString();
+    this.openPopup((close) => new ConfirmDialog(
+      this,
+      `${offer.nurseryKo} 뒤 밭 한 구획(${offer.cells}칸)을 빌립니다.\n사용료는 주 ${fee}원 — 첫 주 ${fee}원을 지금 냅니다.\n물은 종묘사가 줍니다.`,
+      () => {
+        close();
+        const r = RegionalPlotStore.rent(this.region);
+        if (!r.ok) { this.floatingHint(r.message ?? '빌릴 수 없다'); return; }
+        this.hud?.pushLog(`[텃밭] ${offer.nurseryKo} 밭을 빌렸다 — 첫 주 ${fee}원`);
+        open();
+      },
+      close,
+      { yes: '빌리기', no: '그만두기' },
+    ));
   }
 
   private renderHomeObject(o: MapObject): void {

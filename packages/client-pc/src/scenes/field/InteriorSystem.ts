@@ -58,6 +58,8 @@ export interface InteriorHost {
   onLeave(): void;
   /** 216차 — 집 주인에게 [F] 「말 걸기」 */
   onTalk?(npcId: string): void;
+  /** 300차 — 집기 [F] 안내 글을 상황에 맞게(빌린 밭이 있으면 「빌린 밭」) — 없으면 기본 글 */
+  actionHint?(action: InteriorAction): string | undefined;
 }
 
 export interface InteriorEnter {
@@ -350,6 +352,8 @@ export class InteriorSystem {
   }
 
   private hintOf(a: InteriorAction): string {
+    const own = this.host.actionHint?.(a);
+    if (own) return own;
     switch (a) {
       case 'trade': return this.layout.template === 'food' ? '[F] 주문하기' : '[F] 물건 보기';
       case 'consign': return '[F] 위판 창구';
@@ -358,6 +362,7 @@ export class InteriorSystem {
       case 'schedule': return '[F] 경매 시간 보기';
       case 'mill': return '[F] 깨 맡기기 · 찾기';
       case 'process': return '[F] 맡기기 · 찾기';   // 295차 — 가공장
+      case 'rentPlot': return '[F] 밭 빌리기';   // 300차 — 종묘사
     }
   }
 

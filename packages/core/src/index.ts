@@ -1019,6 +1019,12 @@ export { REGIONAL_SPECIALTIES, specialtyOf, specialtyInSeason, specialtyPriceMul
 export { PROCESSED_ITEMS, PROCESS_RECIPES, processRecipe, processRecipesOf, processedItem, processQuote } from './rules/RegionalProcessing.js';
 export type { ProcessRecipeDef, ProcessInputDef, ProcessedItemDef, ProcessQuote } from './rules/RegionalProcessing.js';
 export type { RegionalSpecialtyDef, SpecialtyKind } from './db-schema/RegionalSpecialty.js';
+// 300차 — 지역 텃밭 1단계(그 고장 종묘사에서 빌리는 밭 한 구획)
+export {
+  REGIONAL_PLOT_OFFERS, regionalPlotOffer, REGIONAL_PLOT_PREFIX, regionalPlotId, isRegionalPlotId, regionOfRegionalPlot,
+  PLOT_RENT_PERIOD_MS, newPlotContract, plotRentDueWeeks, settlePlotRent, validateRegionalPlotOffers,
+} from './db-schema/RegionalPlots.js';
+export type { RegionalPlotOffer, RegionalPlotContract, PlotRentSettle } from './db-schema/RegionalPlots.js';
 
 // 297차 — 인물 선물 선호
 export type { GiftReaction, GiftKind, GiftTag, GiftItemView, NpcGiftPrefDef, GiftLog } from './types/Gift.js';

@@ -28,5 +28,15 @@
   "ty": 372,
   "osmId": -9006,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "nursery",
+  "name": "구룡포 종묘사",
+  "nameEn": "Guryongpo Seed & Seedling",
+  "tx": 483,
+  "ty": 448,
+  "osmId": -9030,
+  "src": "manual"
  }
 ]
