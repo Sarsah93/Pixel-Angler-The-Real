@@ -404,8 +404,9 @@ export interface InvItem {
   /**
    * 신선도 감쇄 프로필 — 기본 그래프 대신 특수 전이를 쓰는 아이템 (viscera:
    * 활어 10분 → 곧바로 나쁨 → 1시간 후 부패. 사용자 지정 2026-07-29)
-   * 229차 — krill_block: 급랭 백크릴(냉동 → 해동 3시간 → 부패). 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다.
+   * 229차 — krill_block: 급랭 백크릴(냉동 → 상온 1시간이면 해동 → 해동 3시간 → 부패). 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다.
    *          krill_bait: 미끼용 크릴(해동 3시간 → 부패). 부패한 크릴을 끼우면 입질 −20%.
+   *          300 D — 언 시간 4시간 → 1시간(사용자 「실제로 한 시간 상온이면 다 녹는다」).
    */
   condProfile?: 'viscera' | 'krill_block' | 'krill_bait';
 
@@ -747,6 +748,7 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     { sp: 'greater_amberjack', nameKo: '잿방어', lo: 60, hi: 120 },
     { sp: 'yellowtail', nameKo: '방어', lo: 50, hi: 100 },
     { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110 },
+    { sp: 'chub_mackerel', nameKo: '고등어', lo: 26, hi: 45 },   // 300 D — 방어류 흐름 검증용
     // 넙치류 — 다섯장뜨기 검증용 (75차. minFilletLengthCm 여유 밴드)
     { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80 },
     // 두족류 — 손질 트리 검증용 (87차 사용자 요청). **lengthCm = 외투장**(두족류 관례, 79차)
@@ -1001,7 +1003,7 @@ const KRILL_NEXT: Partial<Record<InvCondition, InvCondition | null>> = {
   frozen: 'thawed', thawed: 'spoiled',
 };
 const KRILL_DURATION_MIN: Partial<Record<InvCondition, number>> = {
-  frozen: 240, thawed: 180,
+  frozen: 60, thawed: 180,   // 300 D — 언 블록은 상온 1시간이면 녹는다(구 240 — 「너무 오래 걸린다」) · 녹은 뒤 3시간이면 상한다
 };
 /** 229차 — 크릴 계열 프로필인가(블록 · 미끼용 공통 전이) */
 function isKrillProfile(profile?: InvItem['condProfile']): boolean {
@@ -1023,6 +1025,16 @@ function condDurationOf(cond: InvCondition, profile?: InvItem['condProfile']): n
   if (profile === 'viscera' && cond in VISCERA_DURATION_MIN) return VISCERA_DURATION_MIN[cond]! * freshnessMult();
   if (isKrillProfile(profile) && cond in KRILL_DURATION_MIN) return KRILL_DURATION_MIN[cond]! * freshnessMult();
   return CONDITION_DURATION_MIN[cond] * freshnessMult();
+}
+
+/**
+ * 300 D — 「다음 단계까지 이만큼 남게」 넣을 때의 신선도 시계 시작 시각(ms).
+ *  해동된 급랭 백크릴은 산 직후 부패까지 30분이 남아야 한다 — 단계 유지 시간(보관 요령 배수 포함)에서 남길 시간을 뺀 만큼 앞당긴다.
+ */
+export function conditionSinceForRemaining(cond: InvCondition, profile: InvItem['condProfile'], leftMin: number, nowMs = Date.now()): number {
+  const dur = condDurationOf(cond, profile);
+  if (!Number.isFinite(dur)) return nowMs;   // 종착 단계는 시계가 뜻이 없다
+  return nowMs - Math.max(0, dur - leftMin) * 60_000;
 }
 
 /** 현재 상태부터 종착까지의 전이 경로 (상세보기 '신선도 단계' 표기용) */

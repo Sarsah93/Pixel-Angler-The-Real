@@ -13,10 +13,9 @@
  */
 
 import Phaser from 'phaser';
-import { GAME_WIDTH } from '../PhaserConfig.js';
 import { TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, tideFlowStateAt, type TideFlowPhase } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { worldLabelStyle } from './WorldLabel.js';
+import { screenToast } from './ScreenToast.js';   // 300 D — 화면 위 한 줄(겹침 · 중복 없이)
 
 const POLL_MS = 5000;
 const WARN_MIN = 10;
@@ -38,13 +37,6 @@ function channelLog(scene: Phaser.Scene, line: string): void {
   try { field?.hud?.pushLog(line); } catch { /* 필드 HUD 없음 */ }
 }
 
-/** 필드가 아닌 씬 — 화면 위 가운데에 잠깐 */
-function toast(scene: Phaser.Scene, line: string, y: number): void {
-  // 257차 — 바탕 상자 없이 흰 테 글자(R14)
-  const t = scene.add.text(GAME_WIDTH / 2, y, line, worldLabelStyle(13, { align: 'center', wrap: Math.min(640, GAME_WIDTH - 80) })).setOrigin(0.5, 0).setDepth(1170).setScrollFactor(0).setAlpha(0);
-  scene.tweens.add({ targets: t, alpha: 1, duration: 220 });
-  scene.tweens.add({ targets: t, alpha: 0, delay: 4200, duration: 400, onComplete: () => t.destroy() });
-}
 
 export interface TideFlowPumpOpts {
   /** 화면 위에도 띄운다(필드가 아닌 씬) */
@@ -85,7 +77,7 @@ function flush(scene: Phaser.Scene, opts: TideFlowPumpOpts): void {
   let y = opts.toastY ?? 0;
   for (const line of pending.splice(0)) {
     channelLog(scene, line);
-    if (opts.toastY !== undefined) { toast(scene, line, y); y += 30; }
+    if (opts.toastY !== undefined) { screenToast(scene, line, y, 4200); y += 30; }
   }
 }
 

@@ -40,6 +40,20 @@
 사용자 캡처(미리보기 무대 오른쪽 위 빨간 상자) — 「초상화 미리보기 이미지 나오도록 … 마우스 호버링하면 확대되서 잘 보이게까지」.
 만들기 화면은 전신 도트만 보여 줘 대화창 · 일지에 나올 **얼굴 초상(271차 층 합성)**을 고르는 동안 볼 수 없었다.
 
+### 1-5. D — 사용자 실플레이 리포트 아홉(2026-11-04)
+
+사용자가 F10(dev) 모드로 플레이하며 올린 리포트를 한 차수에 모아 고쳤다(원문 요지).
+
+1. 「f10 모드로 5가지 물품 구매하더라도, 요구 물품 충족 4/5로 퀘스트 진행이 되지 않음」 → 이어서 「봉돌 3호 11g 짜리를 반드시 사야지만 … 퀘스트에는 그냥 봉돌이라고만 써져있어서 … '봉돌(3호 11g짜리)'라고 명시」.
+2. 「f10 모드로 '막차' 퀘스트를 진행하지 않았을 경우, U 채비하기가 열리지 않음」.
+3. 「얼어있는 밑밥용 크릴을 바칸에 넣으려고 했을 때 … 경고 문구가 점점 진해지는 걸 볼 수 있음(중복되며 같은 위치에 텍스트가 쌓임) … 입력에 대한 신호/반응 체계에서 중복 요청이나 예상치 못한 시나리오 … 전수 검사」.
+4. 「'해동된 급랭 백크릴'도 새로 만들고, 급랭 백크릴보다는 5% 저렴한 가격 … 구매 직후 신선도 유지 시간은 다음 부패까지 30분 … 기존의 급랭 백크릴이 3시간으로 정해져있는데, 1시간으로」.
+5. 「간이 백팩 이미지 … 등받이 부분과 메는 손잡이 사이에 공백이어야 하는데, 흰 배경이 채워져 있어 … 전수조사한 후, 수정」.
+6. 「고등어는 왜 손질할 수 없어? … 방어류와 동일하게 손질 … 다른 어종들도 확인」.
+7. 「(회뜨기 가이드 삽화) 회칼의 이미지가 바뀐 이미지로 대체되어야 … 이것들도 다 수정해줘」.
+8. 「요리하기 -> 생선 올리고 -> 회뜨기 할 때, 가이드가 떴는데 그대로 esc로 팝업된 창들을 다 껐더니 crash error」.
+9. 「300차수에 신규로 추가된 작업들까지 전부 다 하고, main 반영 및 재배포까지 해줘」.
+
 ## 2. 원인 — 설계 근거
 
 - **미발견 힌트는 「이름을 가린 한 문장」** — 「???에서 구매」(판매처가 있다) · 「???로 입수」(판매처가 없다). 무엇을 어디서 얻는지는 플레이로 안다.
@@ -63,6 +77,19 @@
 - **산지는 지금 지역** — 창은 그 고장 종묘사 안에서만 열리므로 `GameState.originRegionId`가 곧 그 고장이다. 294차 수확 꼬리표를 바꾸지 않았다.
 - **탁자는 그 종묘사만** — 종묘사 틀은 같아 모든 종묘사(설악종묘사 · 여수 화원 8곳)에 탁자가 서지만, 그 고장 표의 종묘사 이름과 같을 때만 `action`이 산다.
   빌릴 밭이 있는 고장 여섯(포항 · 부산 · 여수 · 태안 · 제주 · 울릉)에 **손 POI 종묘사**를 하나씩 놓았다(`shopKind: 'nursery'`).
+
+### 2-D. 원인(확정 — 하네스 `r300d_probe.cjs` · `r300d_crash3.cjs`로 재현)
+
+| 리포트 | 기전 | 근거 |
+|---|---|---|
+| 1 막차 4/5 | `buyKindOf`가 미끼 갈래를 `'냉동미끼' · '선어미끼' · '생미끼'` 셋만 봐서 289차에 들어온 옥수수 캔(`subCategory '미끼'`)이 `null`이었다. 무거운 봉돌(15호 56g~)은 236차 설계대로 안 세는데, 목표 글이 「봉돌」뿐이라 잘못 산 사람이 까닭을 몰랐다 | 직판장 전 품목 판정표 — `pack_bait_corn\|미끼\|null` · 봉돌 3호 = 11g(`sinkerWeightByHo(3)`) · 아버지 대 상한 15g |
+| 2 U 잠김 | `prologueKeyAllowed`가 `prologueRunning()`(M1-01 진행 · 「도착」 미완)이면 `KEY_AFTER` 밖 키를 전부 막는다. dev 「대본 시범」(제주로 바로) · 속초 직행처럼 막차를 타지 않은 세션은 앞 목표(상자 · 대 …)를 그곳에서 닫을 길이 없어 영영 참이었다 | 속초 직행 새 게임 — `arriveFlag true` · `okU false` · `okI false` |
+| 3 경고 글 겹침 | `UtilizationPanel.chumNotice`가 부를 때마다 새 Text를 같은 자리에 만들고 1.6초 뒤 지웠다 — 반복 드랍이면 세 장이 포개져 진해졌다. 같은 꼴 전수: `floatingHint`(같은 글 탑) · 1인칭 존 토스트 · 줄 마모 알림 · 물때 · 방앗간 화면 토스트(같은 y). 입력 쪽 — Phaser는 `addKey` 없는 코드의 keydown을 **OS 반복마다** 다시 흘려 U를 누르고 있으면 창이 반복 토글됐다 | `chumNotice ×3 → 같은 글 3` · `keydown ×5 → toggleUtilization 5` |
+| 4 해동 백크릴 | (신설 요청) 크릴 프로필 언 시간이 코드에서는 240분(주석은 3시간)이었다 | `KRILL_DURATION_MIN.frozen 240` |
+| 5 백팩 흰 섬 | Gemini 원본 설치(`gemini_tackle_art.cjs cutoutMulti`)의 「섬 < 그림의 3%」 상한에 백팩 흰 섬(6%)이 걸려 안 뚫렸다. 전수 = 진짜 구멍 6장(items 4 · tackle 2) | 보조 에이전트 조사표(§3-D) |
+| 6 고등어 | `BUTCHERY_PROFILES.chub_mackerel`은 있었는데 `BUTCHERY_IMPLEMENTED_SPECIES` · 클라 `AMBERJACK_SPECIES`에 없어 `unsupported` | 감사 — 미구현 38종(프로필 있음 14 · 없음 24) |
+| 7 삽화 | 19장이 `docs/mockups/game_guide_hub.html` SVG를 손으로 찍은 것이라(116차) 255차 아이템 그림이 들어와도 그대로였다 | 자리 표시 막대 · 타원 13장 |
+| 8 크래시 | 첫 손질에 자동으로 뜨는 게임 가이드(`GuidePanel` — 씬 레벨 · popupStack 밖)가 열린 채 ESC → `closeTopPopup`이 U 창을 먼저 닫고 가이드만 남는다 → 가이드를 닫으면 `onClose`가 **파괴된 U 창**의 `openButchery`를 되불러 `this.scene`(undefined)으로 손질 창을 만들다 던졌다 | ESC1 뒤 `scenePanels=[GuidePanel]` · 고아 |
 
 ## 3. 변경 — 어디를 어떻게
 
@@ -96,6 +123,26 @@
 |---|---|---|
 | 수정 | [`client/src/scenes/CharacterCreateScene.ts`](../../../packages/client-pc/src/scenes/CharacterCreateScene.ts) | 무대 안쪽 오른쪽 위(오른쪽 444 · 위 136 · 여백 10) 초상 칸 96px(`FACE_SMALL` — 192 그림의 절반이라 셀 2px이 1px로 딱 떨어진다) · `ensureFacePortrait(this, cfg(false), 6, 'player')`(대화창 · 일지와 같은 층 합성 · 변형마다 한 번만 굽는다) · `refresh()`마다 `refreshFace()` · 마우스를 올리면 110ms 트윈으로 192px(원본 크기 · 오른쪽 위 모서리 고정 · 왼쪽 · 아래로 자람 · 금색 테 · 캐릭터 위 층) · 벗어나면 96px · 손 커서 |
 
+### 3-D. 사용자 리포트 아홉
+
+| 구분 | 파일 | 내용 |
+|---|---|---|
+| 수정 | core `db-schema/StoryQuestDatabase.ts` · `StoryNarrative.ts` · `StoryNarrativeEn.ts` | 막차 장보기 목표 글 「원줄·목줄·봉돌(3호 11g)·바늘·미끼」(한 · 영 · `howTo` · 나레이션 목표 줄 — `sinkerWeightByHo(3)`로 수치) |
+| 수정 | `store/Prologue.ts` | `PROLOGUE_SINKER_HO · _G` · 갈래 이름 「원투 봉돌(3호 11g)」 · `buyKindOf` 미끼 = `subCategory.includes('미끼')` · `prologueKeyAllowed`는 `currentRegionId !== 'hometown'`이면 참 |
+| 수정 | `scenes/RegionFieldScene.ts` | 코치 「3호(11g) 봉돌」 · `handleBuy` 무거운 봉돌 한 줄(채널 + 떠오르는 안내) · `floatingHint` 같은 글 중복 금지(data `src`) · 해동 백크릴 `condLeftMin` → `conditionSinceForRemaining` |
+| 수정 | `ui/UtilizationPanel.ts` | `chumNotice` 한 줄 교체(`chumNoticeText`) · `onEscIntercept` 게임 가이드 먼저 · `openButchery` 파괴 가드 · `destroy`가 가이드도 치움 |
+| 수정 | `ui/GuidePanel.ts` | `escClose()` 공개 |
+| 수정 | `scenes/FirstPersonFishingScene.ts` | 존 토스트 · 줄 마모 알림 한 줄 교체 |
+| 신설 | `ui/ScreenToast.ts` | 화면 위 한 줄 공용 — 같은 글 안 띄움 · 떠 있는 줄 아래로 쌓기(`TideFlowNotifier` · `MillNotifier`가 쓴다) |
+| 수정 | `game.ts` | `installKeyRepeatGuard` — window 캡처 단계에서 `ev.repeat` 삼킴(DOM 입력 · 화살표 · Page · Home · End 제외) |
+| 수정 | `store/InventoryStore.ts` | 크릴 언 시간 240 → **60분** · `conditionSinceForRemaining` · dev 생선에 고등어 |
+| 수정 | `data/ShopCatalog.ts` | `ShopEntry.condLeftMin` · 마트 「해동된 급랭 백크릴 600g」(6,650 / 7,600원 · `thawed` · 30분) · 낚시용품점도 · 급랭 설명 「상온 한 시간이면 녹는다」 |
+| 수정 | `ui/ItemDetailPanel.ts` · core `CraftingDatabase.ts`(`CraftMaterial.altIds`) · `store/CraftingStore.ts` | 상세 줄(해동 · 30분) · 「밑밥 크릴에서 미끼 고르기」 재료에 해동 블록도 |
+| 수정 | core `ButcheryProfiles.ts` · `ui/PixelButcherFish.ts` · `ui/ButcheryPanel.ts` | 고등어 = 방어류 흐름(`BUTCHERY_IMPLEMENTED_SPECIES` · `AMBERJACK_SPECIES` · `trimFamily`는 `butcherFamilyOf` · 이름 폴백) · 안내 글 |
+| 신설 | `tools/holes.cjs` · 수정 `tools/item_cards.cjs` · `tools/tackle_cards.cjs` | 갇힌 흰 섬 뚫기(둘레가 바깥 윤곽 검정 먹인 순백 섬 ≥ 1,000px) — 원본 해상도에서 굽기 전 · PNG 12(백팩 2 · 칼슘액비 · 건조 걸대 · 릴 2 — 카드 + 아이콘) |
+| 신설 | `tools/render_guide_illustrations.cjs` · 수정 `docs/mockups/game_guide_hub.html` · `public/guide/*.png` 13 | 삽화 렌더 도구(`--embed` 그림 데이터 URI · `--render` 640×300) · 칼 3 · 참돔 · 필렛 · 구멍찌 · 크릴 · 메탈지그 · 감성돔 · 밑밥 봉지 셋 |
+| 수정 | `data/HelpContent.ts` · `i18n/en*.ts` | 도움말 「봉돌 3호(11g)」 · 「고등어」 · 새 글 영어 |
+
 ## 4. 구조상 위치
 
 - **계약**: `DISCOVERY_SOURCE_LABEL` 글만(키 그대로) · `BUILDING_HOURS.daily`.
@@ -103,6 +150,7 @@
 - **B 계약**: core `RegionalPlots`(표 · 계약 셈) → client `RegionalPlotStore`(돈 · 구획 · 잠금 · 세이브) → `FarmStore`(구획은 마당과 같은 상태) → `FarmPanel`(빌린 밭 갈래) · 실내 `rentPlot`.
   데이터 층 = 손 POI 6 · `InteriorLayouts` 종묘사 틀. 판정 층 = `plantCheck` 잠금 · `enterInterior` 탁자 가림. 렌더 층 = 「이 밭」 칸 · 특산 표시 · 가이드.
 - 파급: 발견 줄 글이 바뀌어 영어 표(`en_content` `DISCOVERY_SOURCES`)의 키를 같이 바꿨다. 세이브는 무관(소스 키 `catch · trap …`는 그대로).
+- **D** 계약 층 = 막차 목표 글(core) · `ShopEntry.condLeftMin` · `CraftMaterial.altIds` · 크릴 프로필 시간. 판정 층 = `buyKindOf` · `prologueKeyAllowed`(지역) · `openButchery` 가드 · 키 반복 가드(window). 렌더 층 = 한 줄 교체 알림 · 공용 화면 토스트 · 삽화 13장 · 그림 12장. 세이브 영향 = 없음(새 아이템 id는 가게에서만 · 옛 세이브의 언 블록은 다음 갱신에 60분 규칙).
 
 ## 5. 검증
 
@@ -153,6 +201,17 @@
 | 여성 · 포니테일 — 합성 초상 · 호버 중이면 192 유지 | 5 · `04_hover_female.png` | PASS |
 | pageerror · 빌드 · 루트 typecheck | 0 · 3/3 · 4/4 | PASS |
 
+### 5-D
+
+| 대상 | 방법 | 결과 |
+|---|---|---|
+| 재현 | `r300d_probe.cjs`(직판장 전 품목 판정 · 속초 직행 U · keydown ×5 · chumNotice ×3) | 고치기 전: 옥수수 `null` · `okU false` · 토글 5 · 글 3 → 고친 뒤: `bait` · `okU true` · 토글 1 · 글 1 |
+| 크래시 | `r300d_crash3.cjs`(첫 손질 가이드 → ESC ×5 → 고아 창 조작 → U 다시) | 고치기 전 ESC1 뒤 `[GuidePanel]`만 남음(고아) → 고친 뒤 ESC1 가이드 → 손질 창, ESC2 손질 닫힘, ESC3 U 닫힘 · 고아 0 · pageerror 0 |
+| 검증 | `r300d.cjs` 7/7 — D-2 속초 열림 · D-1 옥수수 → 미끼 · 20호 안 세고 안내 · 3호 → 봉돌 · D-3 같은 안내 하나 · 토스트 같은 글 안 띄움 · 다른 글 y 60 → 84 · D-4 7,600원(95%) · 산 직후 30.0분 · 61분 → 해동 · 59분 → 냉동 · 밑밥 통 투입 · 언 블록 안내 · D-7 고등어 finfish · amberjack · 손질 창 프로필 `chub_mackerel` · D-2 홈타운 잠금 유지 · pageerror 0 | 7/7 |
+| 그림 | 보조 에이전트 조사표(폴더 10 · 1,700장) · 전 · 후 시트 육안 | 진짜 구멍 6장만 뚫림 · 흰 라벨 · 접시 · 하이라이트 그대로 |
+| 삽화 | 전 · 후 시트 3장 육안(글자 겹침 · 잘림 없음) · 21장 640×300 | 13장 교체 |
+| 정적 | core vitest 499 · `npx pnpm run build` 3/3 · 루트 typecheck 4/4 | 통과 |
+
 ## 6. 잔여
 
 - 사진 없는 지역 레시피 넷(대구탕 · 옥돔구이 · 꽁치조림 · 하모 샤부샤부)은 요리 행에 그림이 없다 — 백로그 DE 「지역 레시피 사진」.
@@ -170,6 +229,14 @@
 - **주인 이름**은 창에만 보인다(필드 인물 아님) — 종묘사 점원과 묶을지는 의견 뒤.
 - 영어 확인 창(세 줄)은 규칙 한 줄로 받는다 — 줄바꿈이 들어간 글을 i18n 훅이 통째로 넘기는지 실측하지 않았다(한국어가 남으면 그대로 보인다).
 
+### 6-D
+
+- 방어류 흐름 후보(프로필 있음 · 체형 비슷) — 전갱이(`horse_mackerel`) · 삼치(`spanish_mackerel`) · 돔류 흐름 후보 농어 · 숭어 2 · 쥐치 · 볼락 3 · 대구 · 갈치. 프로필 없는 24종(붕장어 · 꽁치 · 병어 · 참다랑어 …)은 프로필부터. **사용자 결정 뒤**(이번은 고등어만 — 「우선 추가」).
+- 가이드 삽화 7장(파이트 1 · 2 · 4 · 회수 4 · 밑밥 2 · 회뜨기 3)은 도식 · HUD 그림이라 실물이 없다. 파이트 2 「드랙 풀기」 · 회수 4 「폴링」 글은 현행 조작(드랙 자동 · R 줄 주기)과 어긋남 — 글 손질은 다음에.
+- 막차는 `ordered`라 dev로 집 단계를 건너뛴 세션은 장보기 · 판매 목표가 끝내 닫히지 않는다(단축키만 열린다). 필요하면 dev 「프롤로그 닫기」 단추.
+- 키 반복 허용 목록(화살표 · Page · Home · End)은 추정 — 반복이 필요한 조작이 더 나오면 목록에 더한다.
+- 갇힌 흰 섬 기준(둘레 검정 먹 ≥ 95% · ≥ 1,000px)은 Gemini 도트 그림 실측 — 다른 화풍(사진 · 얼굴)은 판정만 하고 손대지 않았다.
+
 ## 7. 위험·부작용
 
 - `DISCOVERY_SOURCE_LABEL` 글을 다른 곳이 쓰면 함께 바뀐다 — 지금은 도감 발견 줄뿐(grep). 위키 생성기는 쓰지 않는다.
@@ -180,6 +247,12 @@
 - **B** 탁자 가림은 **이름 일치**다 — 손 POI 이름(`manual_pois.json`)과 표의 `nurseryKo`가 다르면 탁자가 죽는다. 이름을 바꾸면 둘 다.
 - **B** `deserialize`의 칸 채우기(마당 12 · 선반 4)에 **빌린 밭 갈래**를 더했다 — 처음엔 빌린 밭이 불러올 때 12칸으로 늘어났다(하네스가 잡았다).
 - **위키** 298차부터 템플릿 스크립트 문법 오류로 95~99판이 본문을 못 그렸는데 아무도 몰랐다 — 위키는 `check_artifact_page.cjs` 밖이었다. 이제 생성기가 문법을 검사하고 발행 전 헤드리스 로드를 본다(시스템 페이지 `discovery-wiki.md` §6 13).
+
+- **D** `prologueKeyAllowed`를 지역으로 푼 뒤에도 `prologueRunning()`은 참이다 — `maybeShowUnseenDay`가 1분까지 미루고, 집 밖 코치는 `arrive` 전엔 안 뜬다(의도). 홈타운 밖에서 `prologueRunning()`으로 무언가를 더 막으면 같은 함정.
+- **D** 키 반복 가드는 window 캡처라 Phaser · DOM 모두에 앞선다 — 글 입력(`TextInput`)은 target이 `INPUT`이라 제외. 새 DOM 위젯이 `contentEditable` 없는 div에서 키를 받으면 반복이 안 온다.
+- **D** `screenToast`는 씬당 목록(WeakMap) — 씬이 바뀌면 자연히 비워진다. 같은 글이 떠 있는 동안은 다시 안 뜨므로 「같은 알림을 바로 다시」가 필요한 곳은 글을 다르게.
+- **D** 해동 백크릴은 사면 30분 뒤 상한다 — 같은 id끼리 `blendCondition`으로 섞이니 두 개를 10분 간격으로 사면 평균 시계가 된다(의도).
+- **D** 고등어 도마 온마리는 잿방어 형태(실사 온마리 없음) — 사용자 「작은 방어」 지시와 맞다. 실사가 오면 `SPECIES_WHOLE`에 키만.
 
 ## 8. 후속 반영
 
@@ -195,3 +268,6 @@
 - [x] B main · 배포 — 사용자 「300 B도 main 반영하고 재배포해줘」 → main 빨리 감기 `c945c64`(B + 위키 고침) · **103차 배포** gh-pages `4413e49`(정적 2,157 · 소스맵 0) ·
   로컬 기동 점검 9.9초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 번들에 `rentPlot` · 종묘사 POI 6(구룡포 · 명지 · 도동 확인)
 - [x] C 캐릭터 만들기 초상 미리보기 — 시스템 페이지 `character-art.md` · 아티팩트(tasks · library — 판은 아래) · 위키는 바뀐 글 없음 · main · 배포는 사용자 결정 뒤
+- [x] **D** 사용자 리포트 아홉 — 시스템 페이지 `story-quests.md` · `ui-framework.md` · `inventory-equipment.md` · `butchery.md` · `sashimi-cooking.md` · `photo-pixel-art.md` · `04-BACKLOG.md` · `03-WORKLOG/README.md` · AGENTS §9 · PLAN · CLAUDE
+- [x] **D** 위키 생성기 — 아이템 목록 다시 굽기(`dump_wiki_items.mjs` 948건 — 「해동된 급랭 백크릴」) · 아티팩트 원본(tasks 300 D 줄 · library 항목 · 순서도 「300차 기준」 그대로)
+- [x] **D** 발행 판 — 남은 과업 설계 Version 49 · 구현 라이브러리 48 · 위키 101(헤드리스 pageerror 0 · 시스템 · 출조 지역 카드) · 순서도 42 그대로(채비 문법 불변 · 「300차 기준」 줄 그대로)

@@ -20,6 +20,9 @@
  *
  *  259차 — 어두운 장비 그림 8장(`OUTLINED`)은 바깥 윤곽에 아주 얇은 흰 테(`tools/outline.cjs` — 256차 아이템 그림과 같은 규칙 ·
  *  카드 1px · 아이콘 2px · 그물코 안 제외). 사용자 「감성돔 바늘이 잘 보이지 않는 걸로 보아 … 흰 테두리 작업을 적용」(백로그 CD ①).
+ *
+ *  300차 D — 줄이기 전에(원본 해상도) 피사체에 **갇힌 흰 배경 섬**을 뚫는다(`tools/holes.cjs` — 레버 릴 · 소형 릴의 베일 암 고리 안).
+ *  바깥 윤곽선(검정 먹)에만 둘러싸인 순백 섬 ≥ 1,000px만(흰 쿨러 · 흰 상자의 면은 안쪽 선에 둘러싸여 걸리지 않는다 — 115장 실측). 원본은 그대로다.
  */
 'use strict';
 const fs = require('fs');
@@ -27,6 +30,7 @@ const path = require('path');
 const { decodeAny } = require('./pixelize_crops.cjs');
 const { encode } = require('./lib_png.cjs');
 const { padRgba, addOutline } = require('./outline.cjs');
+const { clearTrappedWhite } = require('./holes.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'food assets', 'tackle');
@@ -110,6 +114,8 @@ async function main() {
   let before = 0, after = 0;
   for (const f of files) {
     const img = await decodeAny(path.join(SRC, f));
+    // 300차 D — 갇힌 흰 배경 섬 뚫기(원본 해상도 · 줄이기 전)
+    const hole = clearTrappedWhite(img.data, img.w, img.h);
     // 259차 — 테를 두르는 그림은 칸에서 사방 t를 비우고 줄인 뒤 덧댄다(카드 t 1 · 아이콘 t 2 — 칸 밖으로 넘지 않는다)
     const t = OUTLINED.has(f) ? 1 : 0;
     const bake = (bw, bh, tt, out) => {
@@ -121,7 +127,7 @@ async function main() {
     const card = bake(CARD_W, CARD_H, t, path.join(OUT, f));
     const icon = bake(ICON, ICON, t * 2, path.join(OUT_ICON, f));
     before += img.w * img.h * 4; after += card.w * card.h * 4 + icon.w * icon.h * 4;
-    console.log(`${f}: ${img.w}x${img.h} → 카드 ${card.w}x${card.h}(${(card.bytes / 1024).toFixed(0)}KB) · 아이콘 ${icon.w}x${icon.h}${t ? ' · 흰 테' : ''}`);
+    console.log(`${f}: ${img.w}x${img.h} → 카드 ${card.w}x${card.h}(${(card.bytes / 1024).toFixed(0)}KB) · 아이콘 ${icon.w}x${icon.h}${t ? ' · 흰 테' : ''}${hole.n ? ` · 갇힌 흰 배경 ${hole.n}곳 ${hole.px}px 뚫음` : ''}`);
   }
   console.log(`카드 · 아이콘 ${files.length}장 · 텍스처(RGBA) ${(before / 1048576).toFixed(1)}MB → ${(after / 1048576).toFixed(2)}MB`);
   if (P.sheet) {

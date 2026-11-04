@@ -148,7 +148,7 @@ function matches(i: InvItem, m: CraftMaterial): boolean {
     if (i.condition === 'spoiled') return false;
     if (i.condProfile === 'krill_block' && i.condition === 'frozen') return false;
   }
-  if (m.itemId) return itemBaseId(i.id) === m.itemId;   // 282차 — 재료가 장비 · 루어 개체(`lure_egi_35#2`)여도
+  if (m.itemId) { const base = itemBaseId(i.id); return base === m.itemId || !!m.altIds?.includes(base); }   // 282차 — 재료가 장비 · 루어 개체(`lure_egi_35#2`)여도 · 300 D — 같은 구실의 다른 id
   if (m.speciesId) return i.speciesId === m.speciesId;
   if (m.byproductKind) return i.byproductKind === m.byproductKind;
   return false;

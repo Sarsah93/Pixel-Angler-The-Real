@@ -189,3 +189,6 @@
 20. **장비 · 단단한 루어의 id에는 번호가 붙는다**(282) — `rod_iso_1_53#4`. 카탈로그 표(제원 · 그림 · 착용 모습 · 도감 · 보호 판정 · 제작 재료)는
    `itemBaseId(item.id)`로 찾는다(core 조회 함수는 안에서 뗀다). 「몇 개 가졌나」는 `countOf`, 「칸이 몇 개 필요한가」는 `slotShortfall`(개체는 한 개에 한 칸)이다 —
    `find(카탈로그 id).qty`는 개체 하나라 1이다. 보관함 · 바닥 · 중고 칸에서 꺼낼 때는 `addItem`의 결과를 보고 실패면 되돌린다(282 집 보관함 실측 — 꺼낸 것이 사라질 뻔했다).
+21. **크릴 계열 신선도는 한 표**(300 D) — `KRILL_DURATION_MIN` 언 60분(구 240 — 사용자 「실제로 한 시간 상온이면 다 녹는다」) · 해동 180분 → 부패. 급랭 블록 · 곽크릴 · 미끼용 크릴이 같이 쓴다.
+    가게 항목의 `condLeftMin`(산 직후 다음 단계까지 남는 분)은 가방에 싣지 않고 `conditionSinceForRemaining`으로 `conditionSinceMs`를 앞당긴다 — 「해동된 급랭 백크릴 600g」(`inv_chum_krill_block_thawed` ·
+    급랭의 95% · 사면 30분 뒤 부패). 같은 구실의 다른 id는 제작 재료 `CraftMaterial.altIds`로 잇는다(`bp_bait_krill_pick`). 별칭(`ITEM_ID_ALIAS`)이 아니다 — 두 물건은 시계가 다르다.

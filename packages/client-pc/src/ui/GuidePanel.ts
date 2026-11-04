@@ -189,4 +189,9 @@ export class GuidePanel extends DraggablePanel {
 
     applyScreenFixed(this);
   }
+
+  /** 300 D — ESC로 닫기(✕와 같은 길 — onClose까지). `UtilizationPanel.onEscIntercept`가 LIFO로 먼저 닫는다 */
+  escClose(): void {
+    this.requestClose();
+  }
 }

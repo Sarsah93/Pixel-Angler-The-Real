@@ -119,7 +119,7 @@ import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import {
   prologueKeyAllowed, markPrologue, syncPrologue, prologueRunning, prologueStepDone,
   noteProloguePurchase, notePrologueSale, PROLOGUE_PHOTO_ID,
-  inPrologue, PROLOGUE_BUY_KINDS, PROLOGUE_BUY_LABEL, prologueProtects, buyKindOf,
+  inPrologue, PROLOGUE_BUY_KINDS, PROLOGUE_BUY_LABEL, prologueProtects, buyKindOf, prologueHeavySinker, PROLOGUE_SINKER_HO, PROLOGUE_SINKER_G,
 } from '../store/Prologue.js';
 import { repairQuestItems, iceCrateNeeded } from '../store/QuestItemGuard.js';
 import { DialoguePanel, type DialogueSceneRequest } from '../ui/DialoguePanel.js';
@@ -200,7 +200,7 @@ import { DraggablePanel, restoreHandCursor } from '../ui/DraggablePanel.js';
 import { PauseMenu, type PauseMenuItem } from '../ui/PauseMenu.js';
 import { cv, drawBlockedX, okBadLegend, shapeCuesOn } from '../ui/ColorAssist.js';
 import { MarketStore, type MarketBranch } from '../store/MarketStore.js';
-import { InventoryStore, InvItem, isSealedBaitBundle } from '../store/InventoryStore.js';
+import { InventoryStore, InvItem, isSealedBaitBundle, conditionSinceForRemaining } from '../store/InventoryStore.js';
 import { CoolerStore } from '../store/CoolerStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { LedgerStore } from '../store/LedgerStore.js';
@@ -3954,6 +3954,7 @@ export class RegionFieldScene extends Phaser.Scene {
     const total = lines.reduce((n, l) => n + shopBuyUnitPrice(l.entry) * l.qty, 0);
     if (GameState.player.inventory.coins < total) { this.shopPanel?.setStatus('재화가 부족합니다.'); return; }
     let paid = 0;
+    let heavySinker = false;
     const done: string[] = [];
     const failed: string[] = [];
     const ctx = ShopStore.current;
@@ -3975,8 +3976,10 @@ export class RegionFieldScene extends Phaser.Scene {
         continue;
       }
       // 272차 — 묶음 판매(바늘 10 · 봉돌 6 · 묶음추 4 …): 장바구니 수량 = 묶음 수, 가방에는 낱개로(`packQty`는 가방에 싣지 않는다)
-      const { packQty: _packQty, bundle: _bundle, ...tpl } = entry;
+      const { packQty: _packQty, bundle: _bundle, condLeftMin, ...tpl } = entry;
       const units = qty * packQtyOf(entry);
+      // 300 D — 「해동된 급랭 백크릴」처럼 산 직후 다음 단계까지 남는 시간이 정해진 물건은 신선도 시계를 그만큼 앞당겨 넣는다
+      if (condLeftMin !== undefined && tpl.condition) tpl.conditionSinceMs = conditionSinceForRemaining(tpl.condition, tpl.condProfile, condLeftMin);
       // 280차 — 미끼 갑(청갯지렁이 · 혼무시 1갑)은 갑째 넣는다 — 열기 전까지 그대로(사용자 지시). 세트 상품(루어 · 에기)만 산 자리에서 푼다
       const opensNow = !!entry.bundle && !isSealedBaitBundle(entry.id);
       // 190차 — 가구는 가방이 아니라 집 「넣어 둔 가구」로 배달된다
@@ -3994,6 +3997,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 135차 — 구매를 스토리 목표로 쓸 수 있게 이벤트를 흘린다 (M1-04 사이소 저가 장비 등)
       StoryStore.event({ kind: 'custom', key: `buy:${entry.id}` });
       noteProloguePurchase(entry);   // 188차 — 기본 채비 하나씩 사기
+      // 300 D — 아버지 대에 너무 무거운 봉돌은 첫 장보기로 치지 않는다 — 산 자리에서 바로 일러 준다(말풍선과 별개 · 사용자 「잘못 샀을 때 대비」)
+      if (inPrologue() && prologueHeavySinker(entry) && !GameState.getFlag('prologue.buy.sinker')) heavySinker = true;
     }
     if (paid > 0) {
       GameState.addCoins(-paid, false, 'shop');
@@ -4008,6 +4013,11 @@ export class RegionFieldScene extends Phaser.Scene {
       ? `${done.length ? `${head} 구매 완료 · ` : ''}못 산 것: ${failed.join(', ')}`
       : `${head} 구매 완료 (-${paid.toLocaleString()}원)`);
     if (lines.some((l) => l.entry.furnKind)) this.hud?.pushLog('[구매] 가구는 집 「넣어 둔 가구」로 보냈다');
+    if (heavySinker) {
+      const note = `그 봉돌은 아버지 대에 너무 무겁다 — 첫 채비는 ${PROLOGUE_SINKER_HO}호(${PROLOGUE_SINKER_G}g)`;
+      this.hud?.pushLog(`[구매] ${note}`);
+      this.floatingHint(note);
+    }
     this.prologueBuyAid();   // 219차 — 남은 채비 살 돈이 모자라면 채워 준다
   }
 
@@ -4722,9 +4732,11 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.interior) { this.interior.flash(msg); return; }
     // 237차 — 아직 떠 있는 안내가 있으면 그중 가장 높은 것의 위로(2px 띄움)
     this.liveHints = this.liveHints.filter((h) => h.active);
+    // 300 D — 같은 글이 아직 떠 있으면 다시 띄우지 않는다([F]를 연타하면 같은 줄이 탑처럼 쌓였다 — 원문은 i18n이 바꾸므로 data로 비교)
+    if (this.liveHints.some((h) => h.getData('src') === msg)) return;
     const y = Math.min(this.playerHintY, ...this.liveHints.map((h) => h.y - h.height - 2));
     // 247차 — 필드 글자는 배경 상자 없이 검은 글자 · 흰 테(사용자 지시 · `ui/WorldLabel`)
-    const t = this.add.text(this.playerBody.x, y, msg, worldLabelStyle(12)).setOrigin(0.5, 1).setDepth(63);
+    const t = this.add.text(this.playerBody.x, y, msg, worldLabelStyle(12)).setOrigin(0.5, 1).setDepth(63).setData('src', msg);
     this.liveHints.push(t);
     this.tweens.add({ targets: t, y: t.y - 22, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
   }
@@ -5191,7 +5203,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const names = left.map((k) => PROLOGUE_BUY_LABEL[k]).join(' · ');
       // 236차 — 첫 채비는 원투. 무거운 봉돌을 샀으면 아버지 대가 견디는 무게를 먼저 일러 준다
       if (this.shopPanel && left.includes('sinker') && GameState.getFlag('prologue.heavySinker')) {
-        return this.coachShopDock(`buy_heavy_${left.join('_')}`, `그 봉돌은 아버지 대에 너무 무겁다. 대가 견디는 3호 봉돌을 고르자. 아직 사지 않은 것: ${names}`);
+        return this.coachShopDock(`buy_heavy_${left.join('_')}`, `그 봉돌은 아버지 대에 너무 무겁다. 대가 견디는 ${PROLOGUE_SINKER_HO}호(${PROLOGUE_SINKER_G}g) 봉돌을 고르자. 아직 사지 않은 것: ${names}`);
       }
       if (this.shopPanel) return this.coachShopDock(`buy_${left.join('_')}`, `원투 채비를 하나씩 사 보자. 아직 사지 않은 것: ${names}`);
       // 215차 — 직판장 안: 계산대로

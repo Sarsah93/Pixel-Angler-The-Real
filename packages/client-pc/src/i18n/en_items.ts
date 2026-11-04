@@ -7,10 +7,21 @@
 export const EN_ITEMS: Record<string, string> = {
   // ── 229차 크릴 경제 · 바칸 · 패류독소 · 암수 ──
   '급랭 백크릴 600g (밑밥 블록)': 'Flash-frozen Krill 600g (chum block)',
+  // ── 300 D — 해동된 급랭 백크릴 · 해동 1시간 ──
+  '해동된 급랭 백크릴 600g (밑밥 블록)': 'Thawed Flash-frozen Krill 600g (chum block)',
+  '가게에서 미리 녹여 둔 급랭 백크릴 한 블록. 사자마자 밑밥통에 넣거나 뜯어서 미끼로(50마리) 쓴다 — 대신 산 지 30분이면 상하니 바로 쓸 때만.':
+    'A block of flash-frozen krill the shop thawed ahead of time. Drop it in the chum bucket or open it for bait (50) the moment you buy it — but it spoils 30 minutes after purchase, so buy it only to use right away.',
+  '밑밥 재료 (바로 밑밥통에)': 'Chum ingredient (straight into the bucket)', '산 지 30분 — 그 뒤 부패': '30 minutes after purchase — then it spoils',
+  '가게에서 미리 녹여 둔 급랭 백크릴 600g 한 블록. 기다릴 것 없이 밑밥통에 넣거나 뜯어서 바늘에 끼운다. 산 지 30분이면 상하니 바로 쓸 때만 산다.':
+    'A 600g block of flash-frozen krill the shop thawed ahead of time. No waiting — mix it into chum or open it and bait the hook. It spoils 30 minutes after purchase, so buy it only when you will use it right away.',
+  '해동': 'Thawing', '상온 1시간이면 녹는다': 'Thaws in an hour at room temperature',
+  '백크릴 밑밥 블록 (녹은 것)': 'Krill chum block (thawed)',
+  '급랭한 백크릴 한 블록. 녹기 전엔 밑밥에도 못 개고 포장도 못 뜯는다 — 상온에서 한 시간이면 녹는다. 녹으면 밑밥통에 넣거나 뜯어서 미끼로(50마리). 녹은 뒤 세 시간이면 상한다.':
+    'One block of flash-frozen krill. Until it thaws you can neither mix it into chum nor open it — about an hour at room temperature. Once thawed, drop it in the chum bucket or open it for bait (50). Spoils three hours after thawing.',
+  '급랭한 백크릴 600g 한 블록. 꽁꽁 얼어 있을 때는 밑밥도 못 개고 포장도 못 뜯는다 — 가방에서 한 시간쯤 녹기를 기다린다. 녹으면 밑밥통에 넣거나, 뜯어서 바늘에 끼울 미끼로 쓴다.':
+    'A 600g block of flash-frozen krill. While frozen solid you can neither mix chum with it nor open it — wait about an hour for it to thaw in your bag. Once thawed, drop it in the chum bucket or open it for hook bait.',
   '미끼용 크릴': 'Bait Krill', '미끼용 백크릴': 'Bait Krill (block)', '미끼용 곽크릴 (20마리)': 'Boxed Bait Krill (20)',
   '다낚스 살림용 바칸': 'Danax Live Bucket',
-  '급랭한 백크릴 한 블록. 녹기 전엔 밑밥에도 못 개고 포장도 못 뜯는다 — 녹으면 밑밥통에 넣거나 뜯어서 미끼로(50마리). 녹은 뒤 세 시간이면 상한다.':
-    'One block of flash-frozen krill. Until it thaws you can neither mix it into chum nor open it — once thawed, drop it in the chum bucket or open it for bait (50). Spoils three hours after thawing.',
   '범용 냉동 미끼 한 곽. 뜯으면 미끼용 크릴 20마리 — 녹은 뒤 세 시간이면 상하니 쓸 만큼만 뜯는다.':
     'A box of all-round frozen bait. Opens into 20 bait krill — they spoil three hours after thawing, so open only what you need.',
   '다낚스 살림용 바칸. 쿨러처럼 어획을 담고 밑밥을 갠다 — 해수를 채워 두면 잡은 것이 산다.':
@@ -34,8 +45,6 @@ export const EN_ITEMS: Record<string, string> = {
     'All-round bait from a krill box. Opaleye, black sea bream, bycatch — none of them mind. Spoils three hours after thawing, so open only what you need.',
   '밑밥 재료 (녹인 뒤 밑밥통에)': 'Chum ingredient (thaw, then into the bucket)', '포장 뜯기': 'Open package',
   '해동 뒤 3시간 — 그 뒤 부패': '3 hours after thawing — then it spoils',
-  '급랭한 백크릴 600g 한 블록. 꽁꽁 얼어 있을 때는 밑밥도 못 개고 포장도 못 뜯는다 — 가방에서 녹기를 기다린다. 녹으면 밑밥통에 넣거나, 뜯어서 바늘에 끼울 미끼로 쓴다.':
-    'A 600g block of flash-frozen krill. While frozen solid you can neither mix chum with it nor open it — wait for it to thaw in your bag. Once thawed, drop it in the chum bucket or open it for hook bait.',
   // ── 통합 아이템 DB (UniversalItemDatabase) ──
   '냉동 크릴 (각크릴)': 'Frozen Krill (Block Krill)',
   '건식 집어제 (빵가루형)': 'Dry Chum (Breadcrumb Type)',

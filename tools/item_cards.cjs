@@ -14,6 +14,9 @@
  *  줄이기는 `tackle_cards.cjs`의 면적 평균 + 불투명도 보존(`shrinkKeepAlpha`).
  *  256차 — 생김새 표에 `outline: true`면 바깥 윤곽에 아주 얇은 흰 테를 두른다(`tools/outline.cjs` — 검은 새 그물 · 육묘 트레이가 어두운 칸에 묻혔다).
  *   두께는 **화면에서 1px** — 카드는 제 크기로 그려지므로 1px, 64px 아이콘은 가방 칸에 약 30px로 줄여 그려지므로(NEAREST) 2px. 원본은 그대로다.
+ *  300차 D — 줄이기 전에(원본 해상도) 피사체에 **갇힌 흰 배경 섬**을 뚫는다(`tools/holes.cjs` — 간이 백팩의 등받이와 멜빵 사이 ·
+ *   가방 · 칼슘액비 손잡이 고리 · 건조 걸대 틈). 바깥 윤곽선(검정 먹)에만 둘러싸인 순백 섬 ≥ 1,000px만 — 흰 물건(`keepWhite`)도 같은 기준이다
+ *   (흰 라벨 · 흰 면은 안쪽 선에 둘러싸여 걸리지 않는다 — 271장 실측 · 걸린 흰 물건은 칼슘액비 손잡이 고리뿐이고 그것은 진짜 구멍). 원본은 그대로다.
  *
  *  사용:
  *    node tools/item_cards.cjs              # 전부(원본이 있는 것만)
@@ -30,6 +33,7 @@ const { encode } = require('./lib_png.cjs');
 const { shrinkKeepAlpha } = require('./tackle_cards.cjs');
 const { loadLooks } = require('./gemini_item_art.cjs');
 const { padRgba, addOutline } = require('./outline.cjs');
+const { clearTrappedWhite } = require('./holes.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'food assets', 'items');
@@ -137,14 +141,19 @@ async function main() {
     return r.w * r.h * 4;
   };
   let before = 0, after = 0;
+  const holed = [];
   for (const f of files) {
     const img = await decodeAny(path.join(SRC, f));
+    // 300차 D — 갇힌 흰 배경 섬 뚫기(원본 해상도 · 줄이기 전) — 뚫은 칸은 투명이라 줄일 때 흰색이 번지지 않는다
+    const hole = clearTrappedWhite(img.data, img.w, img.h);
+    if (hole.n) holed.push(`${f}(${hole.n}곳 ${hole.px}px)`);
     const ol = outlined.has(f);
     after += bake(img, CARD_W, CARD_H, ol ? 1 : 0, path.join(OUT, f));
     after += bake(img, ICON, ICON, ol ? 2 : 0, path.join(OUT_ICON, f));
     before += img.w * img.h * 4;
   }
   if (outlined.size) console.log(`얇은 흰 테 ${outlined.size}장: ${[...outlined].join(' · ')}`);
+  if (holed.length) console.log(`갇힌 흰 배경 뚫음 ${holed.length}장: ${holed.join(' · ')}`);
   console.log(`카드 · 아이콘 ${files.length}장 · 텍스처(RGBA) ${(before / 1048576).toFixed(1)}MB → ${(after / 1048576).toFixed(2)}MB`);
   // 원본이 지워진 그림의 출력은 치운다(표와 출력이 갈라지지 않게)
   for (const dir of [OUT, OUT_ICON]) {

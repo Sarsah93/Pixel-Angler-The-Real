@@ -35,7 +35,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame } from './PixelButcherFish.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf } from './PixelButcherFish.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 import {
   drawCephalopodFish, CephFishState, CEPH_VIEW_LABEL, cephStageSprite, cephFitRect,
@@ -1509,6 +1509,7 @@ export class ButcheryPanel extends DraggablePanel {
     if (n.includes('광어') || n.includes('넙치')) return 'flatfish';
     if (n.includes('농어')) return 'sea_bass';
     if (n.includes('방어')) return 'yellowtail';
+    if (n.includes('고등어')) return 'chub_mackerel';   // 300 D
     if (n.includes('부시리')) return 'amberjack';
     if (n.includes('참돔')) return 'red_seabream';
     if (n.includes('돌돔')) return 'stone_beakperch';
@@ -4041,7 +4042,7 @@ export class ButcheryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   /** 어종 → trimmings 어종군 ('amberjack' = 방어류 / 'halibut' = 넙치류 / 'bream' = 돔류·기본) */
   private trimFamily(speciesId: string): 'amberjack' | 'bream' | 'halibut' {
-    if (speciesId === 'yellowtail' || speciesId === 'amberjack' || speciesId === 'greater_amberjack') return 'amberjack';
+    if (butcherFamilyOf(speciesId) === 'amberjack') return 'amberjack';   // 300 D — 어종군은 `butcherFamilyOf` 한 곳(고등어 포함)
     if (this.process.profile.bodyShape === 'flat') return 'halibut';
     return 'bream';
   }

@@ -1017,6 +1017,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
   }
 
+  /** 300 D — 지금 떠 있는 존 토스트 · 줄 마모 알림(새 줄이 오면 먼저 지운다 — 경계를 오가면 같은 자리에 겹쳐 찍혔다) */
+  private zoneToast?: Phaser.GameObjects.Text;
+  private wearNotice?: Phaser.GameObjects.Text;
+
   /** 조류 존 전환 토스트 — 조경지대 진입 강조 / 본류 진입 경고 */
   private showZoneToast(zone: string, label: string): void {
     const isRip = zone === 'rip';
@@ -1027,7 +1031,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     if (this.fpState === 'fighting') return;
     const msg = isRip ? `${label} 진입 — 입질 확률 급상승!` : `${label} 진입 — 채비 정렬 불가, 릴링으로 회수하세요`;
     // 257차 — 바탕 상자 없이 흰 테 글자 · 회수해야 하는 쪽은 짙은 빨강
+    if (this.zoneToast?.active) { this.tweens.killTweensOf(this.zoneToast); this.zoneToast.destroy(); }
     const t = this.add.text(GAME_WIDTH / 2, 148, msg, worldLabelStyle(14, { ink: isRip ? undefined : WORLD_LABEL_WARN })).setOrigin(0.5).setDepth(96).setAlpha(0);
+    this.zoneToast = t;
     this.tweens.add({ targets: t, alpha: 1, duration: 200 });
     this.tweens.add({ targets: t, alpha: 0, delay: 2400, duration: 400, onComplete: () => t.destroy() });
   }
@@ -3293,8 +3299,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 떠오르는 안내(R14 — 바탕 상자 없이 흰 테 글자) + 장비 일지 한 줄 */
   private lineWearNotice(msg: string, warn: boolean): void {
     LedgerStore.gear(msg);
+    // 300 D — 원줄 · 목줄이 한 번에 쓸리면 두 줄이 같은 자리에 겹쳤다 → 먼저 뜬 줄은 지우고 새 줄만
+    if (this.wearNotice?.active) { this.tweens.killTweensOf(this.wearNotice); this.wearNotice.destroy(); }
     const t = this.add.text(GAME_WIDTH / 2, 176, msg, worldLabelStyle(13, { align: 'center', ink: warn ? WORLD_LABEL_WARN : undefined }))
       .setOrigin(0.5).setDepth(120).setAlpha(0);
+    this.wearNotice = t;
     this.tweens.add({ targets: t, alpha: 1, duration: 150, hold: 2800, yoyo: true, onComplete: () => t.destroy() });
   }
 

@@ -182,6 +182,8 @@ export class UtilizationPanel extends DraggablePanel {
   // ── 밑밥 품질 탭 드래그 상태 ──
   private chumDragItem: InvItem | null = null;
   private chumGhost?: Phaser.GameObjects.Container;
+  /** 300 D — 지금 떠 있는 밑밥 통 알림 한 줄(새 줄이 오면 먼저 지운다 — 같은 자리에 겹쳐 진해지지 않게) */
+  private chumNoticeText?: Phaser.GameObjects.Text;
   private chumMoveHandler = (p: Phaser.Input.Pointer): void => {
     this.chumGhost?.setPosition(p.x, p.y);
   };
@@ -2487,13 +2489,20 @@ export class UtilizationPanel extends DraggablePanel {
     this.chumGhost = ghost;
   }
 
-  /** 229차 — 밑밥 통 위에 잠깐 뜨는 한 줄(언 크릴 · 상한 재료) */
+  /**
+   * 229차 — 밑밥 통 위에 잠깐 뜨는 한 줄(언 크릴 · 상한 재료).
+   * 300 D — 한 줄만 둔다. 언 크릴을 거듭 넣으면 같은 글이 같은 자리에 겹쳐 찍혀 점점 진해졌다
+   *   (사용자 리포트 「중복되며 같은 위치에 텍스트가 쌓임」) → 먼저 뜬 줄은 트윈까지 지우고 새로 띄운다.
+   */
   private chumNotice(msg: string): void {
+    const prev = this.chumNoticeText;
+    if (prev) { this.scene.tweens.killTweensOf(prev); prev.destroy(); this.chumNoticeText = undefined; }
     const { x: bx, y: by, w: bw } = UtilizationPanel.CHUM_BOX;
     const t = this.scene.add.text(bx + bw / 2, by - 6, msg, worldLabelStyle(12, { ink: WORLD_LABEL_WARN })).setOrigin(0.5, 1);   // 257차 — 흰 테 글자
     this.add(t);
+    this.chumNoticeText = t;
     this.applyFix();
-    this.scene.tweens.add({ targets: t, alpha: 0, delay: 1600, duration: 400, onComplete: () => t.destroy() });
+    this.scene.tweens.add({ targets: t, alpha: 0, delay: 1600, duration: 400, onComplete: () => { t.destroy(); if (this.chumNoticeText === t) this.chumNoticeText = undefined; } });
   }
 
   /** 드랍 판정 — 통 안이면 재료 1개 소모 + 투입 연출 */
@@ -2599,6 +2608,9 @@ export class UtilizationPanel extends DraggablePanel {
 
   /** 회 뜨기 미니게임 열기 (도마 위 생선 대상) */
   private openButchery(fish: InvItem): void {
+    // 300 D — 게임 가이드(첫 손질 자동 표시)의 onClose가 되부르는 길: 그사이 U 창이 닫혔으면(파괴 — `scene` 없음) 아무것도 열지 않는다.
+    //   사용자 리포트 「요리하기 → 생선 올리고 → 회뜨기 … 가이드가 떴는데 ESC로 창을 다 끄니 crash」 — 파괴된 창에서 손질 창을 만들다 던졌다
+    if (!this.scene || !this.active) return;
     if (this.butcheryPanel) return;
     // 최초 회뜨기 — 통합 가이드 '회뜨기' 탭 1회 자동 표시, 닫으면 손질로 진행
     if (!GameState.getFlag('guideSeen.butchery')) {
@@ -2684,7 +2696,9 @@ export class UtilizationPanel extends DraggablePanel {
    * true 반환 = ESC를 소비했으니 U패널은 닫지 말 것 (RegionFieldScene.closeTopPopup).
    */
   onEscIntercept(): boolean {
-    // LIFO — 도움말 → 회썰기 → 손질 순으로 먼저 닫는다 (U패널 자체는 마지막)
+    // LIFO — 게임 가이드 → 도움말 → 회썰기 → 손질 순으로 먼저 닫는다 (U패널 자체는 마지막)
+    // 300 D — 첫 손질의 게임 가이드는 popupStack 밖(씬 레벨)이라 ESC가 U 창을 먼저 닫고 가이드만 남겼다 → 가이드부터(✕와 같은 길 = 닫히면 손질로)
+    if (this.guideHubPanel) { this.guideHubPanel.escClose(); return true; }
     if (this.cookHelpPopup) { this.closeCookHelp(); return true; }
     if (this.sashimiPanel) {
       this.sashimiPanel.escClose();
@@ -2700,6 +2714,9 @@ export class UtilizationPanel extends DraggablePanel {
   override destroy(fromScene?: boolean): void {
     this.closeChooser();
     this.closeCookHelp();   // 씬 레벨 팝업이라 U패널과 함께 정리해야 잔상이 남지 않는다
+    // 300 D — 첫 손질의 게임 가이드도 씬 레벨이다 — 같이 치운다(onClose를 타지 않으니 손질 창을 되부르지 않는다)
+    this.guideHubPanel?.destroy();
+    this.guideHubPanel = undefined;
     // 플레이팅 진행 중 파괴 = **미완성 접시로 보관**(조각 유지 — 135차), 빈 접시는 그대로 반환.
     // 아이템 유실 방지 규칙(61차 destroy 안전망)은 그대로 — 인벤 만석이면 조각째 개별 반환한다.
     if (this.plateState) {

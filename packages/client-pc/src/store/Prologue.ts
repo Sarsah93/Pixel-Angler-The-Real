@@ -21,7 +21,7 @@
  *    ② 그래도 사라졌으면 `syncPrologue()`가 되살린다 — 냉장고에 있으면 꺼내 오고, 없으면 다시 준다(`repairPrologue`).
  */
 
-import { getStoryQuest, ROD_SPEC_BY_ID, itemBaseId } from '@tra/core';
+import { getStoryQuest, ROD_SPEC_BY_ID, itemBaseId, sinkerWeightByHo } from '@tra/core';
 import { GameState } from './GameState.js';
 import { StoryStore } from './StoryStore.js';
 import { InventoryStore, FATHER_BOX_ITEMS, type InvItem } from './InventoryStore.js';
@@ -42,9 +42,13 @@ export type PrologueKey =
 export const PROLOGUE_BUY_KINDS = ['line', 'leader', 'sinker', 'hook', 'bait'] as const;
 export type PrologueBuyKind = typeof PROLOGUE_BUY_KINDS[number];
 
+/** 300 D — 첫 장보기 봉돌 호수 · 무게(g) — 목표 글 · 말풍선 · 도움말이 「3호 11g」을 같이 쓴다(사용자 지시 — 「봉돌」이라고만 쓰면 잘못 샀을 때 대비가 없다) */
+export const PROLOGUE_SINKER_HO = 3;
+export const PROLOGUE_SINKER_G = sinkerWeightByHo(PROLOGUE_SINKER_HO);
+
 /** 갈래 표시 이름 — 말풍선 · 도움말이 같은 말을 쓴다 */
 export const PROLOGUE_BUY_LABEL: Record<PrologueBuyKind, string> = {
-  line: '원줄', leader: '목줄', sinker: '원투 봉돌', hook: '바늘', bait: '미끼',
+  line: '원줄', leader: '목줄', sinker: `원투 봉돌(${PROLOGUE_SINKER_HO}호 ${PROLOGUE_SINKER_G}g)`, hook: '바늘', bait: '미끼',
 };
 
 /**
@@ -207,9 +211,14 @@ const KEY_AFTER: Record<string, PrologueKey> = {
   KeyI: 'box', KeyE: 'rod', KeyJ: 'photo', KeyS: 'well', KeyM: 'status',
 };
 
-/** 이 단축키를 지금 받아도 되는가 (프롤로그 밖이면 언제나 참) */
+/**
+ * 이 단축키를 지금 받아도 되는가 (프롤로그 밖이면 언제나 참).
+ * 300 D — 집 단계의 잠금은 **홈타운 안에서만**이다. dev 「대본 시범」 · 「모든 지역 열기」처럼 막차를 타지 않고 다른 지역에 선 세션은
+ *   앞 목표(상자 · 대 · 사진 …)를 그곳에서 닫을 길이 없어 `prologueRunning()`이 영영 참이었다(사용자 리포트 — U 채비하기가 막힘).
+ */
 export function prologueKeyAllowed(code: string): boolean {
   if (!prologueRunning()) return true;
+  if (GameState.currentRegionId !== 'hometown') return true;
   const need = KEY_AFTER[code];
   return need ? prologueStepDone(need) : false;
 }
@@ -228,7 +237,8 @@ export function buyKindOf(e: BuyView): PrologueBuyKind | null {
   if (sub === '목줄 스풀') return 'leader';
   if (sub === '바늘/훅') return e.id === 'inv_treble' ? null : 'hook';   // 272(2) — 트레블 훅(루어용)은 원투 채비 바늘이 아니다
   if (e.sinkerKind) return prologueHeavySinker(e) ? null : 'sinker';
-  if (sub === '냉동미끼' || sub === '선어미끼' || sub === '생미끼') return 'bait';
+  // 300 D — 「미끼」(옥수수 캔 — 289차) · 「반죽미끼」도 미끼다. 갈래 이름을 하나씩 늘어놓다 보니 새 미끼가 빠졌다(사용자 리포트 — 다섯을 다 사도 4/5)
+  if (sub.includes('미끼')) return 'bait';
   return null;
 }
 

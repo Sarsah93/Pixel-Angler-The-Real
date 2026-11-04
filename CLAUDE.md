@@ -99,7 +99,7 @@
   → **297 인물 선물 선호(대화 선택지 「드리고 싶은 게 있어요」 · 취향 44 · 우호도만 · 하루 한 번 · 수첩 · 칭호 「산타」 · 「박애주의자」)**
   → **298 지역 축제 달력(축제 9 · 축제 달 ×1.1 + 절정 주 ×1.3 · 축제 매대 · 북적임 ×2 · 축제 일손 9 · 라디오 · 알람 · 일지 「나날」)**
   → **299 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산) · (2) 자리 표식 = 땅에 뿌리내린 포기 도트 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**
-  → **300 A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · 102차 배포 · B 지역 텃밭 1단계(종묘사 탁자 · 빌린 밭)**.
+  → **300 A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · 102차 배포 · B 지역 텃밭 1단계(종묘사 탁자 · 빌린 밭) · 103차 배포 · C 만들기 초상 미리보기 · D 사용자 리포트 아홉(막차 봉돌 3호 11g · U 잠금 · 경고 글 겹침 · 키 반복 · 해동 백크릴 · 흰 섬 6 · 고등어 손질 · 삽화 13 · 가이드 ESC 크래시) · 104차 배포**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
@@ -113,7 +113,11 @@
   client `store/RegionalPlotStore.ts`(계약 · `rent` · `settle` 자동 납부 · 잠금 · `returnPlot` · 세이브 `regionalPlots`) · `FarmStore` `rent:` 구획(갈아 둔 4칸 · 빗물통 · deserialize 4칸 유지) · 종묘사 안쪽 탁자 `InteriorAction 'rentPlot'`(그 고장 종묘사 이름일 때만) · `RegionFieldScene.openRegionalPlot`(확인 창 → 빌리기 → 텃밭 창) ·
   `FarmPanel` 빌린 밭 갈래(제목 · 2×2 · 「이 밭」 칸 · 심기 「특산」 · 칸 자세히 산지 봉인 줄 · 가이드) · 손 POI 종묘사 6 · 도움말 · 영어 · 검증 r300b 13/13 · core 499 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 `c945c64` · **103차 배포(gh-pages `4413e49` · 기동 9.9초 · 4xx 0 · pageerror 0)**. **2단계(필드 밭 · 묵음 · 알림 · 씨앗 매대)는 예시 창 의견 뒤**.
   **300차 위키 고침** — 사용자 「아티팩트 wiki가 열리지 않아」 → 298차부터 템플릿 스크립트 한 글자(`,` → `+`)로 95~99판이 본문을 못 그렸다 → 위키 100 · 생성기 문법 자가 검사 · 발행 전 헤드리스 로드(`docs/artifacts/README.md` 2-b).
-  **300차 C 캐릭터 만들기 얼굴 초상 미리보기** — 사용자 캡처 지시 → `CharacterCreateScene` 무대 오른쪽 위 96px(`ensureFacePortrait(…, 'player')` 층 합성 · 옵션 바꾸면 같이) · 마우스 호버 192px(원본 · 금색 테) · 검증 r300c 5/5 · 빌드 3/3 · typecheck 4/4 — 작업 브랜치에만(main · 배포는 사용자 결정 뒤). 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
+  **300차 C 캐릭터 만들기 얼굴 초상 미리보기** — 사용자 캡처 지시 → `CharacterCreateScene` 무대 오른쪽 위 96px(`ensureFacePortrait(…, 'player')` 층 합성 · 옵션 바꾸면 같이) · 마우스 호버 192px(원본 · 금색 테) · 검증 r300c 5/5 · 빌드 3/3 · typecheck 4/4.
+  **300차 D 사용자 리포트 아홉(F10 실플레이)** — ① 막차 장보기 4/5 → 미끼 갈래 `includes('미끼')`(옥수수 캔) · 목표 글 「봉돌(3호 11g)」(core `sinkerWeightByHo(3)` · 코치 · 계산대 한 줄) ② 막차 건너뛴 dev 세션 U 잠김 → `prologueKeyAllowed` 홈타운 밖이면 참
+  ③ 밑밥 통 경고 글 겹침 → 한 줄 교체 · `floatingHint` 중복 금지 · 공용 `ui/ScreenToast.ts` · **키 반복 가드**(`game.ts`) ④ 「해동된 급랭 백크릴 600g」(마트 · 낚시용품점 · 7,600원 · `ShopEntry.condLeftMin` 30분 · `CraftMaterial.altIds`) · 크릴 언 시간 240 → 60분
+  ⑤ 갇힌 흰 섬 `tools/holes.cjs`(`item_cards` · `tackle_cards` 굽기 전 · 6장) ⑥ 고등어 = 방어류 손질 흐름(미구현 38 감사 — butchery §5 ④) ⑦ 가이드 삽화 13장 실물 그림(`tools/render_guide_illustrations.cjs --embed · --render`) ⑧ 첫 손질 게임 가이드(씬 레벨) ESC 고아 크래시 → `onEscIntercept` · `destroy` · `openButchery` 가드.
+  검증 r300d 7/7 · r300d_crash3 · core 499 · 빌드 3/3 · typecheck 4/4 · main 반영 · **104차 배포**(사용자 「300차수에 신규로 추가된 작업들까지 전부 다 하고, main 반영 및 재배포까지」). 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
 - **299차**: **산나물 캐기 — 산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산 꼬리표 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」** —
   사용자 지시 넷(「'선물 칭호에 한 사람 더.' 넣지 마 … '아주 좋아하는 것 같다.'」 · 「선물 보따리 → 산타 · 동네 산타 → 박애주의자 · 선물우호도 및 가게 할인율 소급 적용」 · 「산지에서 나는 나물 작업 시작」 · 「main 반영하고 재배포」) →
   core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·

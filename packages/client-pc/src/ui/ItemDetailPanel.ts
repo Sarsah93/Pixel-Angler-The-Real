@@ -732,14 +732,25 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
         + '드랙을 원줄 한계 장력보다 낮게 설정해야 줄 터짐 전에 릴이 풀려나갑니다.';
       break;
     case '집어제/밑밥':
+      if (item.chumKind === 'krill' && item.unpack && item.id === 'inv_chum_krill_block_thawed') {
+        // 300 D — 가게에서 녹여 둔 블록: 바로 쓰고, 산 지 30분이면 상한다
+        rows.push(
+          { label: '용도', value: '밑밥 재료 (바로 밑밥통에)' },
+          { label: '포장 뜯기', value: `미끼용 백크릴 ${item.unpack.qty}마리` },
+          { label: '상온 유지', value: '산 지 30분 — 그 뒤 부패', color: '#ffb0a4' },
+        );
+        desc = '가게에서 미리 녹여 둔 급랭 백크릴 600g 한 블록. 기다릴 것 없이 밑밥통에 넣거나 뜯어서 바늘에 끼운다. 산 지 30분이면 상하니 바로 쓸 때만 산다.';
+        break;
+      }
       if (item.chumKind === 'krill' && item.unpack) {
-        // 229차 — 급랭 백크릴 600g
+        // 229차 — 급랭 백크릴 600g · 300 D — 상온 1시간이면 녹는다
         rows.push(
           { label: '용도', value: '밑밥 재료 (녹인 뒤 밑밥통에)' },
           { label: '포장 뜯기', value: `미끼용 백크릴 ${item.unpack.qty}마리 (녹인 뒤)` },
+          { label: '해동', value: '상온 1시간이면 녹는다' },
           { label: '상온 유지', value: '해동 뒤 3시간 — 그 뒤 부패', color: '#ffb0a4' },
         );
-        desc = '급랭한 백크릴 600g 한 블록. 꽁꽁 얼어 있을 때는 밑밥도 못 개고 포장도 못 뜯는다 — 가방에서 녹기를 기다린다. 녹으면 밑밥통에 넣거나, 뜯어서 바늘에 끼울 미끼로 쓴다.';
+        desc = '급랭한 백크릴 600g 한 블록. 꽁꽁 얼어 있을 때는 밑밥도 못 개고 포장도 못 뜯는다 — 가방에서 한 시간쯤 녹기를 기다린다. 녹으면 밑밥통에 넣거나, 뜯어서 바늘에 끼울 미끼로 쓴다.';
         break;
       }
       rows.push(

@@ -87,6 +87,7 @@ export function createGame(): Phaser.Game {
   };
 
   installStaleTextGuard();
+  installKeyRepeatGuard();   // 300 D — 누르고 있는 키의 반복 입력은 게임에 넣지 않는다
   const game = new Phaser.Game(config);
   holder[GAME_KEY] = game;
   installCrashGuards(game);
@@ -127,6 +128,27 @@ export function disposeGame(): void {
  * 원인은 각 씬의 create/init 리셋으로 고치고, 여기서는 **놓친 경로가 있어도 게임이 멈추지 않게**
  * 죽은 Text의 갱신을 무시하고 경고만 남긴다(다음 재현에서 스택으로 출처를 찾는다).
  */
+/**
+ * 300 D — 누르고 있는 키의 반복 입력(OS 오토리피트)을 게임에 넣지 않는다.
+ *  Phaser는 `addKey`로 만든 Key가 없는 코드의 keydown을 반복마다 다시 흘려, U를 누르고 있으면 채비 창이 초당 수십 번 열리고 닫혔다
+ *  (실측 keydown 5 → 토글 5). 창 · 대화 · 상호작용 단축키는 「한 번 누름 = 한 번」이어야 한다.
+ *  글을 치는 DOM 입력(`ui/TextInput` — 백스페이스 꾹)과 목록을 훑는 화살표 · Page · Home · End는 그대로 둔다.
+ *  window 캡처 단계에서 끊으므로 Phaser(버블)에는 닿지 않는다. HMR로 게임을 다시 만들어도 한 번만 건다.
+ */
+const KEY_REPEAT_KEEP = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End']);
+let keyRepeatGuardOn = false;
+function installKeyRepeatGuard(): void {
+  if (keyRepeatGuardOn || typeof window === 'undefined') return;
+  keyRepeatGuardOn = true;
+  window.addEventListener('keydown', (ev) => {
+    if (!ev.repeat || KEY_REPEAT_KEEP.has(ev.key)) return;
+    const el = ev.target as HTMLElement | null;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+  }, { capture: true });
+}
+
 function installStaleTextGuard(): void {
   const proto = Phaser.GameObjects.Text.prototype as unknown as {
     updateText: (this: Phaser.GameObjects.Text) => Phaser.GameObjects.Text;

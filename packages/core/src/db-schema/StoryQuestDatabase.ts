@@ -15,6 +15,7 @@ import type { StoryActionKey, StoryObjective, StoryQuestDef, Season } from '../t
 import { STORY_CHAPTERS } from './StoryChapters.js';
 import { OWN_ONLY_QUEST_IDS, OWN_ONLY_KINDS, QUEST_ITEM_DROPS } from './QuestItemDrops.js';
 import { FIRE_RECIPES } from './FireRecipeDatabase.js';   // 295차 — 지역 레시피 해금
+import { sinkerWeightByHo } from './SinkerDatabase.js';   // 300 D — 첫 장보기 봉돌 「3호 11g」 표기
 
 // ── 헬퍼 ──
 const talk = (npcId: string, ko: string, en: string): StoryObjective => ({ kind: 'talk', npcId, labelKo: ko, labelEn: en, manual: true });
@@ -87,9 +88,10 @@ const MAIN: StoryQuestDef[] = mainRows([
       auto('custom', '막차를 타고 속초로 간다', 'Take the last bus to Sokcho', { placeKey: 'prologue:arrive', guidePlaceKey: 'home:bus',
         howToKo: '버스 정류장 [F] → 전국 지도에서 속초', howToEn: 'Bus stop [F] → pick Sokcho on the national map' }),
       // 236차 — 첫 채비는 원투(사용자 지시): 원줄 → 3호 봉돌 → 목줄 → 바늘 → 미끼 = 바로 던질 수 있는 한 벌
-      auto('custom', '직판장에서 원투 채비를 하나씩 산다 (원줄·목줄·봉돌·바늘·미끼)', 'Buy a bottom rig at the fish market, one part at a time (main line, leader, sinker, hook, bait)', {
+      // 300 D — 봉돌은 「3호 11g」을 사야만 센다(아버지 대 하중 — 클라 `PROLOGUE_SINKER_MAX_G`). 「봉돌」이라고만 쓰면 무거운 것을 산 사람이 왜 안 세는지 모른다(사용자 지시)
+      auto('custom', `직판장에서 원투 채비를 하나씩 산다 (원줄·목줄·봉돌(3호 ${sinkerWeightByHo(3)}g)·바늘·미끼)`, `Buy a bottom rig at the fish market, one part at a time (main line, leader, #3 sinker (${sinkerWeightByHo(3)} g), hook, bait)`, {
         placeKey: 'prologue:buy', target: 5,
-        howToKo: '수산물 직판장 [F] → 원줄·목줄·3호 봉돌·바늘·미끼를 하나씩 산다', howToEn: 'Fish market [F] → buy a main line, a leader, a #3 sinker, a hook and some bait' }),
+        howToKo: `수산물 직판장 [F] → 원줄·목줄·봉돌(3호 ${sinkerWeightByHo(3)}g)·바늘·미끼를 하나씩 산다`, howToEn: `Fish market [F] → buy a main line, a leader, a #3 sinker (${sinkerWeightByHo(3)} g), a hook and some bait` }),
       auto('custom', '얼린 오징어를 직판장에 판다', 'Sell the frozen squid at the fish market', { placeKey: 'prologue:sell',
         howToKo: '직판장 [F] → 「판매하기」 → 오징어', howToEn: 'Fish market [F] → "Sell" → the squid' }),
       auto('visit', '영금정에 도착한다', 'Arrive at Yeonggeumjeong', { placeKey: 'poi:yeonggeumjeong' }),

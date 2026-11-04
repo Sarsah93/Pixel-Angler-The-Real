@@ -214,7 +214,9 @@ export const EN_HOME_RULES: [RegExp, (m: RegExpMatchArray, tr: (s: string) => st
   // 191차 — 직판장 코치(남은 채비 목록)
   [/^원투 채비를 하나씩 사 보자\. 아직 사지 않은 것: (.+)$/, (m, tr) => `Buy one of each part for a bottom rig. Still to buy: ${m[1].split(' · ').map((x) => tr(x)).join(' · ')}`],
   // 236차 — 아버지 대에 너무 무거운 봉돌을 샀을 때
-  [/^그 봉돌은 아버지 대에 너무 무겁다\. 대가 견디는 3호 봉돌을 고르자\. 아직 사지 않은 것: (.+)$/, (m, tr) => `That sinker is too heavy for Father's rod. Pick a #3 sinker the rod can take. Still to buy: ${m[1].split(' · ').map((x) => tr(x)).join(' · ')}`],
+  [/^그 봉돌은 아버지 대에 너무 무겁다\. 대가 견디는 (\d+)호\((\d+)g\) 봉돌을 고르자\. 아직 사지 않은 것: (.+)$/, (m, tr) => `That sinker is too heavy for Father's rod. Pick a #${m[1]} sinker (${m[2]} g) the rod can take. Still to buy: ${m[3].split(' · ').map((x) => tr(x)).join(' · ')}`],
+  // 300 D — 무거운 봉돌을 산 자리의 한 줄(계산대 · 채널)
+  [/^그 봉돌은 아버지 대에 너무 무겁다 — 첫 채비는 (\d+)호\((\d+)g\)$/, (m) => `That sinker is too heavy for Father's rod — the first rig takes a #${m[1]} (${m[2]} g)`],
   [/^속초에 왔다\. 수산물 직판장 앞에서 \[F\]를 눌러 기본 채비를 하나씩 사자\. \((.+)\)$/, (m, tr) => `Here in Sokcho. Press [F] at the fish market and buy one of each basic item. (${m[1].split(' · ').map((x) => tr(x)).join(' · ')})`],
   [/^(\d+)물 \((.+)\)$/, (m, tr) => `Tide day ${m[1]} (${tr(m[2])})`],
   [/^식탁에서 먹었다 \+(\d+)$/, (m) => `ate at the table +${m[1]}`],

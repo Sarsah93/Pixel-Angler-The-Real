@@ -583,3 +583,13 @@ shutdown에서 파괴한 뒤에도 클래스 필드에 남을 수 있다. Scene�
   「조금」(조금 물때) · 「보통」(등급) · 「가지」(작물) · 「호미」 · 「키」(아이템)를 다른 화면에서까지 바꾼다. 문장 규칙이 통째로 옮기게 한다.
 - **영어 일반 규칙(`^(.+) (\d+)개$` 같은 꼴)은 분해 번역을 가로챈다** — 규칙이 구분자 분해보다 먼저 돈다. 「들깨 (100g) · 칸당 1개」가 「… · 칸당 ×1」이 됐다.
   규칙 꼴은 그 문장에만 맞게 좁힌다(「[텃밭] … ×N」 · 「… · 칸당 N개」).
+- **떠오르는 안내는 한 줄 교체 아니면 쌓기 — 같은 자리에 포개지 않는다**(300 D — 사용자 「경고 문구가 점점 진해진다」). 패널 안 한 줄(`chumNotice` · `flashBoardToast` · `flash`)은
+  먼저 뜬 글을 트윈까지 지우고 새로 띄운다. 필드 `floatingHint`는 같은 글이 떠 있으면 다시 안 띄운다(원문은 i18n이 바꾸니 `setData('src')`로 견준다).
+  필드 밖 화면 위 알림은 `ui/ScreenToast.ts` 한 곳 — 같은 글은 안 띄우고 다른 글은 떠 있는 줄 아래로 내려 쌓는다. 새 알림을 만들면 이 셋 중 하나를 쓴다.
+- **키 반복(OS 오토리피트)은 게임에 들어오지 않는다**(300 D `game.ts installKeyRepeatGuard`) — Phaser는 `addKey` 없는 코드의 keydown을 반복마다 다시 흘려
+  U를 누르고 있으면 창이 초당 수십 번 토글됐다. window 캡처 단계에서 `ev.repeat`를 삼키므로 **새 keydown 핸들러는 반복이 안 온다고 전제**한다.
+  예외 = 글 입력 DOM(`INPUT · TEXTAREA · contentEditable`) · 화살표 · Page · Home · End. 반복이 꼭 필요한 조작이면 `isDown` 폴링으로.
+- **씬 레벨 팝업(popupStack 밖)은 `onEscIntercept`에 넣는다**(300 D — 첫 손질 게임 가이드 `GuidePanel`). ESC의 `closeTopPopup`은 popupStack만 보니
+  그 위에 뜬 씬 레벨 창은 남고 아래 창만 닫혔다 → 고아 창의 `onClose`가 파괴된 창을 되불러 던졌다. 부모 창의 `destroy`도 그 팝업을 같이 치우고, 되부르는 콜백은 `this.scene`부터 본다.
+- **가이드 삽화 19장은 `docs/mockups/game_guide_hub.html` SVG를 `tools/render_guide_illustrations.cjs`로 찍는다**(300 D) — 손으로 찍던 것(116차)을 도구로. 실물 그림은
+  `--embed`가 원본(`food assets/`)을 그려질 크기로 줄여 데이터 URI로 굽는다(`GUIDE_IMAGES` 표). 아이템 그림을 바꾸면 `--embed` → `--render`.

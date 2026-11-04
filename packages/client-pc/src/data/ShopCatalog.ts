@@ -126,6 +126,8 @@ export interface ShopEntry extends InvItemTemplate {
    * `price`는 **묶음 값**, `basePrice`(가방 기준가 · 되파는 값 · 위키)는 **한 개 값**. 장바구니 · 재고 수량은 묶음 수.
    */
   packQty?: number;
+  /** 300 D — 산 직후 다음 신선도 단계까지 남는 시간(분) — 해동된 급랭 백크릴(30분 뒤 부패). 가방에는 싣지 않고 `conditionSinceMs`로 바꿔 넣는다 */
+  condLeftMin?: number;
   /** 224차 — 손님이 판 중고 장비(가게가 되판다). 사면 가게 중고 칸에서 빠진다 */
   usedUid?: string;
   /** 235차 — 이 달(KST)에만 진열한다(모종 · 종구 — 심는 철) */
@@ -450,7 +452,11 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       // 229차 — 급랭 백크릴 600g: 해동 전엔 밑밥도 못 개고 포장도 못 뜯는다. 해동 뒤 밑밥통 투입 또는 뜯어서 미끼용 백크릴 50마리
       { id: 'inv_chum_krill_block', name: '급랭 백크릴 600g (밑밥 블록)', icon: '', iconTexture: 'item_krill_block', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 7000, price: 8000, maxPerPurchase: 10, equippable: false,
         condition: 'frozen', chumKind: 'krill', condProfile: 'krill_block', unpack: { id: 'inv_krill_bag', qty: 50 },
-        desc: '급랭한 백크릴 한 블록. 녹기 전엔 밑밥에도 못 개고 포장도 못 뜯는다 — 녹으면 밑밥통에 넣거나 뜯어서 미끼로(50마리). 녹은 뒤 세 시간이면 상한다.' },
+        desc: '급랭한 백크릴 한 블록. 녹기 전엔 밑밥에도 못 개고 포장도 못 뜯는다 — 상온에서 한 시간이면 녹는다. 녹으면 밑밥통에 넣거나 뜯어서 미끼로(50마리). 녹은 뒤 세 시간이면 상한다.' },
+      // 300 D — 해동된 급랭 백크릴(사용자 지시): 같은 그림 · 급랭보다 5% 싸게 · 사자마자 밑밥을 갤 수 있다 · 산 직후 부패까지 30분(`condLeftMin`)
+      { id: 'inv_chum_krill_block_thawed', name: '해동된 급랭 백크릴 600g (밑밥 블록)', icon: '', iconTexture: 'item_krill_block', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6650, price: 7600, maxPerPurchase: 10, equippable: false,
+        condition: 'thawed', chumKind: 'krill', condProfile: 'krill_block', unpack: { id: 'inv_krill_bag', qty: 50 }, condLeftMin: 30,
+        desc: '가게에서 미리 녹여 둔 급랭 백크릴 한 블록. 사자마자 밑밥통에 넣거나 뜯어서 미끼로(50마리) 쓴다 — 대신 산 지 30분이면 상하니 바로 쓸 때만.' },
       // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향.
       { id: 'knife_utility',  name: '범용 막칼',        icon: '', iconTexture: 'art_knife_utility', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' },
       { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '', iconTexture: 'art_knife_sashimi', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' },
@@ -680,7 +686,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       return [
         ...SHOP_CATALOG.market.sells.filter((e) => e.category === 'tackle' || e.id === 'inv_bakkan'),
         ...pick('daily', ['inv_rod_budget', 'inv_reel_budget', 'inv_line_nylon3', 'inv_headlamp']),
-        ...pick('mart', ['inv_breadbait_pack', 'inv_chum_krill_block']),
+        ...pick('mart', ['inv_breadbait_pack', 'inv_chum_krill_block', 'inv_chum_krill_block_thawed']),
       ];
     },
   },

@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-04 300차 B · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-04 300차 D · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -328,6 +328,12 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   「이 밭」 칸(빌린 곳 · 흙 · 사용료 · 다음 납부 · 사용료 내기 · 돌려주기) · 심기 목록 「특산」 · 거둔 것 산지 봉인 · 고장 6(손 POI 종묘사). core `db-schema/RegionalPlots.ts` · client `store/RegionalPlotStore.ts`(세이브 `regionalPlots`) · `FarmStore` `rent:` 구획 · `InteriorAction 'rentPlot'`. 2단계는 예시 창 의견 뒤(§6-B).
 - 검증: 하네스 r300a 7/7(탭 · 다섯 탭 요약 · 실루엣 색 · 힌트 · 금지 글 0) · r300b 13/13(POI · 탁자 · 확인 창 · 빌리기 · 창 · 특산 · 거두기 봉인 · 밀림 · 내기 · 세이브 · 돌려주기 · 다른 종묘사) · core 499 · 빌드 3/3 · 루트 typecheck 4/4 · main 빨리 감기 `1daa9ce` · **102차 배포(gh-pages `41e8864` · 실행 31 · 기동 10.4초 · 4xx 0 · pageerror 0)** · 아티팩트(48 · 47 · 42 · 위키 **100** — 298차부터 템플릿 스크립트 한 글자(`,` → `+`)로 95~99판이 본문을 못 그렸다 · 생성기 문법 자가 검사) · B main 빨리 감기 `c945c64` · **103차 배포(gh-pages `4413e49` · 기동 9.9초 · 4xx 0 · pageerror 0)**.
 - **C 캐릭터 만들기 얼굴 초상 미리보기**(사용자 캡처 지시) — `CharacterCreateScene` 무대 오른쪽 위 96px(`ensureFacePortrait(…, 'player')` — 대화창 · 일지와 같은 층 합성 · 옵션 바꾸면 같이) · 마우스 호버 192px 원본 크기(오른쪽 위 모서리 고정 · 금색 테 · 110ms 트윈) · 검증 r300c 5/5. 작업 브랜치에만 — 상세: [300차 워크로그](../docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md).
+
+- **D 사용자 리포트 아홉**(F10 실플레이) — ① 막차 장보기 4/5: 옥수수 캔(「미끼」)이 갈래에 없었다 → `includes('미끼')` · 목표 글 「봉돌(3호 11g)」(한 · 영 · 나레이션 · 코치 · 계산대 한 줄 — `sinkerWeightByHo(3)`)
+  ② 막차를 건너뛴 dev 세션 U 잠김 → `prologueKeyAllowed`는 홈타운 밖이면 참 ③ 밑밥 통 경고 글 겹침 → 한 줄 교체(`chumNotice` · 1인칭 존 · 줄 마모) · `floatingHint` 같은 글 중복 금지 · 공용 `ui/ScreenToast.ts`(같은 글 안 띄움 · 아래로 쌓기) ·
+  **키 반복 가드**(`game.ts` — U 꾹 → 토글 5 → 1) ④ 「해동된 급랭 백크릴 600g」(마트 · 낚시용품점 · 급랭의 95% = 7,600원 · `condLeftMin` 30분 · 제작 재료 `altIds`) · 크릴 언 시간 240 → 60분 ⑤ 갇힌 흰 섬 `tools/holes.cjs`(둘레 검정 먹 기준 · 6장 12 PNG)
+  ⑥ 고등어 = 방어류 흐름(`BUTCHERY_IMPLEMENTED_SPECIES` · `AMBERJACK_SPECIES` · 미구현 38 감사 → butchery §5 ④) ⑦ 가이드 삽화 13장 실물 그림(`tools/render_guide_illustrations.cjs` · 칼 3 · 참돔 · 필렛 · 구멍찌 · 크릴 · 지그 · 감성돔 · 밑밥 봉지)
+  ⑧ 첫 손질 게임 가이드(씬 레벨) ESC 고아 → `onEscIntercept` 가이드 먼저 · `destroy` 치움 · `openButchery` 파괴 가드. 검증 r300d 7/7 · r300d_crash3 · core 499 · 빌드 3/3 · typecheck 4/4.
 
 **이전 변경 (2026-11-03 299차) — 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 특산 꼬리표) · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**
 

@@ -174,6 +174,7 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
  * 손질 미니게임이 **현재 구현된** 어종 (2026-07-30 사용자 지시 — 우선 이 그룹만 활성):
  *  - 돔류(bream): 감성돔·참돔(주/야)·벵에돔·긴꼬리벵에돔·돌돔·강담돔
  *  - 방어류: 방어·부시리·잿방어 (손질 절차 동일 — 픽셀 가이드는 잿방어 형태 기준)
+ *    300 D — **고등어**도 이 흐름이다(사용자 지시 「방어류와 동일하게 손질 — 계통상 작은 방어」 · 프로필 `chub_mackerel` 25cm부터)
  *  - 넙치류(flat): 광어·도다리류 — **다섯장뜨기** 전용 트리 (2026-08-05 개방)
  * 그 외 finfish(농어·고등어 등)·두족류·복어는 미구현(banned) — 추후 별도 구현.
  */
@@ -183,6 +184,7 @@ export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>
   'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw',
   // 방어류
   'yellowtail', 'amberjack', 'greater_amberjack',
+  'chub_mackerel',   // 300 D — 고등어(방어류 흐름)
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
 ]);
@@ -209,7 +211,7 @@ export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, 
   //   지금 이 안내가 뜨는 두족류는 갑오징어뿐이다(AG ⑤f).
   cephalopod: '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·넙치류 지원 — 그 외는 추후 구현)',
+  unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·고등어·넙치류 지원 — 그 외는 추후 구현)',
 };
 
 /**

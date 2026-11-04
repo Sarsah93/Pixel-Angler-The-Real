@@ -35,7 +35,7 @@ import { paintHudPanel } from './HudPanelStyle.js';
 import { clampTextWidth } from './TextFit.js';
 import { columnGap, fieldReserved, tagUiRect } from './ScreenReserve.js';
 import { createItemIcon } from './ItemIcon.js';
-import { worldLabelStyle } from './WorldLabel.js';
+import { screenToast } from './ScreenToast.js';   // 300 D — 화면 위 한 줄(겹침 · 중복 없이)
 
 const POLL_MS = 5000;
 const HOLD_MS = 9000;
@@ -109,13 +109,6 @@ function channelLog(scene: Phaser.Scene, line: string): void {
   try { field?.hud?.pushLog(line); } catch { /* 필드 HUD 없음 */ }
 }
 
-/** 필드가 아닌 씬 — 화면 위 가운데에 잠깐(R14 — 바탕 없이 흰 테 글자) */
-function toast(scene: Phaser.Scene, line: string, y: number): void {
-  const t = scene.add.text(GAME_WIDTH / 2, y, line, worldLabelStyle(13, { align: 'center', wrap: Math.min(640, GAME_WIDTH - 80) }))
-    .setOrigin(0.5, 0).setDepth(1170).setScrollFactor(0).setAlpha(0);
-  scene.tweens.add({ targets: t, alpha: 1, duration: 220 });
-  scene.tweens.add({ targets: t, alpha: 0, delay: 4800, duration: 400, onComplete: () => t.destroy() });
-}
 
 export interface MillPumpOpts {
   /** 필드가 아닌 씬 — 시계가 없을 때 화면 위 글 줄의 높이 */
@@ -157,7 +150,7 @@ export function pumpMillReady(scene: Phaser.Scene, opts: MillPumpOpts = {}): voi
     playSfx('watch_alarm');
     showWatchAlarm(scene, lines);
   } else if (opts.toastY !== undefined) {
-    toast(scene, lines.join('\n'), opts.toastY);
+    screenToast(scene, lines.join('\n'), opts.toastY, 4800);
   }
   // 필드 표시(문 위 느낌표 · 미니맵)를 바로 다시 그린다
   scene.game.events.emit('mill-ready');

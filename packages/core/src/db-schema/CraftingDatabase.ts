@@ -51,6 +51,8 @@ export const CRAFT_GROUP_LABEL: Record<CraftGroup, { ko: string; en: string }> =
  */
 export interface CraftMaterial {
   itemId?: string;
+  /** 300 D — 같은 구실을 하는 다른 id(해동된 급랭 백크릴 → 급랭 백크릴과 같은 재료) */
+  altIds?: string[];
   speciesId?: string;
   byproductKind?: string;
   qty: number;
@@ -486,7 +488,7 @@ export const CRAFT_BLUEPRINTS: readonly CraftBlueprint[] = [
     nameKo: '밑밥 크릴에서 미끼 고르기', nameEn: 'Pick Hook Krill from a Chum Block',
     descKo: '녹은 밑밥 블록에서 머리와 꼬리가 성한 크릴만 골라낸다. 나머지는 버린다.',
     descEn: 'From a thawed chum block, pick out the krill with heads and tails intact; the rest goes.',
-    materials: [{ itemId: 'inv_chum_krill_block', qty: 1, nameKo: '냉동 크릴 (밑밥 블록)', nameEn: 'Frozen Krill (chum block)' }],
+    materials: [{ itemId: 'inv_chum_krill_block', altIds: ['inv_chum_krill_block_thawed'], qty: 1, nameKo: '백크릴 밑밥 블록 (녹은 것)', nameEn: 'Krill chum block (thawed)' }],   // 300 D — 가게에서 녹여 둔 블록도 된다
     // 280차 — 블록 하나(600g · 「열기」 50마리)에서 한 마리만 나와 블록을 버리는 꼴이었다 → 성한 것만 20마리.
     //  녹은 블록만 재료가 된다(클라이언트 `CraftingStore.matches` — 「열기」와 같은 관문)
     outputId: 'inv_krill', outputQty: 20, baseSuccess: 0.95, xp: 6,

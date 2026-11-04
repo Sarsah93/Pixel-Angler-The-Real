@@ -195,7 +195,7 @@ const EN_BASE: Record<string, string> = {
   '냉동 재료가 상온에서 습기를 머금으며 해동된 상태.': 'Thawed from frozen at room temperature.',
   '상온에 오래 방치된 상태. 회/직접 섭취 불가, 조리에 사용해도 문제가 생길 수 있음.': 'Left out too long. Not for raw eating; risky even cooked.',
   '조리/요리에 사용하면 안 되며 질병이 발생할 수 있는 상태. 빨리 처분 권장.': 'Unsafe to cook or eat. Dispose of it soon.',
-  '미끼': 'Bait', '원투 봉돌': 'Bottom-rig sinker', '생미끼': 'Live Bait', '바늘/훅': 'Hooks', '좁쌀': 'Split Shot', '봉돌': 'Sinker', '채비 부속': 'Rig Parts', '수중찌': 'Sub-float', '찌': 'Float', '지그헤드': 'Jighead',
+  '미끼': 'Bait', '원투 봉돌': 'Bottom-rig sinker', '원투 봉돌(3호 11g)': 'Bottom-rig sinker (#3, 11 g)', '생미끼': 'Live Bait', '바늘/훅': 'Hooks', '좁쌀': 'Split Shot', '봉돌': 'Sinker', '채비 부속': 'Rig Parts', '수중찌': 'Sub-float', '찌': 'Float', '지그헤드': 'Jighead',
   '단일 봉돌+바늘': 'Single sinker + hook', 'T자 천평': 'T-bar spreader', 'T자 천평 편대': 'T-bar spreader rig', '카드 채비': 'Sabiki rig', '학꽁치 던질찌': 'Halfbeak casting float', '갈치 와이어': 'Hairtail wire',
   '열기 (7단)': 'Rockfish (7 hooks)', '고등어 (5단)': 'Mackerel (5 hooks)', '전갱이 (3단)': 'Horse mackerel (3 hooks)',
   '손도구': 'Hand Tool', '릴': 'Reel', '모자': 'Hat', '안경': 'Glasses', '상의': 'Top', '장갑': 'Gloves', '시계': 'Watch', '하의': 'Pants', '신발': 'Shoes',
