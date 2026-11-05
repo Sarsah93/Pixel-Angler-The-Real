@@ -330,7 +330,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   값(「꽁치 · 학꽁치 거의 100원」) — 꽁치 kg 5,000(원양 냉동 밴드) → 8,000 · `minPieceKrw` · `FISH_PIECE_FLOOR_KRW` 1,000(core + 가방 사슬 `바닥 × 상태 배율`).
 - 검증: core 514(+15) · r301 16/16 · 독도 · 여수 스크린샷 · 빌드 3/3 · 루트 typecheck 4/4 · 커밋 `9f23066` · main 빨리 감기 · **105차 배포(gh-pages `dc853ac` · 실행 34 · 기동 10.0초 · 4xx 0 · pageerror 0)** · 아티팩트(50 · 49 · 43 · 위키 102).
 - **301(2) 참다랑어 어종군 「참치류」**(하모니 F-0107 · P-0029 — 사용자 「옮겨줘 … 개체 크기와 특성이 부분적으로 다르니 그것도 고려」) — `FishRarity` `'tuna'` 전용 군 · `fightPhys.burst.tuna` 5.0(방어류 5.5에 체급 보정 95 : 110cm) · `STAMINA_BASE.bluefin_tuna` 2.4 · 희귀도 하한 우량 · 도움말 「참치류 5」 ·
-  평균 개체 요구 장력 64 → 134kg(잿방어 62kg의 2.2배 · 합사 15호급) · core 518 · **106차 배포**. 함정은 `fishing-loop.md` §6 28(폴백 `'other'`는 대물에게 틀린 답). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
+  평균 개체 요구 장력 64 → 134kg(잿방어 62kg의 2.2배 · 합사 15호급) · core 518 · 커밋 `0460449` · main 빨리 감기 · **106차 배포(gh-pages `6422ed4` · 실행 35 · 기동 10.5초 · 4xx 0 · pageerror 0)** · 아티팩트(51 · 50 · 위키 103). 함정은 `fishing-loop.md` §6 28(폴백 `'other'`는 대물에게 틀린 답). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
 
 **이전 변경 (2026-11-04 300차) — A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · B 지역 텃밭 1단계**
 
