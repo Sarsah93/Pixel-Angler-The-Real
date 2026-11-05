@@ -14,7 +14,7 @@
 
 import { LedgerStore } from './LedgerStore.js';
 import {
-  evaluateFishSellPrice, WEIGHT_SINKER_DB, WeightSinkerKind, getWeightSinkerSpec,
+  evaluateFishSellPrice, fishPieceFloorKrw, WEIGHT_SINKER_DB, WeightSinkerKind, getWeightSinkerSpec,
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
@@ -749,6 +749,8 @@ function createDevFishDefs(): Omit<InvItem, 'slot'>[] {
     { sp: 'yellowtail', nameKo: '방어', lo: 50, hi: 100 },
     { sp: 'amberjack', nameKo: '부시리', lo: 50, hi: 110 },
     { sp: 'chub_mackerel', nameKo: '고등어', lo: 26, hi: 45 },   // 300 D — 방어류 흐름 검증용
+    { sp: 'horse_mackerel', nameKo: '전갱이', lo: 20, hi: 40 },   // 301 — 방어류 흐름(작은 필렛)
+    { sp: 'spanish_mackerel', nameKo: '삼치', lo: 50, hi: 90 },   // 301 — 방어류 흐름(두툼한 로인)
     // 넙치류 — 다섯장뜨기 검증용 (75차. minFilletLengthCm 여유 밴드)
     { sp: 'flatfish', nameKo: '광어', lo: 40, hi: 80 },
     // 두족류 — 손질 트리 검증용 (87차 사용자 요청). **lengthCm = 외투장**(두족류 관례, 79차)
@@ -1936,7 +1938,10 @@ class InventoryStoreManager {
         // 294차 — 지역 특산(잡은 지역이 그 종의 주산지면 배율 · 제철 밖은 절반) — 위판 · 상점 둘 다
         const spMul = specialtySellMultAt(speciesId, item.originRegion, sellRegionId, festivalNow());   // 295차 — 산지 밖 가게면 택배 차익 · 298차 축제
         // 상점은 시세(경락가)보다 싸게 사들인다 — 시세 그대로 받으려면 위판(수수료 3~6%)
-        return Math.max(0, Math.round(base * stateMul * spMul * (shop ? SHOP_BUY_RATE : 1)));
+        // 301차 — 한 마리 바닥(core `fishPieceFloorKrw` 1,000원 × 상태 배율): 상점 6할을 거친 뒤에도 성한 생선은 마리당 1,000원 밑으로 안 내려간다
+        //   (사용자 「꽁치 · 학꽁치 거의 100원 … 실제는 마리당 1~2천원은 되어야」). 보통 500 · 나쁨 100 · 부패 0.
+        const floor = Math.round(fishPieceFloorKrw(speciesId) * stateMul);
+        return Math.max(floor, Math.round(base * stateMul * spMul * (shop ? SHOP_BUY_RATE : 1)));
       }
       // 레거시 폴백 — 실측치가 없으면 기존 방식(기준가 × 시세 배율) × 상태 배율
       const factor = speciesId ? ExternalDataStore.getMarketPriceFactor(speciesId) : 1;

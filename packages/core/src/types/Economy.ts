@@ -55,6 +55,22 @@ export interface AuctionMappingDef {
    * 거의 평탄 → per-kg 단가가 크기에 따라 감소). price ∝ weightKg^weightExp.
    */
   weightExp?: number;
+  /**
+   * 301차 — 식용 한 마리 최저가(원). 비우면 `FISH_PIECE_FLOOR_KRW`. 시장은 작은 생선을 마리 · 묶음 단위로 팔고 한 마리 1,000원 밑으로는
+   * 내려가지 않는다 — kg 단가 × 작은 무게(꽁치 25cm 49g · 학꽁치 28cm 38g)로는 100~200원이 나오던 종이 있었다(사용자 리포트).
+   */
+  minPieceKrw?: number;
+}
+
+/**
+ * 301차 — 식용 어획물 한 마리 최저가(원). 사용자 「실물가를 적용한다더라도 실제는 마리당 1~2천원은 되어야함」.
+ * `evaluateFishSellPrice`가 마리 값에 깔고, 가방 판매 사슬(상점 6할 · 상태 배율)은 그 뒤 **상태 배율만** 곱한 값을 바닥으로 다시 깐다.
+ */
+export const FISH_PIECE_FLOOR_KRW = 1000;
+
+/** 종별 한 마리 최저가(원) — 표에 없으면 기본 1,000 */
+export function fishPieceFloorKrw(speciesId: string): number {
+  return SEAFOOD_AUCTION_MAPPING[speciesId]?.minPieceKrw ?? FISH_PIECE_FLOOR_KRW;
 }
 
 /** 어종별 경락 코드 매핑 테이블 */
@@ -208,7 +224,9 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   },
   pacific_saury: {
     itemCode: '100204', // 꽁치
-    defaultPricePerKg: 5000,
+    // 301차 — 5,000 → 8,000. 구 값은 원양 냉동 꽁치(대만 · 일본산 경락) 밴드였다. 국내 냉동 도매(중품) 9kg 75,000원 ≈ 8,300원/kg(Tridge 2025-04)
+    //   · 생물은 산지 위판 kg 6,000~12,000(가을 주문진 · 구룡포 — 2025 어획 40% 증가로 하락) — 생물 기준 8,000. 마리 값은 `minPieceKrw` 바닥(1,000)이 받친다.
+    defaultPricePerKg: 8000,
     sizeFactorMultiplier: 0.85,
   },
   round_herring: {
@@ -298,7 +316,7 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   bartail_flathead: { itemCode: '100112', defaultPricePerKg: 22000, sizeFactorMultiplier: 1.1 }, // 양태
   bluefin_searobin: { itemCode: '100113', defaultPricePerKg: 15000, sizeFactorMultiplier: 1.0 }, // 성대
   hagfish: { itemCode: '100210', defaultPricePerKg: 18000, sizeFactorMultiplier: 0.9 },          // 먹장어(곰장어)
-  halfbeak: { itemCode: '100211', defaultPricePerKg: 14000, sizeFactorMultiplier: 0.9 },         // 학꽁치
+  halfbeak: { itemCode: '100211', defaultPricePerKg: 14000, sizeFactorMultiplier: 0.9 },         // 학꽁치 — 301 대조: 급냉 1kg 소매 13,900원(쿠팡 통영 · 거제산) · 28cm 38g라 마리 값은 바닥(1,000)이 받친다
   northern_whiting: { itemCode: '100114', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.0 }, // 보리멸
   grass_puffer: { itemCode: '100902', defaultPricePerKg: 5000, sizeFactorMultiplier: 0.8 },      // 복섬
   // 295차 — 섬 어종 넷(품목 코드는 추정 — 실 시세는 품목명 매핑이 잡는다)

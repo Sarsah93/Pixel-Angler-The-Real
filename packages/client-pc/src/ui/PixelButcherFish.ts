@@ -162,7 +162,8 @@ export interface ButcherSpriteSet {
 }
 
 /** 방어류 — 300 D: 고등어도 같은 흐름(작은 방어 — 전용 온마리 도트가 없으니 잿방어 형태 · 어종 실사 온마리가 생기면 `SPECIES_WHOLE`이 우선한다) */
-const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack', 'chub_mackerel']);
+// 300 D 고등어 · 301 전갱이 · 삼치 — 방어류 흐름(core `BUTCHERY_IMPLEMENTED_SPECIES`와 함께 더한다)
+const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack', 'chub_mackerel', 'horse_mackerel', 'spanish_mackerel']);
 /** 넙치류 (다섯장뜨기 — 광어 형태 공유. 2026-08-05) */
 const FLAT_SPECIES = new Set<string>(['flatfish', 'flounder', 'frog_flounder', 'starry_flounder']);
 

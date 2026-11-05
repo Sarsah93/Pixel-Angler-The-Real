@@ -3,7 +3,7 @@
  * @description 경락 시세 기반 수산물 수매 가격 책정 엔진
  */
 
-import { SEAFOOD_AUCTION_MAPPING, WholesalePriceInfo } from '../types/Economy.js';
+import { SEAFOOD_AUCTION_MAPPING, WholesalePriceInfo, fishPieceFloorKrw } from '../types/Economy.js';
 
 export interface PriceEvaluationResult {
   /** 최종 산출된 수매가 (원) */
@@ -35,9 +35,9 @@ export function evaluateFishSellPrice(
 ): PriceEvaluationResult {
   const mapping = SEAFOOD_AUCTION_MAPPING[speciesId];
   if (!mapping) {
-    // 매핑되지 않은 일반 품목은 g당 10원 기본값 처리
+    // 매핑되지 않은 일반 품목은 g당 10원 기본값 처리 (301 — 한 마리 바닥 1,000원은 같다)
     return {
-      finalPrice: Math.round(weightGram * 10),
+      finalPrice: Math.max(fishPieceFloorKrw(speciesId), Math.round(weightGram * 10)),
       pricePerKg: 10000,
       gradeMultiplier: 1.0,
       sizeMultiplier: 1.0,
@@ -77,7 +77,9 @@ export function evaluateFishSellPrice(
   const weightKg = weightGram / 1000;
   const weightTerm = Math.pow(Math.max(0, weightKg), mapping.weightExp ?? 1);
   const rawPrice = pricePerKg * weightTerm * gradeMultiplier * sizeMultiplier;
-  const finalPrice = Math.max(100, Math.round(rawPrice));
+  // 301차 — 한 마리 바닥(`minPieceKrw` · 기본 1,000원): 꽁치 25cm 49g이 kg 단가로는 200원이었다(사용자 「마리당 1~2천원은 되어야」).
+  //   kg 환산(weightGram 1000)에는 영향이 없다 — 1kg 값은 어떤 종도 1,000원을 넘는다.
+  const finalPrice = Math.max(fishPieceFloorKrw(speciesId), Math.round(rawPrice));
 
   return {
     finalPrice,

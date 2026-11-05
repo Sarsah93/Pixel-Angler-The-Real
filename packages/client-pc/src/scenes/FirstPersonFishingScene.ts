@@ -2333,17 +2333,20 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         const weightG = isSinkerRig ? InventoryStore.getSinkerWeightG() : InventoryStore.getLureRigWeightG();
         const body: SinkBodyType = isSinkerRig
           ? 'sinker' : (this.lureSpec ? lureBodyType(this.lureSpec.kind) : 'softPlastic');
-        const sr = computeSinkRate(curMps, weightG, body, threshMult);
+        const sr = computeSinkRate(curMps, weightG, body, threshMult, this.rigSwept);   // 301 — 직전 스윕 상태 = 히스테리시스
         this.rigSwept = sr.swept;
         if (retrieving0) {
           // 릴링 — 채비 상승은 아래 릴링 블록이 담당. 라인각만 상승각으로 표기.
           this.rigLineAngleDeg = TUNING.sink.reelAngleDeg;
         } else if (sr.swept) {
-          // 조류 못 뚫음 → 표층 부근 유지 + 조류 방향(하류)으로 쓸림
-          this.rig.baitZ = Math.max(0.2, this.rig.baitZ - 0.5 * dt);
+          // 조류 못 뚫음(스윕) → 침강이 거의 멎고(잔류 `residualSweptMps`) 조류 방향(하류)으로 쓸린다.
+          // 301차 — **떠오르지 않는다**(사용자 「3g 봉돌도 물에 던지면 잠길 수밖에 … 무게는 침강 속도를 가를 뿐, 가볍다고 채비가 부상하는 건 말이 안 됨」).
+          //   구 코드는 0.5m/s로 표층 0.2m까지 끌어올렸다 — 조류가 스윕각(72°) 경계에서 흔들리면 가라앉다 떠오르다를 반복해
+          //   HUD 수심이 중간중간 위로 튀었다(리포트 「채비침강이 중간중간에 위로 떠오름」). 물에 없는 부력이라 뺐다.
+          this.rig.baitZ = Math.min(bottom, this.rig.baitZ + sr.sinkRateMps * dt);
           const sweptDx = tide.x * TUNING.sink.sweptDriftK * dt;
           this.rig.floatX += sweptDx; this.rig.baitX += sweptDx;
-          this.rig.settled = false;
+          this.rig.settled = this.rig.baitZ >= bottom - 0.05;
           this.rigLineAngleDeg = sr.lineAngleDeg;
         } else {
           // 임계 뚫음 → 종단속도 포화 침강 (초과 무게↑ = 빠름)
@@ -4808,7 +4811,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const la = this.rigLineAngleDeg;
     const laRow = (this.lureMode || this.surfMode)
       ? (this.rigSwept
-          ? '라인각 ~80° 쓸림'
+          ? `라인각 ${la.toFixed(0)}° 쓸림`   // 301 — 실제 각(구 「~80°」 고정 글)
           : `라인각 ${la.toFixed(0)}° ${la <= 45 ? '충분' : la <= 60 ? '적정' : '부족'}`)
       : null;
     // 136차 — 스풀: 방출 중 / 여유줄 / 팽팽(끌려옴). 전유동·흘림 운용의 핵심 지표다.

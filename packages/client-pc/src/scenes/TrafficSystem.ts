@@ -24,7 +24,7 @@
  */
 
 import Phaser from 'phaser';
-import { mpRng, type RegionRoad } from '@tra/core';
+import { mpRng, type RegionRoad, isUndrivableRoadClass } from '@tra/core';
 import { CAR_TOPDOWN_KEYS } from '../data/TilesetManifest.js';
 
 /** 주행 차량 배율 (150차) — 원본 22×29px */
@@ -82,8 +82,9 @@ export class TrafficSystem {
     if (seed !== undefined) this.rnd = mpRng(seed);
     this.roads = roads;
     this.tr = tr;
+    // 301차 — 농로(track) · 공사 중(construction)에는 차를 올리지 않는다(core `isUndrivableRoadClass`)
     this.drivable = roads.map((rd) =>
-      rd.w >= 2 && rd.pts.length >= 2 &&
+      rd.w >= 2 && rd.pts.length >= 2 && !isUndrivableRoadClass(rd.cls) &&
       rd.pts.every(([x, y]) => x >= 1 && y >= 1 && x <= cols - 1 && y <= rows - 1));
     roads.forEach((rd, i) => {
       if (!this.drivable[i]) return;

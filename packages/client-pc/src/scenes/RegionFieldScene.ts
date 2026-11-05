@@ -28,6 +28,7 @@ import {
   STAIR_DIR_LABEL,
   getTitleById,
   activeFestivalsOfRegion, FESTIVAL_PEAK_CROWD,   // 298차 — 축제
+  pruneRoads, vehicleBudget,   // 301차 — 도로망 정리(토막 · 바다 위 도로 빼기 · 차량 예산)
 } from '@tra/core';
 import { openContextMenu } from '../ui/ContextMenu.js';
 import { PeerInfoPanel } from '../ui/PeerInfoPanel.js';
@@ -928,11 +929,14 @@ export class RegionFieldScene extends Phaser.Scene {
       for (let i = 0; i < this.mapId.length; i++) {
         mapSeed = Math.imul(mapSeed ^ this.mapId.charCodeAt(i), 16777619);
       }
+      // 301차 — 그릴 · 달릴 도로는 토막 · 바다 위 도로를 뺀 것(core `pruneRoads`). 편집기 데이터(`regionRoads`)는 그대로.
+      const fieldRoads = this.fieldRoads();
       this.chunks = new SeamlessChunks(this, {
         terrainRows: this.mapData.terrain,
         // 184차 — 고가와 나란한 지면 도로 구간은 굽지 않는다(물 위 아스팔트 방지 — 상판이 대신 그린다)
         // 186차 — 막다른 끝이 물로 삐져나가는 도로 머리를 뭍 쪽으로 당긴다
-        roads: trimRoadEndsAtWater(clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []), this.mapData.terrain),
+        roads: trimRoadEndsAtWater(clipRoadsUnderOverpasses(fieldRoads, this.regionPatch.overpasses ?? []), this.mapData.terrain),
+        noVehicles: vehicleBudget(fieldRoads) === 0,   // 301차 — 간선 없는 섬(독도)은 주차 차량도 없다
         props: this.regionPatch.props,
         tileTex: this.regionPatch.tileTex ?? [],
         lights: this.seamlessDef.hasLights
@@ -966,8 +970,8 @@ export class RegionFieldScene extends Phaser.Scene {
       this.chunks.preloadAround(this.playerBody.x, this.playerBody.y);
       // 주행 차량 — 도로 그래프 우측통행 (101차 후속)
       // 배경 차량은 교차로 판정 오류가 누적될 때 화면을 막지 않도록 과밀을 피한다.
-      // 도로 그래프가 커져도 기본 36대 안에서 흐름을 유지한다.
-      this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
+      // 301차 — 차량 수는 간선 길이로(core `vehicleBudget` — 300타일 미만 0 · 150타일당 1대 · 상한 36). 독도(service 34타일)에 36대가 돌던 것을 고쳤다.
+      this.traffic = new TrafficSystem(this, fieldRoads, TR, vehicleBudget(fieldRoads), this.cols, this.rows, this.trafficSeed());
       this.wireTrafficLayers();
       // 중요: `this.chunks`를 캡처하지 않으면 다음 restart의 init/create가 먼저 실행된 경우
       // 이전 세대 shutdown 콜백이 새 속초 청크를 파괴한다. 반드시 생성 세대의 객체만 정리한다.
@@ -2897,12 +2901,21 @@ export class RegionFieldScene extends Phaser.Scene {
     setMapEditorStatus(`마지막 정점 취소 — 남은 정점 ${this.editRoadNewPts.length}개`);
   }
 
+  /**
+   * 301차 — 그릴 · 달릴 도로(core `pruneRoads`): 지도 안쪽의 간선 없는 짧은 토막(독도 접안시설 service 셋)과
+   * 바다 위 도로를 뺀다. 편집기가 쥔 `regionRoads`는 그대로 둔다(저장 · 편집 대상은 원본).
+   */
+  private fieldRoads(): RegionRoad[] {
+    return pruneRoads(this.regionRoads, this.mapData.terrain);
+  }
+
   /** 도로 벡터 변경 확정 — 청크 재색인·재베이킹 + 교통 재구성 + 패치 오버라이드 기록 */
   private editCommitRoads(msg: string): void {
     this.regionPatch.roads = this.regionRoads;
-    this.chunks?.setRoads(trimRoadEndsAtWater(clipRoadsUnderOverpasses(this.regionRoads, this.regionPatch.overpasses ?? []), this.mapData.terrain));
+    const fieldRoads = this.fieldRoads();   // 301차 — 편집 결과도 같은 규칙(토막 · 바다 위 도로 빼기 · 차량 예산)으로 그린다
+    this.chunks?.setRoads(trimRoadEndsAtWater(clipRoadsUnderOverpasses(fieldRoads, this.regionPatch.overpasses ?? []), this.mapData.terrain));
     this.traffic?.destroy();
-    this.traffic = new TrafficSystem(this, this.regionRoads, TR, 36, this.cols, this.rows, this.trafficSeed());
+    this.traffic = new TrafficSystem(this, fieldRoads, TR, vehicleBudget(fieldRoads), this.cols, this.rows, this.trafficSeed());
     this.wireTrafficLayers();
     setMapEditorStatus(`${msg} · 저장하면 patch.json roads 오버라이드 (타일 r/w는 판정용 — 필요하면 지형 탭에서 함께 칠하세요)`);
   }

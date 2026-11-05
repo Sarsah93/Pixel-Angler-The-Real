@@ -145,7 +145,7 @@ export interface SinkRateResult {
  * threshMult: 조류 존 보정 (조경지대=잘 가라앉음 → θ↓ / 본류=θ↑) — sinkMult 이중적용 방지.
  */
 export function computeSinkRate(
-  currentMps: number, weightG: number, bodyType: SinkBodyType, threshMult = 1,
+  currentMps: number, weightG: number, bodyType: SinkBodyType, threshMult = 1, prevSwept = false,
 ): SinkRateResult {
   const S = TUNING.sink;
   const dragC = S.dragC[bodyType];
@@ -154,7 +154,10 @@ export function computeSinkRate(
   // 라인각 θ (수직 기준) — 조류가 원줄에 배를 만들어 채비를 눕힌다.
   const tanTheta = (S.angleK * cur / Math.pow(weffG, S.weightExp)) * threshMult;
   const thetaDeg = Math.atan(tanTheta) * (180 / Math.PI);
-  const swept = thetaDeg >= S.sweptAngleDeg;
+  // 301차 — 히스테리시스: 쓸리던 채비는 θ가 (스윕각 − sweptHysteresisDeg) 아래로 내려와야 풀린다(경계에서 깜빡임 방지).
+  //   스윕이어도 침강 속도는 0 이상(`residualSweptMps`) — 채비는 어떤 조류에서도 떠오르지 않는다(사용자 「3g 봉돌도 던지면 잠긴다」).
+  const sweptOn = prevSwept ? S.sweptAngleDeg - (S.sweptHysteresisDeg ?? 0) : S.sweptAngleDeg;
+  const swept = thetaDeg >= sweptOn;
   // 종단 침강속도 — 무게에 약비례 (형상 배율), cosθ로 감쇠
   const vTerm = Math.max(S.vTermMin, Math.min(S.vTermMax,
     S.vTermRefMps[bodyType] * Math.pow(weffG / S.vTermRefG, S.vTermWeightExp)));

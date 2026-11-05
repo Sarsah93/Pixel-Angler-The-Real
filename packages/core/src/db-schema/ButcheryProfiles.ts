@@ -185,6 +185,7 @@ export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>
   // 방어류
   'yellowtail', 'amberjack', 'greater_amberjack',
   'chub_mackerel',   // 300 D — 고등어(방어류 흐름)
+  'horse_mackerel', 'spanish_mackerel',   // 301 — 전갱이 · 삼치(사용자 「방어류 회뜨기로 우선 적용」 — 같은 흐름 · 전갱이는 작은 필렛 · 삼치는 두툼한 로인)
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
 ]);
@@ -211,7 +212,7 @@ export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, 
   //   지금 이 안내가 뜨는 두족류는 갑오징어뿐이다(AG ⑤f).
   cephalopod: '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·고등어·넙치류 지원 — 그 외는 추후 구현)',
+  unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·고등어·전갱이·삼치·넙치류 지원 — 그 외는 추후 구현)',
 };
 
 /**

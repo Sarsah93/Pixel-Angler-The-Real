@@ -1514,8 +1514,8 @@ export class ButcheryPanel extends DraggablePanel {
     if (n.includes('참돔')) return 'red_seabream';
     if (n.includes('돌돔')) return 'stone_beakperch';
     if (n.includes('강담돔')) return 'spotted_knifejaw';
-    if (n.includes('고등어')) return 'chub_mackerel';
     if (n.includes('전갱이')) return 'horse_mackerel';
+    if (n.includes('삼치')) return 'spanish_mackerel';   // 301
     return 'black_seabream';
   }
 

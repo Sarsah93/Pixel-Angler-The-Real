@@ -68,7 +68,7 @@ export const EN_ITEMS: Record<string, string> = {
   '메탈지그 100g': 'Metal Jig 100g', '메탈지그 200g': 'Metal Jig 200g', '스푼 20g': 'Spoon 20g',
 
   // ── 회칼 (KnifeDatabase) ──
-  '범용 막칼': 'Utility Knife', '장인 야나기바': 'Artisan Yanagiba',
+  '범용 막칼': 'Utility Knife', '장인 야나기바': 'Artisan Yanagiba', '야나기바 (보급형)': 'Yanagiba (Basic)', '야나기바 (장인 단조)': 'Yanagiba (Master Forged)',
 
   // ── 무게추 봉돌 (SinkerDatabase) ──
   '고리 봉돌': 'Ring Sinker', '구멍 봉돌': 'Hole Sinker', '묶음추 봉돌': 'Bundle Sinker', '좁쌀 봉돌': 'Split Shot',

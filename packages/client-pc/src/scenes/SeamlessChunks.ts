@@ -170,6 +170,8 @@ export interface SeamlessChunksConfig {
   roofOverrides?: Record<string, number>;
   /** 239차 — OSM 건물 윤곽 · 종류 · 층수(buildings.json) + 261차 씬이 합성한 가게 발자국. 없으면 '#' 타일 윤곽만으로 그린다 */
   buildings?: RegionBuilding[];
+  /** 301차 — 차가 다니지 않는 지역(간선 300타일 미만 — 독도): 노상 · 주차장 차량도 놓지 않는다(core `vehicleBudget` 0) */
+  noVehicles?: boolean;
   cols: number;
   rows: number;
   /** 타일 렌더 크기(px) — RegionFieldScene TR과 동일해야 좌표계가 일치한다 */
@@ -4163,7 +4165,7 @@ export class SeamlessChunks {
 
     // ── 주차 차량 — 도로가 아니라 **건물 옆 맨땅**("가게 옆에 주차"). 건물에 붙은 '.' 타일 중 도로 밴드 밖,
     //    건물 벽과 나란히(북/남 벽 = 세로 주차, 동/서 벽 = 가로 주차). 픽업트럭 포함, 충돌 있음 ──
-    if (hasTs) {
+    if (hasTs && !this.cfg.noVehicles) {   // 301차 — 차 없는 지역은 주차 차량도 없다
       const chunkIdx = cr * this.chunkCols + cc;
       const kinds: [string, string][] = [['car', 'blue'], ['car', 'green'], ['car', 'red'], ['pickup', 'blue'], ['pickup', 'green'], ['pickup', 'red']];
       for (let r = r0; r < r1; r++) {
@@ -4197,7 +4199,7 @@ export class SeamlessChunks {
     //    래스터 병합 'r'(109차)로 생긴 **도로 밴드 밖 아스팔트 면**(주차장·항만 광장)에 열 지어 주차.
     //    행 r%4·칸 c%2 = 전역 위상 고정(청크 경계 정합·결정적) · 점유율 ~2/3(빈 칸이 실주차장답다).
     //    3×3 전부 'r' 요구 → 보도 프린지·건물 문 앞(인접 '#')·래스터 스페클 자동 제외.
-    if (hasTs) {
+    if (hasTs && !this.cfg.noVehicles) {   // 301차 — 차 없는 지역은 주차 차량도 없다
       const chunkIdx = cr * this.chunkCols + cc;
       const cols = this.cfg.cols;
       const kinds: [string, string][] = [['car', 'blue'], ['car', 'green'], ['car', 'red'], ['pickup', 'blue'], ['pickup', 'green'], ['pickup', 'red']];

@@ -71,7 +71,7 @@ export type {
   ConsignmentLotResult,
   ConsignmentSettlement,
 } from './types/Economy.js';
-export { SEAFOOD_AUCTION_MAPPING, MART_RETAIL_DATABASE, DEFAULT_AUCTION_SCHEDULE } from './types/Economy.js';
+export { SEAFOOD_AUCTION_MAPPING, MART_RETAIL_DATABASE, DEFAULT_AUCTION_SCHEDULE, FISH_PIECE_FLOOR_KRW, fishPieceFloorKrw } from './types/Economy.js';
 export type {
   ItemConditionState,
   ItemUsePurpose,
@@ -709,6 +709,12 @@ export {
   overpassLength, projectOnOverpass, overpassHeightAt, onOverpassBand, inOverpassEndZone,
   overpassBlocksGround, OVERPASS_END_TILES, OVERPASS_CLEARANCE,
 } from './rules/Overpass.js';
+// 301차 — 도로망 정리(토막 · 바다 위 도로 빼기 · 차량 예산)
+export type { RoadPruneResult } from './rules/RoadNetwork.js';
+export {
+  ROAD_PRUNE, VEHICLE_BUDGET, isMinorRoadClass, isUndrivableRoadClass, roadLength, roadComponents,
+  pruneRoadsDetailed, pruneRoads, mainRoadLength, vehicleBudget,
+} from './rules/RoadNetwork.js';
 export {
   STAIR_DIRS, STAIR_DIR_LABEL, oppositeEdge, stairHighEdges, stairLowEdges, levelAtEdge, canStep, levelSeam,
 } from './rules/Elevation.js';

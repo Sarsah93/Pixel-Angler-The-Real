@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-04 300차 D · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-05 301차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,18 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-04 300차) — A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · B 지역 텃밭 1단계**
+**최근 변경 (2026-11-05 301차) — 독도 도로 정리(토막 · 차량 예산) · 15 지역 도로 감사 · 전갱이 · 삼치 손질 · 채비 침강(떠오르지 않음) · 편의점 회칼 · 사이소 야나기바 · 기본 채비 · 생선 값 바닥**
+
+- 사용자 리포트(독도 캡처 「차선/차량 수 통제/도로와 다른 타일들/해안선과 육로의 경계가 완전 뒤섞여」) → 원인 = 지역마다 차 36대 고정(독도 service 34타일) + 테트라포드 위 service 토막에 아스팔트 띠.
+  core `rules/RoadNetwork.ts` `pruneRoads`(지도 안쪽 간선 없는 토막 < 40타일 · 지도 안 표본 ≥ 50% 바다) · `vehicleBudget`(간선 300타일 미만 0 · 150타일당 1 · 상한 36) · 농로 · 공사 중 차 없음 · `SeamlessChunks.noVehicles` ·
+  씬 `fieldRoads()` 세 곳 · 감사 `tools/audit_roads.mjs`(15 지역 — 토막은 독도 · 여수 농로뿐 · 안벽 위 실제 길은 둠). 함정은 `world-field.md` §6 50.
+- 전갱이 · 삼치 = 방어류 흐름(`BUTCHERY_IMPLEMENTED_SPECIES` · `AMBERJACK_SPECIES` · 이름 폴백 · dev 생선 · 안내 글 · 도움말 한 · 영).
+- 침강(사용자 「3g 봉돌도 던지면 잠긴다 … 무게는 속도를 가를 뿐」) — FP 스윕 가지의 표층 복귀(0.5m/s 상승) 삭제 → 잔류 침강 + 하류 쓸림 · `sink.sweptHysteresisDeg` 6 · `computeSinkRate(…, prevSwept)` · HUD 「라인각 N° 쓸림」 · 실세계 대조표(3g 0.67 · 11g 1.13 · 75g 2.43 m/s).
+- 칼(사용자 「편의점에 회칼 · 사이소에 저급~중급 야나기바 · 초보 채비」) — 편의점 막칼 · 회칼 · 사이소 `knife_yanagiba_basic`(65,000 · 수율 1.05) · 장인 야나기바 + `SAISO_BASIC_RIG` 7 · 정의 `KNIFE_*` 하나 나눠 쓰기(마트 10~22시뿐이라 밤에 막혔다).
+  값(「꽁치 · 학꽁치 거의 100원」) — 꽁치 kg 5,000(원양 냉동 밴드) → 8,000 · `minPieceKrw` · `FISH_PIECE_FLOOR_KRW` 1,000(core + 가방 사슬 `바닥 × 상태 배율`).
+- 검증: core 514(+15) · r301 16/16 · 독도 · 여수 스크린샷 · 빌드 3/3 · 루트 typecheck 4/4 · main 빨리 감기 · **105차 배포** · 아티팩트(50 · 49 · 43 · 위키 102). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
+
+**이전 변경 (2026-11-04 300차) — A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · B 지역 텃밭 1단계**
 
 - 사용자 지적(캡처) 「가방 — 플레이로 입수 · 직판장에서 구매 · 발견 10/58 — 취득하면 등록 … 코드/로직 경로를 글로 보여 주지 마 … ???로 입수 · ???에서 구매 · 10/58」 · 「아이템 위키 → 아이템」 · 「아이템 · 요리 · 특산도 실루엣」 · 「해양생물 실루엣 테두리가 어종과 다름 — 전부 통일」.
 - `AnglerLogScene` — 탭 「아이템」 · 미발견 실루엣 한 벌 `addSilhouette`(0x152538 · 0.9 · 사진 카드 판 · 도트 정수 배율) · `silhouetteOf`(아이콘 객체) · 다섯 탭 요약 「N / M」 · 힌트 「???로 입수」 「???에서 구매」 「주간 · 물가」 「속초 · 수산」 「주재료 ???」 · 발견 줄 「11/4 · 처음 얻음」(core `DISCOVERY_SOURCE_LABEL`) · 특산 발견 카드 그림 · 요리 행 사진 아이콘. 함정은 `discovery-wiki.md` §6.
@@ -341,12 +352,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 산나물 — `ShoreCreatureDatabase` 분류 `wild_green` 8(작물 초상 있는 산채 — `harvestItemId` · `harvestQty` · `regions`) · 스팟 `hill_grass`(`ForageSystem.computeHillCandidates` — 숲 · 풀밭 안쪽 · 반지름 3 안 길 · 집 · 물 없음 · 속초 3,857칸) · 바다와 따로 굴림(`TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24) · 낮 · 제철 · 지역 · 사는 모양 `leaf · root · shoot` → 줍기 · 파기 · 떼기 판(제목 뜯기 · 캐기 · 꺾기 · 풀밭 바탕) · 거두면 작물 묶음 + `originRegion`(울릉 명이 · 설악 곰취(신설 · 특산 51) 특산) · 판 · 점 그림 대신 작물 아이콘(4xx 0) · 도감 「산나물」 · 도움말 · 영문.
 - **299(2)** — 사용자 지적 「심어져 있는 그림처럼 … 이미지 그래픽을 그대로 필드 위에 배치하면 안되지」 → 자리 표식을 작물 아이콘에서 **땅에 뿌리내린 포기 도트**(`data/WildGreenArt.ts` 종 8 손 도트 15×14 · 2px 입자 · `scenes/field/WildGreenSprites.ts` 굽기 `wildgreen_<id>` 30×28 · 밑동 = 칸 아래 변 · 사람 깊이 규칙 · 자리마다 좌우 뒤집기 · 놀이 판 · 도감 · 가이드 같은 포기 · 정수 배율 2~3)로. 함정은 시스템 페이지 §6 −1.
 - 검증: core 492(+5) · 하네스 r299 10/10(칭호 · 마무리 글 · 후보 · 5월 굴림 23 · [F] 뜯기 · 이김 → 묶음 ×2 · 꺾기 · 도움말 · 영어 · 4xx 0) · r299b2 4/4(텍스처 · 표식 · 깊이 · 판 배율) · 빌드 3/3 · 루트 typecheck 4/4 · main 빨리 감기 `b461a07` · 100차 배포(gh-pages `0a98430`) · 299(2) main `b26d597` · 101차 배포(gh-pages `c56cca5` · 기동 11.7초 · 4xx 0 · pageerror 0). 다음 = 300 지역 텃밭(예시 창 의견 뒤) — 상세: [299차 워크로그](../docs/wiki/03-WORKLOG/2026-11-03-299-wild-greens-gathering.md).
-
-**이전 변경 (2026-11-02 298차) — 지역 축제 달력(축제 달 + 절정 주 — 특산 값 · 축제 매대 · 북적임 · 축제 일손 · 라디오 · 알림 · 일지 「나날」)**
-
-- 사용자 「달 단위로 넓히는 쪽 … 너가 고민해서 우선 적용」 → 두 겹 — core `db-schema/Festivals.ts` 축제 9(웹 조사 2024~2026 실제 일정 · 절정은 해마다 같은 날짜로 어림) · 축제 달 ×1.1 · 절정 주 ×1.3 · `specialtySellMultAt`(제철 × 택배 × 축제 — 판매가 사슬 단일 입구 · 그 고장 가게만 · 위판 제외).
-- 직판장 축제 매대(가공품 20% / 30% 싸게) · 행인 ×2(땅 상한도) · 축제 일손 9(`DayJobDef.festivalId` · 축제 달에만 · 절정 품삯 ×1.3) · 라디오 한 · 영 · 절정 첫날 채널 「[축제]」 · 시계 알람(플래그 `fest.<id>.<해>`) · 일지 「나날」 넷 · 도감 특산 카드 · 도움말 · dev F10 「축제 시계」(`data/FestivalClock.ts` — 축제를 보는 코드는 전부 `festivalNow()`).
-- 검증: core 487(+6) · 하네스 r298 11/11(시계 · 값 · 매대 · 일손 · 라디오 · 알림 · 일지 · 영어 · 행인 120 → 240 · pageerror 0) · 빌드 3/3 · 루트 typecheck 4/4. 다음 = 299 지역 텃밭(예시 창 의견 뒤) — 상세: [298차 워크로그](../docs/wiki/03-WORKLOG/2026-11-02-298-festival-calendar.md).
 
 ---
 

@@ -403,6 +403,23 @@ export const NPC_SHOP_EXTRAS: Record<string, ShopEntry[]> = {
 /** 인물 가게 이름(도감 「파는 곳」) */
 export const NPC_SHOP_LABEL: Record<string, string> = { mun_pilgu: '필구 찌방', cha_yeongbae: '영배 낚시' };
 
+/**
+ * 회칼 네 자루(301차 — 정의 하나를 여러 가게가 나눠 쓴다: 「한 물건 = 한 정의」).
+ * 식자재마트 = 막칼 · 회칼 · 장인 야나기바(+ 해금 장인 단조) / 편의점 = 막칼 · 회칼 / 사이소 = 보급형 · 장인 야나기바.
+ * 등급 · 수율은 core `KNIFE_SPECS`가 정본 — 여기 `desc`의 수율은 그 값을 옮겨 쓴 것.
+ */
+const KNIFE_UTILITY: ShopEntry = { id: 'knife_utility',  name: '범용 막칼',        icon: '', iconTexture: 'art_knife_utility', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' };
+const KNIFE_SASHIMI: ShopEntry = { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '', iconTexture: 'art_knife_sashimi', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' };
+const KNIFE_YANAGIBA: ShopEntry = { id: 'knife_yanagiba', name: '장인 야나기바',    icon: '', iconTexture: 'art_knife_yanagiba', category: 'etc', subCategory: '조리도구', basePrice: 120000, price: 150000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '얇게 많이 뜨는 장인 야나기바 (수율 1.10 + 등급 보너스).' };
+const KNIFE_YANAGIBA_BASIC: ShopEntry = { id: 'knife_yanagiba_basic', name: '야나기바 (보급형)', icon: '', iconTexture: 'art_knife_yanagiba', category: 'etc', subCategory: '조리도구', basePrice: 52000, price: 65000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '생활용품점 진열대의 보급형 야나기바. 장인 칼만큼 얇게는 못 떠도 회칼보다 길고 날이 섰다 (수율 1.05 + 등급 보너스).' };
+/** 301차 — 사이소 초보 기본 채비 한 벌: 직판장 채비 코너의 같은 객체(목줄 · 바늘 묶음 · 고리 · 구멍봉돌 3호 · 좁쌀봉돌 · 도래 · 구멍찌 0.8호) */
+const SAISO_BASIC_RIG_IDS = ['inv_nylon2', 'inv_chinu3', 'inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinkerG2', 'inv_swivel', 'inv_float08'];
+const SAISO_BASIC_RIG: ShopEntry[] = SAISO_BASIC_RIG_IDS.map((id) => {
+  const e = TACKLE_CORNER.find((t) => t.id === id);
+  if (!e) throw new Error(`[ShopCatalog] 사이소 기본 채비 id가 직판장 채비 코너에 없다: ${id}`);
+  return e;
+});
+
 export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
   convenience: {
     kind: 'convenience',
@@ -418,6 +435,9 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_water',    name: '생수 500ml',    icon: '', iconTexture: 'art_water', category: 'food',       subCategory: '가공품',   basePrice: 900,  price: 1200, maxPerPurchase: 10, equippable: false, desc: '갈증 해소의 기본.' },
       { id: 'shop_riceball', name: '주먹밥',        icon: '', iconTexture: 'art_riceball', category: 'food',       subCategory: '가공품',   basePrice: 1800, price: 2200, maxPerPurchase: 10, equippable: false, desc: '출조 전 간편식.' },
       { id: 'inv_ice_bulk',  name: '대용량 각얼음', icon: '', iconTexture: 'art_ice_bag', category: 'consumable', subCategory: '보냉',     basePrice: 4000, price: 5000, maxPerPurchase: 5,  equippable: false, desc: '쿨러 얼음 넣기 재료 — 1개로 2시간 보냉.' },
+      // 301차 — 막칼 · 회칼(사시미칼). 회칼이 식자재마트(10~22시)에만 있어 밤에 손질 이야기(「부엌의 순서」)가 막혔다
+      //  (사용자 「편의점에 야나기바 정도의 고퀄리티 칼은 없지만 회칼(사시미칼)은 실제로 파는 곳들이 많이 있었음」). 야나기바는 두지 않는다.
+      KNIFE_UTILITY, KNIFE_SASHIMI,
     ],
   },
   mart: {
@@ -457,10 +477,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_chum_krill_block_thawed', name: '해동된 급랭 백크릴 600g (밑밥 블록)', icon: '', iconTexture: 'item_krill_block', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6650, price: 7600, maxPerPurchase: 10, equippable: false,
         condition: 'thawed', chumKind: 'krill', condProfile: 'krill_block', unpack: { id: 'inv_krill_bag', qty: 50 }, condLeftMin: 30,
         desc: '가게에서 미리 녹여 둔 급랭 백크릴 한 블록. 사자마자 밑밥통에 넣거나 뜯어서 미끼로(50마리) 쓴다 — 대신 산 지 30분이면 상하니 바로 쓸 때만.' },
-      // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향.
-      { id: 'knife_utility',  name: '범용 막칼',        icon: '', iconTexture: 'art_knife_utility', category: 'etc', subCategory: '조리도구', basePrice: 12000, price: 15000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '손질은 되나 낭비가 많은 막칼 (수율 0.85).' },
-      { id: 'knife_sashimi',  name: '회칼 (사시미)',    icon: '', iconTexture: 'art_knife_sashimi', category: 'etc', subCategory: '조리도구', basePrice: 38000, price: 45000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '표준 사시미 칼 — 회뜨기·회썰기 가능 (수율 1.0).' },
-      { id: 'knife_yanagiba', name: '장인 야나기바',    icon: '', iconTexture: 'art_knife_yanagiba', category: 'etc', subCategory: '조리도구', basePrice: 120000, price: 150000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '얇게 많이 뜨는 장인 야나기바 (수율 1.10 + 등급 보너스).' },
+      // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향. 301차 — 정의는 `KNIFE_*` 하나 · 편의점 · 사이소도 같은 객체를 진열한다
+      KNIFE_UTILITY, KNIFE_SASHIMI, KNIFE_YANAGIBA,
       // 사시미 접시 — 회 조각 플레이팅용 (방위당 소4/중5/대6/특대7점 — 요리 탭 사시미 만들기)
       { id: 'inv_plate_s',  name: '사시미 접시 (소)',   icon: '', iconTexture: 'art_plate_s', category: 'etc', subCategory: '식기', basePrice: 2500, price: 3000, maxPerPurchase: 3, equippable: false, desc: '방위당 4점 × 4방위 = 16점. 모듬 350g~ / 고급 320g~.' },
       { id: 'inv_plate_m',  name: '사시미 접시 (중)',   icon: '', iconTexture: 'art_plate_m', category: 'etc', subCategory: '식기', basePrice: 4500, price: 5500, maxPerPurchase: 3, equippable: false, desc: '방위당 5점 × 4방위 = 20점. 모듬 550g~ / 고급 500g~.' },
@@ -612,6 +630,10 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_gloves_work', name: '목장갑', icon: '', iconTexture: 'art_gloves_work', category: 'gear', subCategory: '장갑',
         basePrice: 2000, price: 2000, maxPerPurchase: 3, equippable: true,
         desc: '테트라포드·그물 작업 기본. 손을 베지 않는 것이 먼저다.' },
+      // 301차 — 사용자 「사이소에도 저급~중급 야나기바가 있는 걸 실제로 확인 … 생초보를 위한 기본 채비 물품들도 있었음」.
+      //  칼은 보급형(새 id · 수율 1.05) + 장인 야나기바(마트와 같은 객체) · 채비는 직판장 채비 코너의 기본 한 벌(같은 객체 — 값 · 묶음 수가 같다).
+      KNIFE_YANAGIBA_BASIC, KNIFE_YANAGIBA,
+      ...SAISO_BASIC_RIG,
       // 189차 — 집 화분(나중에는 텃밭)에 물을 준다. 손에 들고 화분 앞에서 [F]
       { id: 'inv_watering_can', name: '물뿌리개', icon: '', iconTexture: 'art_watering_can', category: 'gear', subCategory: '손도구',
         basePrice: 6000, price: 6000, maxPerPurchase: 1, equippable: true, tool: 'watering_can',

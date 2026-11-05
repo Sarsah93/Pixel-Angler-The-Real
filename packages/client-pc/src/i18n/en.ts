@@ -457,7 +457,7 @@ const EN_BASE: Record<string, string> = {
   '인벤토리(음식) 공간이 없습니다 — 방생하거나 자리를 비우세요': 'No inventory (Food) space — release it or free a slot', '인벤토리에 보관하였습니다. (활어 10분부터 신선도 진행)': 'Stored in inventory. (freshness starts after 10 min live)',
   '해당 어종을 방생하였습니다.': 'Released the fish.', '계속하기 (SPACE)': 'Continue (SPACE)', '그만하기 (ESC)': 'Stop (ESC)', '계속 낚시하거나 필드로 복귀하세요.': 'Keep fishing or return to the field.',
   ' (쿨러 가득 — 방생)': ' (cooler full — released)', ' (어창)': ' (cooler)', ' (인벤토리)': ' (inventory)', ' (인벤 가득 — 방생)': ' (inventory full — released)', '다시 캐스팅 (SPACE)': 'Cast again (SPACE)',
-  '채비 보충이 필요합니다 (U 채비하기)': 'Rig needs restocking (U Tackles)', '원투 (찌 없음)': 'Surf (no float)', '입질은 초릿대 끝': 'Bite shows at the tip', '매듭 없음 (전유동)': 'No knot (free-drift)', '라인각 ~80° 쓸림': 'Line ~80° swept',
+  '채비 보충이 필요합니다 (U 채비하기)': 'Rig needs restocking (U Tackles)', '원투 (찌 없음)': 'Surf (no float)', '입질은 초릿대 끝': 'Bite shows at the tip', '매듭 없음 (전유동)': 'No knot (free-drift)',
   '여 밭 + 수초': 'Reef + weeds', '여 밭 (암초)': 'Reef (rocks)', '모래/갯벌': 'Sand/mud', '대응 OK — 텐션 억제 중': 'Response OK — tension suppressed', '대응 실패 — 텐션 급등!': 'Wrong response — tension spiking!',
   '채비 흘리는 중 — H 뒷줄견제 · C 밑밥': 'Drifting — H line hold · C chum', '크릴': 'Krill', '빵': 'Bread', '떡밥': 'Dough', '생선': 'Fish', '오징어': 'Squid', '옥수수': 'Corn', '게': 'Crab', '소라': 'Whelk', '성게': 'Urchin', '조개': 'Clam', '개불': 'Spoonworm',
   '강한 러닝': 'Strong run', '소강': 'Lull', '파상 저항': 'Surge', '제압': 'Spent',
@@ -1387,6 +1387,7 @@ export const EN_RULES: Rule[] = [
   [/^수면 거리 ([\d.]+)m · (.+)$/, 'Surface dist $1m · $2'], [/^수면 거리 ([\d.]+)m$/, 'Surface dist $1m'],
   [/^매듭  (.+)m$/, 'Knot  $1m'], [/^채비  (.+)m$/, 'Rig  $1m'], [/^바닥  (.+)m$/, 'Bottom  $1m'],
   [/^라인각 (\d+)° (충분|적정|부족)$/, (m) => `Line ${m[1]}° ${({ '충분': 'plenty', '적정': 'good', '부족': 'light' } as Record<string, string>)[m[2]]}`],
+  [/^라인각 (\d+)° 쓸림$/, (m) => `Line ${m[1]}° swept`],   // 301 — 스윕도 실제 각
   [/^정렬도 A (\d+)%$/, 'Alignment A $1%'], [/^밑밥 동조 (\d+)%(.*)$/, 'Chum sync $1%$2'],
   [/^입질 확률 ([\d.]+)%\/s(.*)$/, 'Bite chance $1%/s$2'], [/^피딩 (.+) x([\d.]+)(.*)$/, 'Feeding $1 ×$2$3'],
   [/^하중 ([\d.]+)kg \/ 줄 ([\d.]+)kg$/, 'Load $1kg / line $2kg'], [/^드랙 ([\d.]+)kg — 줄이 풀려 나간다$/, 'Drag $1kg — line is peeling off'], [/^드랙 ([\d.]+)kg$/, 'Drag $1kg'], [/^텐션 (\d+) \/ 100  \(안전 30~80\)(.*)$/, 'Tension $1 / 100  (safe 30–80)$2'],

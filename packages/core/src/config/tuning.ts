@@ -428,8 +428,10 @@ export interface TuningConfig {
     /** 라인각 계수 — tanθ = angleK·curMps / Weff^weightExp (경량·강조류일수록 θ↑) */
     angleK: number;
     weightExp: number;
-    /** 스윕각 (도, 수직 기준) — θ가 이보다 크면 못 가라앉고 표층 흐름 */
+    /** 스윕각 (도, 수직 기준) — θ가 이보다 크면 침강이 거의 멎고 하류로 쓸린다(301 — 떠오르지는 않는다) */
     sweptAngleDeg: number;
+    /** 301차 — 스윕 해제 히스테리시스(도): 쓸리던 채비는 θ가 스윕각 − 이 값 아래로 내려와야 다시 가라앉는다(조류가 경계에서 흔들릴 때 깜빡임 방지) */
+    sweptHysteresisDeg: number;
     /** 조류 세기 정규화 기준 (m/s) — 다른 소비자용 (침강은 raw m/s 사용) */
     currentRefMps: number;
     /** 형상 드래그 계수 — 유효무게 Weff = Wg / dragC (유선형일수록 작음 → Weff 큼) */
@@ -1507,8 +1509,11 @@ export const TUNING: TuningConfig = {
   leader: { baseDeg: 8, holdDeg: 34, curGain: 60, maxDeg: 78, defaultLenM: 1.2 },
   // 침강 rev2 — 라인각 모델 (실측: 약조류에서 10g도 바닥, 스윕 시작 10g@0.3·30g@0.6·60g@1.0 m/s).
   //   angleK 35·weightExp 0.6로 스윕 온셋 재현, 종단속도 무게 약비례(10g≈0.5·30g≈1.3·60g≈1.6).
+  // 301차 — 실세계 대조(워크로그 301 §2): 납 3g 구만 떨어뜨리면 약 1.5m/s지만 줄(3호 나일론 Ø0.285mm) 10m를 끌면
+  //   표면 마찰이 수중 무게(0.027N)와 맞먹어 0.6~0.8m/s — 모델 3g 봉돌 0.67 · 3호(11g) 1.13 · 20호(75g) 2.4m/s가 그 밴드 안이다.
+  //   조류 0.2m/s(0.4노트)에 3g 봉돌은 줄 20m의 횡저항(≈0.14N)이 수중 무게의 5배라 쓸린다 — 단 **떠오르지 않고** 느리게 가라앉으며 하류로 끌린다.
   sink: {
-    angleK: 35, weightExp: 0.6, sweptAngleDeg: 72, currentRefMps: 0.45,
+    angleK: 35, weightExp: 0.6, sweptAngleDeg: 72, sweptHysteresisDeg: 6, currentRefMps: 0.45,
     dragC: { metalJig: 1.0, minnow: 1.2, egi: 1.5, softPlastic: 1.3, sinker: 0.75 },
     vTermRefMps: { metalJig: 1.3, minnow: 0.85, egi: 0.5, softPlastic: 0.9, sinker: 1.5 },
     vTermRefG: 30, vTermWeightExp: 0.4, vTermMin: 0.12, vTermMax: 2.6,

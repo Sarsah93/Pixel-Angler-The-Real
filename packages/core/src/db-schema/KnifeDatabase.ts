@@ -24,6 +24,11 @@ export const KNIFE_SPECS: Record<string, KnifeSpec> = {
     id: 'knife_sashimi', nameKo: '회칼 (사시미)', tier: 'sashimi',
     toolYieldFactor: 1.0, toolThinness: 1.0,
   },
+  // 301차 — 보급형 야나기바(생활용품점 사이소 — 사용자 「사이소에도 저급~중급 야나기바가 있는 걸 실제로 확인」). 회칼과 장인 야나기바 사이
+  knife_yanagiba_basic: {
+    id: 'knife_yanagiba_basic', nameKo: '야나기바 (보급형)', tier: 'yanagiba',
+    toolYieldFactor: 1.05, toolThinness: 1.15,
+  },
   // 장인 야나기바 — 얇게 많이 + 등급 보너스
   knife_yanagiba: {
     id: 'knife_yanagiba', nameKo: '장인 야나기바', tier: 'yanagiba',
