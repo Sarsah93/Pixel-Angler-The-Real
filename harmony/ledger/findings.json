@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "next_id": 102,
+ "next_id": 103,
  "findings": [
   {
    "id": "F-0001",
@@ -791,10 +791,10 @@
    "why": "같은 세션의 상대가 보낸 값이 받는 사람 가방에 그대로 들어가고 거래 자동 저장이 세이브에 굳힌다. 표시(name · qty)와 실제 지급(payload)이 다른 필드다. 세션 코드를 아는 참가자에 한한다.",
    "status": "열림",
    "first_seen": "2026-10-08",
-   "last_seen": "2026-10-30",
+   "last_seen": "2026-11-06",
    "resolved_at": null,
    "lane": "q5-security",
-   "note": "서버 setTradeOffer가 sanitizeTradeItems/Coins 적용 확인(30일 재검토: 받는 쪽 적용 검증은 미확인)"
+   "note": "서버 setTradeOffer가 sanitizeTradeItems/Coins 적용 확인(30일 재검토: 받는 쪽 적용 검증은 미확인) | 11-06: 서버가 거래 제안의 줄 수·수량·재화·표시이름=payload.id 모양을 이미 검증한다(sanitizeTradeItems). 남은 것은 서버가 모르는 실제 아이템 존재·값(인벤토리 서버 미보유 — 설계상 한계). 심각도 재검토 제안."
   },
   {
    "id": "F-0044",
@@ -1988,6 +1988,25 @@
    "actual": "25kg 참다랑어가 10.7kg 잿방어와 같은 요구 장력(약 63kg)이다 — 체중당 힘이 방어류의 0.4배",
    "player_impact": "먼바다 대물의 정점인 참다랑어가 방어보다 쉽게 올라온다(합사 7호면 평균 개체 안전). 연출 기대와 어긋난다. 어종 fight.basePower 60종 값은 파이트에 전혀 반영되지 않는다.",
    "decision": "제안만 — 밸런스 값(어종군 배정·burst)"
+  },
+  {
+   "id": "F-0102",
+   "lane": "q5-security",
+   "severity": "보통",
+   "status": "수정안 제출(PR #19)",
+   "first_seen": "2026-11-06",
+   "last_seen": "2026-11-06",
+   "pattern": "BP-37",
+   "title": "서버 오류 응답이 내부 스택·서버 폴더 경로를 본문에 싣고, 문자열이 아닌 세션 코드가 500을 낸다",
+   "evidence": [
+    "packages/server/src/index.ts",
+    "packages/server/src/multiplayer/SessionRegistry.ts:148,318,336,744"
+   ],
+   "why": "오류 처리기가 없어 Express 기본 처리기가 HTML로 스택·절대 경로를 보낸다. 라우트가 code 타입을 확인하지 않고 toUpperCase를 부른다.",
+   "repro": "로컬 서버에 깨진 JSON 본문 또는 문자열이 아닌 code 값을 보내는 요청(세부 값은 공개 기록에 쓰지 않음).",
+   "expected": "사유만 담은 JSON 응답",
+   "actual": "스택과 서버 폴더 경로가 든 HTML (400/500)",
+   "player_impact": "방을 연 사람의 PC 경로·내부 구조가 같은 방 사람이나 LAN에 보인다. 프로세스는 죽지 않는다."
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."

@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "next_id": 29,
+ "next_id": 30,
  "proposals": [
   {
    "id": "P-0001",
@@ -504,6 +504,21 @@
     "F-0107"
    ],
    "lane": "q4-balance"
+  },
+  {
+   "id": "P-0029",
+   "date": "2026-11-06",
+   "domain": "07-api-env",
+   "kind": "적용",
+   "title": "서버 오류 응답에서 내부 경로·스택 빼기 + 세션 코드 형식 방어",
+   "pr": 19,
+   "branch": "harmony/2026-11-06-server-error-json",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0102"
+   ],
+   "lane": "q5-security"
   }
  ]
 }
