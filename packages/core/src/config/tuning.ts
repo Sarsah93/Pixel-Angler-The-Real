@@ -211,7 +211,7 @@ export interface TuningConfig {
     /** 물속 정적 하중 = 체중 × 이 값 (부력 차감 — 25cm 감성돔 300g → ≈100g) */
     staticFrac: number;
     /** 어종군별 순간 가속 배수 (체중 대비 — 돔류 여 박기 3~5배 실측 문헌) */
-    burst: Record<'seabream' | 'amberjack' | 'mackerel' | 'rockfish' | 'flatfish' | 'seabass' | 'cephalopod' | 'other', number>;
+    burst: Record<'seabream' | 'amberjack' | 'tuna' | 'mackerel' | 'rockfish' | 'flatfish' | 'seabass' | 'cephalopod' | 'other', number>;
     /** 패턴별 힘 배수 — none(유영) / dive / lateral / jump(줄이 느슨) */
     pullIdle: number; pullDive: number; pullLateral: number; pullJump: number;
     /** 패턴에 **맞게 대응**하면 요구 장력 감쇠 (로드·드랙이 흡수) / 틀리면 증폭 */
@@ -1443,7 +1443,8 @@ export const TUNING: TuningConfig = {
   },
   fightPhys: {
     staticFrac: 0.35,
-    burst: { seabream: 4.0, amberjack: 5.5, mackerel: 3.0, rockfish: 2.5, flatfish: 2.0, seabass: 3.5, cephalopod: 1.5, other: 2.2 },
+    // 301(2) — 참치류 5.0(P-0029): 방어류 5.5에 체급 보정(평균 체장 잿방어 95cm : 참다랑어 110cm — 근력 ∝ L² · 체중 ∝ L³) · 25.3kg 평균 개체 요구 장력 ≈ 134kg(잿방어 62kg의 2.2배)
+    burst: { seabream: 4.0, amberjack: 5.5, tuna: 5.0, mackerel: 3.0, rockfish: 2.5, flatfish: 2.0, seabass: 3.5, cephalopod: 1.5, other: 2.2 },
     // 133차 — idle(유영) 부하 0.22 → 0.10. 구 값은 **감고만 있어도** 체중의 0.9배가 걸려
     //   1.8kg 감성돔이 1.5호 목줄(2.7kg)에 124%를 띄웠다(시뮬 랜딩 0/300).
     pullIdle: 0.10, pullDive: 1.0, pullLateral: 0.8, pullJump: 0.35,

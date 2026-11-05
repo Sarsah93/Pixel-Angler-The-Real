@@ -21,7 +21,7 @@
 | core | `ChumPhysics` | 밑밥 파슬 3D(침강·확산·코팅) + `computeChumSync` |
 | core | `BiteProbabilityEngine` · `BiteSequenceEngine` | 입질 확률 · **3단계 구부러짐 시퀀스**(패턴 7종·`provoke`) |
 | core | `FightingPhase` · `FightPhysics2D` · `FishFatigueModel` | **물리 텐션**(117차 — 요구 장력 ÷ 라인 강도)·패턴·측면하중 2D·피로 페이즈 |
-| core | `FishRarity` | 어종군(8) · 희귀도 6단계(평균 길이 대비 비율) · `lineStrengthKg`(호수 → kg) |
+| core | `FishRarity` | 어종군(9 — 301(2) 참치류) · 희귀도 6단계(평균 길이 대비 비율) · `lineStrengthKg`(호수 → kg) |
 | core | `FishSpawningOracle` · `SizeTierRules` · `FeedingTimeCalculator` | 어종 스폰 · 크기 등급 · 피딩타임 배율 |
 | core | `LureRig` · `SinkerDatabase` · `RigRecommender` · **`RigTree`**(192) | 루어 채비 연산 · 봉돌 · 채비 추천 · **채비 모딩 트리**(칸 문법 · 절단 · 완성 판정 · 세트 · 투영 요약) |
 | client | `RegionFieldScene` | 조준 캐스팅(차지·탄도 미리보기·**릴링 경로 육지 차단**) |
@@ -96,6 +96,7 @@
 | 스풀 시각화(방출 애니·슬랙 곡선) | ⬜ | 136 잔여 — 현재 수심 패널 텍스트 1행 |
 | `TUNING.fightPhys`·`TUNING.castWeather` 실플레이 조율(F8 → 확정) | 🔶 | 133에서 파이트는 시뮬+실렌더로 1차 확정(§5). `castWeather`는 여전히 mockup |
 | 어종군 `burst` 웹 리서치 재검(돔 4·방어 5.5·고등어 3 …) | ⬜ | 117 잔여 |
+| **참다랑어 어종군 「참치류」**(301(2) — 하모니 F-0107 · P-0029 사용자 결정 · `'tuna'` burst 5.0 = 방어류 5.5의 체급 보정 · 스태미나 2.4 · 희귀도 하한 우량 · 평균 개체 134kg = 합사 15호급) | ✅ | **301(2)** |
 | **어탐 레이더** | ⬜ | SeabedProfile 조회 UI |
 | 가이드 삽화 실게임 스크린샷 교체 | ⬜ | 현재 목업 SVG 렌더 |
 | 사운드 이펙트 | ⬜ | 전역 과제 |
@@ -321,3 +322,5 @@
 27. **채비는 어떤 조류에서도 떠오르지 않는다**(301 — 사용자 「3g 봉돌도 던지면 잠긴다 … 무게는 침강 속도를 가를 뿐」) — `computeSinkRate`의 `sinkRateMps`는 늘 `residualSweptMps`(0.03) 이상이고
    FP 씬 스윕 가지는 그 값으로 **가라앉히며** 하류로 민다. 옛 `max(0.2, baitZ − 0.5·dt)`(표층 복귀)를 되살리지 않는다 — 조류가 스윕각 경계에서 흔들리면 수심이 오르내렸다.
    상승은 셋뿐이다: 플로팅 루어(부력) · ↑ 키 · 릴링 · 뒷줄견제 0.02m. 스윕 판정에는 `prevSwept`(= `rigSwept`)를 넘겨 히스테리시스(스윕각 − 6°)를 켠다.
+28. **어종군 폴백 `'other'`는 대물에게 틀린 답이다**(301(2) — 참다랑어가 2.2로 잿방어만큼만 당겼다) — 새 대형 어종(다랑어 · 가다랑어 · 새치)을 오라클에 더하면
+   `FishRarity.fightGroupOf`에 군을 함께 정한다. 오라클 `fight.basePower`는 소비처가 없다(하모니 F-0107) — 힘은 군(`TUNING.fightPhys.burst`) × 체형(`form`)이 정한다.

@@ -328,7 +328,9 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 침강(사용자 「3g 봉돌도 던지면 잠긴다 … 무게는 속도를 가를 뿐」) — FP 스윕 가지의 표층 복귀(0.5m/s 상승) 삭제 → 잔류 침강 + 하류 쓸림 · `sink.sweptHysteresisDeg` 6 · `computeSinkRate(…, prevSwept)` · HUD 「라인각 N° 쓸림」 · 실세계 대조표(3g 0.67 · 11g 1.13 · 75g 2.43 m/s).
 - 칼(사용자 「편의점에 회칼 · 사이소에 저급~중급 야나기바 · 초보 채비」) — 편의점 막칼 · 회칼 · 사이소 `knife_yanagiba_basic`(65,000 · 수율 1.05) · 장인 야나기바 + `SAISO_BASIC_RIG` 7 · 정의 `KNIFE_*` 하나 나눠 쓰기(마트 10~22시뿐이라 밤에 막혔다).
   값(「꽁치 · 학꽁치 거의 100원」) — 꽁치 kg 5,000(원양 냉동 밴드) → 8,000 · `minPieceKrw` · `FISH_PIECE_FLOOR_KRW` 1,000(core + 가방 사슬 `바닥 × 상태 배율`).
-- 검증: core 514(+15) · r301 16/16 · 독도 · 여수 스크린샷 · 빌드 3/3 · 루트 typecheck 4/4 · 커밋 `9f23066` · main 빨리 감기 · **105차 배포(gh-pages `dc853ac` · 실행 34 · 기동 10.0초 · 4xx 0 · pageerror 0)** · 아티팩트(50 · 49 · 43 · 위키 102). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
+- 검증: core 514(+15) · r301 16/16 · 독도 · 여수 스크린샷 · 빌드 3/3 · 루트 typecheck 4/4 · 커밋 `9f23066` · main 빨리 감기 · **105차 배포(gh-pages `dc853ac` · 실행 34 · 기동 10.0초 · 4xx 0 · pageerror 0)** · 아티팩트(50 · 49 · 43 · 위키 102).
+- **301(2) 참다랑어 어종군 「참치류」**(하모니 F-0107 · P-0029 — 사용자 「옮겨줘 … 개체 크기와 특성이 부분적으로 다르니 그것도 고려」) — `FishRarity` `'tuna'` 전용 군 · `fightPhys.burst.tuna` 5.0(방어류 5.5에 체급 보정 95 : 110cm) · `STAMINA_BASE.bluefin_tuna` 2.4 · 희귀도 하한 우량 · 도움말 「참치류 5」 ·
+  평균 개체 요구 장력 64 → 134kg(잿방어 62kg의 2.2배 · 합사 15호급) · core 518 · **106차 배포**. 함정은 `fishing-loop.md` §6 28(폴백 `'other'`는 대물에게 틀린 답). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
 
 **이전 변경 (2026-11-04 300차) — A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · B 지역 텃밭 1단계**
 

@@ -29,6 +29,7 @@ export const STAMINA_BASE: Record<string, number> = {
   yellowtail: 1.7,          // 방어
   amberjack: 1.8,           // 부시리
   greater_amberjack: 1.9,   // 잿방어
+  bluefin_tuna: 2.4,        // 참다랑어 — 301(2) 참치류: 부분 온혈이라 방어류보다 오래 달린다(「한 번 달리면 줄이 수백 미터」)
   spanish_mackerel: 1.0,    // 삼치
   pacific_cod: 1.2,         // 대구
   red_seabream: 1.1,        // 참돔
