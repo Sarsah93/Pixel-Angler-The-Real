@@ -114,7 +114,7 @@
   도감 요리 「발견 기록」 칸 그림 · 실루엣이 바탕에 덮이던 것(300 A부터 · 넣는 순서) 고침 · core 522 · r303 8/8 · 빌드 3/3 · typecheck 4/4 · main 빨리 감기 · **107차 배포**. 상세 `docs/wiki/03-WORKLOG/2026-11-05-303-regional-dish-photos.md`.
 - **302차**: **생선 값 다시 보기** — 사용자 「꽁치 외에도 너무 낮은 가격대인 생선들 … 정보를 더 모아보고 반영」(용치놀래기 국내 도매 kg 10,526~15,760원 제공) → 60종 감사 ·
   경락 표에 없어 「g당 10원」 폴백이던 여섯(용치놀래기 13,000 · 열기 18,000 · 황볼락 15,000 추정 · 망상어 7,000 · 문절망둑 6,000 추정 · 참돔 야간 = `PRICE_SPECIES_ALIAS`) · 쥐치 14,000 → 26,000 · 도루묵 6,000 → 9,000 ·
-  「볼락」 품종 매칭(우럭 · 쏨뱅이가 청볼락으로 잡히던 빈틈) · core 522 · r302 6/6 · 빌드 3/3 · typecheck 4/4 · main · 배포 지시 없음. 상세 `docs/wiki/03-WORKLOG/2026-11-05-302-fish-price-review.md`.
+  「볼락」 품종 매칭(우럭 · 쏨뱅이가 청볼락으로 잡히던 빈틈) · core 522 · r302 6/6 · 빌드 3/3 · typecheck 4/4 · main · **107차 배포**(303과 함께). 상세 `docs/wiki/03-WORKLOG/2026-11-05-302-fish-price-review.md`.
 - **301차**: **독도 도로 정리 · 15 지역 도로 감사 · 전갱이 · 삼치 손질 · 채비 침강 · 칼 판매처 · 생선 값** — 사용자 리포트(독도 캡처) + 피드백 셋 →
   core `rules/RoadNetwork.ts`(`pruneRoads` 토막 < 40타일 · 바다 위 · `vehicleBudget` 간선 300타일 미만 0 · 150타일당 1 · 상한 36 · 농로 차 없음) · 씬 `fieldRoads()` · `noVehicles` · 감사 `tools/audit_roads.mjs`(토막 = 독도 · 여수) ·
   전갱이 · 삼치 방어류 흐름(세 곳 + dev · 안내 · 도움말) · FP 스윕 가지 상승 삭제 + `sink.sweptHysteresisDeg` 6 + HUD 「라인각 N° 쓸림」 · 편의점 막칼 · 회칼 · 사이소 `knife_yanagiba_basic`(65,000) · 장인 야나기바 · 기본 채비 7 ·
@@ -219,9 +219,9 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   심리스 데이터 지역 15 = 속초 `sokcho_v2` · 부산 `busan_gamcheon`(263 북쪽 35.095 — 남항 · 공동어시장 · 1.17M 타일) · `busan_baegunpo` · `ulsan` · `pohang_guryongpo` · `geoje_east` · `geoje_south` · `yeosu_city` ·
   `taean_anheung` · `taean_manripo` · `jeju_city` · `jeju_moseulpo` · `jeju_seogwipo` · **`ulleung` 울릉도 도동 · `dokdo` 독도 동도(294 — 배로만 · 6 · 7장)**(core `SEAMLESS_REGIONS` + 구역 표 `SEAMLESS_AREA_REGIONS` · 구역 스폰 `spawnLatLon`).
 - 차기 과제: 낚시점 전용 상점(루어 판매), 어탐 레이더(SeabedProfile 조회), POI 세분화, 사운드 이펙트 (IMPLEMENTATION_PLAN §6-5l 차기 참고).
-- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `6422ed4` — **최근 106차 배포 2026-11-05 = 301(2)까지 포함**(참다랑어 어종군 「참치류」 burst 5.0 — P-0029 + 301 독도 도로 정리 · 차량 예산 · 전갱이 · 삼치 손질 · 채비 침강 떠오르지 않음 · 편의점 회칼 · 사이소 야나기바 · 기본 채비 · 생선 값 바닥 1,000원) —
-  main `0460449` · 실행 35 · 정적 2,157(소스맵 0) · 기동 10.5초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 `tuna:5` · 「참치류 5」 · `knife_yanagiba_basic` · 「° 쓸림」 · `sweptHysteresisDeg` · `noVehicles` · `minPieceKrw` · 독도 roads.json 200 확인.
-  main은 2026-11-05 사용자 지시(「적용하고 main / gh-pages 재배포해줘」)로 작업 브랜치에 빨리 감기했다(105차 = `dc853ac` 301 · 104차 = `2380666` 300 D · 103차 = `4413e49` 300 B).
+- 테스트 배포: https://sarsah93.github.io/Pixel-Angler-The-Real/ (gh-pages `c70ca84` — **최근 107차 배포 2026-11-05 = 303까지 포함**(지역 요리 사진 넷 · 도감 요리 칸 그림 가림 고침 + **302 생선 값 다시 보기**(용치놀래기 13,000 · 열기 · 황볼락 · 망상어 · 문절망둑 · 쥐치 26,000 · 도루묵 9,000 — 302는 이번이 첫 배포)) —
+  main `2cdde45` · 정적 2,165(소스맵 0) · 기동 17.9초(헤드리스 · gh-pages 브랜치를 로컬로 띄워 확인 — 컨테이너에서 라이브 주소는 닿지 않는다) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 `rainbow_wrasse` · `surfperch` · `night_seabream:"red_seabream"` · 요리 사진 넷 · 칸 아이콘 넷 200 · 텍스처 `food_stew_cod_geoje` 등 확인.
+  main은 2026-11-05 사용자 지시(「이 부분까지 적용하고 main & gh-pages 재배포해줘」)로 작업 브랜치에 빨리 감기했다(106차 = `6422ed4` 301(2) · 105차 = `dc853ac` 301 · 104차 = `2380666` 300 D).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
   전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 105 = 303**(시스템 「지역 요리 사진 넷」 · 그림 4 · 104 = 302 시스템 「생선 값 다시 보기」 · 103 = 301(2) 「참다랑어 어종군」 줄 · 102 = 301 시스템 「도로 정리 · 채비 침강 · 전갱이 · 삼치 손질 · 칼 판매처 · 생선 값 바닥」 · 아이템 「야나기바 (보급형)」 · 101 = 300 D · 100 = 300 템플릿 문법 오류 고침 — **95~99판(298~300 B)은 본문이 안 그려졌다** · 99 = 300 B 「지역 빌린 밭」 · 98 = 300 A 「도감은 발견한 것만」). 생성기가 템플릿 스크립트 문법을 검사한다 — 발행 전 헤드리스 로드 pageerror 0(`docs/artifacts/README.md` 2-b)

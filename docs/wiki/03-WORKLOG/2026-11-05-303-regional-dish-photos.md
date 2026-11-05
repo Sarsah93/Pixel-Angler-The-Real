@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-05 |
 | **시스템** | `회 · 요리` `사진 → 도트` `도감` |
 | **트리거** | 사용자 지시(295 지역 레시피 · 백로그 DG ②) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (해시는 §8) |
+| **커밋** | `2cdde45`(작업 브랜치 `claude/project-review-task-planning-yopbck` · main 빨리 감기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 522 · 하네스 r303 8/8 · pageerror 0 |
 
 ---
@@ -80,4 +80,4 @@
 - [x] `04-BACKLOG.md` DG ②
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 Version 53 · 구현 라이브러리 52 · 채비 모딩 순서도 45(「303차 기준」 줄) · 위키 105(새 그림 4를 `files`로)
-- [x] main 빨리 감기 · 107차 배포(302 생선 값 포함 — 302는 이번이 첫 배포)
+- [x] main 빨리 감기 `2cdde45` · 107차 배포(gh-pages `c70ca84` · 정적 2,165 · 소스맵 0 · 기동 17.9초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 요리 사진 · 칸 아이콘 8 모두 200) — 302 생선 값 포함(302는 이번이 첫 배포)

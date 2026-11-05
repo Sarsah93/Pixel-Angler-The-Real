@@ -103,4 +103,4 @@
 - [x] `04-BACKLOG.md` DI
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 Version 52 · 구현 라이브러리 51 · 채비 모딩 순서도 44(「302차 기준」 줄) · 위키 104
-- [ ] main · 배포 — 이번 지시에 없었다(사용자 결정 대기)
+- [x] main · 배포 — 303과 함께 107차(gh-pages `c70ca84` — 번들에 `rainbow_wrasse` · `night_seabream:"red_seabream"` 확인)
