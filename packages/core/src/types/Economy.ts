@@ -68,9 +68,20 @@ export interface AuctionMappingDef {
  */
 export const FISH_PIECE_FLOOR_KRW = 1000;
 
+/**
+ * 302차 — 값은 다른 어종 행을 따르는 도감 갈래(같은 물고기). 경락 표에 행을 따로 두면 시세 띠(거래량 상위 다섯)에
+ * 「참돔 (야간)」이 참돔과 나란히 뜬다 — 표에는 두지 않고 값만 따른다(`COOKING_SPECIES_ALIAS`와 같은 짝).
+ */
+export const PRICE_SPECIES_ALIAS: Readonly<Record<string, string>> = { night_seabream: 'red_seabream' };
+
+/** 값 매기기에 쓸 경락 행 — 별칭이면 원 어종 행 */
+export function auctionMappingOf(speciesId: string): AuctionMappingDef | undefined {
+  return SEAFOOD_AUCTION_MAPPING[speciesId] ?? SEAFOOD_AUCTION_MAPPING[PRICE_SPECIES_ALIAS[speciesId] ?? ''];
+}
+
 /** 종별 한 마리 최저가(원) — 표에 없으면 기본 1,000 */
 export function fishPieceFloorKrw(speciesId: string): number {
-  return SEAFOOD_AUCTION_MAPPING[speciesId]?.minPieceKrw ?? FISH_PIECE_FLOOR_KRW;
+  return auctionMappingOf(speciesId)?.minPieceKrw ?? FISH_PIECE_FLOOR_KRW;
 }
 
 /** 어종별 경락 코드 매핑 테이블 */
@@ -125,7 +136,8 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   },
   filefish: {
     itemCode: '100601', // 쥐치
-    defaultPricePerKg: 14000,
+    // 302차 — 14,000 → 26,000. 신선 쥐치(중품) 국내 도매 kg 25,800~30,000원(Tridge 2025-01 · 04 — 말쥐치보다 두 배 넘게 비싼 횟감)
+    defaultPricePerKg: 26000,
     sizeFactorMultiplier: 1.0,
   },
   // ── 어종 마스터 통합 추가분 (2026-07-16) — MAFRA 경락가 매칭 대상 ──
@@ -256,7 +268,8 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   },
   sandfish: {
     itemCode: '101301', // 도루묵
-    defaultPricePerKg: 6000,
+    // 302차 — 6,000 → 9,000. 강원 수협 위판 평균 kg 2019 2,951 · 2022 4,280 · 2023 9,177원(어획 60% 감소 — 수협중앙회 집계 보도)
+    defaultPricePerKg: 9000,
     sizeFactorMultiplier: 0.85,
   },
   black_scraper: {
@@ -324,6 +337,18 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   bulgyhead_wrasse: { itemCode: '100410', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.1, weightExp: 0.6 },   // 혹돔(대형 — 마리당 평탄)
   red_tilefish: { itemCode: '100406', defaultPricePerKg: 45000, sizeFactorMultiplier: 1.2 },        // 옥돔(제주 — 비싼 생선)
   bluefin_tuna: { itemCode: '101501', defaultPricePerKg: 30000, sizeFactorMultiplier: 1.0, weightExp: 0.5 },   // 참다랑어(초대형 — kg^0.5)
+  // 302차 — 표에 없던 여섯(사용자 「너무 낮은 가격대인 생선들이 없는지 … 정보를 더 모아보고 반영」). 없으면 `evaluateFishSellPrice`가
+  //   「g당 10원」 폴백(kg 10,000 · 등급 · 크기 보정 없음)을 썼다. 품목 코드 1005xx = 볼락류 · 1016xx = 연안 잡어(추정 — 실 시세는 품목명 매핑이 잡는다)
+  // 열기(불볼락) — 소매 kg 31,900원(8~9미 · 오아시스) · 도매는 그 6할 남짓
+  red_snapper_rockfish: { itemCode: '100507', defaultPricePerKg: 18000, sizeFactorMultiplier: 0.9 },
+  // 황볼락 — 국내 시세 자료 없음(추정) · 같은 볼락속 열기와 청볼락(12,000) 사이
+  golden_rockfish: { itemCode: '100508', defaultPricePerKg: 15000, sizeFactorMultiplier: 0.9 },
+  // 용치놀래기 — 국내 자연산 상 등급 도매 kg 10,526~15,760원(사용자 제공 · 경락 품목 「놀래기 · 용치놀래기」 611801) · 활어 소매 kg 약 3만 원
+  rainbow_wrasse: { itemCode: '101601', defaultPricePerKg: 13000, sizeFactorMultiplier: 0.9 },
+  // 망상어 — 평년 kg 약 6,700원(2021년 10월 고점 12,000원이 평년보다 78% 높았다 — 광어 · 가자미 대체 수요 보도)
+  surfperch: { itemCode: '101602', defaultPricePerKg: 7000, sizeFactorMultiplier: 0.8 },
+  // 문절망둑(망둥어) — 국내 생물 시세 자료 없음(추정) · 작아서 마리 값은 바닥(1,000원)이 받친다
+  yellowfin_goby: { itemCode: '101603', defaultPricePerKg: 6000, sizeFactorMultiplier: 0.7 },
 };
 
 /**

@@ -22,7 +22,7 @@
  * 순수 계산만 둔다 — 시각(ms)·장부·시세 배율은 호출측이 넘긴다.
  */
 
-import { SEAFOOD_AUCTION_MAPPING } from '../types/Economy.js';
+import { auctionMappingOf } from '../types/Economy.js';
 
 /** 반감기 — 6시간이면 하루 뒤 1/16만 남는다 */
 export const SAT_HALF_LIFE_MS = 6 * 3600_000;
@@ -58,7 +58,7 @@ export function saturationKey(branchKey: string, speciesId: string): string {
 
 /** 기준 마릿수 — kg당 평년 단가로 흔함/귀함을 가른다 */
 export function saturationThreshold(speciesId: string): number {
-  const p = SEAFOOD_AUCTION_MAPPING[speciesId]?.defaultPricePerKg;
+  const p = auctionMappingOf(speciesId)?.defaultPricePerKg;   // 302차 — 도감 갈래(참돔 야간)는 원 어종 행
   if (!p) return 10;
   if (p <= 12000) return 15;
   if (p < 25000) return 10;

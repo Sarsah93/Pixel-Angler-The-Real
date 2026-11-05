@@ -33,6 +33,8 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 
 ### 4. 경락/판매가 — 3곳
 - `SEAFOOD_AUCTION_MAPPING` (`core/src/types/Economy.ts`): 기본 kg단가 + `sizeFactor` + **`weightExp`**(대형어 마리당 평탄 시세 재현 — 방어 0.4처럼 sub-linear로 가격 폭증 완화. 기본 1=선형).
+  **행이 없으면 「g당 10원」 폴백**(kg 10,000 · 보정 없음 — 302차에 다섯 종이 그랬다) — core 시험 `FishPrice302`가 오라클 · 도감 전 종을 막는다.
+  kg 단가에는 **근거 주석**(출처 · 연도 · 생물/냉동/원양 구분)을 단다. 같은 물고기의 도감 갈래(참돔 야간)는 행 대신 `PRICE_SPECIES_ALIAS`.
 - `MAFRA_ITEM_TO_SPECIES` (`core/src/api-client/MafraAuctionApiClient.ts`): 시장 품목/품종명 → speciesId.
 - `KOSIS_SPECIES_MATCH` (`client-pc/src/store/ExternalDataStore.ts`): 통계 분류명 → speciesId[] (다중 매핑 가능).
 

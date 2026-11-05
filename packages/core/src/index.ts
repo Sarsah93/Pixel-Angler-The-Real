@@ -71,7 +71,7 @@ export type {
   ConsignmentLotResult,
   ConsignmentSettlement,
 } from './types/Economy.js';
-export { SEAFOOD_AUCTION_MAPPING, MART_RETAIL_DATABASE, DEFAULT_AUCTION_SCHEDULE, FISH_PIECE_FLOOR_KRW, fishPieceFloorKrw } from './types/Economy.js';
+export { SEAFOOD_AUCTION_MAPPING, MART_RETAIL_DATABASE, DEFAULT_AUCTION_SCHEDULE, FISH_PIECE_FLOOR_KRW, fishPieceFloorKrw, PRICE_SPECIES_ALIAS, auctionMappingOf } from './types/Economy.js';
 export type {
   ItemConditionState,
   ItemUsePurpose,

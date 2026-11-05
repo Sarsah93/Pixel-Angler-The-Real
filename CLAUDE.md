@@ -100,13 +100,17 @@
   → **298 지역 축제 달력(축제 9 · 축제 달 ×1.1 + 절정 주 ×1.3 · 축제 매대 · 북적임 ×2 · 축제 일손 9 · 라디오 · 알람 · 일지 「나날」)**
   → **299 산나물 캐기(산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산) · (2) 자리 표식 = 땅에 뿌리내린 포기 도트 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」**
   → **300 A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · 102차 배포 · B 지역 텃밭 1단계(종묘사 탁자 · 빌린 밭) · 103차 배포 · C 만들기 초상 미리보기 · D 사용자 리포트 아홉(막차 봉돌 3호 11g · U 잠금 · 경고 글 겹침 · 키 반복 · 해동 백크릴 · 흰 섬 6 · 고등어 손질 · 삽화 13 · 가이드 ESC 크래시) · 104차 배포**
-  → **301 독도 도로 정리(토막 · 차량 예산 · core `RoadNetwork`) · 15 지역 도로 감사 · 전갱이 · 삼치 손질 · 채비 침강 떠오르지 않음(히스테리시스) · 편의점 회칼 · 사이소 야나기바 · 기본 채비 · 생선 값 바닥 1,000원 · main 반영 · 105차 배포 · (2) 참다랑어 어종군 「참치류」(P-0029 · burst 5.0) · 106차 배포**.
+  → **301 독도 도로 정리(토막 · 차량 예산 · core `RoadNetwork`) · 15 지역 도로 감사 · 전갱이 · 삼치 손질 · 채비 침강 떠오르지 않음(히스테리시스) · 편의점 회칼 · 사이소 야나기바 · 기본 채비 · 생선 값 바닥 1,000원 · main 반영 · 105차 배포 · (2) 참다랑어 어종군 「참치류」(P-0029 · burst 5.0) · 106차 배포**
+  → **302 생선 값 다시 보기(경락 표에 없던 여섯 — 용치놀래기 13,000 등 · 쥐치 26,000 · 도루묵 9,000 · 볼락 품종 매칭)**.
 - **로드맵(사용자 확정 2026-09-17)**: ~~요리 개체화 2단계 — 나머지 레시피 변형~~ ✅255(남은 것 = 아이템 라이브러리 · 표시만 되는 효과 다섯 · 조율 — 백로그 CC)
   → **농장**(E1 텃밭 ✅235 · 남은 것 E2~E5 · 백로그 BK).
   맵 확정(육안)·~~OSM land 14개~~(✅262 데이터 지역 13 — 남은 것 육안 검수 · 상호 검토 · 인물 좌표)·조도 재설계·외옹치/대포항 bbox 확장은 사용자 동반 병행 트랙.
 - **재개 지점**: 사용자 실검증(172·173차 타일 조화 규칙 + 178·183~186차 신설분 + **239차 건물 그림 + 261차 합성 발자국 +
   262차 새 지역 12곳 terrain · 핀 + 263차 인물 자리 25곳 · 남항 — 264차부터 위키 「지도」 탭으로 먼저 본다**) — 부족하면 규칙 보강.
   새 지역은 워크플로로 굽고(스킬 `add-region` 262 절) 장 데이터(`STORY_CHAPTERS.regionIds`)에 넣어야 열린다(263). 차수별 잔여는 PLAN §2-3.
+- **302차**: **생선 값 다시 보기** — 사용자 「꽁치 외에도 너무 낮은 가격대인 생선들 … 정보를 더 모아보고 반영」(용치놀래기 국내 도매 kg 10,526~15,760원 제공) → 60종 감사 ·
+  경락 표에 없어 「g당 10원」 폴백이던 여섯(용치놀래기 13,000 · 열기 18,000 · 황볼락 15,000 추정 · 망상어 7,000 · 문절망둑 6,000 추정 · 참돔 야간 = `PRICE_SPECIES_ALIAS`) · 쥐치 14,000 → 26,000 · 도루묵 6,000 → 9,000 ·
+  「볼락」 품종 매칭(우럭 · 쏨뱅이가 청볼락으로 잡히던 빈틈) · core 522 · r302 6/6 · 빌드 3/3 · typecheck 4/4 · main · 배포 지시 없음. 상세 `docs/wiki/03-WORKLOG/2026-11-05-302-fish-price-review.md`.
 - **301차**: **독도 도로 정리 · 15 지역 도로 감사 · 전갱이 · 삼치 손질 · 채비 침강 · 칼 판매처 · 생선 값** — 사용자 리포트(독도 캡처) + 피드백 셋 →
   core `rules/RoadNetwork.ts`(`pruneRoads` 토막 < 40타일 · 바다 위 · `vehicleBudget` 간선 300타일 미만 0 · 150타일당 1 · 상한 36 · 농로 차 없음) · 씬 `fieldRoads()` · `noVehicles` · 감사 `tools/audit_roads.mjs`(토막 = 독도 · 여수) ·
   전갱이 · 삼치 방어류 흐름(세 곳 + dev · 안내 · 도움말) · FP 스윕 가지 상승 삭제 + `sink.sweptHysteresisDeg` 6 + HUD 「라인각 N° 쓸림」 · 편의점 막칼 · 회칼 · 사이소 `knife_yanagiba_basic`(65,000) · 장인 야나기바 · 기본 채비 7 ·
@@ -124,13 +128,6 @@
   ③ 밑밥 통 경고 글 겹침 → 한 줄 교체 · `floatingHint` 중복 금지 · 공용 `ui/ScreenToast.ts` · **키 반복 가드**(`game.ts`) ④ 「해동된 급랭 백크릴 600g」(마트 · 낚시용품점 · 7,600원 · `ShopEntry.condLeftMin` 30분 · `CraftMaterial.altIds`) · 크릴 언 시간 240 → 60분
   ⑤ 갇힌 흰 섬 `tools/holes.cjs`(`item_cards` · `tackle_cards` 굽기 전 · 6장) ⑥ 고등어 = 방어류 손질 흐름(미구현 38 감사 — butchery §5 ④) ⑦ 가이드 삽화 13장 실물 그림(`tools/render_guide_illustrations.cjs --embed · --render`) ⑧ 첫 손질 게임 가이드(씬 레벨) ESC 고아 크래시 → `onEscIntercept` · `destroy` · `openButchery` 가드.
   검증 r300d 7/7 · r300d_crash3 · core 499 · 빌드 3/3 · typecheck 4/4 · main 반영 · **104차 배포**(사용자 「300차수에 신규로 추가된 작업들까지 전부 다 하고, main 반영 및 재배포까지」). 상세 `docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md`.
-- **299차**: **산나물 캐기 — 산자락 스팟 · 8종 · 뜯기 · 캐기 · 꺾기 · 작물 묶음 · 특산 꼬리표 · 297(2) 선물 마무리 글 · 칭호 「산타」 · 「박애주의자」** —
-  사용자 지시 넷(「'선물 칭호에 한 사람 더.' 넣지 마 … '아주 좋아하는 것 같다.'」 · 「선물 보따리 → 산타 · 동네 산타 → 박애주의자 · 선물우호도 및 가게 할인율 소급 적용」 · 「산지에서 나는 나물 작업 시작」 · 「main 반영하고 재배포」) →
-  core `ShoreCreatureDatabase` 분류 `wild_green` 8(`green_gomchwi · myeongi · samnamul · bujigaengi · eosuri · dureup · gondre · eomnamu` — 작물 초상 있는 산채 · `harvestItemId` 작물 id · `harvestQty` · `regions` · `absentMonths` · 낮) · 사는 모양 `leaf · root · shoot`(→ 줍기 · 파기 · 떼기 판 · `WILD_GREEN_GAME_LABEL` 뜯기 · 캐기 · 꺾기) · 스팟 `hill_grass` · `rollForageSpots` 옵션 `spotsPerHundred` · `regions` 거름 · `TUNING.forage.hillSpotsPerHundred` 0.6 · `hillMaxSpots` 24 · 특산 「설악 곰취」(51) ·
-  client `ForageSystem.computeHillCandidates`(숲 · 풀밭 안쪽 · 반지름 3 안 길 · 집 · 포장 · 물 · 모래 없음 · 속초 3,857칸) · 바다와 따로 굴림(씨앗 다름) · 표식 = 작물 아이콘(`cropicon_*` 28px) · 산자락은 풍랑 · 미끄러짐 밖 · `deliver` → `cropItemTemplate` 묶음 1~2 + `originRegion` · `devMonth`(검증) · `ForageGamePanel` 제목 · 가이드 문장 셋 · `ForageBoardArt` `meadow` 바탕 · BootScene은 산나물 판 · 점 그림을 싣지 않는다 · 도감 「산나물」 · 알림 「새로운 산나물 발견」 · 도움말 「해루질 › 산나물 캐기」 · 영문 ·
-  **299(2)** = 사용자 지적(「심어져 있는 그림처럼」) → 자리 표식을 작물 아이콘에서 **땅에 뿌리내린 포기 도트**(`data/WildGreenArt.ts` 종 8 손 도트 · 2px 입자 · `WildGreenSprites` 굽기 · 밑동 = 칸 아래 변 · 사람 깊이 규칙 · 놀이 판 · 도감 · 가이드 같은 포기 · 정수 배율)로 ·
-  297(2) = `DialoguePanel` 힌트 쪽 삭제 → `(아주 좋아하는 것 같다.)` · `TitleDatabase` 「산타」(`gift_bundle` · +25%) · 「박애주의자」(`santa` · `giftAndDiscount` = 선물 우호도 +50% + 상점 구매가 −3%) ·
-  검증 = core 492 · r299 10/10 · 빌드 3/3 · 루트 typecheck 4/4. main 빨리 감기 `b461a07` · **100차 배포(gh-pages `0a98430`)** · 299(2) main `b26d597` · **101차 배포(gh-pages `c56cca5` · 기동 11.7초 · 4xx 0 · pageerror 0)**. **다음 = 300 지역 텃밭(예시 창 의견 뒤)**. 상세 `docs/wiki/03-WORKLOG/2026-11-03-299-wild-greens-gathering.md`.
 - **상시 방침**:
   - 지형 고도(DEM)는 **낚시 확립 후** — B(해안 변형) 우선, 경사로 통행을 막지 않는다
     (`docs/archive/specs/RASTER_UPLIFT_AMENDMENT.md` §4).
@@ -235,15 +232,15 @@ py tools/build_region_maps.py <region>               # 지역 타일맵 JSON 재
   main은 2026-11-05 사용자 지시(「적용하고 main / gh-pages 재배포해줘」)로 작업 브랜치에 빨리 감기했다(105차 = `dc853ac` 301 · 104차 = `2380666` 300 D · 103차 = `4413e49` 300 B).
   ⚠ 배포본에는 dev 콘솔(F10)이 없다 — 「해녀의 딸」 시범 · 갯것 · 작물 지급은 로컬 dev에서 F10으로 본다.
   재배포는 Actions 「테스트 배포」(ref `main`) — 절차 **스킬 `deploy-ghpages`**).
-  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 103 = 301(2)**(시스템 301 항목에 「참다랑어 어종군」 줄 · 102 = 301 시스템 「도로 정리 · 채비 침강 · 전갱이 · 삼치 손질 · 칼 판매처 · 생선 값 바닥」 · 아이템 「야나기바 (보급형)」 · 101 = 300 D · 100 = 300 템플릿 문법 오류 고침 — **95~99판(298~300 B)은 본문이 안 그려졌다** · 99 = 300 B 「지역 빌린 밭」 · 98 = 300 A 「도감은 발견한 것만」). 생성기가 템플릿 스크립트 문법을 검사한다 — 발행 전 헤드리스 로드 pageerror 0(`docs/artifacts/README.md` 2-b)
+  전체 위키(농사 · 출조 지역 · **지도** 탭 포함)는 https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c — **Version 104 = 302**(시스템 「생선 값 다시 보기」 · 103 = 301(2) 「참다랑어 어종군」 줄 · 102 = 301 시스템 「도로 정리 · 채비 침강 · 전갱이 · 삼치 손질 · 칼 판매처 · 생선 값 바닥」 · 아이템 「야나기바 (보급형)」 · 101 = 300 D · 100 = 300 템플릿 문법 오류 고침 — **95~99판(298~300 B)은 본문이 안 그려졌다** · 99 = 300 B 「지역 빌린 밭」 · 98 = 300 A 「도감은 발견한 것만」). 생성기가 템플릿 스크립트 문법을 검사한다 — 발행 전 헤드리스 로드 pageerror 0(`docs/artifacts/README.md` 2-b)
   (78 = 282(2) 채소 그림 복구 — 69 ~ 77은 그림 목록에서 작물 키가 빠져 채소 323개가 그림 없이 나갔다)
   (생성기 `tools/gen_game_wiki_data.mjs --html` — 20KB 이하 그림은 `G.inl` 사전으로 HTML 안 · 아티팩트 한 판 파일 상한 511 · 지도 시트는 `maps/<지역>/` 142파일 = 심리스 112 + 구 맵 30 · 파일 426).
   지도 탭 그림은 `node tools/capture_wiki_maps.cjs <폴더> [지역]`(dev 서버 필요 · 지역당 약 4분)으로 찍고 `node tools/dump_wiki_map_data.mjs` 뒤 생성기를 돌린다.
   지형 · 가게 자리가 바뀐 지역만 다시 찍어 `files`로 올린다.
   아티팩트 4개(절대 규칙 15 — 원본 · 절차 `docs/artifacts/README.md`):
-  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 51 = 301(2) ✅ 참치류 · 50 = 301 ✅ 도로 · 손질 · 침강 · 칼 · 값 · 다음 = 예시 창 의견 → 2단계) ·
-  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 50 = 301(2) 「참다랑어 어종군 「참치류」」 · 49 = 301차 기준 — 도로망 정리 · 채비는 떠오르지 않는다 · 전갱이 · 삼치 손질 · 칼은 세 가게 · 한 마리 바닥 항목 5 · 아이템 949 · `f` 없는 항목 렌더 보강 — 48판은 본문이 안 그려졌다) ·
-  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 43 = 301차 기준 · 문법은 258차) · 위키(위 줄 — 103 = 301(2)).
+  남은 과업 설계 https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4 (Version 52 = 302 ✅ 생선 값 · 51 = 301(2) ✅ 참치류 · 50 = 301 ✅ 도로 · 손질 · 침강 · 칼 · 값 · 다음 = 예시 창 의견 → 2단계) ·
+  구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 (Version 51 = 302 「생선 값 다시 보기」 · 50 = 301(2) 「참다랑어 어종군 「참치류」」 · 49 = 301차 기준 — 도로망 정리 · 채비는 떠오르지 않는다 · 전갱이 · 삼치 손질 · 칼은 세 가게 · 한 마리 바닥 항목 5 · 아이템 949 · `f` 없는 항목 렌더 보강 — 48판은 본문이 안 그려졌다) ·
+  채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 (Version 44 = 302차 기준 · 문법은 258차) · 위키(위 줄 — 104 = 302).
   ⚠ **원격 컨테이너에서는 dev 서버(5173)가 사용자 브라우저에 닿지 않는다** — 실플레이 테스트 요청은 이 배포로 답한다.
 
 ## 작업 이어받기 절차

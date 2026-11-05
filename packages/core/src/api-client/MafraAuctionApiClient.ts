@@ -117,6 +117,21 @@ export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId:
   { item: '쥐노래미', speciesId: 'fat_greenling' },
   { item: '우럭', speciesId: 'black_rockfish' },
   { item: '조피볼락', speciesId: 'black_rockfish' },
+  // 302차 — 볼락류 세부(품종 지정 우선 · 품목명 「불볼락」 · 「황볼락」⊃「볼락」이라 통칭보다 앞) · 연안 잡어 셋
+  //   경락 CSV의 「볼락」 품종 행(조피볼락 614306 · 우럭볼락 614312 · 쏨뱅이 714304)이 품종 매칭 없이 통칭 → 청볼락으로 잡히던 것도 바로잡는다
+  { item: '볼락', variety: '조피볼락', speciesId: 'black_rockfish' },
+  { item: '볼락', variety: '우럭', speciesId: 'black_rockfish' },
+  { item: '볼락', variety: '쏨뱅이', speciesId: 'scorpionfish' },
+  { item: '볼락', variety: '불볼락', speciesId: 'red_snapper_rockfish' },
+  { item: '볼락', variety: '열기', speciesId: 'red_snapper_rockfish' },
+  { item: '볼락', variety: '황볼락', speciesId: 'golden_rockfish' },
+  { item: '불볼락', speciesId: 'red_snapper_rockfish' },
+  { item: '열기', speciesId: 'red_snapper_rockfish' },
+  { item: '황볼락', speciesId: 'golden_rockfish' },
+  { item: '놀래기', speciesId: 'rainbow_wrasse' },   // 경락 품목 「놀래기」 · 품종 「용치놀래기」(611801)
+  { item: '망상어', speciesId: 'surfperch' },
+  { item: '문절망둑', speciesId: 'yellowfin_goby' },
+  { item: '망둥어', speciesId: 'yellowfin_goby' },
   { item: '볼락', speciesId: 'blue_rockfish' },   // 시장 품목명은 '볼락' 통칭 — 게임 어종은 청볼락
   { item: '붕장어', speciesId: 'conger_eel' },
   { item: '장어', variety: '붕장어', speciesId: 'conger_eel' },

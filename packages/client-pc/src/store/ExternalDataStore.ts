@@ -115,7 +115,12 @@ const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['고등어'], speciesIds: ['chub_mackerel'] },
   { keywords: ['전갱이'], speciesIds: ['horse_mackerel'] },
   { keywords: ['조피볼락', '우럭'], speciesIds: ['black_rockfish'] },
+  // 302차 — 볼락류 세부를 통칭보다 먼저('불볼락' · '황볼락'⊃'볼락') · 놀래기 · 망상어
+  { keywords: ['불볼락', '열기'], speciesIds: ['red_snapper_rockfish'] },
+  { keywords: ['황볼락'], speciesIds: ['golden_rockfish'] },
   { keywords: ['볼락'], speciesIds: ['blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish'] },
+  { keywords: ['놀래기'], speciesIds: ['rainbow_wrasse'] },
+  { keywords: ['망상어'], speciesIds: ['surfperch'] },
   { keywords: ['방어'], speciesIds: ['yellowtail', 'amberjack', 'greater_amberjack'] },
   { keywords: ['농어'], speciesIds: ['sea_bass'] },
   { keywords: ['숭어'], speciesIds: ['striped_mullet', 'redlip_mullet'] },

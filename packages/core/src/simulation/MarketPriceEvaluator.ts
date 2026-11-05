@@ -3,7 +3,7 @@
  * @description 경락 시세 기반 수산물 수매 가격 책정 엔진
  */
 
-import { SEAFOOD_AUCTION_MAPPING, WholesalePriceInfo, fishPieceFloorKrw } from '../types/Economy.js';
+import { WholesalePriceInfo, fishPieceFloorKrw, auctionMappingOf } from '../types/Economy.js';
 
 export interface PriceEvaluationResult {
   /** 최종 산출된 수매가 (원) */
@@ -33,7 +33,7 @@ export function evaluateFishSellPrice(
   weightGram: number,
   realTimeCache?: WholesalePriceInfo
 ): PriceEvaluationResult {
-  const mapping = SEAFOOD_AUCTION_MAPPING[speciesId];
+  const mapping = auctionMappingOf(speciesId);   // 302차 — 도감 갈래(참돔 야간)는 원 어종 행
   if (!mapping) {
     // 매핑되지 않은 일반 품목은 g당 10원 기본값 처리 (301 — 한 마리 바닥 1,000원은 같다)
     return {
