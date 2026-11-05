@@ -8,7 +8,8 @@
  *   - 차량 예산(core `vehicleBudget` 와 같은 식) · 길에서 먼 보도('w') 칸 수
  *  를 표로 찍는다. 의심 지점(타일 좌표)은 `node tools/capture_wiki_maps.cjs`가 아니라 scratchpad `shot_region.cjs`로 찍어 눈으로 본다.
  *
- *  실행: node tools/audit_roads.mjs [지역 …]   (지역을 주지 않으면 심리스 15 전부)
+ *  실행: node tools/audit_roads.mjs [지역 …] [--verbose]   (지역을 주지 않으면 심리스 15 전부)
+ *  게임이 실제로 그리고 달리는 도로는 core `packages/core/src/rules/RoadNetwork.ts`(`pruneRoads` · `vehicleBudget`)가 같은 식으로 고른다 — 상수를 바꾸면 둘 다 바꾼다.
  */
 import fs from 'node:fs';
 import path from 'node:path';

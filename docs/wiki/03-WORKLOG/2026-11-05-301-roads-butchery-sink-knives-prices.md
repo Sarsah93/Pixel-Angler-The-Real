@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-05 |
 | **시스템** | `필드` `낚시` `손질` `인벤` `경제` `데이터` `배포` |
 | **트리거** | 사용자 리포트(독도 캡처) + 지시(전갱이 · 삼치) + 피드백 셋(침강 · 칼 · 생선 값) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (해시는 §8) |
+| **커밋** | `9f23066`(코드 · 문서 · 아티팩트 원본) + 배포 기록 커밋 — 작업 브랜치 `claude/project-review-task-planning-yopbck` · main 빨리 감기 |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 514 · 하네스 r301 16/16 · pageerror 0 |
 
 ---
@@ -124,5 +124,5 @@
 - [x] 시스템 페이지 `world-field` · `fishing-loop` · `butchery` · `economy-data` · `inventory-equipment` §4 · §5 · §6
 - [x] `04-BACKLOG.md` DH
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` §2-3 · §3 · `CLAUDE.md`
-- [x] 아티팩트 4개 — 남은 과업 설계 Version 50 · 구현 라이브러리 49 · 채비 모딩 순서도 43(「301차 기준」 줄) · 위키 102 (판 번호는 발행 뒤 확정 — CLAUDE.md 「타일맵 · 배포」 절이 정본)
-- [ ] 커밋 · 푸시 · main 빨리 감기 · 105차 배포 — 해시는 CLAUDE.md 「타일맵 · 배포」 절
+- [x] 아티팩트 4개 — 남은 과업 설계 Version 50 · 구현 라이브러리 49(`f` 없는 항목 렌더 보강 — 48판은 본문이 안 그려졌다) · 채비 모딩 순서도 43(「301차 기준」 줄) · 위키 102
+- [x] 커밋 `9f23066` · 푸시 · main 빨리 감기 · **105차 배포** — gh-pages `dc853ac` · 실행 34 · 정적 2,157(소스맵 0) · 기동 10.0초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 번들에 보급형 야나기바 · 「° 쓸림」 · 히스테리시스 · `noVehicles` · `minPieceKrw` · 독도 roads.json 200
