@@ -951,6 +951,7 @@ export class AnglerLogScene extends Phaser.Scene {
       const g = this.add.graphics();
       g.fillStyle(e.found ? 0x142a40 : 0x0a1522); g.fillRoundedRect(x, y, colW, eh, 3);
       g.lineStyle(1, e.found ? 0x2a5a8a : 0x1a2f45, 0.9); g.strokeRoundedRect(x, y, colW, eh, 3);
+      this.tabContainer?.add(g);   // 303차 — 칸 바탕을 먼저 넣는다(그림 뒤에 넣으면 바탕이 그림을 덮는다 — 300차부터 행 그림이 안 보였다)
       if (dishPic) {
         const pic = e.found
           ? (() => { const fit = fitFishTexture(this.textures, dishPic, PIC, PIC); return this.add.image(x + 6 + PIC / 2, y + eh / 2, fit.key).setDisplaySize(Math.round(fit.w), Math.round(fit.h)); })()
@@ -966,7 +967,7 @@ export class AnglerLogScene extends Phaser.Scene {
       const ft = clampTextWidth(this.add.text(tx, y + 25, e.found ? (e.foot ?? '만듦') : '주재료 ???', {
         fontFamily: font, fontSize: '10px', color: e.found ? '#8fd4b8' : '#3a5a78',
       }), colW - 20 - (dishPic ? PIC + 4 : 0));
-      this.tabContainer?.add([g, nm, ft]);
+      this.tabContainer?.add([nm, ft]);
     });
   }
 

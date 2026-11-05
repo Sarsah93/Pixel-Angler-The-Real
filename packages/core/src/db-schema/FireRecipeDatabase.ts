@@ -273,7 +273,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
   },
   // ── 295차 — 지역 레시피 넷(그 고장 이야기를 끝내면 배운다 · 주재료 어종 고정) ──
   {
-    id: 'stew_cod_geoje', nameKo: '거제 대구탕', nameEn: 'Geoje cod soup', family: 'stew_clear',
+    id: 'stew_cod_geoje', nameKo: '거제 대구탕', nameEn: 'Geoje cod soup', family: 'stew_clear', photoKey: 'food_stew_cod_geoje',
     descKo: '진해만 대구로 끓이는 거제의 겨울 국. 무와 미나리를 넣고 맑게 — 대구 한 마리가 통째로 들어간다.',
     descEn: 'Geoje’s winter soup of Jinhae Bay cod — clear, with radish and water parsley, a whole cod in the pot.',
     mainSpecies: ['pacific_cod'], learn: { questId: 'N11-1' },
@@ -297,7 +297,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 18, hydrationRestore: 21, hpRestore: 30, fatigueRestore: 20, drainBuffMult: 0.85, drainBuffMin: 30 },
   },
   {
-    id: 'grill_tilefish_jeju', nameKo: '제주 옥돔구이', nameEn: 'Jeju grilled red tilefish', family: 'grill',
+    id: 'grill_tilefish_jeju', nameKo: '제주 옥돔구이', nameEn: 'Jeju grilled red tilefish', family: 'grill', photoKey: 'food_grill_tilefish_jeju',
     descKo: '소금 간한 옥돔을 센 불에 굽는다. 제사상에 오르는 제주의 생선 — 살이 희고 달다.',
     descEn: 'Salted red tilefish over a hot fire. The fish of the Jeju ancestral table — white, sweet flesh.',
     mainSpecies: ['red_tilefish'], learn: { questId: 'N01-5' },
@@ -314,7 +314,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 18, hydrationRestore: 2, hpRestore: 25, fatigueRestore: 12 },
   },
   {
-    id: 'braise_saury_guryongpo', nameKo: '구룡포 꽁치조림', nameEn: 'Guryongpo braised saury', family: 'braise',
+    id: 'braise_saury_guryongpo', nameKo: '구룡포 꽁치조림', nameEn: 'Guryongpo braised saury', family: 'braise', photoKey: 'food_braise_saury_guryongpo',
     descKo: '무를 깔고 꽁치를 간장 · 고춧가루 양념에 졸인다. 덕장 마을의 저녁상.',
     descEn: 'Saury braised over radish in soy and chili — supper in the gwamegi village.',
     mainSpecies: ['pacific_saury'], learn: { questId: 'M3-04' },
@@ -340,7 +340,7 @@ export const FIRE_RECIPES: FireRecipeDef[] = [
     vitals: { hungerRestore: 23, hydrationRestore: 6, hpRestore: 30, fatigueRestore: 15 },
   },
   {
-    id: 'stew_hamo_yeosu', nameKo: '여수 하모 샤부샤부', nameEn: 'Yeosu hamo shabu-shabu', family: 'stew_clear',
+    id: 'stew_hamo_yeosu', nameKo: '여수 하모 샤부샤부', nameEn: 'Yeosu hamo shabu-shabu', family: 'stew_clear', photoKey: 'food_stew_hamo_yeosu',
     descKo: '뼈를 잘게 끊은 갯장어를 끓는 맑은 국물에 살짝 담갔다 건진다. 여름 여수의 보양식.',
     descEn: 'Pike conger with the bones finely scored, dipped briefly in clear boiling broth. Yeosu’s summer restorative.',
     mainSpecies: ['pike_conger'], learn: { questId: 'N12-2' },

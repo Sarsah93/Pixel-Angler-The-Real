@@ -90,7 +90,7 @@ describe('295 — 지역 가공대', () => {
 
 describe('295 — 지역 레시피', () => {
   const regional = FIRE_RECIPES.filter((r) => r.learn);
-  it('넷 · 주재료 어종 고정 · 편 · 로어 · 영양 · 그림 없음', () => {
+  it('넷 · 주재료 어종 고정 · 편 · 로어 · 영양 · 요리 사진(303)', () => {
     expect(regional.map((r) => r.id)).toEqual(['stew_cod_geoje', 'grill_tilefish_jeju', 'braise_saury_guryongpo', 'stew_hamo_yeosu']);
     for (const r of regional) {
       expect(r.mainSpecies?.length, r.id).toBeGreaterThan(0);
@@ -100,7 +100,7 @@ describe('295 — 지역 레시피', () => {
       expect(q.unlocks).toContain(`recipe:${r.id}`);
       expect(RECIPE_LORE[r.id], r.id).toBeDefined();
       expect(FOOD_NUTRITION[r.id], r.id).toBeDefined();
-      expect(r.photoKey).toBeUndefined();
+      expect(r.photoKey, r.id).toBe(`food_${r.id}`);   // 303차 — 레시피마다 제 사진(같은 계열 기본 요리 사진을 빌리지 않는다)
     }
   });
   it('기존 열 가지는 learn이 없다(처음부터 안다)', () => {

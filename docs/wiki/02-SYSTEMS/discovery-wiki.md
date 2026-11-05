@@ -160,3 +160,6 @@ god 가드 소비처 = `refreshCondition`·`loseRigParts`·`loseLureRig`·`consu
     95~99판(298 ~ 300 B)이 `SyntaxError: Unexpected token '('`로 본문을 하나도 못 그렸다 — 제호 · 탭만 보였다). `check_artifact_page.cjs`는 위키를 돌리지 않았고,
     생성기는 JSON만 끼워 넣어 문법을 보지 않았다. 300차부터 `gen_game_wiki_data.mjs --html`이 템플릿 안 스크립트를 `vm.Script`로 검사해 틀리면 종료(exit 2)하고,
     발행 전에 생성한 HTML을 헤드리스로 열어 **pageerror 0 · 본문 글자 수**를 본다(`docs/artifacts/README.md` 절차 2-b). `String.replace`의 `$` 치환 패턴도 함수 치환으로 막았다.
+14. **도감 칸은 바탕부터 넣는다**(303 — 300차 A에 넣은 요리 「발견 기록」 칸 그림 · 실루엣이 칸 바탕 그래픽에 덮여 보이지 않았다).
+    `tabContainer`는 넣은 순서로 그린다 — 그림을 먼저 `add`하고 바탕 `g`를 뒤에 `add`하면 객체는 있어도 화면에는 없다(하네스의 「그림 객체 있음」 어서션이 통과한다).
+    새 칸을 만들면 바탕 → 그림 → 글 순서로 넣고 스크린샷으로 본다.

@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-05 302차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-05 303차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-05 302차) — 생선 값 다시 보기(경락 표에 없던 여섯 · 쥐치 · 도루묵 · 볼락 품종 매칭)**
+**최근 변경 (2026-11-05 303차) — 지역 요리 사진 넷 · 도감 요리 칸 그림 가림 고침**
+
+- 사용자 「거제 대구탕, 제주 옥돔구이, 구룡포 꽁치조림, 여수 하모 샤브샤브는 이미지가 따로 없던데 … 이 부분까지 적용하고 main & gh-pages 재배포」 → 295차에 미룬 사진(백로그 DG ②).
+- `tools/item_looks/_dishes.cjs` 넷(주재료가 한눈에 — 큰 입 대구 머리 · 펼친 옥돔 · 주둥이 뾰족한 꽁치 · 꽃처럼 핀 하모) · Gemini 두 판씩 → 1판 · `dish_photos.cjs` · `photoKey` · `BootScene` 목록. 구세이브 계열 그림은 불러올 때 제 사진(`refreshDishPhoto`).
+- 도감 요리 「발견 기록」 칸 그림 · 실루엣이 칸 바탕에 덮여 안 보이던 것(300 A부터 — `tabContainer` 넣는 순서) 고침. 함정은 `discovery-wiki.md` §6 14.
+- 검증: core 522 · r303 8/8(텍스처 · 끓인 대구탕 칸 · 구세이브 · 요리 창 냄비 · 석쇠 · 도감 · 4xx 0) · 빌드 3/3 · 루트 typecheck 4/4 · main 빨리 감기 · 107차 배포(302 포함). 상세: [303차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-303-regional-dish-photos.md).
+
+**이전 변경 (2026-11-05 302차) — 생선 값 다시 보기(경락 표에 없던 여섯 · 쥐치 · 도루묵 · 볼락 품종 매칭)**
 
 - 사용자 「꽁치 외에도 … 너무 낮은 가격대인 생선들이 없는지 … 정보를 더 모아보고 반영」(용치놀래기 국내 도매 kg 10,526~15,760원 제공 · 일본 시세 보정은 아님) → 60종 감사(`scratchpad/price_audit.mjs`).
 - 경락 표에 행이 없어 「g당 10원」 폴백이던 여섯 — 용치놀래기 13,000 · 열기 18,000 · 황볼락 15,000(추정) · 망상어 7,000 · 문절망둑 6,000(추정) · 참돔(야간)은 `PRICE_SPECIES_ALIAS` · `auctionMappingOf`(시세 띠에 둘이 뜨지 않게).
@@ -339,22 +346,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 검증: core 514(+15) · r301 16/16 · 독도 · 여수 스크린샷 · 빌드 3/3 · 루트 typecheck 4/4 · 커밋 `9f23066` · main 빨리 감기 · **105차 배포(gh-pages `dc853ac` · 실행 34 · 기동 10.0초 · 4xx 0 · pageerror 0)** · 아티팩트(50 · 49 · 43 · 위키 102).
 - **301(2) 참다랑어 어종군 「참치류」**(하모니 F-0107 · P-0029 — 사용자 「옮겨줘 … 개체 크기와 특성이 부분적으로 다르니 그것도 고려」) — `FishRarity` `'tuna'` 전용 군 · `fightPhys.burst.tuna` 5.0(방어류 5.5에 체급 보정 95 : 110cm) · `STAMINA_BASE.bluefin_tuna` 2.4 · 희귀도 하한 우량 · 도움말 「참치류 5」 ·
   평균 개체 요구 장력 64 → 134kg(잿방어 62kg의 2.2배 · 합사 15호급) · core 518 · 커밋 `0460449` · main 빨리 감기 · **106차 배포(gh-pages `6422ed4` · 실행 35 · 기동 10.5초 · 4xx 0 · pageerror 0)** · 아티팩트(51 · 50 · 위키 103). 함정은 `fishing-loop.md` §6 28(폴백 `'other'`는 대물에게 틀린 답). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
-
-**이전 변경 (2026-11-04 300차) — A 도감 표현 통일(실루엣 한 벌 · 힌트 글 · 탭 「아이템」) · 사이소 24시간(임시) · B 지역 텃밭 1단계**
-
-- 사용자 지적(캡처) 「가방 — 플레이로 입수 · 직판장에서 구매 · 발견 10/58 — 취득하면 등록 … 코드/로직 경로를 글로 보여 주지 마 … ???로 입수 · ???에서 구매 · 10/58」 · 「아이템 위키 → 아이템」 · 「아이템 · 요리 · 특산도 실루엣」 · 「해양생물 실루엣 테두리가 어종과 다름 — 전부 통일」.
-- `AnglerLogScene` — 탭 「아이템」 · 미발견 실루엣 한 벌 `addSilhouette`(0x152538 · 0.9 · 사진 카드 판 · 도트 정수 배율) · `silhouetteOf`(아이콘 객체) · 다섯 탭 요약 「N / M」 · 힌트 「???로 입수」 「???에서 구매」 「주간 · 물가」 「속초 · 수산」 「주재료 ???」 · 발견 줄 「11/4 · 처음 얻음」(core `DISCOVERY_SOURCE_LABEL`) · 특산 발견 카드 그림 · 요리 행 사진 아이콘. 함정은 `discovery-wiki.md` §6.
-- 사이소(`BUILDING_HOURS.daily`) **임시 `'always'`** — QA 새벽 테스트(사용자 지시). 되돌릴 값 `{ open: 10, close: 22 }` — 백로그 DG.
-- **B 지역 텃밭 1단계(창 관리형)** — 그 고장 종묘사 안쪽 탁자 [F] → 확인 창 → 구획 하나(2×2 · 갈아 둔 흙 · 빗물통 = 종묘사가 물을 준다) · 주 3,000원 선납 · 창을 열 때 밀린 주 자동 납부(못 내면 새로 못 심음) ·
-  「이 밭」 칸(빌린 곳 · 흙 · 사용료 · 다음 납부 · 사용료 내기 · 돌려주기) · 심기 목록 「특산」 · 거둔 것 산지 봉인 · 고장 6(손 POI 종묘사). core `db-schema/RegionalPlots.ts` · client `store/RegionalPlotStore.ts`(세이브 `regionalPlots`) · `FarmStore` `rent:` 구획 · `InteriorAction 'rentPlot'`. 2단계는 예시 창 의견 뒤(§6-B).
-- 검증: 하네스 r300a 7/7(탭 · 다섯 탭 요약 · 실루엣 색 · 힌트 · 금지 글 0) · r300b 13/13(POI · 탁자 · 확인 창 · 빌리기 · 창 · 특산 · 거두기 봉인 · 밀림 · 내기 · 세이브 · 돌려주기 · 다른 종묘사) · core 499 · 빌드 3/3 · 루트 typecheck 4/4 · main 빨리 감기 `1daa9ce` · **102차 배포(gh-pages `41e8864` · 실행 31 · 기동 10.4초 · 4xx 0 · pageerror 0)** · 아티팩트(48 · 47 · 42 · 위키 **100** — 298차부터 템플릿 스크립트 한 글자(`,` → `+`)로 95~99판이 본문을 못 그렸다 · 생성기 문법 자가 검사) · B main 빨리 감기 `c945c64` · **103차 배포(gh-pages `4413e49` · 기동 9.9초 · 4xx 0 · pageerror 0)**.
-- **C 캐릭터 만들기 얼굴 초상 미리보기**(사용자 캡처 지시) — `CharacterCreateScene` 무대 오른쪽 위 96px(`ensureFacePortrait(…, 'player')` — 대화창 · 일지와 같은 층 합성 · 옵션 바꾸면 같이) · 마우스 호버 192px 원본 크기(오른쪽 위 모서리 고정 · 금색 테 · 110ms 트윈) · 검증 r300c 5/5. 작업 브랜치에만 — 상세: [300차 워크로그](../docs/wiki/03-WORKLOG/2026-11-04-300-codex-silhouettes-regional-plot.md).
-
-- **D 사용자 리포트 아홉**(F10 실플레이) — ① 막차 장보기 4/5: 옥수수 캔(「미끼」)이 갈래에 없었다 → `includes('미끼')` · 목표 글 「봉돌(3호 11g)」(한 · 영 · 나레이션 · 코치 · 계산대 한 줄 — `sinkerWeightByHo(3)`)
-  ② 막차를 건너뛴 dev 세션 U 잠김 → `prologueKeyAllowed`는 홈타운 밖이면 참 ③ 밑밥 통 경고 글 겹침 → 한 줄 교체(`chumNotice` · 1인칭 존 · 줄 마모) · `floatingHint` 같은 글 중복 금지 · 공용 `ui/ScreenToast.ts`(같은 글 안 띄움 · 아래로 쌓기) ·
-  **키 반복 가드**(`game.ts` — U 꾹 → 토글 5 → 1) ④ 「해동된 급랭 백크릴 600g」(마트 · 낚시용품점 · 급랭의 95% = 7,600원 · `condLeftMin` 30분 · 제작 재료 `altIds`) · 크릴 언 시간 240 → 60분 ⑤ 갇힌 흰 섬 `tools/holes.cjs`(둘레 검정 먹 기준 · 6장 12 PNG)
-  ⑥ 고등어 = 방어류 흐름(`BUTCHERY_IMPLEMENTED_SPECIES` · `AMBERJACK_SPECIES` · 미구현 38 감사 → butchery §5 ④) ⑦ 가이드 삽화 13장 실물 그림(`tools/render_guide_illustrations.cjs` · 칼 3 · 참돔 · 필렛 · 구멍찌 · 크릴 · 지그 · 감성돔 · 밑밥 봉지)
-  ⑧ 첫 손질 게임 가이드(씬 레벨) ESC 고아 → `onEscIntercept` 가이드 먼저 · `destroy` 치움 · `openButchery` 파괴 가드. 검증 r300d 7/7 · r300d_crash3 · core 499 · 빌드 3/3 · typecheck 4/4. 커밋 `f2ca895` · main 빨리 감기 · **104차 배포**(gh-pages `2380666` · 기동 10.7초 · 4xx 0 · pageerror 0) · 아티팩트(49 · 48 · 42 · 위키 101).
 
 ---
 
