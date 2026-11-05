@@ -23,7 +23,7 @@ import {
   TUNING,
   SASHIMI_GUIDE_GROUP, SASHIMI_GUIDE_SHEET, LIVE_STAGE_GUIDE,
   guideCutByKey,
-  WHOLE_FISH_SECTIONS, sectionsForSpecies, ButcherySectionDef, ButcherySectionYield,
+  WHOLE_FISH_SECTIONS, sectionsForSpecies, resolveButcherySections, ButcherySectionDef, ButcherySectionYield,
   primitiveInput, CEPH_BYPRODUCTS, cephByproductIcon, CephByproductId, getCephalopodProfile,
   GRADE_XP_MULT,
 } from '@tra/core';
@@ -346,7 +346,10 @@ export class ButcheryPanel extends DraggablePanel {
     this.process = new ButcheryProcess(getButcheryProfile(speciesId), this.freshnessFactor(source));
     // 체형별 섹션 트리 — 넙치류(flat)는 다섯장뜨기 (2026-08-05)
     // 두족류는 전용 섹션 트리(스테이지 1개 = 작업 1개·순서 강제) — 어종 우선 판정 (87차)
-    this.sections = sectionsForSpecies(speciesId, this.process.profile.bodyShape);
+    // 304차 — 트리를 이 공정에 있는 단계로 줄인다(비늘 없는 고등어 = 밑손질에 비늘치기 없음).
+    //  안 줄이면 없는 단계를 고르는 순간 공정이 화면과 따로 흘러가 갈빗대 단계(필렛 뷰)에서 멈췄다.
+    this.sections = resolveButcherySections(
+      sectionsForSpecies(speciesId, this.process.profile.bodyShape), this.process.stageList.map((st) => st.id));
     // 회칼 = **손 장착** 기준 (2026-07-30 자유 손질 개편) — 손에 든 칼만 수율/등급에 반영.
     // 시작 게이트(장착 필수)는 UtilizationPanel [손질 시작]이 담당.
     this.knife = getBestKnife(
@@ -877,7 +880,15 @@ export class ButcheryPanel extends DraggablePanel {
     const stageId = task.stageIds.find((id) => !this.doneStages.has(id)) ?? task.stageIds[0];
     this.activeTaskId = taskId;
     this.awaitingSelect = false;
-    this.process.jumpTo(stageId);
+    // 304차 — 공정에 없는 단계로는 못 간다. 그대로 두면 공정이 화면 작업과 따로 다음 단계로 흘러간다
+    //  (고등어 「비늘치기」 → 배따기 · 필렛 뜨기가 몰래 진행 → 갈빗대(필렛 뷰)에서 멈춤). 트리는 생성자에서
+    //  이미 줄였으니 여기는 마지막 안전망이다 — 없는 단계뿐인 작업은 끝난 것으로 넘긴다.
+    if (!this.process.jumpTo(stageId)) {
+      console.warn(`[Butchery] 공정에 없는 단계 ${stageId}(${taskId}) — 작업을 건너뛴다`);
+      task.stageIds.forEach((id) => this.doneStages.add(id));
+      this.onStageComplete(task.stageIds[task.stageIds.length - 1], 1);
+      return;
+    }
     this.refresh();
   }
 
@@ -906,6 +917,10 @@ export class ButcheryPanel extends DraggablePanel {
 
     // 작업의 모든 스테이지가 끝나야 작업 완료 (예: 머리 제거 = 앞면 + 뒷면 2스테이지)
     if (!task.stageIds.every((id) => this.doneStages.has(id))) {
+      // 304차 — 공정이 이 작업의 다음 단계에 서 있어야 한다(작업 안 단계는 공정 목록에서 이어져 있다 — 시험이 지킨다).
+      //  어긋났으면 그 단계로 데려온다 — 화면은 이 작업인데 공정만 다른 단계로 흘러가는 일을 막는다.
+      const nextId = task.stageIds.find((id) => !this.doneStages.has(id));
+      if (nextId && this.process.stage?.id !== nextId) this.process.jumpTo(nextId);
       // 같은 작업의 다음 스테이지로 계속 — 방향이 바뀌는 스테이지면 뒤집기 안내가 뜬다.
       // 액션 연출 재생 중이면 전환은 연출 완료(onComplete doRefresh)까지 미룬다 (플래시 방지).
       if (!this.actionAnim) this.refresh();

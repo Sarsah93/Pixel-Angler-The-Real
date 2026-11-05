@@ -217,6 +217,7 @@ export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from '
 export {
   WHOLE_FISH_SECTIONS, FLAT_FISH_SECTIONS, SQUID_SECTIONS,
   sectionsForBodyShape, sectionsForCephalopod, sectionsForSpecies, findTaskOfStage,
+  resolveButcherySections,   // 304차 — 공정에 있는 단계로 줄인 트리
 } from './db-schema/ButcherySections.js';
 // 두족류 스테이지 트리 (87차 — 무늬오징어 1종)
 export { buildCephalopodStages, isCephalopodTreeReady } from './db-schema/CephalopodStages.js';

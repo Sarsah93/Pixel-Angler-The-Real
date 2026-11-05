@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-05 303차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-05 304차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-05 303차) — 지역 요리 사진 넷 · 도감 요리 칸 그림 가림 고침**
+**최근 변경 (2026-11-05 304차) — 고등어 손질이 「비늘치기」에서 막힘 · 손질 흐름 전수 점검**
+
+- 사용자 리포트(QA 캡처 — 고등어 「비늘치기 (1/3)」 · 필렛 2/2 · 「필렛 뷰 전환 필요」 · 「진행이 막힌다 … 전수조사」).
+- 원인 — 고등어 프로필은 비늘 없음(`hasScales: false`)이라 비늘치기 단계가 없는데 섹션 트리에는 작업이 있었다 → `jumpTo` 실패를 안 봐서 공정이 화면 작업과 따로 배따기 → … → 2면 뜨기로 흘렀고, 갈빗대(필렛 뷰 — 뒤집기로 못 감)에서 멈췄다.
+- core `resolveButcherySections`(트리를 공정 단계로 줄임) · 손질 창 생성자 · `selectTask` · `onStageComplete` 안전망 · 시험 `ButcheryFlow304`(손질 창 규칙 모의 — 22종 끝까지). 함정은 `butchery.md` §6 36.
+- 검증: core 527(+5) · r304 6/6(고등어 · 참돔 · 광어 · 전갱이 실제 손질 창 끝까지 · 어긋남 0) · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트(54 · 53 · 46 · 위키 106). main · 배포는 지시 없음. 상세: [304차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-304-mackerel-butchery-stuck.md).
+
+**이전 변경 (2026-11-05 303차) — 지역 요리 사진 넷 · 도감 요리 칸 그림 가림 고침**
 
 - 사용자 「거제 대구탕, 제주 옥돔구이, 구룡포 꽁치조림, 여수 하모 샤브샤브는 이미지가 따로 없던데 … 이 부분까지 적용하고 main & gh-pages 재배포」 → 295차에 미룬 사진(백로그 DG ②).
 - `tools/item_looks/_dishes.cjs` 넷(주재료가 한눈에 — 큰 입 대구 머리 · 펼친 옥돔 · 주둥이 뾰족한 꽁치 · 꽃처럼 핀 하모) · Gemini 두 판씩 → 1판 · `dish_photos.cjs` · `photoKey` · `BootScene` 목록. 구세이브 계열 그림은 불러올 때 제 사진(`refreshDishPhoto`).
@@ -333,19 +340,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   근거보다 낮던 둘 — 쥐치 14,000 → 26,000(국내 도매 2.6~3만) · 도루묵 6,000 → 9,000(2023 위판 평균 9,177). 갈치는 노량진 경락 평균(12,400)보다 이미 높아 그대로.
 - 시장 품목명 매칭 — 「볼락」 품종 행(조피볼락 · 우럭볼락 · 쏨뱅이)이 통칭 → 청볼락으로 잡히던 빈틈 · 불볼락 · 열기 · 황볼락 · 놀래기 · 망상어 · 망둥어(긴 이름 먼저). 함정은 `economy-data.md` §6 · 스킬 `add-species`.
 - 검증: core 522(+4 · `FishPrice302`) · r302 6/6(가방 판매가 · 시세 목록 이름) · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트(52 · 51 · 44 · 위키 104). main · 107차 배포는 303과 함께. 상세: [302차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-302-fish-price-review.md).
-
-**이전 변경 (2026-11-05 301차) — 독도 도로 정리(토막 · 차량 예산) · 15 지역 도로 감사 · 전갱이 · 삼치 손질 · 채비 침강(떠오르지 않음) · 편의점 회칼 · 사이소 야나기바 · 기본 채비 · 생선 값 바닥**
-
-- 사용자 리포트(독도 캡처 「차선/차량 수 통제/도로와 다른 타일들/해안선과 육로의 경계가 완전 뒤섞여」) → 원인 = 지역마다 차 36대 고정(독도 service 34타일) + 테트라포드 위 service 토막에 아스팔트 띠.
-  core `rules/RoadNetwork.ts` `pruneRoads`(지도 안쪽 간선 없는 토막 < 40타일 · 지도 안 표본 ≥ 50% 바다) · `vehicleBudget`(간선 300타일 미만 0 · 150타일당 1 · 상한 36) · 농로 · 공사 중 차 없음 · `SeamlessChunks.noVehicles` ·
-  씬 `fieldRoads()` 세 곳 · 감사 `tools/audit_roads.mjs`(15 지역 — 토막은 독도 · 여수 농로뿐 · 안벽 위 실제 길은 둠). 함정은 `world-field.md` §6 50.
-- 전갱이 · 삼치 = 방어류 흐름(`BUTCHERY_IMPLEMENTED_SPECIES` · `AMBERJACK_SPECIES` · 이름 폴백 · dev 생선 · 안내 글 · 도움말 한 · 영).
-- 침강(사용자 「3g 봉돌도 던지면 잠긴다 … 무게는 속도를 가를 뿐」) — FP 스윕 가지의 표층 복귀(0.5m/s 상승) 삭제 → 잔류 침강 + 하류 쓸림 · `sink.sweptHysteresisDeg` 6 · `computeSinkRate(…, prevSwept)` · HUD 「라인각 N° 쓸림」 · 실세계 대조표(3g 0.67 · 11g 1.13 · 75g 2.43 m/s).
-- 칼(사용자 「편의점에 회칼 · 사이소에 저급~중급 야나기바 · 초보 채비」) — 편의점 막칼 · 회칼 · 사이소 `knife_yanagiba_basic`(65,000 · 수율 1.05) · 장인 야나기바 + `SAISO_BASIC_RIG` 7 · 정의 `KNIFE_*` 하나 나눠 쓰기(마트 10~22시뿐이라 밤에 막혔다).
-  값(「꽁치 · 학꽁치 거의 100원」) — 꽁치 kg 5,000(원양 냉동 밴드) → 8,000 · `minPieceKrw` · `FISH_PIECE_FLOOR_KRW` 1,000(core + 가방 사슬 `바닥 × 상태 배율`).
-- 검증: core 514(+15) · r301 16/16 · 독도 · 여수 스크린샷 · 빌드 3/3 · 루트 typecheck 4/4 · 커밋 `9f23066` · main 빨리 감기 · **105차 배포(gh-pages `dc853ac` · 실행 34 · 기동 10.0초 · 4xx 0 · pageerror 0)** · 아티팩트(50 · 49 · 43 · 위키 102).
-- **301(2) 참다랑어 어종군 「참치류」**(하모니 F-0107 · P-0029 — 사용자 「옮겨줘 … 개체 크기와 특성이 부분적으로 다르니 그것도 고려」) — `FishRarity` `'tuna'` 전용 군 · `fightPhys.burst.tuna` 5.0(방어류 5.5에 체급 보정 95 : 110cm) · `STAMINA_BASE.bluefin_tuna` 2.4 · 희귀도 하한 우량 · 도움말 「참치류 5」 ·
-  평균 개체 요구 장력 64 → 134kg(잿방어 62kg의 2.2배 · 합사 15호급) · core 518 · 커밋 `0460449` · main 빨리 감기 · **106차 배포(gh-pages `6422ed4` · 실행 35 · 기동 10.5초 · 4xx 0 · pageerror 0)** · 아티팩트(51 · 50 · 위키 103). 함정은 `fishing-loop.md` §6 28(폴백 `'other'`는 대물에게 틀린 답). 상세: [301차 워크로그](../docs/wiki/03-WORKLOG/2026-11-05-301-roads-butchery-sink-knives-prices.md).
 
 ---
 

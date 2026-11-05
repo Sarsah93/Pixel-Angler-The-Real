@@ -377,6 +377,38 @@ export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat
   return sectionsForCephalopod(speciesId) ?? sectionsForBodyShape(bodyShape);
 }
 
+/**
+ * 304차 — 섹션 트리를 **이 공정에 실제로 있는 단계**로 줄인다.
+ *
+ * 섹션 트리는 체형 하나에 한 벌(원형어 · 넙치)인데, 공정 단계는 프로필마다 다르다 —
+ * 비늘 없는 어종(`hasScales: false` — 고등어)은 `buildButcheryStages`가 비늘치기 세 단계를 만들지 않는다.
+ * 트리를 그대로 쓰면 작업 목록에 「비늘치기」가 뜨고, 누르면 `jumpTo`가 실패해 공정이 화면과 따로
+ * 다음 단계(배따기 → … → 2면 뜨기)로 흘러가다 「살 위로(필렛)」 뷰가 필요한 갈빗대 단계에서 멈췄다
+ * (사용자 리포트 — 고등어 「비늘치기 (1/3)」 · 필렛 2/2 · 「필렛 뷰 전환 필요」).
+ *
+ *  - 작업의 단계 목록에서 공정에 없는 단계를 뺀다.
+ *  - 남은 단계가 없는 작업은 뺀다(그 작업의 부산물도 없다 — 지금은 비늘치기뿐이라 부산물이 없다).
+ *  - 작업이 하나도 남지 않은 섹션은 뺀다(섹션 부산물이 있으면 남기지 않는다 — 진행할 방법이 없다).
+ * 원본 트리는 건드리지 않는다(어종마다 새 배열).
+ */
+export function resolveButcherySections(
+  sections: readonly ButcherySectionDef[], stageIds: Iterable<string>,
+): ButcherySectionDef[] {
+  const have = new Set(stageIds);
+  const out: ButcherySectionDef[] = [];
+  for (const sec of sections) {
+    const tasks: ButcheryTaskDef[] = [];
+    for (const t of sec.tasks) {
+      const ids = t.stageIds.filter((id) => have.has(id));
+      if (ids.length === 0) continue;
+      tasks.push(ids.length === t.stageIds.length ? t : { ...t, stageIds: ids });
+    }
+    if (tasks.length === 0) continue;
+    out.push(tasks.length === sec.tasks.length && tasks.every((t, i) => t === sec.tasks[i]) ? sec : { ...sec, tasks });
+  }
+  return out;
+}
+
 /** 프로필 체형 → 섹션 트리 선택 (어류 전용) */
 export function sectionsForBodyShape(bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
   return bodyShape === 'flat' ? FLAT_FISH_SECTIONS : WHOLE_FISH_SECTIONS;
