@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-06 |
 | **시스템** | `경제` · `회` · `낚시` · `튜닝` |
 | **트리거** | QA 실피드백 네 가지(채비하기 탭 구슬 칸 스크린샷 첨부) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (main · gh-pages 반영은 지시 대기) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `99d505e` (main · gh-pages 반영은 지시 대기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 552 · 하네스 r309 7/8(하네스 쪽 실수 1) → r309b 7/7 · pageerror 0 |
 
 ---
