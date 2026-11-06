@@ -1,11 +1,11 @@
 {
- "date": "2026-11-06",
- "audited_commit": "23b26f65c42692108c7494039f24ba9a30e8c021",
+ "date": "2026-11-07",
+ "audited_commit": "31deb41397a05ded686f1a57a2657b1b436e3614",
  "summary": {
-  "harmony_index": 65.4,
+  "harmony_index": 67.5,
   "balance": 68.5,
   "weakest": "q5-security",
-  "found_today": 1,
+  "found_today": 0,
   "fixed_today": 0,
   "scoring_version": 2
  },
@@ -112,7 +112,7 @@
     "보통": 4,
     "경미": 4
    },
-   "found_today": 1,
+   "found_today": 0,
    "fixed_today": 0,
    "decisions": {
     "merged": 1,
@@ -124,11 +124,11 @@
    "name": "⑥ 접근성·사용성",
    "kind": "product",
    "health": 80.0,
-   "scenarios": 33.3,
+   "scenarios": 66.7,
    "agency": null,
-   "overall": 62.5,
+   "overall": 75.0,
    "scenario_total": 6,
-   "scenario_recent": 2,
+   "scenario_recent": 4,
    "open_findings": {
     "심각": 0,
     "보통": 2,
@@ -187,5 +187,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-11-05"
+ "previous_date": "2026-11-06"
 }
