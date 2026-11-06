@@ -325,7 +325,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - ① 공개 집 id(`homeId` — 재접속 열쇠 `userId`를 공개 꼬리표로 쓰지 않는다) · 세션 키 `hometown@<집 id>`(위치 · 맵 키 · `f:` `r:` · 홈타운에 선 `n:` — 날씨 `w:`는 그대로) · `MultiplayerClient` 경계에서만 · 서버 무변경.
 - ② 집 안 · 텃밭 · 우편함 · 마당 설치물에 주인(`ownerHomeId` · 구세이브 백필) · 방문자 = 보기 · 말 · 거래 · 선물만(`hometownAllows`) ③ 머무는 집 = 접속 · 주인 있음 · 허락 셋 다(`resolveHometownStay`) · 주인이 나가면 내 집으로. 방문 신청 · 허락은 다음(백로그 DJ).
 - 하모니 PR #19(서버 오류 응답에서 경로 · 스택 빼기) 병합 — main `7595170`.
-- 검증: core 536(+9) · r305 13/13(두 클라이언트 · 로컬 서버) · 빌드 3/3 · 루트 typecheck 4/4. 상세: [305차 워크로그](../docs/wiki/03-WORKLOG/2026-11-06-305-hometown-ownership.md).
+- 검증: core 536(+9) · r305 13/13(두 클라이언트 · 로컬 서버) · 빌드 3/3 · 루트 typecheck 4/4 · main `dc28f4c` · **108차 배포**(gh-pages `2ebdb2a` · 4xx 0 · pageerror 0 — 304 포함). 상세: [305차 워크로그](../docs/wiki/03-WORKLOG/2026-11-06-305-hometown-ownership.md).
 
 **이전 변경 (2026-11-05 304차) — 고등어 손질이 「비늘치기」에서 막힘 · 손질 흐름 전수 점검**
 

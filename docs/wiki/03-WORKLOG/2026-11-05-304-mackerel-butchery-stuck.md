@@ -81,4 +81,4 @@
 - [x] `butchery.md` §4 · §6(36 — 트리와 공정 단계 정합) · 백로그 없음(잔여는 §6)
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 Version 54 · 구현 라이브러리 53 · 채비 모딩 순서도 46(「304차 기준」 줄) · 위키 106
-- [ ] main · 배포 — 이번 지시에 없었다(사용자 결정 대기)
+- [x] main · 배포 — 305와 함께 108차 배포(gh-pages `2ebdb2a`)

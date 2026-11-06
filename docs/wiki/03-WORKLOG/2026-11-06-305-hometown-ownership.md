@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-06 |
 | **시스템** | `멀티` · `홈` · `세이브` |
 | **트리거** | 사용자 제안(하모니 PR #19 보고 뒤) · 사용자 지시 「1~3번 밑작업 착수하고, 너 추천대로 해줘. 그리고 PR 19 병합도 해줘. 다 마무리되면 main/gh-pages 재배포까지.」 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (해시는 §8) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `dc28f4c` (+ 배포 기록) · main 빨리 감기 · 108차 배포 gh-pages `2ebdb2a` |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 536 · 하네스 r305 13/13(두 클라이언트 · 로컬 서버) · pageerror 0 |
 
 ---
@@ -97,4 +97,4 @@
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 하모니 PR #19 병합(main `7595170` · 작업 브랜치 `667a138`)
 - [x] 아티팩트 4개 — 남은 과업 설계 Version 55 · 구현 라이브러리 54 · 채비 모딩 순서도 47(「305차 기준」 줄) · 위키 107
-- [ ] main · 108차 배포(gh-pages 해시는 배포 뒤 이 줄에)
+- [x] main 빨리 감기 `dc28f4c` · **108차 배포**(gh-pages `2ebdb2a` · 304 포함) — 정적 2,165(소스맵 0) · 기동 8.9초(헤드리스 · gh-pages를 로컬로 띄워 확인) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 집 id 모양 · 되돌린 까닭 글 · 막힌 글 · `ownerHomeId` · 304 안전망 글 확인
