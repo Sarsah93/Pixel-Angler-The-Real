@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-06 |
 | **시스템** | `낚시` · `멀티` · `홈` |
 | **트리거** | 사용자 리포트 둘 + 지시 「방문 신청·허락 기능도 이어서 진행해줘」 · 「위 내용 수정 반영 후, main & gh-pages 재배포 해줘」 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (해시는 §8) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `b9aa98b` (+ 배포 기록) · main 빨리 감기 · 109차 배포 gh-pages `24f7a6f` |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 545 · 하네스 r306fp(실제 1인칭) · r306visit 15/15 · 서버 상태 머신 19/19 · r305 회귀 · pageerror 0 |
 
 ---
@@ -95,4 +95,4 @@
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 Version 56 · 구현 라이브러리 55 · 채비 모딩 순서도 48(「306차 기준」 줄) · 위키 108
 - [x] r305 회귀 13/13
-- [ ] main · 109차 배포(gh-pages 해시는 배포 뒤 이 줄에)
+- [x] main 빨리 감기 `b9aa98b` · **109차 배포**(gh-pages `24f7a6f`) — 정적 2,165(소스맵 0) · 기동 9.7초(헤드리스 · gh-pages를 로컬로 띄워 확인) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 집 구경 메뉴 · 묻는 창 · `/mp/visit/*` · 빈 바늘 글 · 영문 확인
