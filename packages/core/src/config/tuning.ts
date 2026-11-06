@@ -381,6 +381,13 @@ export interface TuningConfig {
     /** 상승 속도 (m/s, 완만) */
     liftRateMps: number;
   };
+  // ── 트위칭(좌클릭 더블 탭) 들어 올리기 (feel — 309차) ──
+  twitch: {
+    /** 한 번에 떠오르는 높이 (m) */
+    riseM: number;
+    /** 떠오르는 데 걸리는 시간 (초) — 짧을수록 빠르게 튄다. 내려올 때는 정해진 시간이 없다(채비 무게대로 평소 침강) */
+    riseSec: number;
+  };
   // ── 조경 포말 (feel — §3) ──
   foam: {
     /** 찌 부근 포말 X 분산 (px — 좁게 뭉침) */
@@ -1500,6 +1507,8 @@ export const TUNING: TuningConfig = {
     lineColorWarn: 0.60, lineColorCritical: 0.85,
   },
   hold: { liftM: 0.02, liftRateMps: 0.2 },
+  // 309차 — 옛 고정 동작(0.7초에 1m 올랐다 0.6m 내림 · 오르는 데 0.32초)을 「빠르게 오르고 무게대로 가라앉기」로
+  twitch: { riseM: 1.0, riseSec: 0.2 },
   foam: { spreadPx: 30 },
   view: { seaBands: 14, skyBands: 12, rainSplashPerSec: 48, rainRippleMaxPx: 16 },
   castMove: {
@@ -2033,6 +2042,8 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'fightDist.runSpreadDeg', min: 0, max: 85, step: 5, category: 'feel', label: '도주 좌우 편향(도)' },
   { path: 'fightDist.depthRate', min: 0.3, max: 3.0, step: 0.1, category: 'feel', label: '수심 추종 속도' },
   { path: 'hold.liftM', min: 0, max: 0.3, step: 0.01, category: 'feel', label: '뒷줄견제 리프트(m)' },
+  { path: 'twitch.riseM', min: 0.3, max: 2.0, step: 0.1, category: 'feel', label: '트위칭 상승(m)' },
+  { path: 'twitch.riseSec', min: 0.08, max: 0.6, step: 0.02, category: 'feel', label: '트위칭 상승 시간(초)' },
   { path: 'foam.spreadPx', min: 10, max: 120, step: 2, category: 'feel', label: '포말 분산(px)' },
   { path: 'view.seaBands', min: 6, max: 20, step: 1, category: 'feel', label: '바다 밴드 수' },
   { path: 'view.skyBands', min: 4, max: 20, step: 1, category: 'feel', label: '하늘 밴드 수' },

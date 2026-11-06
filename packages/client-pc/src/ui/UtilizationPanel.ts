@@ -1566,9 +1566,9 @@ export class UtilizationPanel extends DraggablePanel {
       hit.on('pointerdown', onClick);
       this.bodyContainer.add([g, t1, t2, hit]);
     };
-    mkBox(bx, halfW, '사시미 만들기', hasPlate ? '접시에 회 조각을 담아 완성' : '(접시 필요 — 식자재마트 판매)', hasPlate,
+    mkBox(bx, halfW, '사시미 만들기', hasPlate ? '접시에 회 조각을 담아 완성' : '(접시 필요 — 식자재마트 · 사이소 · 편의점)', hasPlate,
       () => {
-        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트에서 판매합니다', true); return; }
+        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트 · 사이소 · 편의점에서 팝니다', true); return; }
         this.animateSashimiExpand(bx, by, bw, bh, halfW);
       });
     // 154차 — 불요리는 화구 앞에서 한다(설치한 화구 [F] · 집 주방 [F]). 이 박스는 안내만.

@@ -1188,7 +1188,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
   /**
    * 트위칭/저킹 — 좌클릭 더블 탭 (쿨다운 0.8초).
-   * 탭한 화면 좌/우에 따라 머리가 반대측으로 꺾이고, 수심 1m 상승 후 0.6m 하강.
+   * 309차 — 채비가 **빠르게 떠오르고**(`TUNING.twitch` — 1m · 0.2초), 내려올 때는 **채비 무게대로** 평소 침강이 맡는다
+   *   (찌 채비 = `stepUnderwater` · 루어 · 봉돌 = `computeSinkRate`). 옛 동작은 0.7초 동안 「1m 상승 → 0.6m 하강」을 채비와 상관없이
+   *   고정으로 그려(오르는 데 0.32초) 가벼운 찌 채비도 초속 1.5m로 떨어졌다(QA 「떠오르는 속도를 조금 빠르게 · 내려가는 속도를 채비 무게에 따라」).
    */
   private doTwitch(_side: -1 | 1): void {
     if (this.twitchCooldown > 0) return;
@@ -1197,16 +1199,17 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.rigPose = 'twitch';
     this.poseTimer = 0.7;
     const z0 = this.rig.baitZ;
+    const riseM = TUNING.twitch.riseM;
     this.tweens.addCounter({
-      from: 0, to: 1, duration: 700,
+      from: 0, to: 1, duration: Math.max(40, TUNING.twitch.riseSec * 1000), ease: 'Quad.easeOut',
       onUpdate: (tw) => {
         const t = tw.getValue() ?? 0;
-        // 1m 상승(전반) → 0.6m 하강(후반) — 순변화 -0.4m
-        const dz = t < 0.45 ? -(t / 0.45) * 1.0 : -1.0 + ((t - 0.45) / 0.55) * 0.6;
-        this.rig.baitZ = Math.max(0.3, Math.min(this.cfg.zMaxM, z0 + dz));
+        this.rig.baitZ = Math.max(0.3, Math.min(this.cfg.zMaxM, z0 - riseM * t));
+        this.rig.settled = false;
       },
     });
-    this.flashState('트위칭! 루어가 튀어오릅니다');
+    // 309차 — 원투 · 찌 · 루어 채비 모두 트위칭한다(QA 「'루어'라는 표현 … 채비가 살짝 떴다 가라앉습니다 등으로」)
+    this.flashState('트위칭! 채비가 살짝 떴다 가라앉습니다');
   }
 
   /**

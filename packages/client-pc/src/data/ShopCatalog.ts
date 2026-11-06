@@ -413,7 +413,20 @@ const KNIFE_SASHIMI: ShopEntry = { id: 'knife_sashimi',  name: '회칼 (사시�
 const KNIFE_YANAGIBA: ShopEntry = { id: 'knife_yanagiba', name: '장인 야나기바',    icon: '', iconTexture: 'art_knife_yanagiba', category: 'etc', subCategory: '조리도구', basePrice: 120000, price: 150000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '얇게 많이 뜨는 장인 야나기바 (수율 1.10 + 등급 보너스).' };
 const KNIFE_YANAGIBA_BASIC: ShopEntry = { id: 'knife_yanagiba_basic', name: '야나기바 (보급형)', icon: '', iconTexture: 'art_knife_yanagiba', category: 'etc', subCategory: '조리도구', basePrice: 52000, price: 65000, maxPerPurchase: 1, equippable: true, tool: 'knife', desc: '생활용품점 진열대의 보급형 야나기바. 장인 칼만큼 얇게는 못 떠도 회칼보다 길고 날이 섰다 (수율 1.05 + 등급 보너스).' };
 /** 301차 — 사이소 초보 기본 채비 한 벌: 직판장 채비 코너의 같은 객체(목줄 · 바늘 묶음 · 고리 · 구멍봉돌 3호 · 좁쌀봉돌 · 도래 · 구멍찌 0.8호) */
-const SAISO_BASIC_RIG_IDS = ['inv_nylon2', 'inv_chinu3', 'inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinkerG2', 'inv_swivel', 'inv_float08'];
+/**
+ * 사시미 접시 — 회 조각 플레이팅용 (방위당 소4/중5/대6/특대7점 — 요리 탭 사시미 만들기).
+ * 309차 — 식자재마트(10~22시)에만 있어 밤에는 회를 담을 수 없었다(QA 「사이소 · 편의점 등 … 접시를 파는 곳이 확인되지 않음 · 새벽 1시」).
+ *   생활용품점 사이소는 네 가지 다 · 편의점(24시간)은 소 · 중만 판다(같은 물건 — 값 · 묶음이 같다).
+ */
+export const SASHIMI_PLATES: ShopEntry[] = [
+  { id: 'inv_plate_s',  name: '사시미 접시 (소)',   icon: '', iconTexture: 'art_plate_s', category: 'etc', subCategory: '식기', basePrice: 2500, price: 3000, maxPerPurchase: 3, equippable: false, desc: '방위당 4점 × 4방위 = 16점. 모듬 350g~ / 고급 320g~.' },
+  { id: 'inv_plate_m',  name: '사시미 접시 (중)',   icon: '', iconTexture: 'art_plate_m', category: 'etc', subCategory: '식기', basePrice: 4500, price: 5500, maxPerPurchase: 3, equippable: false, desc: '방위당 5점 × 4방위 = 20점. 모듬 550g~ / 고급 500g~.' },
+  { id: 'inv_plate_l',  name: '사시미 접시 (대)',   icon: '', iconTexture: 'art_plate_l', category: 'etc', subCategory: '식기', basePrice: 7000, price: 8500, maxPerPurchase: 3, equippable: false, desc: '방위당 6점 × 4방위 = 24점. 모듬 750g~ / 고급 700g~.' },
+  { id: 'inv_plate_xl', name: '사시미 접시 (특대)', icon: '', iconTexture: 'art_plate_xl', category: 'etc', subCategory: '식기', basePrice: 12000, price: 14000, maxPerPurchase: 3, equippable: false, desc: '방위당 7점 × 4방위 = 28점. 모듬 1.2kg~ / 고급 1.0kg~.' },
+];
+
+// 309차 — 반유동 찌채비의 반달구슬 · 쿠션고무도(QA 「반유동 채비에서 반달구슬이 반드시 필요 … 상점에도 없음」 — 직판장 채비 코너 끝에만 있었다)
+const SAISO_BASIC_RIG_IDS = ['inv_nylon2', 'inv_chinu3', 'inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinkerG2', 'inv_swivel', 'inv_float08', 'inv_bead_halfmoon', 'inv_cushion_bell'];
 const SAISO_BASIC_RIG: ShopEntry[] = SAISO_BASIC_RIG_IDS.map((id) => {
   const e = TACKLE_CORNER.find((t) => t.id === id);
   if (!e) throw new Error(`[ShopCatalog] 사이소 기본 채비 id가 직판장 채비 코너에 없다: ${id}`);
@@ -438,6 +451,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       // 301차 — 막칼 · 회칼(사시미칼). 회칼이 식자재마트(10~22시)에만 있어 밤에 손질 이야기(「부엌의 순서」)가 막혔다
       //  (사용자 「편의점에 야나기바 정도의 고퀄리티 칼은 없지만 회칼(사시미칼)은 실제로 파는 곳들이 많이 있었음」). 야나기바는 두지 않는다.
       KNIFE_UTILITY, KNIFE_SASHIMI,
+      // 309차 — 사시미 접시 소 · 중은 편의점도 판다(24시간 — 밤에도 회를 담을 수 있게)
+      ...SASHIMI_PLATES.filter((e) => e.id === 'inv_plate_s' || e.id === 'inv_plate_m'),
     ],
   },
   mart: {
@@ -479,11 +494,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
         desc: '가게에서 미리 녹여 둔 급랭 백크릴 한 블록. 사자마자 밑밥통에 넣거나 뜯어서 미끼로(50마리) 쓴다 — 대신 산 지 30분이면 상하니 바로 쓸 때만.' },
       // 회칼 (조리도구) — 회뜨기 게이팅용. 등급이 높을수록 수율·슬라이스·등급 상향. 301차 — 정의는 `KNIFE_*` 하나 · 편의점 · 사이소도 같은 객체를 진열한다
       KNIFE_UTILITY, KNIFE_SASHIMI, KNIFE_YANAGIBA,
-      // 사시미 접시 — 회 조각 플레이팅용 (방위당 소4/중5/대6/특대7점 — 요리 탭 사시미 만들기)
-      { id: 'inv_plate_s',  name: '사시미 접시 (소)',   icon: '', iconTexture: 'art_plate_s', category: 'etc', subCategory: '식기', basePrice: 2500, price: 3000, maxPerPurchase: 3, equippable: false, desc: '방위당 4점 × 4방위 = 16점. 모듬 350g~ / 고급 320g~.' },
-      { id: 'inv_plate_m',  name: '사시미 접시 (중)',   icon: '', iconTexture: 'art_plate_m', category: 'etc', subCategory: '식기', basePrice: 4500, price: 5500, maxPerPurchase: 3, equippable: false, desc: '방위당 5점 × 4방위 = 20점. 모듬 550g~ / 고급 500g~.' },
-      { id: 'inv_plate_l',  name: '사시미 접시 (대)',   icon: '', iconTexture: 'art_plate_l', category: 'etc', subCategory: '식기', basePrice: 7000, price: 8500, maxPerPurchase: 3, equippable: false, desc: '방위당 6점 × 4방위 = 24점. 모듬 750g~ / 고급 700g~.' },
-      { id: 'inv_plate_xl', name: '사시미 접시 (특대)', icon: '', iconTexture: 'art_plate_xl', category: 'etc', subCategory: '식기', basePrice: 12000, price: 14000, maxPerPurchase: 3, equippable: false, desc: '방위당 7점 × 4방위 = 28점. 모듬 1.2kg~ / 고급 1.0kg~.' },
+      ...SASHIMI_PLATES,
       // 요리 코너 (154차 불요리) — 채소·양념·용기·화구·연료. 조리 필드는 CookItems 테이블이 정본
       ...COOK_CORNER,
       // 235차 — 모종 · 종구 · 버섯 배지(심는 철에만 · 희귀할수록 적게)
@@ -634,6 +645,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       //  칼은 보급형(새 id · 수율 1.05) + 장인 야나기바(마트와 같은 객체) · 채비는 직판장 채비 코너의 기본 한 벌(같은 객체 — 값 · 묶음 수가 같다).
       KNIFE_YANAGIBA_BASIC, KNIFE_YANAGIBA,
       ...SAISO_BASIC_RIG,
+      ...SASHIMI_PLATES,   // 309차 — 접시(밤에도 살 수 있게)
       // 189차 — 집 화분(나중에는 텃밭)에 물을 준다. 손에 들고 화분 앞에서 [F]
       { id: 'inv_watering_can', name: '물뿌리개', icon: '', iconTexture: 'art_watering_can', category: 'gear', subCategory: '손도구',
         basePrice: 6000, price: 6000, maxPerPurchase: 1, equippable: true, tool: 'watering_can',
