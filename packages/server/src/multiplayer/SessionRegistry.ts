@@ -145,7 +145,7 @@ export class SessionRegistry {
 
   get(code: string): Session | undefined {
     this.sweep();
-    return this.sessions.get(code.toUpperCase());
+    return this.sessions.get(String(code).toUpperCase());
   }
 
   /** 이름이 이미 쓰이는지 — 형식 오류도 여기서 함께 걸러 클라이언트가 한 번만 물어도 되게 한다 */
@@ -315,7 +315,7 @@ export class SessionRegistry {
 
   /** 접속 종료 — 자리는 남겨 둔다(이어하기). 완전 삭제는 `sweep`이 기한으로 한다 */
   leave(code: string, playerId: string, token: string | undefined): void {
-    const s = this.sessions.get(code.toUpperCase());
+    const s = this.sessions.get(String(code).toUpperCase());
     const p = s ? this.authed(s, playerId, token) : undefined;
     if (!s || !p) return;
     p.offline = true;
@@ -333,7 +333,7 @@ export class SessionRegistry {
    * 같은 userId로 다시 들어오면 이어하기가 아니라 **새 사람**이다.
    */
   retire(code: string, who: { playerId?: string; token?: string; userId?: string }): MpRetireRes {
-    const s = this.sessions.get(code.toUpperCase());
+    const s = this.sessions.get(String(code).toUpperCase());
     // 접속 중이면 playerId + 비밀값, 파산 때 서버가 꺼져 있어 나중에 다시 보내는 경우엔 userId(재접속 열쇠 — 본인만 안다)로 찾는다
     const p = s && ((who.playerId ? this.authed(s, who.playerId, who.token) : undefined)
       ?? (who.userId ? this.playerByUser(s, who.userId) : undefined));
@@ -741,7 +741,7 @@ export class SessionRegistry {
   private pathOf(code: string): string { return join(SESSION_DIR, `${code}.json`); }
 
   private save(code: string, force = false): void {
-    const s = this.sessions.get(code.toUpperCase());
+    const s = this.sessions.get(String(code).toUpperCase());
     if (!s || !s.dirty) return;
     const now = Date.now();
     if (!force && now - s.savedMs < SAVE_THROTTLE_MS) return;
@@ -768,7 +768,7 @@ export class SessionRegistry {
   }
 
   private erase(code: string): void {
-    try { unlinkSync(this.pathOf(code.toUpperCase())); } catch (_e) { /* 없으면 그만 */ }
+    try { unlinkSync(this.pathOf(String(code).toUpperCase())); } catch (_e) { /* 없으면 그만 */ }
   }
 
   /**
