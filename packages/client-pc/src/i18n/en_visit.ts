@@ -1,6 +1,6 @@
 /**
  * @file en_visit.ts
- * @description 305 · 306차 — 홈타운 소유 · 방문(집 구경) · 미끼를 따먹힌 빈 바늘 영문.
+ * @description 305 · 306 · 307차 — 홈타운 소유 · 방문(집 구경 · 집 안 구경) · 미끼를 따먹힌 빈 바늘 영문.
  *
  * 규칙은 이름이 섞인 문장(「OO 씨가 집 구경을 …」 · 「[홈타운] …」 채널 줄)만 둔다.
  */
@@ -50,6 +50,10 @@ export const EN_VISIT: Record<string, string> = {
   '집주인이 자리를 비웠습니다.': 'The host stepped away.',
   '손님이 자리를 비웠습니다.': 'The guest stepped away.',
   '청하지 못했습니다.': 'Could not send the request.',
+  // 307 — 집 안 구경
+  '[F] 집 안 구경하기': '[F] Look around inside',
+  '집 안 모습을 아직 받지 못했습니다. 잠시 뒤에 다시 해 보세요.': 'The inside of the house has not arrived yet. Try again in a moment.',
+  '남의 집 안이다. 만지지 말고 구경만 하자.': 'Someone else’s home. Look, but don’t touch.',
   // 306 — 미끼를 따먹힌 빈 바늘
   '입질이 끊겼습니다 — 미끼를 따먹힌 것 같습니다. 빈 바늘로는 물지 않습니다.':
     'The bite stopped — the bait seems to have been stolen. Nothing bites a bare hook.',
@@ -59,6 +63,7 @@ export const EN_VISIT_RULES: VisitRule[] = [
   [/^(.+) 씨가 집 구경을 오고 싶어 합니다\.\n들이시겠습니까\?$/, (m) => `${m[1]} would like to visit your home.\nLet them in?`],
   [/^(.+) 씨가 집 구경을 허락했습니다\.\n지금 가 보시겠습니까\?$/, (m) => `${m[1]} invited you over.\nGo now?`],
   [/^(.+) 씨 집 구경 가기$/, (m) => `Visit ${m[1]}’s home`],
+  [/^(.+) 씨 집 안이다\. 만지지 말고 구경만 하자\.$/, (m) => `${m[1]}’s home. Look, but don’t touch.`],
   [/^\[홈타운\] (.+) 씨에게 집 구경을 청했습니다 — 답을 기다립니다$/, (m) => `[Hometown] Asked ${m[1]} for a visit — waiting for an answer`],
   [/^\[홈타운\] (.+) 씨를 집 구경에 들였습니다$/, (m) => `[Hometown] You let ${m[1]} in for a visit`],
   [/^\[홈타운\] (.+) 씨가 집 구경을 허락했습니다$/, (m) => `[Hometown] ${m[1]} invited you over`],

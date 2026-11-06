@@ -159,11 +159,11 @@ import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
 import { hometownBlockReasonKo, hometownFallbackReasonKo, type HometownAction } from '@tra/core';   // 305차 — 홈타운 소유
 import {
-  createEmptyWorldObjectState, HOMETOWN_MAP_GRAPH, guestVisitOf, hostVisitsOf, liveVisitBetween, isHomeId, MP_VISIT_REASON_KO, type MpVisit,
+  createEmptyWorldObjectState, HOMETOWN_MAP_GRAPH, guestVisitOf, liveVisitBetween, isHomeId, MP_VISIT_REASON_KO, type MpVisit,
 } from '@tra/core';   // 306차 — 홈타운 방문(집 구경)
 
-/** 306차 — 이미 화면에 알린 방문 상태(방문 id → 상태) · 장면을 다시 열어도 같은 알림을 두 번 띄우지 않는다 */
-const VISIT_SEEN = new Map<string, string>();
+// 306차 — 이미 화면에 알린 방문 상태 · 307차 — 집주인 집 모습 올리기 · 손님 받기는 집 안 장면과 같이 쓴다
+import { VISIT_SEEN, kickHomeViewPush, pumpHomeViewPush, resetGuestView, pumpGuestView, guestViewSerial } from '../net/VisitSync.js';
 import { regionalPlotOffer, regionalPlotId } from '@tra/core';   // 300차 — 지역 빌린 밭
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
@@ -648,7 +648,10 @@ export class RegionFieldScene extends Phaser.Scene {
       const entered = this.registry.get('visitEnteredId') as string | undefined;
       if (gv && gv.status === 'accepted' && entered === gv.id && GameState.hometownStay.ownerHomeId !== gv.homeId) void MultiplayerClient.endVisit(gv.id);
       this.registry.set('visitEnteredId', GameState.visitingHometown && gv ? gv.id : '');
-      this.visitFarmStore = undefined; this.visitViewRev = 0; this.visitViewAsk = 0; this.visitPushSig = ''; this.visitPushAt = 0;
+      this.visitFarmStore = undefined;
+      resetGuestView();
+      this.visitAppliedSerial = guestViewSerial();
+      this.registry.set('visitReturn', '');
     }
     this.graph = REGION_MAP_GRAPHS[this.region];
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
@@ -6781,12 +6784,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private stayCheckAt = 0;
   private stayMiss = 0;
   private stayNotice: string | null = null;
-  /** 306차 — 남의 집 구경: 받은 집 모습 판 번호 · 받는 중 표시 · 그 집 텃밭(보기만) / 집주인: 마지막으로 올린 모습 서명 · 시각 */
-  private visitViewRev = 0;
-  private visitViewAsk = 0;
+  /** 306차 — 남의 집 구경: 그 집 텃밭(보기만) · 307차 — 마지막으로 입힌 집 모습 판(`VisitSync.guestViewSerial`) */
   private visitFarmStore?: FarmStoreImpl;
-  private visitPushSig = '';
-  private visitPushAt = 0;
+  private visitAppliedSerial = 0;
   private questMarkerAt = 0;
 
   /**
@@ -6959,6 +6959,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private syncPeers(delta: number): void {
     // 305차 — 남의 홈타운에 서 있는 동안 주인이 나가거나 접속이 끊기면 내 집으로(2초마다 · 두 번 연달아 빠지면 — 폴링 늦음에 흔들리지 않게)
     if (this.region === 'hometown' && GameState.visitingHometown) {
+      // 307차 — 집 안 구경 중에 방문이 끝나 집 안 장면이 밖으로 내보냈다 — 그 까닭으로 곧바로 내 집으로
+      const vr = this.registry.get('visitReturn') as string | undefined;
+      if (vr) { this.registry.set('visitReturn', ''); this.returnToOwnHometown(vr); return; }
       this.stayCheckAt += delta;
       if (this.stayCheckAt >= 2000) {
         this.stayCheckAt = 0;
@@ -7175,7 +7178,7 @@ export class RegionFieldScene extends Phaser.Scene {
         if (host) {
           VISIT_SEEN.set(v.id, v.status);
           this.hud?.pushLog(`[홈타운] ${v.fromName} 씨를 집 구경에 들였습니다`);
-          this.visitPushSig = '';   // 곧바로 집 모습을 올린다
+          kickHomeViewPush();   // 곧바로 집 모습을 올린다
           continue;
         }
         if (GameState.hometownStay.ownerHomeId === v.homeId) { VISIT_SEEN.set(v.id, v.status); continue; }
@@ -7199,32 +7202,14 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       if (seen !== undefined || v.status !== 'ended') this.hud?.pushLog(`[홈타운] ${reason}`);
     }
-    // 집주인 — 들인 방문이 있으면 집 모습을 올린다(바뀌었거나 15초마다 한 번)
-    const hosting = hostVisitsOf(MultiplayerClient.visits, me, 'accepted');
-    if (hosting.length) {
-      const now = this.time.now;
-      if (now - this.visitPushAt > 3000 || !this.visitPushSig) {
-        this.visitPushAt = now;
-        const view = GameState.buildHomeView();
-        const sig = JSON.stringify({ ...view, atMs: 0 });
-        if (sig !== this.visitPushSig || hosting.some((v) => v.viewRev === 0) || now % 15000 < 3000) {
-          this.visitPushSig = sig;
-          for (const v of hosting) void MultiplayerClient.putHomeView(v.id, view);
-        }
-      }
-    }
-    // 손님 — 구경 중인 집의 모습이 새 판이면 받아 입힌다
+    // 집주인 — 들인 방문이 있으면 집 모습을 올린다(바뀌었거나 15초마다 한 번) · 307차 — 집 안 장면도 같은 함수를 부른다
+    pumpHomeViewPush();
+    // 손님 — 구경 중인 집의 모습이 새 판이면 받아 입힌다(집 안에 있는 동안 받은 판도 돌아오면 입힌다)
     if (GameState.visitingHometown && this.region === 'hometown') {
-      const gv = guestVisitOf(MultiplayerClient.visits, me);
-      if (gv && gv.status === 'accepted' && gv.homeId === GameState.hometownStay.ownerHomeId && gv.viewRev > this.visitViewRev && this.visitViewAsk !== gv.viewRev) {
-        const want = gv.viewRev;
-        this.visitViewAsk = want;
-        void MultiplayerClient.fetchHomeView(gv.id).then((r) => {
-          if (!r || !this.scene.isActive() || !GameState.visitingHometown || GameState.hometownStay.ownerHomeId !== gv.homeId) return;
-          this.visitViewRev = r.rev;
-          GameState.setVisitView(r.view);
-          this.applyVisitView();
-        });
+      pumpGuestView();
+      if (this.visitAppliedSerial !== guestViewSerial()) {
+        this.visitAppliedSerial = guestViewSerial();
+        this.applyVisitView();
       }
     }
   }
@@ -7637,8 +7622,11 @@ export class RegionFieldScene extends Phaser.Scene {
       this.questTargetPos = null;
       this.questSubTargetPos = null;
       const entries: QuestTrackerEntry[] = [];
-      if (main) { const b = this.buildTrackerEntry(main, true); if (b.pos) this.questTargetPos = b.pos; entries.push(b.entry); }
-      if (sub) { const b = this.buildTrackerEntry(sub, true); if (b.pos) this.questSubTargetPos = b.pos; entries.push(b.entry); }
+      // 307차 — 남의 집(홈타운 구경)에서는 할 일 화살표를 감춘다(사용자 지시 — 그 마당의 표지는 내 이야기의 자리가 아니다).
+      //   「지금 할 일」 줄은 그대로 둔다. 내 집 · 다른 지역으로 돌아오면 다음 400ms 틱에 다시 뜬다
+      const arrows = !GameState.visitingHometown;
+      if (main) { const b = this.buildTrackerEntry(main, arrows); if (b.pos) this.questTargetPos = b.pos; entries.push(b.entry); }
+      if (sub) { const b = this.buildTrackerEntry(sub, arrows); if (b.pos) this.questSubTargetPos = b.pos; entries.push(b.entry); }
       this.hud?.setQuestTracker(entries.length ? { entries } : null);
     }
     this.drawQuestArrow();
@@ -8249,7 +8237,7 @@ export class RegionFieldScene extends Phaser.Scene {
     //   [F] = 기능 · [Shift+F] = 회수로 나눈다.
     if (o.placedByPlayer && o.removable && !this.hasFunction(o)) return '[F] 회수';
     switch (o.interact) {
-      case 'door': return '[F] 집으로 들어가기';
+      case 'door': return GameState.visitingHometown ? '[F] 집 안 구경하기' : '[F] 집으로 들어가기';   // 307차 — 남의 집은 보기만
       case 'bus': return '[F] 출조 버스 (전국 지도)';
       case 'well': return '[F] 우물물 마시기';
       case 'mailbox': return '[F] 우편함 열기';   // 296차
@@ -8410,14 +8398,22 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 집 문 → 실내 (pause + launch — 복귀는 stop + resume 규칙) */
   private enterHomeInterior(): void {
-    if (this.hometownBlocked('enterHouse')) return;   // 305차 — 남의 집 안
+    // 307차 — 남의 집은 「집 안 구경」(집주인이 올린 집 안 모습으로 그린 읽기 전용 장면 — 손님 세이브는 닿지 않는다).
+    //   주인 행동 `enterHouse`(집 안을 쓰기)는 305 규칙 그대로 막혀 있다.
+    const visit = GameState.visitingHometown;
+    if (visit && !GameState.visitView?.interior) {
+      playSfx('deny');
+      this.floatingHint('집 안 모습을 아직 받지 못했습니다. 잠시 뒤에 다시 해 보세요.');
+      return;
+    }
+    if (!visit && this.hometownBlocked('enterHouse')) return;   // 305차 — 남의 집 안
     playSfx('door_open');
     // keepTransitioning=false — 씬이 살아있는(paused) 전환이라 액션 직전 플래그 해제
     this.fadeOutThen(() => {
       MultiplayerClient.setActivity('indoor');   // 145차
       this.scene.pause('RegionFieldScene');
       // 197차 — 데이터를 꼭 넘긴다: 빈 launch는 새 게임 때의 `{ wake: true }`를 다시 쓴다(Phaser 동작)
-      this.scene.launch('HomeInteriorScene', { wake: false });
+      this.scene.launch('HomeInteriorScene', { wake: false, visit });
     }, 250, false);
   }
 

@@ -9,7 +9,7 @@
  * 순수 TS — 서버 · 클라이언트가 같이 읽는다.
  */
 
-import type { MpVisit, MpHomeView } from '../types/Multiplayer.js';
+import type { MpVisit, MpHomeView, MpHomeInteriorView } from '../types/Multiplayer.js';
 import { MP_HOME_VIEW_MAX_JSON } from '../types/Multiplayer.js';
 import { isHomeId } from './HometownOwnership.js';
 
@@ -46,6 +46,7 @@ const isStr = (v: unknown, max = 64): v is string => typeof v === 'string' && v.
 /**
  * 주인 집 모습 모양 검사 — 서버(받을 때)와 손님(그릴 때)이 같이 쓴다. 모양이 틀리거나 너무 크면 null.
  * 마당 설치물은 칸 좌표 · 종류 · id만 확인한다(그림은 손님 클라이언트의 종류 표로 그린다).
+ * 307차 — 집 안(`interior`)이 있으면 그 모양도 본다(가구 · 화분 · 스탠드 · 수조 · 어탁만 — 보관함 속은 애초에 싣지 않는다).
  */
 export function cleanHomeView(v: unknown): MpHomeView | null {
   if (!isObj(v)) return null;
@@ -60,7 +61,24 @@ export function cleanHomeView(v: unknown): MpHomeView | null {
   if (!w.placed.every((o) => isObj(o) && isStr(o.instanceId) && isStr(o.type, 32) && isNum(o.tx) && isNum(o.ty))) return null;
   if (!isObj(v.farm) || Object.keys(v.farm).length > 32 || !Object.values(v.farm).every(isObj)) return null;
   if (typeof v.mailboxFlag !== 'boolean' || !isNum(v.atMs)) return null;
+  if (v.interior !== undefined && !isInteriorShape(v.interior)) return null;
   return v as unknown as MpHomeView;
+}
+
+const FURN_DIRS = ['down', 'left', 'up', 'right'];
+
+/** 307차 — 집 안 모습 모양(가구 80점 · 화분 · 스탠드 id · 수조 20개 × 고기 8 · 어탁 한 점) */
+function isInteriorShape(iv: unknown): iv is MpHomeInteriorView {
+  if (!isObj(iv) || !Array.isArray(iv.placed) || !Array.isArray(iv.dryPlants) || !Array.isArray(iv.lampsOn) || !isObj(iv.tanks)) return false;
+  if (iv.placed.length > 80 || iv.dryPlants.length > 80 || iv.lampsOn.length > 80) return false;
+  if (!iv.placed.every((f) => isObj(f) && isStr(f.id) && isStr(f.kind, 32) && isNum(f.tx) && isNum(f.ty) && FURN_DIRS.includes(f.dir as string))) return false;
+  if (!iv.dryPlants.every((x) => isStr(x)) || !iv.lampsOn.every((x) => isStr(x))) return false;
+  const tanks = Object.values(iv.tanks);
+  if (tanks.length > 20) return false;
+  if (!tanks.every((t) => Array.isArray(t) && t.length <= 8
+    && t.every((x) => isObj(x) && isStr(x.speciesId) && isNum(x.lengthCm) && (x.sex === 'M' || x.sex === 'F')))) return false;
+  if (iv.fishPrint !== undefined && !(isObj(iv.fishPrint) && isStr(iv.fishPrint.speciesId) && isNum(iv.fishPrint.lengthCm))) return false;
+  return true;
 }
 
 /** 방문 한 건이 서버 응답 모양인가(손님 · 주인 클라이언트가 받을 때) */

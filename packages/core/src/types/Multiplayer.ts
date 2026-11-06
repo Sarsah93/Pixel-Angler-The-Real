@@ -668,7 +668,35 @@ export interface MpHomeView {
   farm: Record<string, unknown>;
   /** 우편함 깃발(받을 것이 있다) */
   mailboxFlag: boolean;
+  /** 307차 — 집 안(가구 배치 · 보기만). 없으면 손님은 집 안에 들어가지 못한다(옛 클라이언트) */
+  interior?: MpHomeInteriorView;
   atMs: number;
+}
+
+/** 307차 — 집 안 가구 한 점(종류 · 칸 · 바라보는 쪽 — 그림은 손님 클라이언트의 가구 표로 그린다) */
+export interface MpHomeFurniture {
+  id: string;
+  kind: string;
+  tx: number;
+  ty: number;
+  dir: 'down' | 'left' | 'up' | 'right';
+}
+
+/**
+ * 307차 — 손님에게 보내는 **주인 집 안 모습(읽기 전용)**.
+ * 가구 배치와 그림에 드러나는 것만 싣는다 — 옷장 · 선반 · 냉장고 속 · 넣어 둔 가구 · 고양이 정 같은 주인 몫은 싣지 않는다.
+ */
+export interface MpHomeInteriorView {
+  /** 방에 놓인 가구 */
+  placed: MpHomeFurniture[];
+  /** 잎이 처진(목마른) 화분 id */
+  dryPlants: string[];
+  /** 켜 둔 스탠드 id */
+  lampsOn: string[];
+  /** 수조 id → 헤엄치는 고기(종 · 몸길이 · 성별 — 그림만) */
+  tanks: Record<string, { speciesId: string; lengthCm: number; sex: 'M' | 'F' }[]>;
+  /** 벽 어탁 — 집주인이 낚은 가장 큰 고기(없으면 빈 한지) */
+  fishPrint?: { speciesId: string; lengthCm: number };
 }
 
 /** 306차 — 답을 기다리는 시간(이 뒤에는 `expired`) */

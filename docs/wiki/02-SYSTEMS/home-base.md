@@ -316,4 +316,7 @@
     홈타운 행동은 방문 중이면 막는다(`GameState.canInHometown(action)` — 방문자 = 보기 · 말 · 거래 · 선물만). 새 홈타운 상호작용을 만들면 그 입구에 문을 단다(`hometownBlocked`).
 63. **남의 집 구경 중에는 마당 · 텃밭 · 깃발을 집주인 사본으로 그린다**(306) — `computeHomeObjects`는 손님이면 `GameState.visitView.world`, 텃밭은 `visitFarmStore`, 우편함 깃발은 `mailFlagUp()`.
     손님일 때 내 데이터를 고치는 길(`upgradeFarmPlots` · 오프닝 `maybePlayOpening`)은 건너뛴다. 새 홈타운 그림을 더하면 「손님이면 무엇을 읽는가」를 같이 정한다.
+64. **집 안 장면은 `HomeStore`를 바로 부르지 않고 `this.hs`를 거친다**(307) — 내 집이면 `HomeStore`(세이브), 남의 집 구경(`init({ visit: true })`)이면 집주인 사본(`createHomeViewStore`).
+    구경 모드는 [F]가 앉기(소파 · 의자)뿐이고 저장 꼬리표(`hometown_interior`) · 배치 단추 · 기상 · 둘러보기 · 프롤로그 코치 · 문 붙잡기를 건너뛴다.
+    집 안에 새 가구 행동을 더하면 `actionOf`의 구경 모드 줄(앉기만)을 지나도록 둔다 — 그 위에 넣으면 손님도 쓴다. 새로 보일 상태(예: 가구 색)는 `interiorView` · `createHomeViewStore` · `cleanHomeView` 셋을 같이 늘린다.
 

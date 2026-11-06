@@ -38,7 +38,7 @@ import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit, PLAYER_CANON_AGE, playerAgeOf } from '@tra/core';
 import {   // 305차 — 홈타운 소유 · 머무는 집
   HOMETOWN_REGION_ID, newHomeId, isHomeId, hometownAllows, claimHometownOwner, resolveHometownStay,
-  type HometownStay, type HometownAction, type HometownFallback, type MpHomeView,
+  type HometownStay, type HometownAction, type HometownFallback, type MpHomeView, type MpHomeInteriorView,
 } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { playCoin } from '../audio/Sfx.js';
@@ -1951,7 +1951,12 @@ export class GameStateManager {
     const allPlots = FarmStore.serialize().plots;
     const farm: Record<string, unknown> = {};
     for (const id of plotIds) if (allPlots[id]) farm[id] = JSON.parse(JSON.stringify(allPlots[id]));
-    return { world, farm, mailboxFlag: MailboxStore.flagUp, atMs: Date.now() };
+    // 307차 — 집 안(가구 배치 · 화분 · 스탠드 · 수조 · 어탁 — 보관함 속은 싣지 않는다). 연 낚시 상자는 방에 없다
+    const room = HomeStore.interiorView();
+    if (this.getFlag('prologue.box')) room.placed = room.placed.filter((f) => f.id !== 'father_box');
+    const best = [...this.player.caughtFishHistory].sort((a, b) => b.lengthCm - a.lengthCm)[0];
+    const interior: MpHomeInteriorView = { ...room, ...(best ? { fishPrint: { speciesId: best.fishSpeciesId, lengthCm: best.lengthCm } } : {}) };
+    return { world, farm, mailboxFlag: MailboxStore.flagUp, interior, atMs: Date.now() };
   }
 
   /**

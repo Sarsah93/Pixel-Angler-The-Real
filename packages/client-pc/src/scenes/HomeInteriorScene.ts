@@ -36,7 +36,7 @@ import { weatherSoundFrom } from '../audio/WeatherSound.js';
 import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { playCoin, playUiClick } from '../audio/Sfx.js';
-import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, type CharDir } from '@tra/core';
+import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, hometownFallbackReasonKo, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { CraftingStore } from '../store/CraftingStore.js';
@@ -65,7 +65,9 @@ import { HomeDecorMode } from '../ui/HomeDecorMode.js';
 import { GuideTour, maybeStartTour } from '../ui/GuideTour.js';
 import { PrologueCoach, type CoachStage } from '../ui/PrologueCoach.js';
 import { getLocale } from '../i18n/I18n.js';
-import { HomeStore, type HomeStorageKind } from '../store/HomeStore.js';
+import { HomeStore, createHomeViewStore, type HomeStorageKind, type HomeStoreManager } from '../store/HomeStore.js';
+import { MultiplayerClient } from '../net/MultiplayerClient.js';
+import { pumpHomeViewPush, takeHostRequest, pumpGuestView, guestViewSerial, guestEndedReason } from '../net/VisitSync.js';   // 307차 — 집 구경
 import {
   IT, ROOM_W, ROOM_H, DOOR_MAT, FLOOR_TOP, FURN_DEFS, WALL_DECOR, footprint, seatsOf, drawFurnitureArt, ensureFurnitureIcon,
   tankFaceTop, chairFacesTable, useSideOf, useSideWord, useSideOpen, useReach, USE_SIDE_WORD,
@@ -263,6 +265,18 @@ export class HomeInteriorScene extends Phaser.Scene {
   private leaving = false;
   /** 188차 — 프롤로그 기상(새 게임) 진입인가 */
   private wake = false;
+  /**
+   * 307차 — 남의 집 구경(보기만)인가. 그 집 안은 집주인이 올린 사본(`viewStore`)으로 그리고 앉기만 된다 —
+   * 내 집 상태(`HomeStore`) · 세이브는 읽지도 쓰지도 않는다. 판 번호 · 머묾 점검 · 집주인 쪽 청 묻기 간격.
+   */
+  private visit = false;
+  private viewStore?: HomeStoreManager;
+  private visitSerial = 0;
+  private visitCheckAt = 0;
+  private visitMiss = 0;
+  private hostAskAt = 0;
+  /** 집 안 상태 — 내 집이면 `HomeStore`(세이브), 남의 집 구경 중이면 그 집 사본 */
+  private get hs(): HomeStoreManager { return this.viewStore ?? HomeStore; }
   /** 188차 — 실내에서 여는 창(가방·장비·일지·상세보기·보관함) — ESC는 위에서부터 닫는다 */
   private popups: { panel: DraggablePanel; close: () => void }[] = [];
   private invPanel: InventoryPanel | null = null;
@@ -281,23 +295,28 @@ export class HomeInteriorScene extends Phaser.Scene {
     super({ key: 'HomeInteriorScene' });
   }
 
-  init(data?: { wake?: boolean }): void {
+  init(data?: { wake?: boolean; visit?: boolean }): void {
     // ⚠ 197차 — Phaser는 `launch(key)`를 데이터 없이 부르면 **지난번 데이터를 그대로 다시 넘긴다**
     //   (`Systems.start`: `if (data) settings.data = data`). 새 게임의 `{ wake: true }`가 남아,
     //   속초에 다녀와 집에 들어올 때마다 기상 혼잣말이 다시 나왔다(QA 리포트). 읽은 뒤 비우고,
     //   상자를 이미 열었으면(프롤로그 첫 단계 통과) 기상은 다시 하지 않는다.
-    this.wake = !!data?.wake && !prologueStepDone('box');
+    this.visit = !!data?.visit && GameState.visitingHometown;
+    this.wake = !this.visit && !!data?.wake && !prologueStepDone('box');
     this.sys.settings.data = {};
   }
 
   create(): void {
     setAmbience({ sea: INDOOR_SEA, indoor: true });   // 211차 — 집 안 — 창 너머 먼 파도(253차 — 날씨는 창이 생긴 뒤 `syncWeatherSound` · 267차 더 낮춤)
     void playMusic('home');   // 261차 — 배경 음악: 옛집(가 · 나 번갈아)
-    this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
+    // 307차 — 남의 집 구경: 집주인이 올린 집 안 사본으로 그린다(내 집 · 세이브는 그대로)
+    this.viewStore = this.visit ? createHomeViewStore(GameState.visitView?.interior) : undefined;
+    this.visitSerial = guestViewSerial();
+    this.visitCheckAt = 0; this.visitMiss = 0; this.hostAskAt = 0;
+    if (!this.visit) this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
     this.homeTitleKey = '';
-    // 저장 정책의 유일한 허용 위치 — 침대 상호작용 지점 (HOMETOWN_HOME_SPEC §4)
-    GameState.locationTag = 'hometown_interior';
+    // 저장 정책의 유일한 허용 위치 — 침대 상호작용 지점 (HOMETOWN_HOME_SPEC §4) · 307차 — 남의 집 침대에서는 저장하지 않는다
+    if (!this.visit) GameState.locationTag = 'hometown_interior';
     this.cameras.main.fadeIn(300, 0, 10, 20);
     this.menu = undefined;
     this.fridgePanel = undefined;
@@ -322,6 +341,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.furnViews = new Map();
     this.seat = null;
     this.decor = undefined;
+    this.decorBtn = undefined;   // 307차 — 구경 모드는 단추를 만들지 않는다(지난 입장의 파괴된 단추를 붙들지 않게)
     this.leaving = false;
     this.enteredAt = this.time.now;
 
@@ -330,7 +350,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.clockG = this.add.graphics().setDepth(2);
     this.drawClockHands();
     // 191차 — 연 상자는 가방이 되어 방에 없다 (세이브 로드가 기본 배치를 다시 채우므로 입장마다 정리)
-    if (GameState.getFlag('prologue.box')) HomeStore.discard('father_box');
+    if (GameState.getFlag('prologue.box')) this.hs.discard('father_box');
     this.buildFurniture(null);
     // 190차 — 창·조명 (시각·날씨)
     const wallH = Math.round(IT * 1.4);
@@ -347,12 +367,13 @@ export class HomeInteriorScene extends Phaser.Scene {
       ox: OX, oy: OY,
       blocked: (c, r) => this.cellBlocked(c, r),
       bedSpot: () => {
-        const rug = HomeStore.placed.find((f) => f.kind === 'rug');
+        const rug = this.hs.placed.find((f) => f.kind === 'rug');
         if (!rug) return null;
         const { w, h } = footprint(rug.kind, rug.dir);
         return { x: OX + (rug.tx + w / 2) * IT, y: OY + (rug.ty + h / 2) * IT + 10 };
       },
       player: () => ({ x: this.px, y: this.py }),
+      cat: () => this.hs.cat,   // 307차 — 남의 집이면 그 집 사본의 고양이(배고파 조르지 않는다)
     });
     this.events.once('shutdown', () => {
       this.ambience?.destroy(); this.ambience = undefined;
@@ -403,10 +424,15 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 219차 — 가이드가 피할 창: 캐릭터 옆 작은 고를 거리(앉기 · 고양이 · 침대) — DraggablePanel(라디오 · 냉장고 …)은 가이드가 스스로 찾는다
     GuideTour.setOccluders(this, () => [this.menu ? this.menu.c.getBounds() : null]);
     this.events.once('shutdown', () => { this.coach?.destroy(); this.coach = undefined; });
-    this.buildDecorButton();
+    if (!this.visit) this.buildDecorButton();   // 307차 — 남의 집 가구는 옮기지 않는다
     syncPrologue();
     this.refreshDecorButton();
-    if (this.wake) {
+    if (this.visit) {
+      // 307차 — 들어서며 한마디(혼잣말 한 줄 — 무엇을 할 수 있는지 나열하지 않는다 · R11)
+      const owner = GameState.hometownStay.ownerName;
+      const line = owner ? `${owner} 씨 집 안이다. 만지지 말고 구경만 하자.` : '남의 집 안이다. 만지지 말고 구경만 하자.';
+      this.time.delayedCall(420, () => this.flash(line));
+    } else if (this.wake) {
       // 188차 — 프롤로그: 186차 가구 순회 안내 대신 기상 혼잣말 → 첫 걸음 체험 가이드
       GameState.setFlag('intro.homeTour');
       GameState.markDirty();
@@ -520,7 +546,7 @@ export class HomeInteriorScene extends Phaser.Scene {
    * 사용자 리포트: 안내 도중 ESC를 누르니 마당으로 나가져 말풍선 흐름이 끊겼다. 문 앞 매트도 같다.
    */
   private prologueHoldsDoor(): boolean {
-    if (!prologueRunning() || prologueStepDone('save')) return false;
+    if (this.visit || !prologueRunning() || prologueStepDone('save')) return false;   // 307차 — 남의 집 문은 내 프롤로그와 무관
     this.flash('아직 집에서 챙길 것이 남았다.');
     return true;
   }
@@ -693,8 +719,8 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 191차 — 아버지의 낚시 상자를 가방으로 메고 간다 — 방에서 치운다(구세이브는 입장 때 정리) */
   private takeBoxAsBag(): void {
-    if (!HomeStore.find('father_box') && !HomeStore.stored.some((f) => f.id === 'father_box')) return;
-    HomeStore.discard('father_box');
+    if (!this.hs.find('father_box') && !this.hs.stored.some((f) => f.id === 'father_box')) return;
+    this.hs.discard('father_box');
     this.buildFurniture(null);
     this.cat?.relocateIfBlocked();
   }
@@ -706,7 +732,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 191차 — 프롤로그 코치: 지금 단계의 말풍선 (집 안 단계만 — 마당부터는 필드 씬이 잇는다) */
   private coachStage(): CoachStage | null {
-    if (!prologueRunning() || this.decor) return null;
+    if (this.visit || !prologueRunning() || this.decor) return null;   // 307차 — 남의 집에서는 내 프롤로그를 짚지 않는다
     const room = (): Phaser.Geom.Rectangle => this.roomRect();
     const anyPopup = this.popups.length > 0 || !!this.fridgePanel || !!this.cookPanel;
     // 짚을 자리가 없는 안내 — 방 오른편에 꼬리 없이. 창이 떠 있으면 창들 옆으로 비킨다(둘 다 막히면 아래 가운데).
@@ -799,7 +825,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (id === 'door_mat') {
       return new Phaser.Geom.Rectangle(OX + DOOR_MAT.tx * IT - 4, OY + DOOR_MAT.ty * IT - 4, DOOR_MAT.fw * IT + 8, DOOR_MAT.fh * IT + 24);
     }
-    const f = HomeStore.find(id);
+    const f = this.hs.find(id);
     if (!f) return null;
     const { w, h } = footprint(f.kind, f.dir);
     return new Phaser.Geom.Rectangle(OX + f.tx * IT - 4, OY + f.ty * IT - 4, w * IT + 8, h * IT + 8);
@@ -1003,7 +1029,10 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 어탁 — 지금까지 낚은 가장 큰 고기를 먹빛 실루엣으로 액자 속 한지에 얹는다 (190차) */
   private drawFishPrintInk(): void {
-    const best = [...GameState.player.caughtFishHistory].sort((a, b) => b.lengthCm - a.lengthCm)[0];
+    // 307차 — 남의 집이면 그 집 주인이 낚은 가장 큰 고기(집주인이 올린 모습)
+    const fp = GameState.visitView?.interior?.fishPrint;
+    const mine = [...GameState.player.caughtFishHistory].sort((a, b) => b.lengthCm - a.lengthCm)[0];
+    const best = this.visit ? (fp ? { fishSpeciesId: fp.speciesId, lengthCm: fp.lengthCm } : undefined) : mine;
     if (!best) return;
     const key = resolveFishTexture(best.fishSpeciesId, best.lengthCm, 'M');
     if (!key || !this.textures.exists(key)) return;
@@ -1030,11 +1059,11 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.furnViews.clear();
     for (const s of this.tankSwim) s.img.destroy();
     this.tankSwim = [];
-    for (const f of HomeStore.placed) {
+    for (const f of this.hs.placed) {
       if (f.id === hideId) continue;
       const g = this.add.graphics();
       // 190차 — 화분 목마름 · 스탠드 켜짐은 개체마다 다르다
-      drawFurnitureArt(g, f.kind, f.dir, { plantDry: HomeStore.plantDry(f.id), lampOn: HomeStore.isLampOn(f.id) });
+      drawFurnitureArt(g, f.kind, f.dir, { plantDry: this.hs.plantDry(f.id), lampOn: this.hs.isLampOn(f.id) });
       g.setPosition(OX + f.tx * IT, OY + f.ty * IT).setDepth(this.furnDepth(f));
       this.furnViews.set(f.id, g);
       if (f.kind === 'aquarium') this.buildTankFish(f);
@@ -1047,7 +1076,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     const { w, h } = footprint(f.kind, f.dir);
     const vertical = f.dir === 'left' || f.dir === 'right';
     const x0 = OX + f.tx * IT, y0 = OY + f.ty * IT;
-    HomeStore.tank(f.id).forEach((fish, i) => {
+    this.hs.tank(f.id).forEach((fish, i) => {
       const key = tankFishTexture(fish, this);
       if (!key || !this.textures.exists(key)) return;
       const len = Phaser.Math.Clamp(8 + fish.lengthCm * 0.4, 10, 22);
@@ -1088,7 +1117,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.bubbleAcc += delta;
     if (this.bubbleAcc < 900) return;
     this.bubbleAcc = 0;
-    for (const f of HomeStore.placed) {
+    for (const f of this.hs.placed) {
       if (f.kind !== 'aquarium') continue;
       const { w, h } = footprint(f.kind, f.dir);
       const depth = this.furnDepth(f) + 0.0002;
@@ -1117,8 +1146,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 지금 켜져 있는 불빛 — 스탠드(따뜻한 노랑) · 수조(푸른빛) */
   private litSources(): AmbienceLight[] {
     const out: AmbienceLight[] = [];
-    for (const f of HomeStore.placed) {
-      if (f.kind === 'stand' && HomeStore.isLampOn(f.id)) {
+    for (const f of this.hs.placed) {
+      if (f.kind === 'stand' && this.hs.isLampOn(f.id)) {
         out.push({ x: OX + f.tx * IT + IT / 2, y: OY + f.ty * IT + 6, r: 190, color: 0xffd98a });
       } else if (f.kind === 'aquarium') {
         const { w, h } = footprint(f.kind, f.dir);
@@ -1133,7 +1162,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   /** 그 칸을 지날 수 없는가 (고양이 길찾기 — 가구 칸) */
   private cellBlocked(c: number, r: number): boolean {
     if (c < 0 || c >= ROOM_W || r < FLOOR_TOP || r >= ROOM_H) return true;
-    return HomeStore.placed.some((f) => {
+    return this.hs.placed.some((f) => {
       if (!FURN_DEFS[f.kind].collides) return false;
       const { w, h } = footprint(f.kind, f.dir);
       return c >= f.tx && c < f.tx + w && r >= f.ty && r < f.ty + h;
@@ -1179,7 +1208,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 배치 모드 — 서 있을 때 · 창이 다 닫혔을 때만 */
   openDecor(): void {
-    if (this.decor || prologueRunning() || this.leaving) return;
+    if (this.visit || this.decor || prologueRunning() || this.leaving) return;
     if (this.tourPanel || this.popups.length || this.fridgePanel || this.cookPanel || this.menu || this.seat) return;
     if (GuideTour.active && GuideTour.blocksKey('KeyF')) return;
     this.hintText.setVisible(false);
@@ -1209,6 +1238,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     // 213차 — 자는 중: 잠 막대만 흐르고 다른 건 멈춘다(창밖 날씨 · 불빛은 계속)
     if (this.sleepState) { this.stepSleep(delta); this.ambience?.update(delta); return; }
     GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
+    this.pumpVisit(delta);   // 307차 — 집 구경(손님: 끝나면 밖으로 · 새 모습 / 집주인: 청 묻기 · 모습 올리기)
+    if (this.leaving) return;
     if (this.menu) this.paintMenu();   // 219차 — 가이드 단계가 바뀌면 막힌 고를 거리 색도 따라 바뀐다
     // 222차 — 제작 큐(벽시계). 집 안에서는 손이 늘 비어 있다.
     this.craftAcc += delta;
@@ -1283,7 +1314,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (px < OX + 12 || px > OX + ROOM_W * IT - 12) return true;
     if (py < OY + IT * 2.0 || py > OY + ROOM_H * IT - 6) return true;
     // 가구 AABB (발밑 기준 — 발이 가구 앞면에 닿으면 정지)
-    for (const f of HomeStore.placed) {
+    for (const f of this.hs.placed) {
       if (!FURN_DEFS[f.kind].collides) continue;
       const { w: fw, h: fh } = footprint(f.kind, f.dir);
       const x = OX + f.tx * IT, y = OY + f.ty * IT, w = fw * IT, h = fh * IT;
@@ -1296,7 +1327,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private hintOf(t: NearTarget): string {
     if (t.kind === 'cat') return '[F] 고양이';
     if (t.kind === 'wall') return WALL_LABEL[t.id];
-    if (t.action === 'lamp') return HomeStore.isLampOn(t.f.id) ? '[F] 스탠드 끄기' : '[F] 스탠드 켜기';
+    if (t.action === 'lamp') return this.hs.isLampOn(t.f.id) ? '[F] 스탠드 끄기' : '[F] 스탠드 켜기';
     return ACTION_LABEL[t.action];
   }
 
@@ -1304,6 +1335,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private actionOf(f: FurnInstance): FurnAction | null {
     const a = FURN_DEFS[f.kind].action;
     if (!a) return null;
+    if (this.visit) return a === 'sofa' || a === 'chair' ? a : null;   // 307차 — 남의 집은 앉기만(보관함 · 침대 · 부엌 · 불 · 수조 · 화분 전부 막힘)
     if (a === 'plant') return this.holdingCan() ? 'plant' : null;
     if (a === 'father_box') return GameState.getFlag('prologue.box') ? null : 'father_box';
     return a;
@@ -1334,7 +1366,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       }
       return true;
     };
-    const layout = HomeStore.placed;
+    const layout = this.hs.placed;
     const lx = this.px - OX, ly = this.py - OY;
     for (const f of layout) {
       const action = this.actionOf(f);
@@ -1351,7 +1383,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     }
     // 190차 — 벽 장식: 바로 아래 바닥(벽에 붙어 선 자리)에서
     const fromWall = this.py - (OY + FLOOR_TOP * IT);
-    if (fromWall < REACH_PX) {
+    if (fromWall < REACH_PX && !this.visit) {   // 307차 — 남의 집 책장 · 달력은 보기만
       for (const d of WALL_DECOR) {
         const dx = Math.max(OX + d.x0 * IT - this.px, 0, this.px - (OX + d.x1 * IT));
         if (dx > 14) continue;
@@ -1360,7 +1392,7 @@ export class HomeInteriorScene extends Phaser.Scene {
       }
     }
     // 190차 — 고양이: 발치에 있으면 가구보다 먼저
-    if (this.cat) {
+    if (this.cat && !this.visit) {   // 307차 — 남의 집 고양이는 지켜보기만
       const d = Math.hypot(this.cat.x - this.px, this.cat.y - this.py);
       if (d < 34 && d - 12 < bestD && consider({ kind: 'cat' }, d - 12)) best = { kind: 'cat' };
     }
@@ -1421,7 +1453,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private openGrow(): void {
     if (this.popups.some((e) => e.panel instanceof FarmPanel)) return;
     const fac: FarmFacility[] = [];
-    for (const f of HomeStore.placed) {
+    for (const f of this.hs.placed) {
       if (f.kind === 'sprout_jar') fac.push('sproutJar');
       if (f.kind === 'hydro_rack') fac.push('hydroRack');
     }
@@ -1545,17 +1577,18 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.applySeatPose();
     this.satCount++;
     // 190차 — 식탁 앞 의자면 「식사하기」(허기 +25%) · 라디오 곁 소파면 「라디오 듣기」
-    const atTable = f.kind === 'chair' && this.chairAtTable(f);
+    // 307차 — 남의 집에서는 앉았다 일어서기만(쉬기 · 라디오 · 식사는 내 집에서)
+    const atTable = !this.visit && f.kind === 'chair' && this.chairAtTable(f);
     GameState.mealAtTable = atTable;
-    const radio = f.kind === 'sofa' ? this.radioNear(f) : undefined;
+    const radio = !this.visit && f.kind === 'sofa' ? this.radioNear(f) : undefined;
     const items: MenuItem[] = [];
-    if (f.kind === 'sofa') items.push({ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa(), action: 'rest' });
+    if (f.kind === 'sofa' && !this.visit) items.push({ label: '휴식하기', color: '#9fd0e4', run: () => this.restOnSofa(), action: 'rest' });
     if (radio) items.push({ label: '라디오 듣기', color: '#ffd9a0', run: () => this.playRadio(radio), action: 'radio' });
     if (atTable) items.push({ label: '식사하기', color: '#ffd9a0', run: () => this.openMealBag(), action: 'meal' });
     items.push({ label: '일어나기', run: () => this.standUp(), action: 'stand' });
     this.openMenu('seat', FURN_DEFS[f.kind].nameKo, items, () => this.standUp());
     // 정이 든 고양이는 소파에 앉으면 곁으로 온다
-    if (f.kind === 'sofa' && HomeStore.cat.affection >= 30 && !this.cat?.hungry()) this.cat?.comeSitNear(s.sx, s.sy);
+    if (f.kind === 'sofa' && this.hs.cat.affection >= 30 && !this.cat?.hungry()) this.cat?.comeSitNear(s.sx, s.sy);
   }
 
   /** 앉은 자세 — 엉덩이를 좌석에 맞추고 다리를 잘라 낸다(가구가 가린 것으로 읽힌다) */
@@ -1603,7 +1636,7 @@ export class HomeInteriorScene extends Phaser.Scene {
 
   /** 이 의자가 식탁을 바라보고 붙어 있는가 (275차 — 판정은 `chairFacesTable` 하나 · 쓰는 쪽 판정과 같다) */
   private chairAtTable(f: FurnInstance): boolean {
-    return chairFacesTable(f, HomeStore.placed);
+    return chairFacesTable(f, this.hs.placed);
   }
 
   /**
@@ -1611,7 +1644,7 @@ export class HomeInteriorScene extends Phaser.Scene {
    * 벽이나 다른 가구가 쓰는 쪽을 다 막았으면(275차 전에 돌려 둔 배치) 돌려 놓으라고 한다.
    */
   private flashWrongSide(f: FurnInstance): void {
-    const layout = HomeStore.placed;
+    const layout = this.hs.placed;
     const side = useSideOf(f, layout);
     if (!side || side === 'any') return;
     const name = FURN_DEFS[f.kind].nameKo;
@@ -1625,7 +1658,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private radioNear(sofa: FurnInstance): FurnInstance | undefined {
     const sw = footprint(sofa.kind, sofa.dir);
     const cx = sofa.tx + sw.w / 2, cy = sofa.ty + sw.h / 2;
-    return HomeStore.placed.find((o) => o.kind === 'radio' && Math.hypot(o.tx + 0.5 - cx, o.ty + 0.5 - cy) <= RADIO_REACH_TILES);
+    return this.hs.placed.find((o) => o.kind === 'radio' && Math.hypot(o.tx + 0.5 - cx, o.ty + 0.5 - cy) <= RADIO_REACH_TILES);
   }
 
   /** 식탁에서 「식사하기」 — 가방을 음식 칸으로 펼친다 */
@@ -1637,7 +1670,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 스탠드 · 라디오 · 수조 (190차) ───────────────────
 
   private toggleLamp(f: FurnInstance): void {
-    HomeStore.toggleLamp(f.id);
+    this.hs.toggleLamp(f.id);
     playSfx('toggle_on');
     GameState.markDirty();
     this.buildFurniture(null);   // 갓 그림 + 불빛(refreshLights)
@@ -1709,7 +1742,7 @@ export class HomeInteriorScene extends Phaser.Scene {
   private petCat(): void {
     this.closeMenu();
     const now = Date.now();
-    const c = HomeStore.cat;
+    const c = this.hs.cat;
     if (now - c.lastPetMs > 10 * 60 * 1000) c.affection = Math.min(100, c.affection + 2);
     if (now - c.lastPetMs > 3000) TitleStore.bump('catPet');   // 203차 — 「고양이 집사」(연타는 3초에 한 번)
     c.lastPetMs = now;
@@ -1728,14 +1761,14 @@ export class HomeInteriorScene extends Phaser.Scene {
   private feedCat(item: InvItem): void {
     this.closeMenu();
     const now = Date.now();
-    if (now - HomeStore.cat.fedMs < CAT_FULL_MS) {
+    if (now - this.hs.cat.fedMs < CAT_FULL_MS) {
       this.cat?.refuseReact();
       this.flash('배가 부른 모양이다. 냄새만 맡고 돌아앉는다.');
       return;
     }
     if (!InventoryStore.removeQty(item.id, 1)) return;
-    HomeStore.cat.fedMs = now;
-    HomeStore.cat.affection = Math.min(100, HomeStore.cat.affection + 5);
+    this.hs.cat.fedMs = now;
+    this.hs.cat.affection = Math.min(100, this.hs.cat.affection + 5);
     this.cat?.eatReact();
     GameState.markDirty();
     this.events.emit('inventory-changed');
@@ -1768,8 +1801,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   // ── 화분 (189차) ─────────────────────────────────────
 
   private waterPlant(f: FurnInstance): void {
-    const wasDry = HomeStore.plantDry(f.id);
-    HomeStore.waterPlant(f.id);
+    const wasDry = this.hs.plantDry(f.id);
+    this.hs.waterPlant(f.id);
     playSfx('farm_water');
     GameState.markDirty();
     this.buildFurniture(null);
@@ -2051,6 +2084,65 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.time.delayedCall(2600, () => { if (this.flashMsg === mine) { mine.destroy(); this.flashMsg = undefined; } });
   }
 
+  // ── 307차 집 구경 ─────────────────────────────────
+
+  /**
+   * 손님: 방문이 끝났거나(배웅 · 집주인이 나감) 머물 수 없으면 밖으로 나가고, 집주인이 새 모습을 올리면 다시 그린다.
+   * 집주인: 집 안에 있는 동안에도 청을 묻고(필드는 멈춰 있다) 들인 동안 집 모습을 올린다(가구를 옮기면 그것도).
+   */
+  private pumpVisit(delta: number): void {
+    if (this.leaving) return;
+    if (this.visit) {
+      const ended = guestEndedReason();
+      if (ended) { this.leaveVisit(ended); return; }
+      this.visitCheckAt += delta;
+      if (this.visitCheckAt >= 2000) {
+        this.visitCheckAt = 0;
+        const fb = GameState.checkHometownStay();
+        this.visitMiss = fb ? this.visitMiss + 1 : 0;
+        if (fb && (this.visitMiss >= 2 || fb === 'notConnected')) { this.leaveVisit(hometownFallbackReasonKo(fb)); return; }
+      }
+      pumpGuestView();
+      if (this.visitSerial !== guestViewSerial()) { this.visitSerial = guestViewSerial(); this.applyVisitInterior(); }
+      return;
+    }
+    pumpHomeViewPush();
+    this.hostAskAt += delta;
+    if (this.hostAskAt < 500) return;
+    this.hostAskAt = 0;
+    if (this.popups.length || this.menu || this.decor || this.tourPanel || this.pauseMenu || this.fridgePanel || this.cookPanel || GuideTour.blocking) return;
+    const v = takeHostRequest();
+    if (!v) return;
+    playSfx('notice');
+    this.openPopup((close) => new ConfirmDialog(
+      this, `${v.fromName} 씨가 집 구경을 오고 싶어 합니다.\n들이시겠습니까?`,
+      () => { close(); void MultiplayerClient.respondVisit(v.id, true); },
+      () => { close(); void MultiplayerClient.respondVisit(v.id, false); },
+      { yes: '들이기', no: '사양하기' },
+    ));
+  }
+
+  /** 집주인이 새 집 안 모습을 올렸다 — 사본을 바꿔 가구를 다시 그린다(내가 선 칸이 막혔으면 현관으로 비킨다) */
+  private applyVisitInterior(): void {
+    if (!this.visit) return;
+    if (this.seat) this.standUp();
+    this.viewStore = createHomeViewStore(GameState.visitView?.interior);
+    this.buildFurniture(null);
+    this.cat?.relocateIfBlocked();
+    if (this.collides(this.px, this.py)) {
+      this.px = OX + (DOOR_MAT.tx + DOOR_MAT.fw / 2) * IT; this.py = OY + (DOOR_MAT.ty + 0.25) * IT;
+      this.charSprite.image.setPosition(this.px, this.py + this.charSprite.footPad).setDepth(20 + this.py * 0.001);
+      this.playerShadow.setPosition(this.px, this.py);
+    }
+  }
+
+  /** 구경하던 방문이 끝났다 — 밖으로 나가면 필드가 그 까닭으로 내 집으로 옮긴다 */
+  private leaveVisit(reason: string): void {
+    this.closePause();
+    this.registry.set('visitReturn', reason);
+    this.exitToField();
+  }
+
   /** 현관 → 홈타운 외부 복귀 (stop + resume 규칙 — RegionFieldScene 재생성 금지) */
   private exitToField(): void {
     if (this.leaving) return;
@@ -2058,7 +2150,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.seat) this.standUp();
     this.leaving = true;
     // 188차 — 프롤로그: 저장까지 마치고 나서야 「집을 나선다」 (앞 단계를 건너뛴 채 나가면 다시 들어와 이어 한다)
-    if (prologueStepDone('save')) markPrologue('leave');
+    if (!this.visit && prologueStepDone('save')) markPrologue('leave');
     GameState.locationTag = 'hometown';
     fadeOutThen(this, () => {
       this.scene.stop();

@@ -17,7 +17,7 @@
 
 import Phaser from 'phaser';
 import { IT, ROOM_W, ROOM_H, FLOOR_TOP } from '../data/HomeFurniture.js';
-import { HomeStore } from '../store/HomeStore.js';
+import { HomeStore, type HomeCatState } from '../store/HomeStore.js';
 import { playSfx, type SfxName } from '../audio/SfxBank.js';
 import { worldLabelStyle } from './WorldLabel.js';
 
@@ -45,6 +45,8 @@ export interface CatHost {
   bedSpot(): { x: number; y: number } | null;
   /** 플레이어 발밑 */
   player(): { x: number; y: number };
+  /** 307차 — 고양이 상태(밥 먹은 시각 · 정). 없으면 내 집(`HomeStore.cat`) — 남의 집 구경 중에는 그 집 사본 */
+  cat?(): HomeCatState;
 }
 
 /** 고양이 자세 텍스처 굽기 */
@@ -157,8 +159,9 @@ export class HomeCat {
     this.sync();
   }
 
-  hungry(now = Date.now()): boolean { return now - HomeStore.cat.fedMs > CAT_HUNGRY_MS; }
-  full(now = Date.now()): boolean { return now - HomeStore.cat.fedMs < CAT_FULL_MS; }
+  hungry(now = Date.now()): boolean { return now - this.catState().fedMs > CAT_HUNGRY_MS; }
+  full(now = Date.now()): boolean { return now - this.catState().fedMs < CAT_FULL_MS; }
+  private catState(): HomeCatState { return this.host.cat?.() ?? HomeStore.cat; }
 
   /** 발밑 사각 (가이드 하이라이트용) */
   bounds(): Phaser.Geom.Rectangle {

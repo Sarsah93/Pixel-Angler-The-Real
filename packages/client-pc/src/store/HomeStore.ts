@@ -23,7 +23,7 @@ import {
   useSideOf, useSideWord, useCells, USE_SIDE_WORD,
   type FurnInstance, type FurnKind, type FurnDir,
 } from '../data/HomeFurniture.js';
-import type { CatchMethod } from '@tra/core';
+import type { CatchMethod, MpHomeInteriorView } from '@tra/core';
 
 export type HomeStorageKind = 'wardrobe' | 'shelf';
 
@@ -108,7 +108,7 @@ function cellsOf(f: FurnInstance): { c: number; r: number }[] {
   return out;
 }
 
-class HomeStoreManager {
+export class HomeStoreManager {
   placed: FurnInstance[] = DEFAULT_LAYOUT.map((f) => ({ ...f }));
   stored: FurnInstance[] = [];
   private boxes: Record<HomeStorageKind, (InvItem | null)[]> = {
@@ -383,6 +383,26 @@ class HomeStoreManager {
     this.boxes[kind][slot] = item;
   }
 
+  // ── 307차 집 안 구경 ─────────────────────────────────
+
+  /**
+   * 손님에게 보낼 집 안 모습 — 방에 놓인 가구 · 목마른 화분 · 켠 스탠드 · 수조 속 고기(종 · 몸길이 · 성별)만.
+   * 옷장 · 선반 · 넣어 둔 가구 · 고양이 정은 싣지 않는다(주인 몫).
+   */
+  interiorView(now = Date.now()): Omit<MpHomeInteriorView, 'fishPrint'> {
+    const tanks: MpHomeInteriorView['tanks'] = {};
+    for (const f of this.placed) {
+      if (f.kind !== 'aquarium') continue;
+      tanks[f.id] = this.tank(f.id).map((x) => ({ speciesId: x.speciesId, lengthCm: x.lengthCm, sex: x.sex }));
+    }
+    return {
+      placed: this.placed.map((f) => ({ id: f.id, kind: f.kind, tx: f.tx, ty: f.ty, dir: f.dir })),
+      dryPlants: this.placed.filter((f) => f.kind === 'plant' && this.plantDry(f.id, now)).map((f) => f.id),
+      lampsOn: this.placed.filter((f) => f.kind === 'stand' && this.isLampOn(f.id)).map((f) => f.id),
+      tanks,
+    };
+  }
+
   // ── 세이브 ──────────────────────────────────────────
 
   serialize(): HomeSaveState {
@@ -474,6 +494,28 @@ class HomeStoreManager {
     this.tanks = {};
     this.discarded = [];
   }
+}
+
+/**
+ * 307차 — 손님이 보는 **주인 집 안(읽기 전용 사본)**. 제 집(`HomeStore` · 세이브)과 따로 든 상자라
+ * 집 안 장면이 무엇을 해도 손님 세이브에는 닿지 않는다. 모르는 가구 종류 · 방위는 버린다.
+ */
+export function createHomeViewStore(iv: MpHomeInteriorView | undefined, now = Date.now()): HomeStoreManager {
+  const s = new HomeStoreManager();
+  s.placed = (iv?.placed ?? [])
+    .filter((f) => !!FURN_DEFS[f.kind as FurnKind] && DIRS.includes(f.dir))
+    .map((f) => ({ id: f.id, kind: f.kind as FurnKind, tx: f.tx, ty: f.ty, dir: f.dir }));
+  s.stored = [];
+  s.watered = {};
+  for (const id of iv?.dryPlants ?? []) s.watered[id] = now - PLANT_DRY_MS - 60_000;
+  s.lampOn = {};
+  for (const id of iv?.lampsOn ?? []) s.lampOn[id] = true;
+  s.tanks = {};
+  for (const [id, list] of Object.entries(iv?.tanks ?? {})) {
+    s.tanks[id] = list.slice(0, TANK_SLOTS).map((x) => ({ speciesId: x.speciesId, nameKo: '', lengthCm: x.lengthCm, weightG: 0, sex: x.sex, addedMs: 0 }));
+  }
+  s.discarded = [];
+  return s;
 }
 
 /** 방 크기 — 씬 판정용 재노출 */
