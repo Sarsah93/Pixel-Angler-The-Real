@@ -123,6 +123,31 @@ multiplayerRouter.post('/trap/remove', (req, res) => {
   res.json(sessionRegistry.removeTrap(b.code, b.playerId, b.token, b.instanceId));
 });
 
+// ── 306차 홈타운 방문(집 구경) — 손님이 청하고 · 집주인이 들이고 · 어느 쪽이든 끝낸다 ──
+type VisitBody = { code?: string; playerId?: string; token?: string; visitId?: string };
+multiplayerRouter.post('/visit/request', (req, res) => {
+  const b = req.body as { code?: string; playerId?: string; token?: string; targetPlayerId?: string };
+  if (!b.code || !b.playerId || !b.targetPlayerId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.requestVisit(b.code, b.playerId, b.token, String(b.targetPlayerId)));
+});
+multiplayerRouter.post('/visit/respond', (req, res) => {
+  const b = req.body as VisitBody & { accept?: boolean };
+  if (!b.code || !b.playerId || !b.visitId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.respondVisit(b.code, b.playerId, b.token, String(b.visitId), b.accept === true));
+});
+multiplayerRouter.post('/visit/end', (req, res) => {
+  const b = req.body as VisitBody;
+  if (!b.code || !b.playerId || !b.visitId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(sessionRegistry.endVisit(b.code, b.playerId, b.token, String(b.visitId)));
+});
+multiplayerRouter.post('/visit/view', (req, res) => {
+  const b = req.body as VisitBody & { view?: unknown };
+  if (!b.code || !b.playerId || !b.visitId) { res.json({ ok: false, reasonKo: '요청이 올바르지 않습니다.' }); return; }
+  res.json(b.view === undefined
+    ? sessionRegistry.getHomeView(b.code, b.playerId, b.token, String(b.visitId))
+    : sessionRegistry.putHomeView(b.code, b.playerId, b.token, String(b.visitId), b.view));
+});
+
 multiplayerRouter.post('/leave', (req, res) => {
   const b = req.body as { code?: string; playerId?: string; token?: string };
   if (b.code && b.playerId) sessionRegistry.leave(b.code, b.playerId, b.token);

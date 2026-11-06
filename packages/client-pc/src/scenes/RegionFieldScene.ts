@@ -110,7 +110,7 @@ import { addPixelIcon } from '../ui/PixelIcon.js';
 import { FarmPanel } from '../ui/FarmPanel.js';
 import { FarmFieldSystem } from './field/FarmFieldSystem.js';
 import { worldLabelStyle } from '../ui/WorldLabel.js';
-import { FarmStore } from '../store/FarmStore.js';
+import { FarmStore, createFarmViewStore, type FarmStoreImpl } from '../store/FarmStore.js';
 import { RegionalPlotStore } from '../store/RegionalPlotStore.js';   // 300차 — 지역 빌린 밭
 import type { MiniMarker, QuestTrackerEntry } from '../ui/RegionHud.js';
 import { TextInput } from '../ui/TextInput.js';
@@ -158,6 +158,12 @@ import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
 import { hometownBlockReasonKo, hometownFallbackReasonKo, type HometownAction } from '@tra/core';   // 305차 — 홈타운 소유
+import {
+  createEmptyWorldObjectState, HOMETOWN_MAP_GRAPH, guestVisitOf, hostVisitsOf, liveVisitBetween, isHomeId, MP_VISIT_REASON_KO, type MpVisit,
+} from '@tra/core';   // 306차 — 홈타운 방문(집 구경)
+
+/** 306차 — 이미 화면에 알린 방문 상태(방문 id → 상태) · 장면을 다시 열어도 같은 알림을 두 번 띄우지 않는다 */
+const VISIT_SEEN = new Map<string, string>();
 import { regionalPlotOffer, regionalPlotId } from '@tra/core';   // 300차 — 지역 빌린 밭
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
@@ -637,6 +643,12 @@ export class RegionFieldScene extends Phaser.Scene {
       this.stayNotice = fb ? hometownFallbackReasonKo(fb) : null;
       this.stayMiss = 0;
       MultiplayerClient.noteRegion(this.region);
+      // 306차 — 구경하던 집을 떠났으면(다른 지역 · 내 집) 그 방문은 끝난다(손님이 마친 것)
+      const gv = guestVisitOf(MultiplayerClient.visits, MultiplayerClient.playerId);
+      const entered = this.registry.get('visitEnteredId') as string | undefined;
+      if (gv && gv.status === 'accepted' && entered === gv.id && GameState.hometownStay.ownerHomeId !== gv.homeId) void MultiplayerClient.endVisit(gv.id);
+      this.registry.set('visitEnteredId', GameState.visitingHometown && gv ? gv.id : '');
+      this.visitFarmStore = undefined; this.visitViewRev = 0; this.visitViewAsk = 0; this.visitPushSig = ''; this.visitPushAt = 0;
     }
     this.graph = REGION_MAP_GRAPHS[this.region];
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
@@ -936,7 +948,7 @@ export class RegionFieldScene extends Phaser.Scene {
     this.synthesizePoiBuildings();
     this.buildTerrainGrid();
     // 홈타운 오브젝트 유효 상태 산출 → 충돌 타일 선반영 (병합 충돌/걷기 판정 공유)
-    if (this.region === 'hometown') { this.computeHomeObjects(); this.upgradeFarmPlots(); }
+    if (this.region === 'hometown') { this.computeHomeObjects(); if (!GameState.visitingHometown) this.upgradeFarmPlots(); }
     if (this.seamlessDef) {
       // ── 심리스: 전맵 베이킹·전맵 충돌 대신 청크 스트리밍 (스펙 §6) ──
       let mapSeed = 2166136261;
@@ -1160,7 +1172,8 @@ export class RegionFieldScene extends Phaser.Scene {
    * 캐릭터를 만들고 홈타운에서 **처음** 눈을 뜨는 순간 한 번만. 세이브 플래그로 기억한다.
    */
   private maybePlayOpening(): void {
-    if (this.region !== 'hometown') return;
+    // 306차 — 남의 집 구경 중에는 내 오프닝(내 집 안에서 눈뜨기)을 틀지 않는다 — 내 집에 처음 왔을 때 튼다
+    if (this.region !== 'hometown' || GameState.visitingHometown) return;
     if (GameState.getFlag('intro.monologue')) return;
     GameState.setFlag('intro.monologue');
     GameState.markDirty();
@@ -5529,7 +5542,10 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 유효 오브젝트 산출 + 충돌 타일 반영 (buildCollision 전에 호출) */
   private computeHomeObjects(): void {
-    const state = GameState.getWorldObjects(this.mapId);
+    // 306차 — 남의 집 구경 중이면 집주인이 보낸 집 모습(아직 안 왔으면 처음 배치 그대로) — 내 세이브의 마당이 아니다
+    const state = GameState.visitingHometown && this.mapId === HOMETOWN_MAP_GRAPH.entryMapId
+      ? (GameState.visitView?.world ?? createEmptyWorldObjectState())
+      : GameState.getWorldObjects(this.mapId);
     this.homeObjects = effectiveObjects(HOMETOWN_OBJECTS, state);
     this.applyObjectBlocking();
   }
@@ -5627,6 +5643,8 @@ export class RegionFieldScene extends Phaser.Scene {
       // 305차 — 남의 집 텃밭에는 손이 닿지 않는다(창 · 칸 일 전부)
       blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || !!this.interior || !!this.placing
         || (this.region === 'hometown' && !GameState.canInHometown('farm')),
+      // 306차 — 남의 집 구경 중이면 집주인이 보낸 텃밭(보기만 — 내 세이브에 쓰지 않는다)
+      store: () => (GameState.visitingHometown ? (this.visitFarmStore ??= createFarmViewStore({})) : FarmStore),
     });
     this.farmField = field;
     this.events.once('shutdown', () => { field.destroy(); if (this.farmField === field) this.farmField = undefined; });
@@ -5705,7 +5723,7 @@ export class RegionFieldScene extends Phaser.Scene {
       const lbl = this.add.text(cx, bottomY + 2, '우편함', worldLabelStyle(10)).setOrigin(0.5, 0).setDepth(15);
       objs.push(lbl);
       this.ensureMailFlagTexture();
-      const flag = this.add.image(cx + 6, bottomY - 26, 'hobj_mailbox_flag').setOrigin(0, 1).setDepth(img.depth + 0.0001).setVisible(MailboxStore.flagUp);
+      const flag = this.add.image(cx + 6, bottomY - 26, 'hobj_mailbox_flag').setOrigin(0, 1).setDepth(img.depth + 0.0001).setVisible(this.mailFlagUp());
       this.mailFlag = flag; objs.push(flag);
     }
     this.homeObjSprites.set(o.instanceId, objs);
@@ -6763,6 +6781,12 @@ export class RegionFieldScene extends Phaser.Scene {
   private stayCheckAt = 0;
   private stayMiss = 0;
   private stayNotice: string | null = null;
+  /** 306차 — 남의 집 구경: 받은 집 모습 판 번호 · 받는 중 표시 · 그 집 텃밭(보기만) / 집주인: 마지막으로 올린 모습 서명 · 시각 */
+  private visitViewRev = 0;
+  private visitViewAsk = 0;
+  private visitFarmStore?: FarmStoreImpl;
+  private visitPushSig = '';
+  private visitPushAt = 0;
   private questMarkerAt = 0;
 
   /**
@@ -6854,8 +6878,10 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.region !== 'hometown') return;
     const o = this.homeObjects.find((h) => h.type === 'mailbox');
     if (!o) return;
-    const up = MailboxStore.flagUp;
+    const up = this.mailFlagUp();
     if (this.mailFlag?.active) this.mailFlag.setVisible(up);
+    // 306차 — 남의 집 우편함은 깃발만(편지 수 · 느낌표 · 지도 표시는 주인 것)
+    if (GameState.visitingHometown) { if (this.mailMark) { this.mailMark.destroy(); this.mailMark = undefined; } return; }
     const wx = o.tx * TR + TR / 2, wy = o.ty * TR + TR;
     if (!up) {
       if (this.mailMark) { this.mailMark.destroy(); this.mailMark = undefined; }
@@ -6871,6 +6897,11 @@ export class RegionFieldScene extends Phaser.Scene {
     }
     const n = MailboxStore.withItemsCount;
     markers.push({ wx, wy: wy - 16, icon: 'mm_pickup', priority: 4, label: '우편함', sub: n ? `물건이 든 편지 ${n}통` : '새 편지' });
+  }
+
+  /** 306차 — 우편함 깃발(남의 집 구경 중이면 집주인이 보낸 집 모습의 깃발) */
+  private mailFlagUp(): boolean {
+    return GameState.visitingHometown ? !!GameState.visitView?.mailboxFlag : MailboxStore.flagUp;
   }
 
   /** 296차 — 우편함 창(집 앞 우편함 [F]) */
@@ -6955,6 +6986,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
     MultiplayerClient.setProfile(this.buildProfile());   // 146차 — 내용이 같으면 안 올라간다
     this.syncTrade();
+    this.syncVisits();   // 306차 — 집 구경(청 · 답 · 집 모습)
     const peers = MultiplayerClient.peersInRegion(this.region);
     const alive = new Set<string>();
     this.peerFeet = [];
@@ -7056,6 +7088,7 @@ export class RegionFieldScene extends Phaser.Scene {
     openContextMenu(this, p.x, p.y, [
       { label: '정보 보기', run: () => this.openPeerInfo(peer) },
       { label: '거래하기', run: () => void this.requestTrade(peer) },
+      ...this.visitMenuItems(peer),   // 306차 — 집 구경
       { label: '취소', run: () => {/* 닫기만 */} },
     ]);
   }
@@ -7071,6 +7104,129 @@ export class RegionFieldScene extends Phaser.Scene {
     if (MultiplayerClient.trade && MultiplayerClient.trade.phase !== 'cancelled') { this.hud?.pushLog(`[거래] ${MP_TRADE_REASON_KO.meTrading}`); return; }
     const r = await MultiplayerClient.proposeTrade(peer.playerId);
     this.hud?.pushLog(r.ok ? `[거래] ${peer.name} 님에게 거래를 요청했습니다 — 응답을 기다립니다` : `[거래] ${r.reasonKo ?? '요청하지 못했습니다.'}`);
+  }
+
+  // ── 306차 홈타운 방문(집 구경) ─────────────────────────
+
+  /** 피어 우클릭 메뉴의 집 구경 줄 — 상대에게 공개 집 id가 있을 때만 */
+  private visitMenuItems(peer: MpPeer): { label: string; run: () => void }[] {
+    if (!isHomeId(peer.profile?.homeId) || peer.profile?.homeId === GameState.homeId) return [];
+    const me = MultiplayerClient.playerId;
+    const v = liveVisitBetween(MultiplayerClient.visits, me, peer.playerId);
+    if (!v) return [{ label: '집 구경 청하기', run: () => void this.requestVisit(peer) }];
+    if (v.fromPlayerId === me && v.status === 'pending') return [{ label: '청한 집 구경 거두기', run: () => void MultiplayerClient.endVisit(v.id) }];
+    if (v.fromPlayerId === me) {
+      return GameState.hometownStay.ownerHomeId === v.homeId
+        ? [{ label: '집 구경 마치기', run: () => { void MultiplayerClient.endVisit(v.id); this.returnToOwnHometown(MP_VISIT_REASON_KO.endedByGuest); } }]
+        : [{ label: '집 구경 가기', run: () => this.goVisit(v) }];
+    }
+    return v.status === 'accepted' ? [{ label: '손님 배웅하기', run: () => void MultiplayerClient.endVisit(v.id) }] : [];
+  }
+
+  private async requestVisit(peer: MpPeer): Promise<void> {
+    const r = await MultiplayerClient.requestVisit(peer.playerId);
+    this.hud?.pushLog(r.ok ? `[홈타운] ${peer.name} 씨에게 집 구경을 청했습니다 — 답을 기다립니다` : `[홈타운] ${r.reasonKo ?? '청하지 못했습니다.'}`);
+  }
+
+  /** 들인 방문의 집으로 간다(장면을 그 집 홈타운으로 다시 연다) */
+  private goVisit(v: MpVisit): void {
+    if (this.isTransitioning) return;
+    this.fadeOutThen(() => {
+      this.scene.restart({ region: 'hometown', hometownOwner: v.homeId, hometownOwnerName: v.toName } as RegionFieldInit);
+    }, 280);
+  }
+
+  /** 받은 집 모습을 화면에 입힌다(마당 설치물 · 충돌 · 텃밭 · 우편함 깃발) */
+  private applyVisitView(): void {
+    const view = GameState.visitView;
+    if (!view || this.region !== 'hometown') return;
+    this.farmField?.clearAll();
+    this.visitFarmStore = createFarmViewStore(view.farm);
+    this.computeHomeObjects();
+    this.rebuildCollision();
+    this.renderHomeObjects();
+  }
+
+  /**
+   * 서버의 방문 상태를 화면에 맞춘다(200ms) —
+   * 집주인: 청이 오면 묻기 · 들인 동안 집 모습 올리기 / 손님: 답(들임 · 사양 · 무응답) 알리기 · 집 모습 받기 · 끝나면 내 집으로.
+   */
+  private syncVisits(): void {
+    const me = MultiplayerClient.playerId;
+    if (!me) return;
+    for (const v of MultiplayerClient.visits) {
+      const seen = VISIT_SEEN.get(v.id);
+      const host = v.toPlayerId === me;
+      if (seen === v.status) continue;
+      if (v.status === 'pending') {
+        if (!host) { VISIT_SEEN.set(v.id, v.status); continue; }
+        if (this.uiBlocked || this.isTransitioning) continue;   // 창이 닫히면 묻는다
+        VISIT_SEEN.set(v.id, v.status);
+        playSfx('notice');
+        this.openPopup((close) => new ConfirmDialog(
+          this, `${v.fromName} 씨가 집 구경을 오고 싶어 합니다.\n들이시겠습니까?`,
+          () => { close(); void MultiplayerClient.respondVisit(v.id, true); },
+          () => { close(); void MultiplayerClient.respondVisit(v.id, false); },
+          { yes: '들이기', no: '사양하기' },
+        ));
+        continue;
+      }
+      if (v.status === 'accepted') {
+        if (host) {
+          VISIT_SEEN.set(v.id, v.status);
+          this.hud?.pushLog(`[홈타운] ${v.fromName} 씨를 집 구경에 들였습니다`);
+          this.visitPushSig = '';   // 곧바로 집 모습을 올린다
+          continue;
+        }
+        if (GameState.hometownStay.ownerHomeId === v.homeId) { VISIT_SEEN.set(v.id, v.status); continue; }
+        if (this.uiBlocked || this.isTransitioning) continue;
+        VISIT_SEEN.set(v.id, v.status);
+        this.hud?.pushLog(`[홈타운] ${v.toName} 씨가 집 구경을 허락했습니다`);
+        this.openPopup((close) => new ConfirmDialog(
+          this, `${v.toName} 씨가 집 구경을 허락했습니다.\n지금 가 보시겠습니까?`,
+          () => { close(); this.goVisit(v); },
+          () => { close(); },
+          { yes: '가기', no: '나중에' },
+        ));
+        continue;
+      }
+      // 끝남 · 사양 · 무응답 — 한 줄 · 구경 중이던 집이면 내 집으로
+      VISIT_SEEN.set(v.id, v.status);
+      const reason = v.reasonKo ?? MP_VISIT_REASON_KO.endedByHost;
+      if (!host && v.status === 'ended' && GameState.visitingHometown && GameState.hometownStay.ownerHomeId === v.homeId && this.region === 'hometown') {
+        this.returnToOwnHometown(reason);
+        return;
+      }
+      if (seen !== undefined || v.status !== 'ended') this.hud?.pushLog(`[홈타운] ${reason}`);
+    }
+    // 집주인 — 들인 방문이 있으면 집 모습을 올린다(바뀌었거나 15초마다 한 번)
+    const hosting = hostVisitsOf(MultiplayerClient.visits, me, 'accepted');
+    if (hosting.length) {
+      const now = this.time.now;
+      if (now - this.visitPushAt > 3000 || !this.visitPushSig) {
+        this.visitPushAt = now;
+        const view = GameState.buildHomeView();
+        const sig = JSON.stringify({ ...view, atMs: 0 });
+        if (sig !== this.visitPushSig || hosting.some((v) => v.viewRev === 0) || now % 15000 < 3000) {
+          this.visitPushSig = sig;
+          for (const v of hosting) void MultiplayerClient.putHomeView(v.id, view);
+        }
+      }
+    }
+    // 손님 — 구경 중인 집의 모습이 새 판이면 받아 입힌다
+    if (GameState.visitingHometown && this.region === 'hometown') {
+      const gv = guestVisitOf(MultiplayerClient.visits, me);
+      if (gv && gv.status === 'accepted' && gv.homeId === GameState.hometownStay.ownerHomeId && gv.viewRev > this.visitViewRev && this.visitViewAsk !== gv.viewRev) {
+        const want = gv.viewRev;
+        this.visitViewAsk = want;
+        void MultiplayerClient.fetchHomeView(gv.id).then((r) => {
+          if (!r || !this.scene.isActive() || !GameState.visitingHometown || GameState.hometownStay.ownerHomeId !== gv.homeId) return;
+          this.visitViewRev = r.rev;
+          GameState.setVisitView(r.view);
+          this.applyVisitView();
+        });
+      }
+    }
   }
 
   /**
@@ -9037,9 +9193,15 @@ export class RegionFieldScene extends Phaser.Scene {
       { label: '환경설정', action: (): void => this.openSettingsFromPause() },
       // 홈타운 밖 = '집으로 가기' (확인 팝업 → 예 = 홈타운 이동. '전국 지도'는 폐지 —
       //  출조는 홈타운 출조 버스로만, 귀가는 여기서 바로. 사용자 지시 2026-07-30)
-      ...(this.region === 'hometown'
+      ...(this.region === 'hometown' && !GameState.visitingHometown
         ? []
-        : [{ label: '집으로 가기', action: (): void => this.confirmGoHome() }]),
+        : [{ label: GameState.visitingHometown ? '내 집으로 가기' : '집으로 가기', action: (): void => this.confirmGoHome() }]),
+      // 306차 — 집주인이 들인 방문이 있으면 여기서도 그 집으로 간다(멀리 떨어져 있어도)
+      ...((): { label: string; action: () => void }[] => {
+        const gv = guestVisitOf(MultiplayerClient.visits, MultiplayerClient.playerId);
+        if (!gv || gv.status !== 'accepted' || GameState.hometownStay.ownerHomeId === gv.homeId) return [];
+        return [{ label: `${gv.toName} 씨 집 구경 가기`, action: (): void => { this.closePauseMenu(); this.goVisit(gv); } }];
+      })(),
       {
         label: '타이틀 화면',
         action: () => {

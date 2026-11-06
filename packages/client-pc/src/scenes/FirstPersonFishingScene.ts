@@ -555,6 +555,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.floatSubmerged = false;
     this.resultContainer = undefined;
     this.biteSeq = new BiteSequenceEngine();
+    InventoryStore.beginCast();   // 306차 — 새로 던진 채비: 물속 바늘에 미끼가 꿰여 있다
     this.rodBendDeg = 0;
     this.rodBendSmDeg = 0;
     this.rodFoldSm = 0;
@@ -2539,8 +2540,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const baitAffinity = this.rigBaitAffinity(reefBottom);
     // 193차 — 반짝이 깃 카드 채비만 단 채(미끼 없음): 전갱이만, 미끼를 끼웠을 때의 10%.
     //   이 자리에 전갱이가 없으면(지역·수심·홈타운 규제) 입질 자체가 없다
-    const flasherMult = InventoryStore.rigSummary().flasherOnly
-      ? (candidateCount(this.buildSpawnCtx(reefBottom)) > 0 ? FLASHER_ONLY_BITE_MULT : 0) : 1;
+    //   306차 — 미끼를 다 따먹히고 반짝이 바늘만 남아도 같다 · 미끼 채비인데 물속 바늘이 비었으면(따먹힘 · 빈 칸) 입질이 없다
+    const flasherMult = InventoryStore.flasherOnlyInWater()
+      ? (candidateCount(this.buildSpawnCtx(reefBottom)) > 0 ? FLASHER_ONLY_BITE_MULT : 0)
+      : InventoryStore.bareHookInWater() ? 0 : 1;
     // 바다낚시지수 API 캐시 → P_base 보정 (지수 1~5 → 0.7~1.4배)
     const indexModifier = ExternalDataStore.getRegionFishingIndexModifier(this.cfg.region);   // 288차 — 그 지역 지수(옛: 전국 목록 첫 지점)
     // 289차 — 철 밖 · 차가운 물 · 그 바다에 드문 고기뿐이면 무는 고기 자체가 적다(존재 가중의 빈도 몫 — `TUNING.presence.rate*`)
@@ -2616,11 +2619,15 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 챔질 없이 어신 종료 — 물고기가 미끼를 따먹고 떠남.
       // 강한 입질(3단계)로 찌가 완전 잠겼던 래치를 여기서 해제해, 챔질 타이밍을 놓쳐도
       // 찌가 원래대로 다시 떠오르게 한다 (floatSinkVisM 보간으로 부드럽게 상승·재등장).
+      //   306차 — 「끝났다」는 끝난 틱에 한 번만 온다(옛 엔진은 매 틱 참이라 매 프레임 미끼를 하나씩 먹혀 가방의 미끼가 전부 사라졌다).
+      //   따먹힌 바늘은 이번 캐스팅 동안 빈 바늘이다 — 가방에 남은 미끼가 물속에서 저절로 다시 꿰이지 않는다.
       this.floatSubmerged = false;
       this.pendingFish = null;
-      if (InventoryStore.hookNeedsBait()) InventoryStore.consumeRigItem('bait');
+      const stolen = InventoryStore.hookNeedsBait() ? InventoryStore.stripBittenBait() : null;
       this.refreshCoolerUi();
-      this.flashState('입질이 끊겼습니다 — 미끼를 따먹혔을 수 있습니다.');
+      this.flashState(stolen && InventoryStore.bareHookInWater()
+        ? '입질이 끊겼습니다 — 미끼를 따먹힌 것 같습니다. 빈 바늘로는 물지 않습니다.'
+        : '입질이 끊겼습니다 — 미끼를 따먹혔을 수 있습니다.');
     }
 
     // ── 입질 유도 — 1~2단계 중 릴링 1초 유지 or 뒷줄견제(H) → 70% 3단계 승격 ──
@@ -2832,7 +2839,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 홈타운(집 앞 바다) 어획 규제 — 볼락류 + 보리멸만 (초보 구역. 루어 바인딩보다 우선)
     if (this.cfg.region === 'hometown') ctx.speciesFilter = HOMETOWN_SPECIES;
     // 193차 — 반짝이 깃 카드 채비 단독(미끼 없음) = 전갱이만 덤빈다(기존 필터와 교집합 — 홈타운엔 없다)
-    if (InventoryStore.rigSummary().flasherOnly) {
+    if (InventoryStore.flasherOnlyInWater()) {   // 306차 — 미끼를 다 따먹혀 반짝이 바늘만 남은 때도
       ctx.speciesFilter = ctx.speciesFilter
         ? ctx.speciesFilter.filter((id) => id === FLASHER_TARGET_SPECIES)
         : [FLASHER_TARGET_SPECIES];

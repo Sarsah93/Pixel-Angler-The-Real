@@ -99,7 +99,10 @@ export interface BiteSequenceTick {
   activeStage: BendStage | null;
   /** 찌 잠김 깊이 (m) — 단계 잠김 표기용 */
   floatSinkM: number;
-  /** 시퀀스 전체 종료 여부 (챔질 없이 어신이 끝남 — 미끼만 잃었을 수 있음) */
+  /**
+   * 이번 틱에 시퀀스가 끝났는가 (챔질 없이 어신이 끝남 — 미끼를 따먹혔다). **끝난 그 틱에 한 번만 참이다**(306차).
+   * 옛 엔진은 끝난 뒤 다음 입질까지 매 틱 참을 돌려줘, 장면이 매 프레임 미끼를 하나씩 먹혀 가방의 미끼가 몇 초 만에 전부 사라졌다.
+   */
   ended: boolean;
   /** 시퀀스 진행 중 여부 */
   active: boolean;
@@ -132,7 +135,6 @@ export class BiteSequenceEngine {
   private gapT = 0;                     // 현재 공백 경과 시간
   private inGap = false;
   private _active = false;
-  private _ended = false;
   /** 입질 확률 기반 강도 보정 (0~1) — 굽힘 각도 +최대 8도 */
   private intensity = 0;
   /** 단계 지속시간 배율 (구멍 봉돌 버프 등) */
@@ -186,14 +188,12 @@ export class BiteSequenceEngine {
     this.gapT = 0;
     this.inGap = true;
     this._active = true;
-    this._ended = false;
     this.provoked = false;
   }
 
   /** 시퀀스 강제 종료 (챔질 성공/재캐스팅 등) */
   reset(): void {
     this._active = false;
-    this._ended = false;
     this.idx = -1;
     this.queue = [];
     this.provoked = false;
@@ -247,7 +247,8 @@ export class BiteSequenceEngine {
 
   update(dtSec: number): BiteSequenceTick {
     if (!this._active) {
-      return { bendAngleDeg: 0, activeStage: null, floatSinkM: 0, ended: this._ended, active: false };
+      // 306차 — 끝난 뒤의 틱은 「끝났다」를 다시 알리지 않는다(종료는 끝난 틱 한 번뿐)
+      return { bendAngleDeg: 0, activeStage: null, floatSinkM: 0, ended: false, active: false };
     }
 
     if (this.inGap) {
@@ -260,7 +261,6 @@ export class BiteSequenceEngine {
         if (this.idx >= this.queue.length) {
           // 모든 단계 소진 — 어신 종료 (물고기가 떠남)
           this._active = false;
-          this._ended = true;
           return { bendAngleDeg: 0, activeStage: null, floatSinkM: 0, ended: true, active: false };
         }
       }
@@ -271,7 +271,6 @@ export class BiteSequenceEngine {
         // 단계 종료 → 다음 공백 (마지막 단계였다면 종료)
         if (this.idx >= this.queue.length - 1) {
           this._active = false;
-          this._ended = true;
           return { bendAngleDeg: 0, activeStage: null, floatSinkM: 0, ended: true, active: false };
         }
         this.inGap = true;
@@ -290,7 +289,7 @@ export class BiteSequenceEngine {
       bendAngleDeg: angle,
       activeStage: stage,
       floatSinkM: sink,
-      ended: this._ended,
+      ended: false,
       active: this._active,
     };
   }

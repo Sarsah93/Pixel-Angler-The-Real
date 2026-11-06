@@ -38,7 +38,7 @@ import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit, PLAYER_CANON_AGE, playerAgeOf } from '@tra/core';
 import {   // 305차 — 홈타운 소유 · 머무는 집
   HOMETOWN_REGION_ID, newHomeId, isHomeId, hometownAllows, claimHometownOwner, resolveHometownStay,
-  type HometownStay, type HometownAction, type HometownFallback,
+  type HometownStay, type HometownAction, type HometownFallback, type MpHomeView,
 } from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { playCoin } from '../audio/Sfx.js';
@@ -1930,13 +1930,34 @@ export class GameStateManager {
   /** 머무는 집을 내 집으로 — 세이브 로드 · 새 게임 · 홈타운 밖으로 나갈 때 */
   resetHometownStay(): void {
     this._hometownStay = { ownerHomeId: this._homeId };
+    this._visitView = null;
     MultiplayerClient.setHomeScope(this._homeId, this._homeId);
+  }
+
+  // ── 306차 홈타운 방문 — 집 모습(읽기 전용) ──
+  /** 남의 집 구경 중 — 집주인이 보낸 집 모습(세이브하지 않는다 · 내 집으로 돌아오면 지운다) */
+  private _visitView: MpHomeView | null = null;
+  get visitView(): MpHomeView | null { return this.visitingHometown ? this._visitView : null; }
+  setVisitView(view: MpHomeView | null): void { this._visitView = view; }
+
+  /**
+   * 306차 — 집주인이 손님에게 보낼 내 집 모습: 집 앞 마당 월드 상태 · 마당 텃밭 구획 · 우편함 깃발.
+   * 가방 · 돈 · 집 안 · 편지 내용은 싣지 않는다(손님이 볼 수 있는 것만).
+   */
+  buildHomeView(): MpHomeView {
+    const w = this.getWorldObjects(HOMETOWN_MAP_GRAPH.entryMapId);
+    const world = JSON.parse(JSON.stringify(w)) as WorldObjectState;
+    const plotIds = new Set(world.placed.filter((o) => o.type === 'farmPlot').map((o) => o.instanceId));
+    const allPlots = FarmStore.serialize().plots;
+    const farm: Record<string, unknown> = {};
+    for (const id of plotIds) if (allPlots[id]) farm[id] = JSON.parse(JSON.stringify(allPlots[id]));
+    return { world, farm, mailboxFlag: MailboxStore.flagUp, atMs: Date.now() };
   }
 
   /**
    * 지역에 들어갈 때(필드 씬 init) — 홈타운이면 머무는 집을 정하고, 다른 지역이면 내 집으로 되돌린다.
    * 남의 집은 접속 · 주인이 세션에 있음 · 방문 허락 셋이 모두 참일 때만 — 아니면 내 집으로 돌리고 까닭을 돌려준다.
-   * 방문 신청 · 허락이 아직 없어 지금은 언제나 내 집이다(dev 훅 `devAllowVisit`만 예외).
+   * 306차 — 허락 = 내가 청해 집주인이 들인 방문(`MultiplayerClient.visitAllowedTo`) · dev 훅 `devAllowVisit`.
    */
   enterRegion(regionId: string, want?: { ownerHomeId?: string; ownerName?: string }): HometownFallback | undefined {
     if (regionId !== HOMETOWN_REGION_ID) { this.resetHometownStay(); return undefined; }
@@ -1944,8 +1965,9 @@ export class GameStateManager {
       myHomeId: this._homeId,
       connected: MultiplayerClient.isConnected,
       ownerOnline: (h) => MultiplayerClient.isHomeOwnerOnline(h),
-      visitAllowed: (h) => this._devVisitAllowed.has(h),
+      visitAllowed: (h) => this._devVisitAllowed.has(h) || MultiplayerClient.visitAllowedTo(h),   // 306차 — 집주인이 들인 방문
     });
+    if (r.stay.ownerHomeId !== this._hometownStay.ownerHomeId) this._visitView = null;   // 306차 — 다른 집이면 받은 집 모습을 버린다
     this._hometownStay = r.stay;
     MultiplayerClient.setHomeScope(this._homeId, r.stay.ownerHomeId);
     return r.fallback;
@@ -1961,7 +1983,7 @@ export class GameStateManager {
       myHomeId: this._homeId,
       connected: MultiplayerClient.isConnected,
       ownerOnline: (h) => MultiplayerClient.isHomeOwnerOnline(h),
-      visitAllowed: (h) => this._devVisitAllowed.has(h),
+      visitAllowed: (h) => this._devVisitAllowed.has(h) || MultiplayerClient.visitAllowedTo(h),   // 306차 — 집주인이 들인 방문
     }).fallback;
   }
 

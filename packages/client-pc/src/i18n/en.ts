@@ -26,6 +26,7 @@ import { EN_RIG, EN_RIG_RULES } from './en_rig.js';
 import { EN_FARM, EN_FARM_RULES } from './en_farm.js';
 import { EN_MILL, EN_MILL_RULES, EN_MILL_TAIL_RULES } from './en_mill.js';
 import { EN_MAIL, EN_MAIL_RULES } from './en_mail.js';   // 296차 우편함
+import { EN_VISIT, EN_VISIT_RULES } from './en_visit.js';   // 305 · 306차 홈타운 소유 · 방문
 import { EN_GIFT, EN_GIFT_RULES } from './en_gift.js';   // 297차 선물
 import { EN_FEST, EN_FEST_RULES } from './en_fest.js';   // 298차 축제
 import { EN_CURE, EN_CURE_RULES } from './en_cure.js';
@@ -688,7 +689,7 @@ export const EN_DICT: Record<string, string> = {
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_MAIL, ...EN_GIFT, ...EN_FEST, ...EN_CURE, ...EN_TALK, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_MAIL, ...EN_VISIT, ...EN_GIFT, ...EN_FEST, ...EN_CURE, ...EN_TALK, ...EN_BASE,
   // 214차 — 인물의 집 · 문 두드리기
   '정옥선의 집': "Jeong Okseon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeonsu's house",
   '강두철의 집': "Kang Ducheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',
@@ -994,6 +995,7 @@ export const EN_RULES: Rule[] = [
   ...EN_RIG_RULES,     // 192차 채비 모딩 트리
   ...EN_MILL_RULES,    // 284차 무게 수확 · 봉지 · 부산물 · 방앗간
   ...EN_MAIL_RULES,    // 296차 우편함
+  ...EN_VISIT_RULES,   // 305 · 306차 홈타운 방문
   ...EN_GIFT_RULES,    // 297차 선물
   ...EN_FEST_RULES,    // 298차 축제
   ...EN_FARM_RULES,    // 235차 텃밭

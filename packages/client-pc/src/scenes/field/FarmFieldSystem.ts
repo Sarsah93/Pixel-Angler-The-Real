@@ -32,7 +32,7 @@ import {
   CARE_TASK_KO, PROCESS_LAST_KO, WATER_AMOUNT_KO, SICKLE_ID, HARVEST_SCISSORS_ID, FORK_ID, DISEASE_DEFS, EARTHWORM_TUNING, itemBaseId,
   type CropDef, type FarmCellState, type MapObject, type WaterAmount, type CareTaskId,
 } from '@tra/core';
-import { FarmStore, HOMI_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow } from '../../store/FarmStore.js';
+import { FarmStore, HOMI_ID, WATERING_CAN_ID, type FarmActionResult, type FarmCareRow, type FarmStoreImpl } from '../../store/FarmStore.js';
 import { InventoryStore, type InvItem } from '../../store/InventoryStore.js';
 import { GameState } from '../../store/GameState.js';
 import { addPixelIcon } from '../../ui/PixelIcon.js';
@@ -68,6 +68,8 @@ export interface FarmFieldHost {
   inventoryChanged: () => void;
   /** 창이 떠 있거나 멈춤 · 연출 중 */
   blocked: () => boolean;
+  /** 306차 — 그릴 텃밭 저장소(남의 집 구경 중이면 집주인이 보낸 집 모습 · 없으면 내 텃밭) */
+  store?: () => FarmStoreImpl;
 }
 
 /** 겨눈 칸 */
@@ -159,6 +161,9 @@ function blob(g: Phaser.GameObjects.Graphics, cx: number, cy: number, rx: number
 }
 
 export class FarmFieldSystem {
+  /** 306차 — 지금 그리는 텃밭 저장소(남의 집 구경 중이면 집주인이 보낸 집 모습) */
+  private get fs(): FarmStoreImpl { return this.host.store?.() ?? FarmStore; }
+
   private host: FarmFieldHost;
   private views = new Map<string, CellView[]>();
   private target: FarmTarget | null = null;
@@ -229,7 +234,7 @@ export class FarmFieldSystem {
 
   /** 한 구획 — 칸마다 서명이 바뀐 것만 다시 그린다 */
   renderPlot(o: MapObject, pop?: { idx: number; part: 'plant' | 'deco' }): void {
-    const plot = FarmStore.has(o.instanceId) ? FarmStore.plot(o.instanceId) : null;
+    const plot = this.fs.has(o.instanceId) ? this.fs.plot(o.instanceId) : null;
     let vs = this.views.get(o.instanceId);
     const k = this.cellPx(o) / ART;
     if (!vs) {
@@ -289,9 +294,9 @@ export class FarmFieldSystem {
     const crop = c.cropId ? getCrop(c.cropId) : undefined;
     const st = cellStage(c);
     const g = Math.round((c.picks > 0 ? 0.7 + 0.3 * c.regrow : c.growth) * 12);
-    const ws = FarmStore.waterState(plotId, idx)?.state ?? '';
-    const dz = (FarmStore.diseases(plotId, idx).map((d) => `${d.id}${d.severity > 0.5 ? 2 : 1}`)).join(',');
-    const weed = crop && FarmStore.careRows(plotId, idx).some((r) => r.st.def.id === 'weed' && r.st.status === 'due') ? 'w' : '';
+    const ws = this.fs.waterState(plotId, idx)?.state ?? '';
+    const dz = (this.fs.diseases(plotId, idx).map((d) => `${d.id}${d.severity > 0.5 ? 2 : 1}`)).join(',');
+    const weed = crop && this.fs.careRows(plotId, idx).some((r) => r.st.def.id === 'weed' && r.st.status === 'due') ? 'w' : '';
     const ripe = crop ? ripeStageOf(c, crop) ?? '' : '';
     return [c.tilled ? 1 : 0, c.cropId ?? '', st, g, ws, c.compost ? 'c' : '', dz, weed, ripe, c.lodged ? 'L' : '', c.frostedAt ? 'F' : '',
       c.process ? (c.process.dryAt ? 'D' : `d${Math.round(c.process.dryH / 24)}`) : '', wildUnknown(c) ? 'u' : '', c.moisture >= 0.6 ? 'wet' : ''].join('|');
@@ -347,7 +352,7 @@ export class FarmFieldSystem {
     if (!c?.tilled) return;
     const crop = c.cropId ? getCrop(c.cropId) : undefined;
     // 잡초(김맬 때) — 칸 모서리
-    const weedDue = !!crop && FarmStore.careRows(plotId, idx).some((r) => r.st.def.id === 'weed' && r.st.status === 'due');
+    const weedDue = !!crop && this.fs.careRows(plotId, idx).some((r) => r.st.def.id === 'weed' && r.st.status === 'due');
     if (weedDue) for (const dx of [-8, 7]) { g.fillStyle(C.weed, 1); g.fillRect(dx, -3, 1, 3); g.fillRect(dx - 1, -4, 1, 2); g.fillRect(dx + 1, -5, 1, 3); }
     if (!crop) return;
     const stage = cellStage(c);
@@ -377,7 +382,7 @@ export class FarmFieldSystem {
     }
     for (const dx of SLOTS[n] ?? [0]) this.drawShape(g, shape, dx, -4, k, ready, leaf, fruit, lean, crop);
     // 병 반점 · 벌레
-    const dz = FarmStore.diseases(plotId, idx);
+    const dz = this.fs.diseases(plotId, idx);
     for (const d of dz) {
       const pest = DISEASE_DEFS[d.id].kind !== 'disease';
       const col = pest ? (d.id === 'aphid' ? 0xc8f080 : 0x1a1a1a) : d.id === 'powdery_mildew' ? 0xf4f6f0 : d.id === 'rust' ? 0xe8781a : 0x6a4a2a;
@@ -530,9 +535,9 @@ export class FarmFieldSystem {
     if (!c.cropId || wildUnknown(c)) return null;
     if (c.process?.dryAt) return 'process';
     if (cellReady(c) && !c.process && !c.nursery) return 'ready';
-    const rows = FarmStore.careRows(plotId, idx).filter((r) => r.st.status === 'due');
+    const rows = this.fs.careRows(plotId, idx).filter((r) => r.st.status === 'due');
     if (rows.length) return `care:${rows[0].st.def.id}`;
-    const ws = FarmStore.waterState(plotId, idx);
+    const ws = this.fs.waterState(plotId, idx);
     if (ws && ws.state === 'dry') return 'dry';
     return null;
   }
@@ -540,14 +545,14 @@ export class FarmFieldSystem {
   /** 큰 칸(2×2 타일) — 지금 할 것을 16px 아이콘으로(거둘 것 · 털기 도리깨 · 목마름 물방울 · 할 일의 자재 · 도구) */
   private indicatorImage(key: string, plotId: string, idx: number, x: number, y: number): Phaser.GameObjects.Image | null {
     const scene = this.host.scene;
-    const c = FarmStore.plot(plotId).cells[idx];
+    const c = this.fs.plot(plotId).cells[idx];
     const crop = c?.cropId ? getCrop(c.cropId) : undefined;
     if (!crop && key !== 'dry') return null;
     if (key === 'ready' && crop) return addPixelIcon(scene, crop.harvest.ripenTo && ripeStageOf(c, crop) === 'red' ? crop.harvest.ripenTo.itemId : crop.harvest.itemId, x, y, 16);
     if (key === 'process' && crop) return addPixelIcon(scene, cultivationOf(crop).process?.last === 'thresh' ? 'it_flail' : crop.harvest.itemId, x, y, 16);
     if (key === 'dry') return addPixelIcon(scene, 'hydration', x, y, 16);
     if (key.startsWith('care:')) {
-      const row = FarmStore.careRows(plotId, idx).find((r) => `care:${r.st.def.id}` === key);
+      const row = this.fs.careRows(plotId, idx).find((r) => `care:${r.st.def.id}` === key);
       return row ? careTaskIcon(scene, row.st, x, y, 16, crop) : null;
     }
     return null;
@@ -642,7 +647,7 @@ export class FarmFieldSystem {
       if (!this.host.blocked()) {
         for (const o of this.host.plots()) {
           if (!this.playerNear(o, 6)) continue;
-          const found = FarmStore.rainWorms(o.instanceId);
+          const found = this.fs.rainWorms(o.instanceId);
           if (found.length) this.host.floatingHint('빗물에 지렁이가 기어 나왔다');
         }
       }
@@ -685,11 +690,11 @@ export class FarmFieldSystem {
   /** 손에 든 것으로 이 칸에 할 일(없으면 null) — 테두리 색 · [F] · 왼쪽 클릭 */
   private heldAction(t: FarmTarget): InteractOption | null {
     // 248차 — 드러난 지렁이가 있으면 손에 든 것보다 먼저 줍는다(곧 다시 파고든다)
-    if (FarmStore.wormsAt(t.o.instanceId, t.idx) > 0) return { label: '지렁이 줍기', run: () => this.pickWorms(t), action: 'farm' };
+    if (this.fs.wormsAt(t.o.instanceId, t.idx) > 0) return { label: '지렁이 줍기', run: () => this.pickWorms(t), action: 'farm' };
     const held = this.held();
     if (!held || held.qty <= 0) return null;
     const plotId = t.o.instanceId;
-    const c = FarmStore.plot(plotId).cells[t.idx];
+    const c = this.fs.plot(plotId).cells[t.idx];
     if (!c) return null;
     const crop = c.cropId ? getCrop(c.cropId) : undefined;
     const id = itemBaseId(held.id);   // 282차 — 물뿌리개는 손 도구라 개체 id(`…#n`)다
@@ -714,7 +719,7 @@ export class FarmFieldSystem {
       return { label: `${tl('심기')} — ${tl(held.name)}`, run: () => this.plant(t, held), action: 'farm' };
     }
     if (HARVEST_TOOLS.has(id) && crop && (cellReady(c) && !c.nursery && !c.process)) {
-      return { label: FarmStore.harvestLabel(plotId, t.idx) ?? '거두기', run: () => this.harvest(t), action: 'farm' };
+      return { label: this.fs.harvestLabel(plotId, t.idx) ?? '거두기', run: () => this.harvest(t), action: 'farm' };
     }
     // 자재 · 도구가 드는 할 일
     if (crop && !c.process) {
@@ -725,7 +730,7 @@ export class FarmFieldSystem {
   }
 
   private dueRows(t: FarmTarget): FarmCareRow[] {
-    return FarmStore.careRows(t.o.instanceId, t.idx).filter((r) => r.st.status === 'due');
+    return this.fs.careRows(t.o.instanceId, t.idx).filter((r) => r.st.status === 'due');
   }
 
   /** [F] 선택지 — 손에 든 것이 맞으면 그 하나, 아니면 그 칸의 털기 · 거두기 · 할 일 + 텃밭 창 */
@@ -735,12 +740,12 @@ export class FarmFieldSystem {
     const act = this.heldAction(t);
     if (act) return [act];
     const plotId = t.o.instanceId;
-    const c = FarmStore.plot(plotId).cells[t.idx];
+    const c = this.fs.plot(plotId).cells[t.idx];
     const out: InteractOption[] = [];
     if (!c) return out;
     const crop = c.cropId ? getCrop(c.cropId) : undefined;
     if (crop && c.process?.dryAt) out.push({ label: PROCESS_LAST_KO[cultivationOf(crop).process?.last ?? 'thresh'], run: () => this.process(t), action: 'farm' });
-    if (crop && cellReady(c) && !c.process && !c.nursery) out.push({ label: FarmStore.harvestLabel(plotId, t.idx) ?? '거두기', run: () => this.harvest(t), action: 'farm' });
+    if (crop && cellReady(c) && !c.process && !c.nursery) out.push({ label: this.fs.harvestLabel(plotId, t.idx) ?? '거두기', run: () => this.harvest(t), action: 'farm' });
     if (crop && !c.process && !wildUnknown(c)) {
       for (const r of this.dueRows(t)) {
         if (r.missing.length) continue;
@@ -768,7 +773,7 @@ export class FarmFieldSystem {
     const flash = this.host.scene.add.graphics().setDepth(6.46);
     this.drawCellBorder(flash, hit, true);
     this.host.scene.tweens.add({ targets: flash, alpha: 0, duration: 420, onComplete: () => flash.destroy() });
-    if (itemBaseId(this.held()?.id ?? '') === WATERING_CAN_ID && FarmStore.wormsAt(hit.o.instanceId, hit.idx) <= 0) { this.beginPour(hit, true); return true; }
+    if (itemBaseId(this.held()?.id ?? '') === WATERING_CAN_ID && this.fs.wormsAt(hit.o.instanceId, hit.idx) <= 0) { this.beginPour(hit, true); return true; }
     act.run?.();
     return true;
   }
@@ -796,7 +801,7 @@ export class FarmFieldSystem {
   /** 드러난 지렁이 그림을 스토어와 맞추고 꿈틀거리게 한다(파고들기 8초 전부터 흐려진다) */
   private syncWorms(delta: number): void {
     const now = Date.now();
-    const live = FarmStore.exposedWorms(now);
+    const live = this.fs.exposedWorms(now);
     const keep = new Set<string>();
     const plots = this.host.plots();
     for (const w of live) {
@@ -854,7 +859,7 @@ export class FarmFieldSystem {
   private pickWorms(t: FarmTarget): void {
     const key = `${t.o.instanceId}:${t.idx}`;
     const views = this.wormViews.get(key) ?? [];
-    const r = FarmStore.pickWorms(t.o.instanceId, t.idx);
+    const r = this.fs.pickWorms(t.o.instanceId, t.idx);
     if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
     playSfx('worm');
     this.did.worms++;
@@ -872,7 +877,7 @@ export class FarmFieldSystem {
   }
 
   private till(t: FarmTarget): void {
-    const r = FarmStore.till(this.cellPlotId(t), t.idx);
+    const r = this.fs.till(this.cellPlotId(t), t.idx);
     if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
     playSfx('farm_till');
     this.did.till++;
@@ -885,7 +890,7 @@ export class FarmFieldSystem {
 
   private beginPour(t: FarmTarget, viaMouse: boolean): void {
     if (this.pour) return;
-    if (!FarmStore.plot(t.o.instanceId).cells[t.idx]?.tilled) { playSfx('deny'); this.host.floatingHint('먼저 땅을 일군다'); return; }
+    if (!this.fs.plot(t.o.instanceId).cells[t.idx]?.tilled) { playSfx('deny'); this.host.floatingHint('먼저 땅을 일군다'); return; }
     this.pour = { t, startMs: performance.now(), viaMouse };
     this.pourText.setVisible(true);
     this.drawPour();
@@ -925,7 +930,7 @@ export class FarmFieldSystem {
     this.pour = null;
     this.pourG.clear();
     this.pourText.setVisible(false);
-    const r = FarmStore.water(p.t.o.instanceId, amount, [p.t.idx]);
+    const r = this.fs.water(p.t.o.instanceId, amount, [p.t.idx]);
     if (r.ok) {
       this.did.water++;
       const cc = this.cellCenter(p.t);
@@ -937,7 +942,7 @@ export class FarmFieldSystem {
 
   private plant(t: FarmTarget, item: InvItem): void {
     const found = cropStartOfItem(item.id);
-    const r = FarmStore.plant(this.cellPlotId(t), t.idx, item.id);
+    const r = this.fs.plant(this.cellPlotId(t), t.idx, item.id);
     if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
     playSfx('farm_plant');
     this.did.plant++;
@@ -958,9 +963,9 @@ export class FarmFieldSystem {
 
   private harvest(t: FarmTarget): void {
     const plotId = this.cellPlotId(t);
-    const before = FarmStore.plot(plotId).cells[t.idx];
+    const before = this.fs.plot(plotId).cells[t.idx];
     const crop = before?.cropId ? getCrop(before.cropId) : undefined;
-    const r = FarmStore.harvest(plotId, t.idx);
+    const r = this.fs.harvest(plotId, t.idx);
     if (!r.ok) { playSfx('deny'); this.host.floatingHint(r.message); return; }
     this.did.harvest++;
     const cc = this.cellCenter(t);

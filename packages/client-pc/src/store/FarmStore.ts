@@ -138,7 +138,7 @@ function wildOriginKo(cropId: string, banked: boolean): string {
   return def?.shade ? '숲에서 바람에 날아든 씨앗이 그늘 아래 텄다' : '바람에 날아든 씨앗이 텄다';
 }
 
-class FarmStoreImpl {
+export class FarmStoreImpl {
   private plots = new Map<string, FarmPlotState>();
   /** 236차 — 거둔 횟수(농지 이용권 요건) */
   private harvests = 0;
@@ -1185,6 +1185,16 @@ class FarmStoreImpl {
 }
 
 export const FarmStore = new FarmStoreImpl();
+
+/**
+ * 306차 — 남의 집 텃밭을 **보기만** 하는 저장소(집주인이 보낸 집 모습의 구획들). 손님의 세이브에는 쓰지 않는다 —
+ * 필드의 텃밭 그림(`FarmFieldSystem`)이 이 저장소를 읽어 주인의 칸 · 자람 · 물 · 병을 그대로 그린다(손님은 칸에 손을 못 댄다 — 305 행동 문).
+ */
+export function createFarmViewStore(plots: Record<string, unknown>): FarmStoreImpl {
+  const st = new FarmStoreImpl();
+  st.deserialize({ v: 1, careV: CARE_V, plots: plots as Record<string, FarmPlotState>, harvests: 0, harvestsBy: {} });
+  return st;
+}
 
 if (import.meta.env.DEV) {
   // 실렌더 검증 하네스용 — `import('/src/…')`는 게임 인스턴스와 별개 모듈이라(59차 `__INV` 규칙) 실싱글턴을 노출한다

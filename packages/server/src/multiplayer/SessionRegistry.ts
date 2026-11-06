@@ -34,6 +34,9 @@ import {
   type MpSavedSession, type MpResume,
   type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile, type MpRetireRes, type MpTakenLine,
   type MpPlaceItem, type MpPlacedSyncRes,
+  MP_VISIT_PENDING_MS, MP_VISIT_KEEP_DONE_MS, MP_VISIT_MAX_PER_SESSION, MP_VISIT_REASON_KO,
+  isHomeId, isVisitLive, liveVisitBetween, guestVisitOf, cleanHomeView,
+  type MpVisit, type MpHomeView,
 } from '@tra/core';
 
 const FACINGS: readonly MpPeer['facing'][] = ['down', 'up', 'left', 'right'];
@@ -89,6 +92,12 @@ interface Session {
    */
   taken: (MpTakenLine & { owner: string })[];
   takenSeq: number;
+  /**
+   * 306차 — 홈타운 방문(집 구경). 서버가 공증하고 **디스크에 남기지 않는다**(서버를 다시 켜면 새로 청한다).
+   * 집 모습(`homeViews`)은 들인 방문마다 주인이 올린 마지막 판 하나.
+   */
+  visits: MpVisit[];
+  homeViews: Map<string, MpHomeView>;
   /** 마지막으로 디스크에 쓴 시각 — 잦은 쓰기를 막는다 */
   savedMs: number;
   dirty: boolean;
@@ -137,7 +146,7 @@ export class SessionRegistry {
     const code = this.newCode();
     this.sessions.set(code, {
       code, seed: (Math.random() * 0xffffffff) >>> 0, createdMs: Date.now(),
-      players: new Map(), traps: [], chat: [], chatSeq: 0, trades: [], taken: [], takenSeq: 0, savedMs: 0, dirty: true,
+      players: new Map(), traps: [], chat: [], chatSeq: 0, trades: [], taken: [], takenSeq: 0, visits: [], homeViews: new Map(), savedMs: 0, dirty: true,
     });
     this.save(code);
     return code;
@@ -252,7 +261,7 @@ export class SessionRegistry {
     opts?: { say?: string; chatSince?: number; takenSince?: number },
   ): {
     ok: boolean; peers?: MpPeer[]; traps?: MpPlacedTrap[]; chat?: MpChatLine[];
-    trade?: MpTradeState; taken?: MpTakenLine[]; nowMs?: number; reasonKo?: string;
+    trade?: MpTradeState; taken?: MpTakenLine[]; nowMs?: number; visits?: MpVisit[]; reasonKo?: string;
   } {
     const s = this.get(code);
     if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
@@ -271,6 +280,7 @@ export class SessionRegistry {
 
     if (opts?.say) this.say(s, me, opts.say);
     this.sweepTrades(s);
+    this.sweepVisits(s);
 
     const peers: MpPeer[] = [];
     for (const p of s.players.values()) {
@@ -294,7 +304,9 @@ export class SessionRegistry {
     const taken = ts < 0 ? [] : s.taken.filter((l) => l.seq > ts)
       .map(({ seq, key, untilMs, busy, by, val }) => ({ seq, key, untilMs, busy, by, ...(val ? { val } : {}) }));
     // 235차 — 서버 시각을 실어 보낸다(클라이언트가 공용 시각을 맞춘다 — 달아나는 생물 어슬렁)
-    return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken, nowMs: Date.now() };
+    // 306차 — 내가 얽힌 방문(손님 · 집주인). 끝난 것은 잠깐 남는다(까닭 한 줄)
+    const visits = s.visits.filter((v) => v.fromPlayerId === me.playerId || v.toPlayerId === me.playerId);
+    return { ok: true, peers, traps, chat, trade: this.maskTrade(this.tradeFor(s, me.userId), me.userId), taken, nowMs: Date.now(), visits };
   }
 
   /** 232차 — 거래 상태에서 상대의 userId를 지운다(내 쪽 판별에는 내 id만 있으면 된다) */
@@ -320,6 +332,7 @@ export class SessionRegistry {
     if (!s || !p) return;
     p.offline = true;
     p.lastSeenMs = Date.now();
+    this.endVisitsOf(s, p.playerId);   // 306차 — 나가면 그 사람의 방문은 끝난다
     s.dirty = true;
     this.save(code, true);
   }
@@ -346,11 +359,133 @@ export class SessionRegistry {
       if (t.phase === 'proposed' || t.phase === 'open') this.cancelTrade(t, MP_TRADE_REASON_KO.gone);
       else if (t.phase === 'committed') { mine.offer.applied = true; t.updatedMs = Date.now(); }
     }
+    this.endVisitsOf(s, p.playerId);   // 306차
     s.players.delete(p.playerId);
     this.sweepTrades(s);
     s.dirty = true;
     this.save(code, true);
     return { ok: true, removedTraps: before - s.traps.length };
+  }
+
+  // ═══════════════════════════════════════════════════
+  // 홈타운 방문 (306차) — 손님이 청하고 · 집주인이 들이고 · 어느 쪽이든 끝낸다
+  // ═══════════════════════════════════════════════════
+
+  private live(p: SessionPlayer | undefined): p is SessionPlayer {
+    return !!p && !p.offline && Date.now() - p.lastSeenMs < MP_PRESENCE_TIMEOUT_MS;
+  }
+
+  private finishVisit(s: Session, v: MpVisit, status: MpVisit['status'], reasonKo: string): void {
+    v.status = status;
+    v.decidedMs = Date.now();
+    v.reasonKo = reasonKo;
+    s.homeViews.delete(v.id);
+  }
+
+  /** 그 사람이 얽힌 살아 있는 방문을 끝낸다(나가기 · 파산) */
+  private endVisitsOf(s: Session, playerId: string): void {
+    for (const v of s.visits) {
+      if (!isVisitLive(v)) continue;
+      if (v.toPlayerId === playerId) this.finishVisit(s, v, v.status === 'pending' ? 'expired' : 'ended', MP_VISIT_REASON_KO.hostAway);
+      else if (v.fromPlayerId === playerId) this.finishVisit(s, v, 'ended', MP_VISIT_REASON_KO.guestAway);
+    }
+  }
+
+  /** 기한 · 자리 비움 정리 + 끝난 지 오래된 것 지우기 */
+  private sweepVisits(s: Session): void {
+    const now = Date.now();
+    for (const v of s.visits) {
+      if (!isVisitLive(v)) continue;
+      const host = s.players.get(v.toPlayerId), guest = s.players.get(v.fromPlayerId);
+      if (!this.live(host)) this.finishVisit(s, v, v.status === 'pending' ? 'expired' : 'ended', MP_VISIT_REASON_KO.hostAway);
+      else if (!this.live(guest)) this.finishVisit(s, v, 'ended', MP_VISIT_REASON_KO.guestAway);
+      else if (v.status === 'pending' && now - v.createdMs > MP_VISIT_PENDING_MS) this.finishVisit(s, v, 'expired', MP_VISIT_REASON_KO.expired);
+    }
+    s.visits = s.visits.filter((v) => isVisitLive(v) || now - (v.decidedMs ?? v.createdMs) < MP_VISIT_KEEP_DONE_MS);
+  }
+
+  /** 집 구경 청하기 — 그 사람이 지금 있고 · 공개 집 id가 있고 · 둘 사이에 살아 있는 방문이 없을 때 */
+  requestVisit(code: string, playerId: string, token: string | undefined, targetPlayerId: string): { ok: boolean; visit?: MpVisit; reasonKo?: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
+    this.sweepVisits(s);
+    if (targetPlayerId === playerId) return { ok: false, reasonKo: MP_VISIT_REASON_KO.self };
+    const host = s.players.get(String(targetPlayerId));
+    if (!this.live(host)) return { ok: false, reasonKo: MP_VISIT_REASON_KO.away };
+    const homeId = host.profile?.homeId;
+    if (!isHomeId(homeId)) return { ok: false, reasonKo: MP_VISIT_REASON_KO.noHome };
+    if (me.profile?.homeId === homeId) return { ok: false, reasonKo: MP_VISIT_REASON_KO.self };
+    if (liveVisitBetween(s.visits, me.playerId, host.playerId)) return { ok: false, reasonKo: MP_VISIT_REASON_KO.already };
+    if (guestVisitOf(s.visits, me.playerId)) return { ok: false, reasonKo: MP_VISIT_REASON_KO.busyMine };
+    if (s.visits.length >= MP_VISIT_MAX_PER_SESSION) return { ok: false, reasonKo: MP_VISIT_REASON_KO.full };
+    const v: MpVisit = {
+      id: `v${Date.now().toString(36)}${randomBytes(3).toString('hex')}`,
+      fromPlayerId: me.playerId, fromName: me.name, toPlayerId: host.playerId, toName: host.name,
+      homeId, status: 'pending', createdMs: Date.now(), viewRev: 0,
+    };
+    s.visits.push(v);
+    return { ok: true, visit: v };
+  }
+
+  /** 집주인의 답 — 들이기 · 사양 */
+  respondVisit(code: string, playerId: string, token: string | undefined, visitId: string, accept: boolean): { ok: boolean; visit?: MpVisit; reasonKo?: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
+    this.sweepVisits(s);
+    const v = s.visits.find((x) => x.id === visitId);
+    if (!v || v.toPlayerId !== me.playerId) return { ok: false, reasonKo: MP_VISIT_REASON_KO.notOwner };
+    if (v.status !== 'pending') return { ok: false, reasonKo: v.reasonKo ?? MP_VISIT_REASON_KO.notPending };
+    if (accept) { v.status = 'accepted'; v.decidedMs = Date.now(); }
+    else this.finishVisit(s, v, 'declined', MP_VISIT_REASON_KO.declined);
+    return { ok: true, visit: v };
+  }
+
+  /** 방문 끝내기 — 손님(청한 것 거두기 · 구경 마치기) · 집주인(돌려보내기) 둘 다 */
+  endVisit(code: string, playerId: string, token: string | undefined, visitId: string): { ok: boolean; reasonKo?: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
+    const v = s.visits.find((x) => x.id === visitId);
+    if (!v || (v.toPlayerId !== me.playerId && v.fromPlayerId !== me.playerId)) return { ok: false, reasonKo: MP_VISIT_REASON_KO.notYours };
+    if (isVisitLive(v)) {
+      const byHost = v.toPlayerId === me.playerId;
+      this.finishVisit(s, v, 'ended', byHost ? MP_VISIT_REASON_KO.endedByHost : MP_VISIT_REASON_KO.endedByGuest);
+    }
+    return { ok: true };
+  }
+
+  /** 집주인이 집 모습(읽기 전용)을 올린다 — 들인 방문에만 · 모양 · 크기 검사 */
+  putHomeView(code: string, playerId: string, token: string | undefined, visitId: string, view: unknown): { ok: boolean; rev?: number; reasonKo?: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
+    const v = s.visits.find((x) => x.id === visitId);
+    if (!v || v.toPlayerId !== me.playerId) return { ok: false, reasonKo: MP_VISIT_REASON_KO.notOwner };
+    if (v.status !== 'accepted') return { ok: false, reasonKo: MP_VISIT_REASON_KO.notAccepted };
+    const clean = cleanHomeView(view);
+    if (!clean) return { ok: false, reasonKo: MP_VISIT_REASON_KO.tooBig };
+    s.homeViews.set(v.id, clean);
+    v.viewRev += 1;
+    return { ok: true, rev: v.viewRev };
+  }
+
+  /** 손님(또는 집주인)이 집 모습을 받는다 */
+  getHomeView(code: string, playerId: string, token: string | undefined, visitId: string): { ok: boolean; rev?: number; view?: MpHomeView; reasonKo?: string } {
+    const s = this.get(code);
+    if (!s) return { ok: false, reasonKo: '세션을 찾을 수 없습니다.' };
+    const me = this.authed(s, playerId, token);
+    if (!me) return { ok: false, reasonKo: '세션에서 나간 상태입니다. 다시 접속하세요.' };
+    const v = s.visits.find((x) => x.id === visitId);
+    if (!v || (v.toPlayerId !== me.playerId && v.fromPlayerId !== me.playerId)) return { ok: false, reasonKo: MP_VISIT_REASON_KO.notYours };
+    if (v.status !== 'accepted') return { ok: false, reasonKo: MP_VISIT_REASON_KO.notAccepted };
+    const view = s.homeViews.get(v.id);
+    return { ok: true, rev: v.viewRev, ...(view ? { view } : {}) };
   }
 
   // ═══════════════════════════════════════════════════
@@ -794,6 +929,7 @@ export class SessionRegistry {
           code: d.code, seed: d.seed >>> 0, createdMs: d.createdMs,
           players, traps: d.traps ?? [], chat: [], chatSeq: 0, trades: d.trades ?? [],
           taken: (d.taken ?? []).map((l, i) => ({ ...l, seq: i + 1 })), takenSeq: (d.taken ?? []).length,
+          visits: [], homeViews: new Map(),
           savedMs: d.savedMs, dirty: false,
         });
       } catch (e) {

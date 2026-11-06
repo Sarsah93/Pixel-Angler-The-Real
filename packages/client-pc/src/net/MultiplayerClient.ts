@@ -18,6 +18,7 @@ import {
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
   type MpRetireRes, type MpTakenLine, type MpPlaceItem, type MpPlacedSyncRes,
   mpScopedRegionId, mpScopedMapKey, mpScopedWorldKey, mpUnscopeRegionId, isHometownRegion,
+  isVisitShape, visitAllowedFor, cleanHomeView, type MpVisit, type MpHomeView,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
@@ -350,6 +351,7 @@ class MultiplayerClientImpl {
       this.peers = res.peers ?? [];
       this.traps = res.traps ?? [];
       this.trade = res.trade ? this.cleanTrade(res.trade) : null;
+      this.visits = (res.visits ?? []).filter(isVisitShape);   // 306차 — 내가 얽힌 방문
       for (const l of (res.taken ?? []) as MpTakenLine[]) {
         if (l.seq > this.takenSeq) this.takenSeq = l.seq;
         // 233차 — 기한 · 잠금을 그대로 둔다. 내가 고쳐 쓴 줄이 돌아와도 mine 표시는 남긴다
@@ -389,11 +391,38 @@ class MultiplayerClientImpl {
   }
 
   // ── 유저 간 거래 (146차) ─────────────────────────────
-  private tradePost(path: string, body: Record<string, unknown>): Promise<{ ok: boolean; reasonKo?: string }> {
-    if (!this.isConnected) return Promise.resolve({ ok: false, reasonKo: '멀티플레이 중이 아닙니다.' });
-    return this.post<{ ok: boolean; reasonKo?: string }>(path, { code: this.code, playerId: this.playerId, token: this.token, ...body })
-      .then((r) => r ?? { ok: false, reasonKo: '서버에 연결할 수 없습니다.' });
+  private tradePost<T extends { ok: boolean; reasonKo?: string } = { ok: boolean; reasonKo?: string }>(path: string, body: Record<string, unknown>): Promise<T> {
+    if (!this.isConnected) return Promise.resolve({ ok: false, reasonKo: '멀티플레이 중이 아닙니다.' } as T);
+    return this.post<T>(path, { code: this.code, playerId: this.playerId, token: this.token, ...body })
+      .then((r) => r ?? ({ ok: false, reasonKo: '서버에 연결할 수 없습니다.' } as T));
   }
+  // ── 306차 홈타운 방문(집 구경) ─────────────────────
+  /** 내가 얽힌 방문(손님 · 집주인 — 끝난 것은 잠깐 남는다) */
+  visits: MpVisit[] = [];
+
+  /** 그 집에 들어가도 되는가 — 내가 청해 집주인이 들인 방문이 있다 */
+  visitAllowedTo(homeId: string): boolean { return visitAllowedFor(this.visits, this.playerId, homeId); }
+
+  requestVisit(targetPlayerId: string): Promise<{ ok: boolean; visit?: MpVisit; reasonKo?: string }> {
+    return this.tradePost<{ ok: boolean; visit?: MpVisit; reasonKo?: string }>('/mp/visit/request', { targetPlayerId });
+  }
+  respondVisit(visitId: string, accept: boolean): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/visit/respond', { visitId, accept });
+  }
+  endVisit(visitId: string): Promise<{ ok: boolean; reasonKo?: string }> {
+    return this.tradePost('/mp/visit/end', { visitId });
+  }
+  /** 집주인 — 집 모습(읽기 전용)을 올린다 */
+  putHomeView(visitId: string, view: MpHomeView): Promise<{ ok: boolean; rev?: number; reasonKo?: string }> {
+    return this.tradePost<{ ok: boolean; rev?: number; reasonKo?: string }>('/mp/visit/view', { visitId, view });
+  }
+  /** 손님 — 집 모습을 받는다(모양이 틀리면 버린다) */
+  async fetchHomeView(visitId: string): Promise<{ rev: number; view: MpHomeView } | null> {
+    const r = await this.tradePost<{ ok: boolean; rev?: number; view?: unknown }>('/mp/visit/view', { visitId });
+    const view = r.ok ? cleanHomeView(r.view) : null;
+    return view ? { rev: r.rev ?? 0, view } : null;
+  }
+
   proposeTrade(targetPlayerId: string): Promise<{ ok: boolean; reasonKo?: string }> {
     return this.tradePost('/mp/trade/propose', { targetPlayerId });
   }
@@ -587,6 +616,7 @@ class MultiplayerClientImpl {
     this.clockOffsetMs = 0; this.clockSamples = 0; this.clockBestRttMs = Infinity;
     this.worldSeed = 0; this.chatSeq = 0; this.chatInbox = []; this.resume = null;
     this.lookSent = false; this.trade = null; this.profileKey = ''; this.profileSent = true;
+    this.visits = [];
   }
 }
 

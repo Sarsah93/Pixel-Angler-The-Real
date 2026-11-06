@@ -10,6 +10,7 @@
  */
 
 import type { CharConfig } from '../art/CharacterArt.js';
+import type { WorldObjectState } from './HomeBase.js';
 
 /** 플레이 방식 */
 export type GameMode = 'single' | 'multi';
@@ -135,6 +136,8 @@ export interface MpPresenceRes {
    * (달아나는 채집 생물의 어슬렁처럼 시각만으로 정해지는 것을 사람마다 같게 보이게).
    */
   nowMs?: number;
+  /** 306차 — 내가 얽힌 홈타운 방문(찾아가는 쪽 · 맞는 쪽 모두). 끝난 것도 잠깐 남는다(까닭 한 줄을 보이게) */
+  visits?: MpVisit[];
   reasonKo?: string;
 }
 
@@ -625,3 +628,76 @@ export interface HometownStay {
 
 /** 305차 — 남의 홈타운에 머물 수 없어 내 홈타운으로 돌아온 까닭 */
 export type HometownFallback = 'badId' | 'notConnected' | 'ownerAway' | 'notAllowed';
+
+// ── 홈타운 방문 (306차) ─────────────────────────────
+
+/**
+ * 306차 — 방문 상태. 손님이 청하면 `pending` → 집주인이 들이면 `accepted` · 거절하면 `declined`.
+ * 1분 안에 답이 없으면 `expired`. 들인 뒤 어느 쪽이든 끝내거나 · 자리를 비우면(접속 끊김) `ended`.
+ */
+export type MpVisitStatus = 'pending' | 'accepted' | 'declined' | 'ended' | 'expired';
+
+/** 306차 — 홈타운 방문 한 건(서버가 공증 · 디스크에 남기지 않는다 — 서버를 다시 켜면 새로 청한다) */
+export interface MpVisit {
+  id: string;
+  /** 찾아가는 사람(손님) */
+  fromPlayerId: string;
+  fromName: string;
+  /** 집주인 */
+  toPlayerId: string;
+  toName: string;
+  /** 주인 집 id(공개 — 프로필 `homeId`) */
+  homeId: HomeId;
+  status: MpVisitStatus;
+  createdMs: number;
+  decidedMs?: number;
+  /** 끝난 까닭(거절 · 기한 · 끝냄 · 자리 비움) — 화면 한 줄 */
+  reasonKo?: string;
+  /** 주인 집 모습 판 번호 — 바뀌면 손님이 다시 받는다(0 = 아직 안 보냄) */
+  viewRev: number;
+}
+
+/**
+ * 306차 — 손님에게 보내는 **주인 집 모습(읽기 전용)**. 손님 화면은 제 세이브가 아니라 이것으로 마당 · 텃밭 · 우편함 깃발을 그린다
+ * (손님 세이브에는 아무것도 쓰지 않는다). 텃밭 칸 상태는 클라이언트 텃밭 모양 그대로 싣고 서버는 크기만 본다.
+ */
+export interface MpHomeView {
+  /** 홈타운 집 앞 맵의 월드 상태(초기 배치에서 사라진 것 · 옮긴 것 · 놓은 것) */
+  world: WorldObjectState;
+  /** 텃밭 구획 id → 구획 상태 */
+  farm: Record<string, unknown>;
+  /** 우편함 깃발(받을 것이 있다) */
+  mailboxFlag: boolean;
+  atMs: number;
+}
+
+/** 306차 — 답을 기다리는 시간(이 뒤에는 `expired`) */
+export const MP_VISIT_PENDING_MS = 60_000;
+/** 306차 — 끝난 방문을 응답에 남겨 두는 시간(까닭 한 줄을 양쪽이 받게) */
+export const MP_VISIT_KEEP_DONE_MS = 20_000;
+/** 306차 — 주인 집 모습 JSON 글자 수 상한 */
+export const MP_HOME_VIEW_MAX_JSON = 120_000;
+/** 306차 — 세션 하나가 들고 있는 방문 상한(끝난 것 포함) */
+export const MP_VISIT_MAX_PER_SESSION = 64;
+
+/** 306차 — 방문 요청 · 응답의 까닭 글(서버 · 클라이언트 공용) */
+export const MP_VISIT_REASON_KO = {
+  self: '내 집입니다.',
+  noHome: '그 사람의 집을 찾을 수 없습니다.',
+  away: '그 사람은 지금 함께하기에 없습니다.',
+  already: '이미 청했거나 방문 중입니다.',
+  busyMine: '먼저 청한 방문의 답을 기다리는 중입니다.',
+  notOwner: '집주인만 답할 수 있습니다.',
+  notYours: '내 방문이 아닙니다.',
+  notPending: '이미 답한 방문입니다.',
+  notAccepted: '들인 방문이 아닙니다.',
+  tooBig: '집 모습이 너무 큽니다.',
+  full: '지금은 방문을 더 청할 수 없습니다.',
+  declined: '집주인이 이번에는 사양했습니다.',
+  expired: '집주인이 답하지 않았습니다.',
+  endedByHost: '집주인이 집 구경을 마쳤습니다.',
+  endedByGuest: '손님이 집 구경을 마쳤습니다.',
+  hostAway: '집주인이 자리를 비웠습니다.',
+  guestAway: '손님이 자리를 비웠습니다.',
+} as const;
+

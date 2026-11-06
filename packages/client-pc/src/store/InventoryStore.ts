@@ -2806,9 +2806,57 @@ class InventoryStoreManager {
   /** 193차 — 지금 미끼를 문 바늘(미끼 칸 인덱스). 입질이 시작될 때 고르고, 소모가 끝나면 비운다 */
   private bittenBaitIdx: number | null = null;
 
+  /**
+   * 306차 — 이번 캐스팅에서 미끼를 따먹힌 바늘(미끼 칸 인덱스). 물속 바늘은 **빈 바늘**이다 — 가방에 같은 미끼가 남아 있어도
+   * 감아 들여 다시 꿰기 전에는 미끼가 없다(옛 규칙은 하나를 빼고 칸을 그대로 둬 물속에서 저절로 다시 꿰였다).
+   * 캐스팅마다(`beginCast`) 비운다 — 감아 들여 다시 던지면 같은 미끼를 새로 꿴 셈이다.
+   */
+  private strippedHooks = new Set<number>();
+
+  /** 306차 — 새 캐스팅: 물속 바늘에 미끼가 다시 꿰여 있다(따먹힌 바늘 기록을 비운다) */
+  beginCast(): void {
+    this.strippedHooks.clear();
+    this.bittenBaitIdx = null;
+  }
+
+  /**
+   * 306차 — 챔질 없이 어신이 끝났다: 문 바늘의 미끼를 따먹혔다. 가방에서 하나를 빼고, 그 바늘은 이번 캐스팅 동안 빈 바늘이다.
+   * @returns 잃은 미끼 이름(없으면 null)
+   */
+  stripBittenBait(): string | null {
+    if (isGod()) { this.bittenBaitIdx = null; return null; }   // dev 무적: 미끼 무한
+    const idx = this.bittenBaitIdx ?? this._tree.nodes.findIndex((n, i) => n.slot === 'bait' && !!n.itemId && !this.strippedHooks.has(i));
+    this.bittenBaitIdx = null;
+    if (idx < 0) return null;
+    this.strippedHooks.add(idx);
+    return this.consumeBaitAt(idx);
+  }
+
+  /** 306차 — 물속에서 미끼가 남은 바늘 수(미끼를 꿴 칸 − 이번 캐스팅에 따먹힌 칸) */
+  liveBaitHooks(): number {
+    let n = 0;
+    this._tree.nodes.forEach((x, i) => { if (x.slot === 'bait' && x.itemId && !this.strippedHooks.has(i)) n++; });
+    return n;
+  }
+
+  /**
+   * 306차 — 물속 바늘이 반짝이 바늘뿐인가(처음부터 반짝이 단독이거나, 미끼를 다 따먹히고 반짝이 바늘만 남았다) — 전갱이만 문다.
+   */
+  flasherOnlyInWater(): boolean {
+    const s = this.rigSummary();
+    return s.flasherOnly || (s.flasher && s.usesBait && this.liveBaitHooks() === 0);
+  }
+
+  /** 306차 — 미끼 채비인데 물속에 미끼 · 반짝이 바늘이 하나도 없다(빈 바늘) — 고기가 물지 않는다 */
+  bareHookInWater(): boolean {
+    const s = this.rigSummary();
+    return s.usesBait && !s.flasher && this.liveBaitHooks() === 0;
+  }
+
   /** 193차 — 입질 시작: 미끼를 단 바늘 하나를 고른다. 돌려주는 것은 그 미끼 아이템(없으면 null — 반짝이 바늘) */
   pickBittenBait(): InvItem | null {
-    const idxs = this._tree.nodes.map((n, i) => (n.slot === 'bait' && n.itemId ? i : -1)).filter((i) => i >= 0);
+    // 306차 — 이번 캐스팅에 따먹힌 바늘은 빈 바늘이라 고르지 않는다
+    const idxs = this._tree.nodes.map((n, i) => (n.slot === 'bait' && n.itemId && !this.strippedHooks.has(i) ? i : -1)).filter((i) => i >= 0);
     if (idxs.length === 0) { this.bittenBaitIdx = null; return null; }
     this.bittenBaitIdx = idxs[Math.floor(Math.random() * idxs.length)];
     return this.find(this._tree.nodes[this.bittenBaitIdx].itemId!) ?? null;
@@ -2912,6 +2960,7 @@ class InventoryStoreManager {
     const next = setRigValue(this._tree, idx, value, item);
     if (next === this._tree) return false;
     this._tree = next;
+    this.strippedHooks.clear();   // 306차 — 채비를 손봤다 = 바늘을 다시 꿴 셈(칸 인덱스도 바뀔 수 있다)
     if (target?.slot === 'bait' && 'itemId' in value && !value.itemId && this._tree.nodes[idx]?.double) {
       this._tree = { nodes: this._tree.nodes.map((x, i) => (i === idx ? { ...x, double: false } : x)) };
     }

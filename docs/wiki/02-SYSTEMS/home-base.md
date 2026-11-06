@@ -314,3 +314,6 @@
 62. **홈타운 데이터 묶음은 언제나 그 세이브 주인의 것이다**(305) — 집 안 · 텃밭 · 우편함 세이브와 마당 설치물(`MapObject.ownerHomeId`)에 주인 집 id를 적는다(`GameState.claimHometownData` · `claimHometownOwner`).
     구세이브 · 다른 id는 불러올 때 내 집 id로 다시 적는다. 새 홈타운 묶음(세이브 키)을 더하면 저장 줄에 `ownerHomeId`를, 불러오기에 백필을 같이 넣는다.
     홈타운 행동은 방문 중이면 막는다(`GameState.canInHometown(action)` — 방문자 = 보기 · 말 · 거래 · 선물만). 새 홈타운 상호작용을 만들면 그 입구에 문을 단다(`hometownBlocked`).
+63. **남의 집 구경 중에는 마당 · 텃밭 · 깃발을 집주인 사본으로 그린다**(306) — `computeHomeObjects`는 손님이면 `GameState.visitView.world`, 텃밭은 `visitFarmStore`, 우편함 깃발은 `mailFlagUp()`.
+    손님일 때 내 데이터를 고치는 길(`upgradeFarmPlots` · 오프닝 `maybePlayOpening`)은 건너뛴다. 새 홈타운 그림을 더하면 「손님이면 무엇을 읽는가」를 같이 정한다.
+

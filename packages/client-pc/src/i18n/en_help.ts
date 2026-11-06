@@ -752,6 +752,16 @@ export const EN_HELP: Record<string, string> = {
   '채팅 · 정보 보기 · 거래': 'Chat · View profile · Trade',
   'Enter로 말하기 창을 열어 입력하고(한글 가능) Enter로 보냅니다. ESC는 취소, 최대 120자이며 같은 세션의 모두에게 전달됩니다. 혼자 할 때는 「(혼자 하는 중)」으로 내 기록에만 남습니다.': 'Press Enter to open the chat box, type (Korean works too) and press Enter to send. ESC cancels; messages are up to 120 characters and reach everyone in the same session. When playing alone, they stay only in your own log, marked "(playing alone)".',
   '1칸 안의 사람을 우클릭 → [정보 보기]: 레벨 · 출조 횟수 · 착용 장비 · 면허 · 최대어 3마리(돈과 가방은 공개되지 않습니다).': 'Right-click a player within 1 tile → [View profile]: level · trips · equipped gear · licences · 3 biggest catches (money and bag are not shown).',
+  // 306차 — 홈타운 · 집 구경
+  '홈타운 · 집 구경': 'Hometown · Home visits',
+  '홈타운은 사람마다 따로입니다. 같은 세션이어도 친구의 집 마당과 내 집 마당은 다른 곳이라, 서로의 마당 물건 · 텃밭 · 채집 자리가 섞이지 않습니다. 날씨만 같은 마을 하늘입니다.':
+    'Everyone has their own hometown. Even in the same session, a friend’s yard and yours are different places, so yard items, gardens and foraging spots never mix. Only the weather is shared — it is the same village sky.',
+  '1칸 안의 사람을 우클릭 → [집 구경 청하기]: 집주인에게 묻는 창이 뜨고, 1분 안에 [들이기]를 누르면 그 집으로 갈 수 있습니다(바로 가기 · 나중에는 일시정지 메뉴의 「… 씨 집 구경 가기」).':
+    'Right-click a player within one tile → [Ask to visit their home]: the host gets a prompt, and if they press [Let in] within a minute you can go to their home (right away, or later from the pause menu’s “Visit …’s home”).',
+  '남의 집에서는 보기 · 말 · 거래 · 선물만 됩니다. 집 안 · 우편함 · 텃밭 · 마당 꾸미기 · 설치 · 거두기 · 캐기는 집주인만 합니다. 마당과 텃밭은 집주인의 지금 모습 그대로 보입니다.':
+    'In someone else’s home you can only look, talk, trade and give gifts. The house, mailbox, garden, yard decorating, placing, picking up and digging are for the host only. The yard and garden appear exactly as the host has them now.',
+  '집 구경은 손님이 [집 구경 마치기] · 다른 곳으로 가거나, 집주인이 [손님 배웅하기]를 누르거나, 어느 한쪽이 자리를 비우면 끝나고 손님은 내 집으로 돌아옵니다.':
+    'A visit ends when the guest presses [End the visit] or goes elsewhere, when the host presses [See the guest off], or when either one steps away — and the guest returns to their own home.',
   '[거래하기]: 상대가 30초 안에 받아야 시작됩니다. 서로 물건 최대 8개와 돈을 올리고 [잠금] → 둘 다 잠그면 [확정] → 둘 다 확정하면 끝이며 되돌릴 수 없습니다. 제안을 바꾸면 양쪽 잠금이 풀립니다. 귀속 · 착용 중 · 미완성 접시는 거래할 수 없고, 받은 물건은 신선도 시계를 그대로 이어갑니다.': '[Trade]: it starts only if the other player accepts within 30 seconds. Each of you puts up to 8 items and money on the table and presses [Lock] → once both have locked, [Confirm] → once both confirm, it is done and cannot be undone. Changing an offer unlocks both sides. Bound · equipped items and unfinished plates cannot be traded, and received items keep their freshness clock running.',
   '농사 · 광질': 'Farming · Mining',
   '농사 · 광질 (계획)': 'Farming · Mining (planned)',

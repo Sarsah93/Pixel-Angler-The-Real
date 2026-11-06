@@ -840,6 +840,14 @@ export type { SessionWeatherCard } from './rules/SessionWeather.js';
 // 305차 — 홈타운 소유(사람마다 한 벌 · 세션 키 꼬리표 · 방문자 허용 행동 · 머무는 집 정하기)
 export type { HomeId, HometownAction, HometownStay, HometownFallback } from './types/Multiplayer.js';
 export type { HometownStayContext } from './rules/HometownOwnership.js';
+// 306차 — 홈타운 방문(집 구경 청하기 · 들이기 · 주인 집 모습)
+export type { MpVisit, MpVisitStatus, MpHomeView } from './types/Multiplayer.js';
+export {
+  MP_VISIT_PENDING_MS, MP_VISIT_KEEP_DONE_MS, MP_HOME_VIEW_MAX_JSON, MP_VISIT_MAX_PER_SESSION, MP_VISIT_REASON_KO,
+} from './types/Multiplayer.js';
+export {
+  isVisitLive, visitAllowedFor, guestVisitOf, hostVisitsOf, liveVisitBetween, cleanHomeView, isVisitShape,
+} from './rules/HometownVisit.js';
 export {
   HOMETOWN_REGION_ID, newHomeId, isHomeId, isHometownRegion,
   mpScopedRegionId, mpUnscopeRegionId, mpScopedMapKey, mpScopedWorldKey,
