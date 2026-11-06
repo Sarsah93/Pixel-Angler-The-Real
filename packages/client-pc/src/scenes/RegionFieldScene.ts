@@ -157,6 +157,7 @@ import { MailboxPanel } from '../ui/MailboxPanel.js';   // 296차
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import { playCollapse, type CollapseKind } from '../ui/CollapseOverlay.js';
 import { TUNING, shallowWaterDepthM, getTrapById, MP_CHAT_MAX_LEN, looseOfPack, type RegionFishFarms } from '@tra/core';
+import { hometownBlockReasonKo, hometownFallbackReasonKo, type HometownAction } from '@tra/core';   // 305차 — 홈타운 소유
 import { regionalPlotOffer, regionalPlotId } from '@tra/core';   // 300차 — 지역 빌린 밭
 // 147차 — 위판(경매 현장). 구매자 측 AuctionEngine과 방향이 반대다(ConsignmentAuction 헤더 참조).
 import { buildConsignmentLots, isConsignmentOpen, nextConsignmentWindowStart, kstYmd, openConsignmentSession, coopDuesFeeCut, type ConsignInput, type ConsignmentSettlement } from '@tra/core';
@@ -230,6 +231,12 @@ interface RegionFieldInit {
   entryT?: number;
   /** 265차 — 심리스로 열리는 지역을 구 맵(맵 그래프 노드 · 타일 20px)으로 연다. 위키 지도 캡처 · 폴백 점검 전용 — 게임 흐름은 쓰지 않는다 */
   legacy?: boolean;
+  /**
+   * 305차 — 홈타운이면 **누구의** 홈타운인가(집 id). 없으면 내 집. 남의 집은 `GameState.enterRegion`이
+   * 접속 · 주인 있음 · 방문 허락을 보고 정한다 — 아니면 내 집으로 돌리고 까닭을 띄운다(방문은 아직 없다).
+   */
+  hometownOwner?: string;
+  hometownOwnerName?: string;
 }
 
 /** 과증식 대발생 주기 (145차) — 이 시간마다 배치가 새로 굴러간다(표류 되감기 상한도 여기서 나온다) */
@@ -624,6 +631,13 @@ export class RegionFieldScene extends Phaser.Scene {
     //   create()에 중간 return이 있어도 CREATE 이벤트는 끝에 한 번 온다.
     this.events.once(Phaser.Scenes.Events.CREATE, () => hideLoadingAfterRender(this.game, 2));
     this.region = dataIn.region;
+    // 305차 — 머무는 집 정하기(홈타운 = 누구의 집인가 · 다른 지역 = 내 집으로 되돌림). 세션 키 꼬리표가 여기서 정해진다
+    {
+      const fb = GameState.enterRegion(this.region, { ownerHomeId: dataIn.hometownOwner, ownerName: dataIn.hometownOwnerName });
+      this.stayNotice = fb ? hometownFallbackReasonKo(fb) : null;
+      this.stayMiss = 0;
+      MultiplayerClient.noteRegion(this.region);
+    }
     this.graph = REGION_MAP_GRAPHS[this.region];
     // 심리스 모드 판정 — 등록 지역이면 맵 그래프(엣지 전환)를 무시하고 단일 맵으로 연다.
     // 262차 — dataIn.mapId(구역별 fieldMapId)로 ① 데이터 지역을 고르고(부산 백운포는 감천과 다른 bbox — `SEAMLESS_AREA_REGIONS`)
@@ -1022,6 +1036,14 @@ export class RegionFieldScene extends Phaser.Scene {
       worldH: this.worldH,
       metersPerPx: this.metersPerPx(),
     });
+    // 305차 — 남의 홈타운에 머물 수 없어 내 집으로 왔으면 까닭을 한 줄(주인이 나간 뒤 다시 연 장면은 registry로 받는다)
+    {
+      const carried = this.registry.get('stayNotice') as string | undefined;
+      if (carried) this.registry.remove('stayNotice');
+      const note = this.stayNotice ?? carried ?? null;
+      this.stayNotice = null;
+      if (note) { this.hud.pushLog(`[홈타운] ${note}`); this.time.delayedCall(600, () => this.floatingHint(note)); }
+    }
     this.add.existing(this.hud);
     this.hud.pushLog(`[이동] ${this.node.name}에 도착했습니다.`);
     this.initFieldSystems();
@@ -1677,7 +1699,9 @@ export class RegionFieldScene extends Phaser.Scene {
   private computeSpawnTile(): { col: number; row: number } {
     // 145차 이어하기 — 서버가 기억한 마지막 자리. 한 번만 쓰고 비운다(맵 이동까지 따라오면 안 된다).
     const rs = MultiplayerClient.resume;
-    if (rs && rs.regionId === this.region) {
+    // 305차 — 홈타운 자리는 **같은 집**일 때만(서버가 기억한 자리가 남의 집이면 쓰지 않는다 · 옛 서버 기록은 집 id 없음 = 내 집으로 본다)
+    if (rs && rs.regionId === this.region
+      && (this.region !== 'hometown' || (rs.homeId ?? GameState.homeId) === GameState.hometownStay.ownerHomeId)) {
       MultiplayerClient.resume = null;
       return this.nearestWalkable(Math.floor(rs.x / TR), Math.floor(rs.y / TR));
     }
@@ -3208,6 +3232,7 @@ export class RegionFieldScene extends Phaser.Scene {
       // 178차 — 선택 창에서 「채집」을 고른 직후엔 이 [F]를 채집에 넘긴다(홀드 동작)
       if (this.interactPrefer && this.time.now < this.interactPrefer.until) {
         this.interactPrefer = null;
+        if (this.region === 'hometown' && this.forage?.hasNearSpot && this.hometownBlocked('forage')) return;   // 305차
         if (this.forage?.onInteractKey()) return;
       }
       this.interactPrefer = null;
@@ -5380,6 +5405,26 @@ export class RegionFieldScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * 305차 — 남의 홈타운에서 내 홈타운으로(주인이 나감 · 접속 끊김 · 허락 없음). 장면을 내 집으로 다시 연다 —
+   * 가방 · 진행은 각자 세이브라 잃는 것이 없다. 안내 글은 새 장면 첫 화면에 뜬다.
+   */
+  private returnToOwnHometown(reasonKo: string): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    GameState.resetHometownStay();
+    this.registry.set('stayNotice', reasonKo);
+    this.scene.restart({ region: 'hometown' } as RegionFieldInit);
+  }
+
+  /** 305차 — 남의 홈타운에서 막힌 행동이면 안내하고 true(호출한 쪽이 멈춘다). 내 집 · 다른 지역은 늘 false */
+  private hometownBlocked(action: HometownAction): boolean {
+    if (this.region !== 'hometown' || GameState.canInHometown(action)) return false;
+    playSfx('deny');
+    this.floatingHint(hometownBlockReasonKo(action));
+    return true;
+  }
+
   /** 사망 부활 — 홈타운 집 앞으로 이동(장면 재시작). 요금은 받지 않는다 */
   private goHomeAfterDeath(): void {
     this.collapseCleanup?.();
@@ -5579,7 +5624,9 @@ export class RegionFieldScene extends Phaser.Scene {
       openPanel: (o, cell) => this.openFarm(o, cell),
       openPopup: (build) => { this.openPopup(build); },
       inventoryChanged: () => this.events.emit('inventory-changed'),
-      blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || !!this.interior || !!this.placing,
+      // 305차 — 남의 집 텃밭에는 손이 닿지 않는다(창 · 칸 일 전부)
+      blocked: () => this.uiBlocked || this.isPaused || this.isTransitioning || !!this.interior || !!this.placing
+        || (this.region === 'hometown' && !GameState.canInHometown('farm')),
     });
     this.farmField = field;
     this.events.once('shutdown', () => { field.destroy(); if (this.farmField === field) this.farmField = undefined; });
@@ -5587,6 +5634,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 235차 — 텃밭 창 */
   private openFarm(o: MapObject, cell?: number): void {
+    if (this.hometownBlocked('farm')) return;   // 305차 — 남의 집 텃밭
     this.openPopup((close) => new FarmPanel(this, GAME_WIDTH / 2 - 390, 60, {
       plotId: o.instanceId, cell,
       onClose: close,
@@ -6711,6 +6759,10 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 밀어내기 대상 — 필드에서 실제로 걸어다니는 피어의 발 위치만 (145차) */
   private peerFeet: { x: number; y: number; id: string }[] = [];
   private peerSyncAt = 0;
+  /** 305차 — 남의 홈타운 머묾 점검 누적(ms) · 연달아 빠진 횟수 · 이번 진입에서 띄울 안내(내 집으로 돌아온 까닭) */
+  private stayCheckAt = 0;
+  private stayMiss = 0;
+  private stayNotice: string | null = null;
   private questMarkerAt = 0;
 
   /**
@@ -6823,6 +6875,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 296차 — 우편함 창(집 앞 우편함 [F]) */
   openMailbox(): void {
+    if (this.hometownBlocked('mailbox')) return;   // 305차 — 남의 집 우편함
     this.openPopup((close) => new MailboxPanel(this, {
       onClose: close,
       onChanged: () => { this.events.emit('inventory-changed'); this.shopPanel?.refresh(); },
@@ -6873,6 +6926,16 @@ export class RegionFieldScene extends Phaser.Scene {
    * 이름표 높이는 내 캐릭터와 같은 기준(`charTopFromFeet`)을 쓴다.
    */
   private syncPeers(delta: number): void {
+    // 305차 — 남의 홈타운에 서 있는 동안 주인이 나가거나 접속이 끊기면 내 집으로(2초마다 · 두 번 연달아 빠지면 — 폴링 늦음에 흔들리지 않게)
+    if (this.region === 'hometown' && GameState.visitingHometown) {
+      this.stayCheckAt += delta;
+      if (this.stayCheckAt >= 2000) {
+        this.stayCheckAt = 0;
+        const fb = GameState.checkHometownStay();
+        this.stayMiss = fb ? this.stayMiss + 1 : 0;
+        if (fb && (this.stayMiss >= 2 || fb === 'notConnected')) { this.returnToOwnHometown(hometownFallbackReasonKo(fb)); return; }
+      }
+    }
     if (!MultiplayerClient.isConnected) {
       if (this.peerObjs.size > 0) this.clearPeers();
       return;
@@ -6978,6 +7041,7 @@ export class RegionFieldScene extends Phaser.Scene {
       licenses: GameState.licenses.filter((l) => !l.isExpired).map((l) => l.type as string),
       records: rec, trips: GameState.player.totalTrips,
       ...(TitleStore.equippedId() ? { title: TitleStore.equippedId()! } : {}),
+      ...(GameState.homeId ? { homeId: GameState.homeId } : {}),   // 305차 — 공개 집 id(머무는 집 판정 · 나중의 방문)
     };
   }
 
@@ -8190,6 +8254,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 집 문 → 실내 (pause + launch — 복귀는 stop + resume 규칙) */
   private enterHomeInterior(): void {
+    if (this.hometownBlocked('enterHouse')) return;   // 305차 — 남의 집 안
     playSfx('door_open');
     // keepTransitioning=false — 씬이 살아있는(paused) 전환이라 액션 직전 플래그 해제
     this.fadeOutThen(() => {
@@ -8204,6 +8269,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   private startPlacement(item: InvItem): void {
     if (this.region !== 'hometown') { this.floatingHint('설치는 홈타운에서만 가능합니다'); return; }
+    if (this.hometownBlocked('yard')) return;   // 305차 — 남의 집 마당
     const def = item.placeKey ? PLACEMENT_DEFS[item.placeKey] : undefined;
     if (!def) return;
     if (!def.rule.scope.includes('exterior')) {
@@ -8289,6 +8355,7 @@ export class RegionFieldScene extends Phaser.Scene {
       fw: def.rule.footprint.w, fh: def.rule.footprint.h,
       collides: def.collides, interact: def.interact,
       movable: true, removable: true, placedByPlayer: true,
+      ownerHomeId: GameState.homeId || undefined,   // 305차 — 마당 설치물의 주인
       itemId: this.placing.itemId,
       specId: def.objectType === 'aquarium_live' ? 'aq_live_std'
         : def.objectType === 'aquarium_display' ? 'aq_display_std' : undefined,
@@ -8330,6 +8397,7 @@ export class RegionFieldScene extends Phaser.Scene {
 
   /** 플레이어 설치물 회수 — placed에서 제거 + 아이템 반환 + 재베이크 */
   private recoverPlacedObject(o: MapObject): void {
+    if (this.hometownBlocked('pickup')) return;   // 305차 — 남의 집 물건
     const state = GameState.getWorldObjects(this.mapId);
     state.placed = state.placed.filter((x) => x.instanceId !== o.instanceId);
     GameState.markDirty();

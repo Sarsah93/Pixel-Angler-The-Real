@@ -70,6 +70,8 @@ export interface HomeCatState {
 }
 
 export interface HomeSaveState {
+  /** 305차 — 이 집 안(가구 · 보관함 · 수조 · 고양이)의 주인(집 id). `GameState`가 저장할 때 적는다 — 구세이브는 없다(본인 것) */
+  ownerHomeId?: string;
   placed: FurnInstance[];
   stored: FurnInstance[];
   wardrobe: (InvItem | null)[];

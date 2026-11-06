@@ -68,6 +68,8 @@ export const WORK_GLOVES_ID = 'inv_gloves_work';
 
 export interface FarmSaveState {
   v: 1;
+  /** 305차 — 홈타운 텃밭 · 작물의 주인(집 id). `GameState`가 저장할 때 적는다 — 구세이브는 없다(본인 것) */
+  ownerHomeId?: string;
   /** 245차 — 관리 표 판(245 = 작물 84종 표). 없거나 작으면 로드 때 지난 차례를 벌 없이 넘긴다 */
   careV?: number;
   plots: Record<string, FarmPlotState>;

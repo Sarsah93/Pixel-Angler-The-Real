@@ -24,6 +24,7 @@ import {
   TUNING, stepParkedRod, rodSelfHookChance, rodSpecFor, tideFlowStateAt, tideFlow01, tideRegionFlowK, calculateTideInfo,
   type ParkedRodLaunch, type ParkedRigSnapshot, type ParkedRodEvent, type RodItemSpec,
 } from '@tra/core';
+import { isHometownRegion, hometownBlockReasonKo } from '@tra/core';   // 305차
 import { GameState, type ParkedRodSave } from '../../store/GameState.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
 import { a11ySig, cvCss, shapeCuesOn } from '../../ui/ColorAssist.js';
@@ -141,6 +142,11 @@ export class RodHolderSystem {
 
   /** 1인칭 「거치하기」 → 발 앞에 거치대를 세우고 낚싯대 한 벌을 옮긴다 */
   park(req: ParkRequest, player: { x: number; y: number }, land: { x: number; y: number }): void {
+    // 305차 — 남의 집 홈타운 마당에는 놓지 않는다(내 세이브에 들면 내 마당으로 간다)
+    if (isHometownRegion(this.host.mapKey.split(':')[0]) && !GameState.canInHometown('place')) {
+      this.host.floatingHint(hometownBlockReasonKo('place'));
+      return;
+    }
     if (!RodHolderSystem.canParkMore()) return;
     const now = Date.now();
     // 거치대는 발 앞(착수점 쪽 한 칸)에 세운다 — 캐릭터와 겹치면 초릿대 · 「!」가 안 보인다.

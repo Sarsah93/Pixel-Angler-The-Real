@@ -628,8 +628,10 @@ export class MainMenuScene extends Phaser.Scene {
       return;
     }
     const r = MultiplayerClient.resume;
+    // 305차 — 서버가 기억한 자리가 홈타운이면 그 집 id도 넘긴다(남의 집이면 필드 init이 내 집으로 돌린다 — 방문 허락이 없다)
     this.fadeOutThen(320, () => showLoadingThen('맵 불러오는 중', () => this.scene.start('RegionFieldScene', {
       region: r?.regionId || 'hometown',
+      ...(r?.homeId ? { hometownOwner: r.homeId } : {}),
     })));
   }
 

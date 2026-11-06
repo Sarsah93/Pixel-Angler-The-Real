@@ -311,3 +311,6 @@
     새 구획 종류를 더하면 거기와 `plot()` 생성 갈래, `scanNotices`의 자리 이름까지 세 곳을 같이 고친다. `plot(id)`는 `rent:` id를 받으면 구획을 만들므로 계약 없이 부르지 않는다.
 61. **종묘사 탁자는 이름으로 산다**(300) — `enterInterior`가 `regionalPlotOffer(this.region).nurseryKo === name`일 때만 `rentPlot` action을 남긴다.
     손 POI(`manual_pois.json`) 이름과 core 표 이름을 따로 고치면 탁자가 그냥 탁자가 된다. 빌린 밭 사용료 잠금은 `FarmStore.setPlotLock`(세이브 안 함) — 불러올 때 `RegionalPlotStore.deserialize`가 다시 센다(텃밭 뒤에 불러야 한다).
+62. **홈타운 데이터 묶음은 언제나 그 세이브 주인의 것이다**(305) — 집 안 · 텃밭 · 우편함 세이브와 마당 설치물(`MapObject.ownerHomeId`)에 주인 집 id를 적는다(`GameState.claimHometownData` · `claimHometownOwner`).
+    구세이브 · 다른 id는 불러올 때 내 집 id로 다시 적는다. 새 홈타운 묶음(세이브 키)을 더하면 저장 줄에 `ownerHomeId`를, 불러오기에 백필을 같이 넣는다.
+    홈타운 행동은 방문 중이면 막는다(`GameState.canInHometown(action)` — 방문자 = 보기 · 말 · 거래 · 선물만). 새 홈타운 상호작용을 만들면 그 입구에 문을 단다(`hometownBlocked`).

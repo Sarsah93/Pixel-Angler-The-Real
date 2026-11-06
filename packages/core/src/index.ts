@@ -837,6 +837,15 @@ export {
 
 // ── 234차 세션 정본 날씨 (지역 × 1시간 카드 · 공용 추첨 구간화) ──
 export type { SessionWeatherCard } from './rules/SessionWeather.js';
+// 305차 — 홈타운 소유(사람마다 한 벌 · 세션 키 꼬리표 · 방문자 허용 행동 · 머무는 집 정하기)
+export type { HomeId, HometownAction, HometownStay, HometownFallback } from './types/Multiplayer.js';
+export type { HometownStayContext } from './rules/HometownOwnership.js';
+export {
+  HOMETOWN_REGION_ID, newHomeId, isHomeId, isHometownRegion,
+  mpScopedRegionId, mpUnscopeRegionId, mpScopedMapKey, mpScopedWorldKey,
+  HOMETOWN_VISITOR_ACTIONS, hometownAllows, hometownBlockReasonKo, claimHometownOwner,
+  resolveHometownStay, hometownFallbackReasonKo,
+} from './rules/HometownOwnership.js';
 export {
   SESSION_WEATHER_SLOT_MS, sessionWeatherKey, encodeWeatherCard, decodeWeatherCard, sharedWeatherKind, quantizeShared,
 } from './rules/SessionWeather.js';

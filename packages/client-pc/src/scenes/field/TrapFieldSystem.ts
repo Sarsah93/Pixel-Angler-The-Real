@@ -20,6 +20,7 @@ import {
   trapSeasonViolations, rollEnforcement, GANGWON_FORAGE_ORDINANCE,
   calculateTideInfo, TUNING,
 } from '@tra/core';
+import { isHometownRegion, hometownBlockReasonKo } from '@tra/core';   // 305차
 import { GameState } from '../../store/GameState.js';
 import { MultiplayerClient } from '../../net/MultiplayerClient.js';
 import { StoryStore } from '../../store/StoryStore.js';
@@ -205,6 +206,11 @@ export class TrapFieldSystem {
 
   confirmAt(worldX: number, worldY: number): void {
     if (!this.placing) return;
+    // 305차 — 남의 집 홈타운 마당에는 놓지 않는다(내 세이브에 들면 내 마당으로 간다)
+    if (isHometownRegion(this.host.mapKey.split(':')[0]) && !GameState.canInHometown('place')) {
+      this.host.floatingHint(hometownBlockReasonKo('place')); this.cancelPlacement();
+      return;
+    }
     const tr = this.host.tr;
     const tx = Math.floor(worldX / tr), ty = Math.floor(worldY / tr);
     const chk = this.placeCheck(tx, ty);

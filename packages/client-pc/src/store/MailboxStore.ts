@@ -38,7 +38,12 @@ export interface MailLetter {
   notified?: boolean;
 }
 
-export interface MailboxSave { letters: MailLetter[]; counter: number }
+export interface MailboxSave {
+  letters: MailLetter[];
+  counter: number;
+  /** 305차 — 이 우편함의 주인(집 id). `GameState`가 저장할 때 적는다 — 구세이브는 없다(본인 것) */
+  ownerHomeId?: string;
+}
 
 export interface MailDraft {
   kind: MailKind;

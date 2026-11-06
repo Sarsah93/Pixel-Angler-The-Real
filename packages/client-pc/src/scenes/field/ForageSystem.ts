@@ -306,6 +306,8 @@ export class ForageSystem {
 
   /** 현재 가장 가까운(상호작용 대상) 스팟 */
   private nearSpot: ForageSpot | null = null;
+  /** 305차 — 손 닿는 곳에 채집 자리가 있는가([F]를 채집이 받는가 — 필드가 남의 집 마당 판정에 쓴다) */
+  get hasNearSpot(): boolean { return !!this.nearSpot; }
   /** 224차 — 손놀림 놀이 중인 스팟 */
   /** 288차 — `res` = 놀이 전에 굴린 그 녀석의 크기 · 무게(판에 그 크기로 그리고, 이기면 그대로 담는다) */
   private playing: { spot: ForageSpot; creature: ShoreCreature; tool: ForageTool; res: ForageHarvest } | null = null;

@@ -51,6 +51,8 @@ export interface MapObject {
   /** 제거 가능 (나무=벌목, 바위=채굴, 설치물=회수) */
   removable: boolean;
   placedByPlayer?: boolean;
+  /** 305차 — 홈타운 마당에 놓은 것의 주인(집 id · 텃밭 구획 · 울타리 · 수조). 구세이브는 로드 때 본인 것으로 채운다 */
+  ownerHomeId?: string;
   /** 회수 시 돌려줄 인벤토리 아이템 id (플레이어 설치물) */
   itemId?: string;
   /** 수족관 스펙 id (type aquarium_* 전용) */

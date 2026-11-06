@@ -36,6 +36,10 @@ import type {
 import type { CoinReason } from '@tra/core';
 import type { WorldObjectState, CatchMethod, StorySpotKind } from '@tra/core';
 import { type CharConfig, type CharSex, defaultAppearance, starterOutfit, PLAYER_CANON_AGE, playerAgeOf } from '@tra/core';
+import {   // 305차 — 홈타운 소유 · 머무는 집
+  HOMETOWN_REGION_ID, newHomeId, isHomeId, hometownAllows, claimHometownOwner, resolveHometownStay,
+  type HometownStay, type HometownAction, type HometownFallback,
+} from '@tra/core';
 import { StoryStore, type StorySaveState } from './StoryStore.js';
 import { playCoin } from '../audio/Sfx.js';
 import { LedgerStore, type LedgerSaveState } from './LedgerStore.js';
@@ -208,6 +212,11 @@ interface SaveData {
    * 한 번에 기록돼야 「물건은 옛 세이브인데 적용 기록만 남는」 엇갈림(복제·소실)이 생기지 않는다.
    */
   mpAppliedTrades?: string[];
+  /**
+   * 305차 — 이 캐릭터 홈타운의 공개 id(`HomeId`). 세션에 알리는 홈타운 키의 꼬리표 · 홈타운 데이터의 주인 표시.
+   * 재접속 열쇠(`mpUserId`)와 따로다(남에게 보여도 된다). 구세이브는 로드 때 새로 만든다.
+   */
+  homeId?: string;
   /** 233차 — 채집 자리 · 과증식 개체 고갈 기한(키 → 다시 나타나는 시각 ms). 없으면 고갈 없음 */
   worldDepleted?: Record<string, number>;
   deployedTraps: DeployedTrap[];
@@ -431,6 +440,10 @@ export class GameStateManager {
     this._mpAppliedTrades = saved.mpAppliedTrades ?? [];
     WorldDepletionStore.deserialize(saved.worldDepleted);
     MultiplayerClient.useCharacterId(this._mpUserId);
+    // 305차 — 집 id(구세이브는 새로 — 저장 표시를 세워 다음 저장에 남긴다) · 머무는 집은 언제나 내 집에서 시작
+    this._homeId = isHomeId(saved.homeId) ? saved.homeId : newHomeId();
+    if (!isHomeId(saved.homeId)) this._dirty = true;
+    this.resetHometownStay();
     this._deployedTraps = saved.deployedTraps ?? [];
     // 154차 — 화구 위 조리는 오프라인(게임 종료) 중 정지한다(신선도·통발과 같은 규칙):
     //  저장~로드 실경과만큼 lastTickMs를 밀어 "그 사이 익지 않은 것"으로 만든다.
@@ -499,6 +512,7 @@ export class GameStateManager {
     RegionalPlotStore.deserialize(saved.regionalPlots);   // 300차 — 텃밭 뒤(구획이 있어야 잠금을 건다)
     CureQueue.deserialize(saved.cureQueue);   // 285차
     TideLoreStore.deserialize(saved.tideLore);   // 205차 — 물때 공략 발견 기록
+    this.claimHometownData(saved);   // 305차 — 홈타운 데이터 넷의 주인 = 이 세이브의 집
     TitleStore.setStat('licenses', this._licenses.length);   // 204차 — 지금 가진 자격 수
     // 발견 기록 복원 — 구세이브(필드 없음)는 어획 기록의 어종을 'legacy'로 백필
     DiscoveryStore.deserialize(
@@ -1755,6 +1769,7 @@ export class GameStateManager {
     return {
       player: this._player,
       mpUserId: this._mpUserId || undefined,
+      homeId: this._homeId || undefined,
       mpAppliedTrades: this._mpAppliedTrades.length ? this._mpAppliedTrades : undefined,
       worldDepleted: WorldDepletionStore.serialize(),
       deployedTraps: this._deployedTraps,
@@ -1775,11 +1790,12 @@ export class GameStateManager {
       groundItems: GroundItemStore.serialize(),
       inventoryStore: InventoryStore.serialize(),
       fridge: FridgeStore.serialize(),
-      home: HomeStore.serialize(),
+      // 305차 — 홈타운 데이터 넷(집 안 · 텃밭 · 우편함 · 마당 설치물)에 주인(집 id)을 적어 둔다
+      home: { ...HomeStore.serialize(), ownerHomeId: this._homeId || undefined },
       market: MarketStore.serialize(),
       shops: ShopStore.serialize(),
       crafting: CraftingStore.serialize(),
-      farm: FarmStore.serialize(),
+      farm: { ...FarmStore.serialize(), ownerHomeId: this._homeId || undefined },
       titles: TitleStore.serialize(),
       tideLore: TideLoreStore.serialize(),
       parkedRods: this._parkedRods,
@@ -1788,7 +1804,7 @@ export class GameStateManager {
       consignQueue: ConsignQueue.serialize(),
       millQueue: MillQueue.serialize(),   // 284차
       processQueue: ProcessQueue.serialize(),   // 295차
-      mailbox: MailboxStore.serialize(),   // 296차
+      mailbox: { ...MailboxStore.serialize(), ownerHomeId: this._homeId || undefined },   // 296차 · 305차 주인
       regionalPlots: RegionalPlotStore.serialize(),   // 300차
       cureQueue: CureQueue.serialize(),   // 285차
       flags: this._flags,
@@ -1848,6 +1864,12 @@ export class GameStateManager {
   private _mpUserId = '';
   /** 232차 — 적용한 확정 거래 id (세이브 필드) */
   private _mpAppliedTrades: string[] = [];
+  /** 305차 — 내 홈타운의 공개 id(세이브 필드) */
+  private _homeId = '';
+  /** 305차 — 지금 서 있는(서 있을) 홈타운. 세이브에 남기지 않는다 — 불러오면 언제나 내 집에서 시작한다 */
+  private _hometownStay: HometownStay = { ownerHomeId: '' };
+  /** 305차 — dev 훅: 남의 집 방문 허락을 흉내 낸다(방문 신청 · 허락이 생기기 전 연결 길 점검용) */
+  private _devVisitAllowed = new Set<string>();
   get isBankrupt(): boolean { return this._bankrupt; }
 
   /**
@@ -1894,6 +1916,79 @@ export class GameStateManager {
       console.error('[GameState] Save failed:', e);
       return false;
     }
+  }
+
+  // ─── 305차 — 홈타운 소유 · 머무는 집 ───
+
+  /** 내 홈타운의 공개 id */
+  get homeId(): string { return this._homeId; }
+  /** 지금 서 있는(서 있을) 홈타운 — 비어 있으면 내 집 */
+  get hometownStay(): HometownStay { return { ...this._hometownStay, ownerHomeId: this._hometownStay.ownerHomeId || this._homeId }; }
+  /** 남의 홈타운에 서 있는가 */
+  get visitingHometown(): boolean { return !!this._hometownStay.ownerHomeId && this._hometownStay.ownerHomeId !== this._homeId; }
+
+  /** 머무는 집을 내 집으로 — 세이브 로드 · 새 게임 · 홈타운 밖으로 나갈 때 */
+  resetHometownStay(): void {
+    this._hometownStay = { ownerHomeId: this._homeId };
+    MultiplayerClient.setHomeScope(this._homeId, this._homeId);
+  }
+
+  /**
+   * 지역에 들어갈 때(필드 씬 init) — 홈타운이면 머무는 집을 정하고, 다른 지역이면 내 집으로 되돌린다.
+   * 남의 집은 접속 · 주인이 세션에 있음 · 방문 허락 셋이 모두 참일 때만 — 아니면 내 집으로 돌리고 까닭을 돌려준다.
+   * 방문 신청 · 허락이 아직 없어 지금은 언제나 내 집이다(dev 훅 `devAllowVisit`만 예외).
+   */
+  enterRegion(regionId: string, want?: { ownerHomeId?: string; ownerName?: string }): HometownFallback | undefined {
+    if (regionId !== HOMETOWN_REGION_ID) { this.resetHometownStay(); return undefined; }
+    const r = resolveHometownStay(want, {
+      myHomeId: this._homeId,
+      connected: MultiplayerClient.isConnected,
+      ownerOnline: (h) => MultiplayerClient.isHomeOwnerOnline(h),
+      visitAllowed: (h) => this._devVisitAllowed.has(h),
+    });
+    this._hometownStay = r.stay;
+    MultiplayerClient.setHomeScope(this._homeId, r.stay.ownerHomeId);
+    return r.fallback;
+  }
+
+  /**
+   * 남의 홈타운에 서 있는 동안 계속 머물 수 있는가 — 주인이 나가거나 접속이 끊기면 까닭을 돌려준다(필드가 내 집으로 옮긴다).
+   * 내 집이면 늘 undefined.
+   */
+  checkHometownStay(): HometownFallback | undefined {
+    if (!this.visitingHometown) return undefined;
+    return resolveHometownStay(this._hometownStay, {
+      myHomeId: this._homeId,
+      connected: MultiplayerClient.isConnected,
+      ownerOnline: (h) => MultiplayerClient.isHomeOwnerOnline(h),
+      visitAllowed: (h) => this._devVisitAllowed.has(h),
+    }).fallback;
+  }
+
+  /** 지금 서 있는 홈타운에서 이 행동을 해도 되는가(주인 = 전부 · 방문자 = 보기 · 말 · 거래 · 선물) */
+  canInHometown(action: HometownAction): boolean {
+    return hometownAllows(action, this._homeId, this._hometownStay.ownerHomeId || this._homeId);
+  }
+
+  /** dev 전용 — 남의 집 방문 허락을 흉내 낸다(연결 길 점검). 세이브에 남지 않는다 */
+  devAllowVisit(homeId: string, allow = true): void {
+    if (allow) this._devVisitAllowed.add(homeId); else this._devVisitAllowed.delete(homeId);
+  }
+
+  /**
+   * 홈타운 데이터 넷의 주인 — 로컬 세이브의 홈타운은 언제나 이 세이브의 집이다.
+   * 적힌 주인이 없거나(구세이브) 다르면 이 집으로 다시 적는다(마당 설치물은 한 개씩 · 넷은 저장할 때 적힌다).
+   */
+  private claimHometownData(saved: SaveData): void {
+    let restamped = 0;
+    for (const v of [saved.home?.ownerHomeId, saved.farm?.ownerHomeId, saved.mailbox?.ownerHomeId]) {
+      if (claimHometownOwner(v, this._homeId).restamped) restamped++;
+    }
+    for (const o of this.getWorldObjects(HOMETOWN_MAP_GRAPH.entryMapId).placed) {
+      if (!o.placedByPlayer) continue;
+      if (claimHometownOwner(o.ownerHomeId, this._homeId).restamped) { o.ownerHomeId = this._homeId; restamped++; }
+    }
+    if (restamped > 0) this._dirty = true;
   }
 
   // ─── 맵 오브젝트 월드 상태 (초기 배치 − removed + moved + placed) ───
@@ -2031,6 +2126,8 @@ export class GameStateManager {
     this._mpAppliedTrades = [];
     WorldDepletionStore.reset();
     MultiplayerClient.useCharacterId(this._mpUserId);
+    this._homeId = newHomeId();   // 305차 — 새 캐릭터 = 새 집
+    this.resetHometownStay();
     this._character = GameStateManager.defaultCharacter('m');
     this._player = createDefaultPlayer();
     this._deployedTraps = [];

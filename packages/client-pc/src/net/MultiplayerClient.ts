@@ -17,6 +17,7 @@ import {
   type MpProfile, type MpTradeState, type MpTradeItem,
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
   type MpRetireRes, type MpTakenLine, type MpPlaceItem, type MpPlacedSyncRes,
+  mpScopedRegionId, mpScopedMapKey, mpScopedWorldKey, mpUnscopeRegionId, isHometownRegion,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
@@ -114,6 +115,14 @@ class MultiplayerClientImpl {
    * 접속(새 비밀값)마다 한 번, 그리고 알림이 서버에 닿지 못한 뒤(`placedNeedSync`) 다시 맞춘다.
    */
   private placedProvider: (() => MpPlaceItem[]) | null = null;
+  /**
+   * 305차 — 홈타운은 사람마다 한 벌. 세션에 알리는 홈타운 키에 집 꼬리표를 붙인다(`hometown@<집 id>`).
+   * - `myHomeId` = 내 홈타운(세이브의 설치물 대조는 언제나 이 집 — 남의 집에 가 있어도 내 화구는 내 마당에 있다)
+   * - `stayHomeId` = 지금 서 있는 홈타운(위치 · 남의 설치물 · 공유 소비 키). 방문이 없는 지금은 언제나 내 집
+   * 둘 다 `GameState`가 세운다(세이브 로드 · 새 게임 · 홈타운 들고 남). 비어 있으면 꼬리표 없이 옛 키 그대로다.
+   */
+  private myHomeId = '';
+  private stayHomeId = '';
   private placedSyncToken = '';
   private placedNeedSync = false;
   private placedSyncing = false;
@@ -145,6 +154,29 @@ class MultiplayerClientImpl {
   }
 
   get isMulti(): boolean { return this.mode === 'multi'; }
+
+  /** 305차 — 내 홈타운 · 지금 서 있는 홈타운의 집 id를 세운다(`GameState`만 부른다) */
+  setHomeScope(myHomeId: string, stayHomeId: string = myHomeId): void {
+    this.myHomeId = myHomeId;
+    this.stayHomeId = stayHomeId || myHomeId;
+    // 지금 홈타운에 서 있으면 다음 폴링부터 새 꼬리표로 알린다
+    if (isHometownRegion(this.pos.regionId)) this.pos.regionId = mpScopedRegionId('hometown', this.stayHomeId);
+  }
+
+  /** 305차 — 지역에 들어섰다(필드 init) — 첫 프레임 전에도 공유 소비 키(과증식 `n:`)가 지금 있는 집으로 갈리게 */
+  noteRegion(regionId: string): void {
+    this.pos.regionId = this.scopeRegion(regionId);
+  }
+
+  /** 305차 — 그 집 주인이 지금 세션에 있는가(공개 프로필의 집 id로 본다 — 머무는 집 판정) */
+  isHomeOwnerOnline(homeId: string): boolean {
+    return !!homeId && this.peers.some((p) => p.profile?.homeId === homeId);
+  }
+
+  /** 305차 — 세션에 알리는 지역 · 맵 · 공유 소비 키(홈타운만 꼬리표 — 지금 서 있는 집 기준) */
+  private scopeRegion(regionId: string): string { return mpScopedRegionId(regionId, this.stayHomeId); }
+  private scopeMap(mapKey: string, homeId: string = this.stayHomeId): string { return mpScopedMapKey(mapKey, homeId); }
+  private scopeKey(key: string): string { return mpScopedWorldKey(key, this.stayHomeId, isHometownRegion(this.pos.regionId)); }
 
   /**
    * 235차 — 공용 시각(ms). 세션에 들어와 있으면 서버 시계에 맞춘 값, 아니면 내 시계 그대로.
@@ -252,7 +284,9 @@ class MultiplayerClientImpl {
       this.token = res.token ?? '';
       this.name = name.trim();
       this.worldSeed = res.seed ?? 0;
-      this.resume = res.resume ?? null;
+      // 305차 — 서버는 꼬리표 붙은 지역 키를 기억한다 — 장면 전환이 아는 지역 id + 집 id로 푼다
+      const r = res.resume;
+      this.resume = r ? { ...r, ...mpUnscopeRegionId(r.regionId) } : null;
       if (look) { this.look = look; this.lookSent = true; }
     }
     return res ?? { ok: false, reasonKo: '서버에 연결할 수 없습니다.' };
@@ -279,7 +313,7 @@ class MultiplayerClientImpl {
     regionId: string, x: number, y: number, facing: MpPeer['facing'], moving: boolean,
     activity: MpActivity = 'field',
   ): void {
-    this.pos = { regionId, x, y, facing, moving, activity };
+    this.pos = { regionId: this.scopeRegion(regionId), x, y, facing, moving, activity };
   }
 
   /** 씬을 떠날 때(1인칭·상점·실내) 활동만 갱신 — 좌표는 마지막 자리에 남는다 */
@@ -419,7 +453,7 @@ class MultiplayerClientImpl {
   async placeTrap(trap: MpPlaceItem): Promise<{ ok: boolean; reasonKo?: string; unreachable?: boolean }> {
     if (!this.isConnected) return { ok: true };
     const res = await this.post<{ ok: boolean; conflict?: boolean; reasonKo?: string }>('/mp/trap/place', {
-      code: this.code, playerId: this.playerId, token: this.token, trap,
+      code: this.code, playerId: this.playerId, token: this.token, trap: { ...trap, mapKey: this.scopeMap(trap.mapKey) },
     });
     // 닿지 못했거나 세션 쪽 사정(비밀값이 낡음 등)은 「거절」이 아니다 — 되돌리지 않고 대조에 맡긴다
     if (!res || (!res.ok && !res.conflict)) { this.placedNeedSync = true; return { ok: true, unreachable: true }; }
@@ -446,7 +480,9 @@ class MultiplayerClientImpl {
     const token = this.token;
     try {
       const res = await this.post<MpPlacedSyncRes>('/mp/placed/sync', {
-        code: this.code, playerId: this.playerId, token, items: this.placedProvider(),
+        // 305차 — 세이브의 설치물은 언제나 **내** 홈타운 것이다(남의 집에 가 있어도) — 내 집 꼬리표
+        code: this.code, playerId: this.playerId, token,
+        items: this.placedProvider().map((t) => ({ ...t, mapKey: this.scopeMap(t.mapKey, this.myHomeId) })),
       });
       if (res?.ok && token === this.token) { this.placedSyncToken = token; this.placedNeedSync = false; }
       return res;
@@ -457,12 +493,14 @@ class MultiplayerClientImpl {
 
   /** 남이 놓은 통발만 (내 것은 내 세이브가 그린다) */
   peerTraps(mapKey: string): MpPlacedTrap[] {
-    return this.traps.filter((t) => t.mapKey === mapKey && t.ownerId !== this.userId);
+    const key = this.scopeMap(mapKey);
+    return this.traps.filter((t) => t.mapKey === key && t.ownerId !== this.userId);
   }
 
   /** 같은 지역에 있는 사람만 (이름표를 띄울 대상) */
   peersInRegion(regionId: string): MpPeer[] {
-    return this.peers.filter((p) => p.regionId === regionId);
+    const key = this.scopeRegion(regionId);
+    return this.peers.filter((p) => p.regionId === key);
   }
 
   /**
@@ -498,7 +536,7 @@ class MultiplayerClientImpl {
    * `busy` = 누가 채집 중 · `mine` = 내가 남긴 것.
    */
   worldTakenInfo(key: string): (MpTakenLine & { mine?: boolean }) | undefined {
-    const l = this.worldTaken.get(key);
+    const l = this.worldTaken.get(this.scopeKey(key));
     return l && l.untilMs > Date.now() ? l : undefined;
   }
 
@@ -518,6 +556,7 @@ class MultiplayerClientImpl {
   ): Promise<{ mine: boolean; busy?: boolean; by?: string; val?: string }> {
     if (!this.isConnected) return { mine: true, val: opts.val };
     const cur = this.worldTakenInfo(key);
+    key = this.scopeKey(key);   // 305차 — 여기부터는 세션 키(홈타운이면 집 꼬리표)
     if (cur && !cur.mine) return { mine: false, busy: cur.busy, by: cur.by, val: cur.val };
     const now = Date.now();
     if (opts.release) this.worldTaken.delete(key);

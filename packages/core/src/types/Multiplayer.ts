@@ -403,6 +403,11 @@ export interface MpResume {
   regionId: string;
   x: number;
   y: number;
+  /**
+   * 305차 — 홈타운 자리면 그 집 id. 서버는 꼬리표 붙은 지역 키(`hometown@<집 id>`)를 기억하고,
+   * 클라이언트가 받을 때 풀어 `regionId: 'hometown'` + 이 값으로 나눈다(장면 전환은 꼬리표 없는 지역 id만 안다).
+   */
+  homeId?: string;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -561,6 +566,11 @@ export interface MpProfile {
   trips: number;
   /** 203차 — 단 타이틀 id(글자가 아니라 id — 받는 쪽이 자기 언어로 이름을 찾는다). 없으면 안 단 것 */
   title?: string;
+  /**
+   * 305차 — 이 캐릭터 홈타운의 공개 id(`HomeId`). 재접속 열쇠(`userId`)와 따로다 — 남에게 보여도 된다.
+   * 「그 집 주인이 지금 세션에 있는가」(머무는 집 판정 · 나중의 방문 신청)에 쓴다. 옛 클라이언트는 안 보낸다.
+   */
+  homeId?: string;
 }
 
 // ── 메인 서버 플리마켓 (계약만 — 원장은 나중) ─────────
@@ -588,3 +598,30 @@ export interface MarketListing {
   /** 카테고리 트리 경로 (타르코프식 좌측 트리 — `장비/낚싯대/루어대` 등) */
   categoryPath: string[];
 }
+
+// ── 홈타운 소유 (305차) ─────────────────────────────
+
+/**
+ * 305차 — 홈타운 한 벌의 **공개 id**(캐릭터마다 하나 · 세이브 필드 `homeId`).
+ * 세션에 알리는 홈타운 지역 · 맵 키에 꼬리표로 붙는다(`hometown@<HomeId>`) — 남의 홈타운이 내 홈타운에 겹쳐 보이지 않게.
+ * ⚠ 재접속 열쇠(`userId`)를 쓰지 않는다 — 위치 알림으로 모두에게 내려가는 값이라 열쇠가 새어 나간다(232차에 막은 구멍).
+ */
+export type HomeId = string;
+
+/**
+ * 305차 — 홈타운에서 하는 행동. 주인은 전부 · 방문자는 `HOMETOWN_VISITOR_ACTIONS`만(보기 · 말 · 거래 · 선물).
+ * 새 행동을 만들면 여기에 더하고 막힐 때의 글(`hometownBlockReasonKo`)도 단다.
+ */
+export type HometownAction =
+  | 'look' | 'talk' | 'trade' | 'gift'
+  | 'enterHouse' | 'mailbox' | 'farm' | 'place' | 'pickup' | 'yard' | 'forage';
+
+/** 305차 — 지금 서 있는(서 있을) 홈타운이 누구의 것인가 */
+export interface HometownStay {
+  ownerHomeId: HomeId;
+  /** 남의 집일 때 화면에 쓸 이름(내 집이면 없음) */
+  ownerName?: string;
+}
+
+/** 305차 — 남의 홈타운에 머물 수 없어 내 홈타운으로 돌아온 까닭 */
+export type HometownFallback = 'badId' | 'notConnected' | 'ownerAway' | 'notAllowed';
