@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-06 |
 | **시스템** | `멀티` · `홈` · `스토리`(안내 화살표) |
 | **트리거** | 사용자 지시 「집 안 구경도 이어서 진행해줘. 아 그리고, 남의 집에서는 퀘스트 안내 화살표는 감추자. 우선 여기까지 하고 main 재배포 해줘.」 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (+ 배포 기록) · main 빨리 감기 · 110차 배포 |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `93d97cd` · `bd96543`(루트에 들어간 점검 스크린샷 되돌림) (+ 배포 기록) · main 빨리 감기 · 110차 배포 gh-pages `a0bc011` |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 549 · 하네스 r307 19/19 · r306visit 회귀 · pageerror 0 |
 
 ---
@@ -89,4 +89,4 @@
 - [x] `multiplayer.md` §4 · §5 · §6 · `home-base.md` §6 · 백로그 DJ
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 · 구현 라이브러리 · 채비 모딩 순서도(「307차 기준」 줄) · 위키
-- [ ] main 빨리 감기 · 110차 배포(이 표는 배포 뒤 갱신)
+- [x] main 빨리 감기 `bd96543` · **110차 배포**(gh-pages `a0bc011`) — 정적 2,165(소스맵 0) · 기동 9.0초(헤드리스 · gh-pages를 로컬로 띄워 확인) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 「집 안 구경하기」 · 혼잣말 · 영문 · 306 집 구경 글 확인

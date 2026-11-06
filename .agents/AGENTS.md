@@ -324,7 +324,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 사용자 지시 「집 안 구경도 이어서 진행해줘. 아 그리고, 남의 집에서는 퀘스트 안내 화살표는 감추자. 우선 여기까지 하고 main 재배포 해줘.」
 - 집 모습에 집 안 한 벌(`MpHomeView.interior` — 가구 · 화분 · 스탠드 · 수조 고기 · 어탁 / 보관함 속 · 고양이 정은 안 실림 · core `cleanHomeView` 검사) · 손님 문 「[F] 집 안 구경하기」 → 보기 전용 집 안(`createHomeViewStore` 사본 · 앉기만 · 저장 자리 아님 · 가구 옮김 따라옴).
 - 방문 동기화를 `net/VisitSync.ts`로 — 집주인이 집 안에 있어도 청을 묻고 모습을 올린다(306은 필드가 멈추면 못 했다) · 남의 마당에서는 할 일 화살표를 잡지 않는다.
-- 검증: core 549(+4) · r307 19/19(두 클라이언트 · 로컬 서버) · r306visit 15/15 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [307차 워크로그](../docs/wiki/03-WORKLOG/2026-11-06-307-hometown-interior-visit.md).
+- 검증: core 549(+4) · r307 19/19(두 클라이언트 · 로컬 서버) · r306visit 15/15 · 빌드 3/3 · 루트 typecheck 4/4 · main `bd96543` · **110차 배포**(gh-pages `a0bc011` · 4xx 0 · pageerror 0). 상세: [307차 워크로그](../docs/wiki/03-WORKLOG/2026-11-06-307-hometown-interior-visit.md).
 
 **이전 변경 (2026-11-06 306차) — 따먹힌 뒤 미끼가 전부 사라짐 · 빈 바늘 입질 · 홈타운 방문(집 구경)**
 
