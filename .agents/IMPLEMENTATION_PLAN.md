@@ -236,7 +236,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 
 - 위치 알림에 방 안 자리(`MpPeer.room`) · 같은 집 집 안 장면끼리 그림(이름표 · 걸음 · 앉은 자세) · 들어옴 · 나감 한 줄 · 우클릭 마치기 · 배웅.
 - 앉은 손님이 15초마다 일어서던 것(307) · 접속 뒤 바뀐 모습이 안 가던 것을 함께 고침.
-- 검증: core 552 · r308 17/17 · r307 · r306visit 회귀 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [워크로그 308](../docs/wiki/03-WORKLOG/2026-11-06-308-hometown-interior-together.md).
+- 검증: core 552 · r308 17/17 · r307 19/19 · r306visit 15/15 · 빌드 3/3 · 루트 typecheck 4/4 · main `34b0402` · **111차 배포**(gh-pages `907979e`). 상세: [워크로그 308](../docs/wiki/03-WORKLOG/2026-11-06-308-hometown-interior-together.md).
 
 ### 307차 (2026-11-06) — 집 안 구경(손님은 보기만) · 남의 집에서는 할 일 화살표 감춤
 

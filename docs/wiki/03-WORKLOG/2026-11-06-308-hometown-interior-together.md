@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-06 |
 | **시스템** | `멀티` · `홈` |
 | **트리거** | 사용자 지시 「집 안에서 서로 보이는 것도 이어서 진행해줘. 작업하고나서 MAIN GH-PAGES 재배포까지.」 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (+ 배포 기록) · main 빨리 감기 · 111차 배포 |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `34b0402` (+ 배포 기록) · main 빨리 감기 · 111차 배포 gh-pages `907979e` |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 552 · 하네스 r308 17/17 · r307 19/19 · r306visit 15/15 · pageerror 0 |
 
 ---
@@ -91,4 +91,4 @@
 
 ## 9. 배포
 
-- [ ] main 빨리 감기 · 111차 배포(배포 뒤 갱신)
+- [x] main 빨리 감기 `34b0402` · **111차 배포**(gh-pages `907979e`) — 정적 2,165(소스맵 0) · 기동 9.4초(헤드리스 · gh-pages를 로컬로 띄워 확인) · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 번들에 「씨가 들어왔다」 · 「씨가 나갔다」 · 영문 · `reportRoom` · `peersInRoom` · 「손님 배웅하기」 확인
