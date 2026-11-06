@@ -841,12 +841,12 @@ export type { SessionWeatherCard } from './rules/SessionWeather.js';
 export type { HomeId, HometownAction, HometownStay, HometownFallback } from './types/Multiplayer.js';
 export type { HometownStayContext } from './rules/HometownOwnership.js';
 // 306차 — 홈타운 방문(집 구경 청하기 · 들이기 · 주인 집 모습)
-export type { MpVisit, MpVisitStatus, MpHomeView, MpHomeInteriorView, MpHomeFurniture } from './types/Multiplayer.js';
+export type { MpVisit, MpVisitStatus, MpHomeView, MpHomeInteriorView, MpHomeFurniture, MpRoomPos } from './types/Multiplayer.js';
 export {
-  MP_VISIT_PENDING_MS, MP_VISIT_KEEP_DONE_MS, MP_HOME_VIEW_MAX_JSON, MP_VISIT_MAX_PER_SESSION, MP_VISIT_REASON_KO,
+  MP_VISIT_PENDING_MS, MP_VISIT_KEEP_DONE_MS, MP_HOME_VIEW_MAX_JSON, MP_VISIT_MAX_PER_SESSION, MP_VISIT_REASON_KO, MP_ROOM_COORD_MAX,
 } from './types/Multiplayer.js';
 export {
-  isVisitLive, visitAllowedFor, guestVisitOf, hostVisitsOf, liveVisitBetween, cleanHomeView, isVisitShape,
+  isVisitLive, visitAllowedFor, guestVisitOf, hostVisitsOf, liveVisitBetween, cleanHomeView, isVisitShape, cleanRoomPos,
 } from './rules/HometownVisit.js';
 export {
   HOMETOWN_REGION_ID, newHomeId, isHomeId, isHometownRegion,

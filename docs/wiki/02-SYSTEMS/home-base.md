@@ -319,4 +319,6 @@
 64. **집 안 장면은 `HomeStore`를 바로 부르지 않고 `this.hs`를 거친다**(307) — 내 집이면 `HomeStore`(세이브), 남의 집 구경(`init({ visit: true })`)이면 집주인 사본(`createHomeViewStore`).
     구경 모드는 [F]가 앉기(소파 · 의자)뿐이고 저장 꼬리표(`hometown_interior`) · 배치 단추 · 기상 · 둘러보기 · 프롤로그 코치 · 문 붙잡기를 건너뛴다.
     집 안에 새 가구 행동을 더하면 `actionOf`의 구경 모드 줄(앉기만)을 지나도록 둔다 — 그 위에 넣으면 손님도 쓴다. 새로 보일 상태(예: 가구 색)는 `interiorView` · `createHomeViewStore` · `cleanHomeView` 셋을 같이 늘린다.
+65. **집 안의 다른 사람은 내 앉기와 같은 그림 규칙을 쓴다**(308) — 앉은 가구 id로 그 집 가구(내 집이면 `HomeStore`, 손님이면 사본)에서 좌석을 찾아 같은 자르기(`SEAT_ROWS`) · 가구 앞뒤(`furnDepth` ± `behind`)로 그린다.
+    새 앉을 가구를 더하면 `seatsOf`만 늘리면 남에게도 같은 자세로 보인다(`placeRoomPeer`).
 

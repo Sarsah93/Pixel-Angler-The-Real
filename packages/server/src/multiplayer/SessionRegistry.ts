@@ -35,7 +35,7 @@ import {
   type MpTradeState, type MpTradeOffer, type MpTradeItem, type MpProfile, type MpRetireRes, type MpTakenLine,
   type MpPlaceItem, type MpPlacedSyncRes,
   MP_VISIT_PENDING_MS, MP_VISIT_KEEP_DONE_MS, MP_VISIT_MAX_PER_SESSION, MP_VISIT_REASON_KO,
-  isHomeId, isVisitLive, liveVisitBetween, guestVisitOf, cleanHomeView,
+  isHomeId, isVisitLive, liveVisitBetween, guestVisitOf, cleanHomeView, cleanRoomPos,
   type MpVisit, type MpHomeView,
 } from '@tra/core';
 
@@ -257,6 +257,8 @@ export class SessionRegistry {
     pos: {
       regionId: string; x: number; y: number; facing: MpPeer['facing'];
       moving: boolean; activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile;
+      /** 308차 — 집 안 자리(집 안 장면만 보낸다 · 없거나 틀리면 지움) */
+      room?: unknown;
     },
     opts?: { say?: string; chatSince?: number; takenSince?: number },
   ): {
@@ -273,6 +275,7 @@ export class SessionRegistry {
     me.facing = FACINGS.includes(pos.facing) ? pos.facing : 'down';
     me.moving = pos.moving === true;
     me.activity = ACTIVITIES.includes(pos.activity as MpActivity) ? pos.activity : 'field';
+    me.room = me.activity === 'indoor' ? cleanRoomPos(pos.room) : undefined;   // 308차 — 집 안에서만
     const look = cleanBlob(pos.look, LOOK_MAX_JSON); if (look) me.look = look;
     const profile = cleanBlob(pos.profile, PROFILE_MAX_JSON); if (profile) me.profile = profile;
     me.lastSeenMs = Date.now();
@@ -289,6 +292,7 @@ export class SessionRegistry {
         playerId: p.playerId, name: p.name, regionId: p.regionId,
         x: p.x, y: p.y, facing: p.facing, moving: p.moving,
         activity: p.activity, look: p.look, profile: p.profile,
+        ...(p.room ? { room: p.room } : {}),
         trading: this.activeTradeOf(s, p.userId) !== undefined,
       });
     }

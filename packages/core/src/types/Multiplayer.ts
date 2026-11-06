@@ -77,7 +77,25 @@ export interface MpPeer {
   profile?: MpProfile;
   /** 거래 중인가 (146차 — 거래 요청 거절 사유·배지) */
   trading?: boolean;
+  /**
+   * 308차 — 홈타운 집 안에 있으면 방 안 자리(칸 단위). 같은 집(세션 지역 키가 같은) 집 안 장면끼리만 서로 그린다.
+   * 필드는 이 값을 쓰지 않는다(집 안 사람은 마지막 마당 자리에 흐리게 · 「집 안」 배지).
+   */
+  room?: MpRoomPos;
 }
+
+/** 308차 — 집 안 자리(방 왼쪽 위 = 0,0 · 칸 단위 소수) · 앉아 있으면 그 가구 id */
+export interface MpRoomPos {
+  x: number;
+  y: number;
+  facing: 'down' | 'up' | 'left' | 'right';
+  moving: boolean;
+  /** 앉은 가구 id(소파 · 의자) — 없으면 서 있다 */
+  seat?: string;
+}
+
+/** 308차 — 집 안 자리 칸 범위(방은 12 × 10 — 여유를 둔 상한) */
+export const MP_ROOM_COORD_MAX = 40;
 
 export interface MpCreateSessionRes {
   ok: boolean;

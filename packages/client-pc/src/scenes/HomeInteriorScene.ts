@@ -36,7 +36,7 @@ import { weatherSoundFrom } from '../audio/WeatherSound.js';
 import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { playCoin, playUiClick } from '../audio/Sfx.js';
-import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, hometownFallbackReasonKo, type CharDir } from '@tra/core';
+import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, hometownFallbackReasonKo, characterOf, liveVisitBetween, MP_VISIT_REASON_KO, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { CraftingStore } from '../store/CraftingStore.js';
@@ -195,8 +195,20 @@ type NearTarget =
 
 /** `action` = 가이드 단계가 허용해야 하는 행동 id(219차) — 없으면 늘 고를 수 있다 */
 interface MenuItem { label: string; color?: string; run: () => void; action?: string }
+/** 308차 — 같은 집 집 안에 있는 다른 사람 하나(위치 알림 1초 사이를 걸음으로 메운다) */
+interface RoomPeerView {
+  name: string;
+  sprite: CharacterSprite;
+  tag: Phaser.GameObjects.Text;
+  shadow: Phaser.GameObjects.Ellipse;
+  /** 지금 그린 자리 · 알림이 준 목표 자리(화면 px) */
+  x: number; y: number; tx: number; ty: number;
+  facing: CharDir;
+  seat?: string;
+}
+
 interface OpenMenu {
-  kind: 'bed' | 'seat' | 'cat' | 'books';
+  kind: 'bed' | 'seat' | 'cat' | 'books' | 'peer';
   c: Phaser.GameObjects.Container;
   items: MenuItem[];
   rows: Phaser.GameObjects.Graphics[];
@@ -275,6 +287,13 @@ export class HomeInteriorScene extends Phaser.Scene {
   private visitCheckAt = 0;
   private visitMiss = 0;
   private hostAskAt = 0;
+  /** 308차 — 마지막으로 입힌 집 안 모습(같으면 다시 그리지 않는다 — 앉은 손님을 일으키지 않게) */
+  private visitInteriorSig = '';
+  /** 308차 — 같은 집 집 안의 다른 사람 · 들어옴 한 줄을 아직 띄우지 않는 때(들어선 직후 이미 있던 사람) · 알린 자리 */
+  private roomPeers = new Map<string, RoomPeerView>();
+  private roomPeerQuietUntil = 0;
+  private roomRepX = 0;
+  private roomRepY = 0;
   /** 집 안 상태 — 내 집이면 `HomeStore`(세이브), 남의 집 구경 중이면 그 집 사본 */
   private get hs(): HomeStoreManager { return this.viewStore ?? HomeStore; }
   /** 188차 — 실내에서 여는 창(가방·장비·일지·상세보기·보관함) — ESC는 위에서부터 닫는다 */
@@ -310,8 +329,17 @@ export class HomeInteriorScene extends Phaser.Scene {
     void playMusic('home');   // 261차 — 배경 음악: 옛집(가 · 나 번갈아)
     // 307차 — 남의 집 구경: 집주인이 올린 집 안 사본으로 그린다(내 집 · 세이브는 그대로)
     this.viewStore = this.visit ? createHomeViewStore(GameState.visitView?.interior) : undefined;
+    this.visitInteriorSig = this.visit ? JSON.stringify(GameState.visitView?.interior ?? null) : '';
     this.visitSerial = guestViewSerial();
     this.visitCheckAt = 0; this.visitMiss = 0; this.hostAskAt = 0;
+    // 308차 — 같은 집 안의 다른 사람(장면을 다시 열 때 지난번 그림을 붙들지 않게)
+    this.roomPeers = new Map();
+    this.roomPeerQuietUntil = this.time.now + 2500;
+    this.events.once('shutdown', () => {
+      for (const v of this.roomPeers.values()) { v.sprite.image.destroy(); v.tag.destroy(); v.shadow.destroy(); }
+      this.roomPeers.clear();
+      MultiplayerClient.clearRoom();
+    });
     if (!this.visit) this.time.delayedCall(1200, () => this.maybeShowUnseenDay(0));   // 211차 — 자는 사이 넘어간 하루
     this.homeTitle = undefined;   // 204차 — 재진입 시 파괴된 Text를 다시 쓰지 않게
     this.homeTitleKey = '';
@@ -1240,6 +1268,8 @@ export class HomeInteriorScene extends Phaser.Scene {
     GameState.noteAwake(delta);   // 213차 — 잠 가부(깨어 논 시간)
     this.pumpVisit(delta);   // 307차 — 집 구경(손님: 끝나면 밖으로 · 새 모습 / 집주인: 청 묻기 · 모습 올리기)
     if (this.leaving) return;
+    this.reportRoomPos();   // 308차 — 내 방 안 자리를 알린다(앉아 있거나 창이 열려 있어도)
+    this.syncRoomPeers(delta);   // 308차 — 같은 집 안의 다른 사람을 그린다
     if (this.menu) this.paintMenu();   // 219차 — 가이드 단계가 바뀌면 막힌 고를 거리 색도 따라 바뀐다
     // 222차 — 제작 큐(벽시계). 집 안에서는 손이 늘 비어 있다.
     this.craftAcc += delta;
@@ -2122,11 +2152,24 @@ export class HomeInteriorScene extends Phaser.Scene {
     ));
   }
 
-  /** 집주인이 새 집 안 모습을 올렸다 — 사본을 바꿔 가구를 다시 그린다(내가 선 칸이 막혔으면 현관으로 비킨다) */
+  /**
+   * 집주인이 새 집 안 모습을 올렸다 — 사본을 바꿔 가구를 다시 그린다(내가 선 칸이 막혔으면 현관으로 비킨다).
+   * 308차 — 집 안이 그대로면(집주인의 15초 확인 판) 아무것도 하지 않는다 — 앉아 있던 손님이 15초마다 일어섰다.
+   * 바뀌었어도 앉은 가구가 그 자리 그대로면 계속 앉아 있다.
+   */
   private applyVisitInterior(): void {
     if (!this.visit) return;
-    if (this.seat) this.standUp();
-    this.viewStore = createHomeViewStore(GameState.visitView?.interior);
+    const iv = GameState.visitView?.interior;
+    const sig = JSON.stringify(iv ?? null);
+    if (sig === this.visitInteriorSig) return;
+    this.visitInteriorSig = sig;
+    const next = createHomeViewStore(iv);
+    if (this.seat) {
+      const was = this.seat.f, now = next.find(was.id);
+      if (now && now.tx === was.tx && now.ty === was.ty && now.dir === was.dir && now.kind === was.kind) this.seat.f = now;
+      else this.standUp();
+    }
+    this.viewStore = next;
     this.buildFurniture(null);
     this.cat?.relocateIfBlocked();
     if (this.collides(this.px, this.py)) {
@@ -2134,6 +2177,105 @@ export class HomeInteriorScene extends Phaser.Scene {
       this.charSprite.image.setPosition(this.px, this.py + this.charSprite.footPad).setDepth(20 + this.py * 0.001);
       this.playerShadow.setPosition(this.px, this.py);
     }
+  }
+
+  // ── 308차 집 안에서 서로 보기 ─────────────────────────
+
+  /** 내 방 안 자리(칸 단위)를 위치 알림에 싣는다 — 앉아 있으면 그 자리 · 그 가구 */
+  private reportRoomPos(): void {
+    if (!MultiplayerClient.isConnected || !this.charSprite) return;
+    const s = this.seat;
+    const moving = !s && Math.hypot(this.px - this.roomRepX, this.py - this.roomRepY) > 0.3;
+    this.roomRepX = this.px; this.roomRepY = this.py;
+    MultiplayerClient.reportRoom(s
+      ? { x: (s.sx - OX) / IT, y: (s.sy - OY) / IT, facing: s.f.dir, moving: false, seat: s.f.id }
+      : { x: (this.px - OX) / IT, y: (this.py - OY) / IT, facing: this.facing, moving });
+  }
+
+  /**
+   * 같은 집(세션 지역 키) 집 안에 있는 사람 — 집주인은 손님을, 손님은 집주인을 본다.
+   * 알림은 1초마다라 그 사이를 걸음(0.24px/ms)으로 메우고, 4칸 넘게 떨어지면 바로 옮긴다.
+   * 들어선 뒤 2.5초가 지나 새로 들어오거나 나가면 한 줄로 알린다.
+   */
+  private syncRoomPeers(delta: number): void {
+    const list = MultiplayerClient.isConnected ? MultiplayerClient.peersInRoom() : [];
+    const alive = new Set<string>();
+    const quiet = this.time.now < this.roomPeerQuietUntil;
+    for (const p of list) {
+      alive.add(p.playerId);
+      const tx = OX + p.room.x * IT, ty = OY + p.room.y * IT;
+      let v = this.roomPeers.get(p.playerId);
+      if (!v) {
+        const sprite = new CharacterSprite(this, tx, ty, p.look ?? characterOf(`mp_${p.playerId}`), CHAR_SCALE);
+        const pid = p.playerId;
+        sprite.image.setInteractive({ useHandCursor: false });
+        sprite.image.on('pointerdown', (ptr: Phaser.Input.Pointer) => { if (ptr.rightButtonDown()) this.openPeerMenu(pid); });
+        const bodyH = sprite.bodyHeight;
+        const shadow = this.add.ellipse(tx, ty, bodyH * 0.42, bodyH * 0.12, 0x000000, 0.28).setDepth(18);
+        const tag = this.add.text(tx, ty, p.name, worldLabelStyle(10)).setOrigin(0.5, 1);
+        v = { name: p.name, sprite, tag, shadow, x: tx, y: ty, tx, ty, facing: p.room.facing };
+        this.roomPeers.set(pid, v);
+        if (!quiet) this.flash(`${p.name} 씨가 들어왔다.`);
+      }
+      v.tx = tx; v.ty = ty; v.facing = p.room.facing; v.seat = p.room.seat;
+      if (v.name !== p.name) { v.name = p.name; v.tag.setText(p.name); }
+    }
+    for (const [id, v] of this.roomPeers) {
+      if (alive.has(id)) continue;
+      v.sprite.image.destroy(); v.tag.destroy(); v.shadow.destroy();
+      this.roomPeers.delete(id);
+      if (!quiet && !this.leaving) this.flash(`${v.name} 씨가 나갔다.`);
+    }
+    for (const v of this.roomPeers.values()) this.placeRoomPeer(v, delta);
+  }
+
+  /** 다른 사람 한 명을 그 자리에 — 앉아 있으면 내 앉은 자세와 같은 자르기 · 가구 앞뒤 */
+  private placeRoomPeer(v: RoomPeerView, delta: number): void {
+    const img = v.sprite.image;
+    const f = v.seat ? this.hs.find(v.seat) : undefined;
+    if (f && (f.kind === 'sofa' || f.kind === 'chair')) {
+      const seats = seatsOf(f.kind, f.dir).map((s) => ({ ...s, sx: OX + f.tx * IT + s.x, sy: OY + f.ty * IT + s.y }));
+      seats.sort((a, b) => Math.hypot(a.sx - v.tx, a.sy - v.ty) - Math.hypot(b.sx - v.tx, b.sy - v.ty));
+      const st = seats[0];
+      if (st) {
+        v.x = st.sx; v.y = st.sy;
+        v.sprite.setDir(f.dir);
+        v.sprite.update(0, false);
+        const fh = img.frame.height;
+        img.setCrop(0, 0, img.frame.width, SEAT_ROWS);
+        img.setPosition(st.sx, st.sy + (fh - SEAT_ROWS)).setDepth(this.furnDepth(f) + (st.behind ? -0.0004 : 0.0004));
+        v.shadow.setVisible(false);
+        v.tag.setPosition(st.sx, img.y - img.displayHeight + CHAR_HEAD_TOP * CHAR_SCALE - 3).setDepth(img.depth + 0.0007);
+        return;
+      }
+    }
+    const d = Math.hypot(v.tx - v.x, v.ty - v.y);
+    if (d > IT * 4) { v.x = v.tx; v.y = v.ty; }
+    else if (d > 0) { const k = Math.min(d, 0.24 * delta) / d; v.x += (v.tx - v.x) * k; v.y += (v.ty - v.y) * k; }
+    img.setCrop();
+    img.setPosition(v.x, v.y + v.sprite.footPad).setDepth(20 + v.y * 0.001);
+    v.sprite.setDir(v.facing);
+    v.sprite.update(delta, d > 1);
+    v.shadow.setVisible(true).setPosition(v.x, v.y);
+    v.tag.setPosition(v.x, img.y - img.displayHeight + CHAR_HEAD_TOP * CHAR_SCALE - 3).setDepth(img.depth + 0.0007);
+  }
+
+  /** 다른 사람 우클릭 — 손님은 「집 구경 마치기」 · 집주인은 「손님 배웅하기」 */
+  private openPeerMenu(pid: string): void {
+    if (this.menu || this.popups.length || this.decor || this.leaving || this.pauseMenu || this.tourPanel || this.sleepState) return;
+    const me = MultiplayerClient.playerId;
+    const v = liveVisitBetween(MultiplayerClient.visits, me, pid);
+    const name = this.roomPeers.get(pid)?.name ?? '';
+    const items: MenuItem[] = [];
+    if (v && v.status === 'accepted' && v.fromPlayerId === me) {
+      items.push({ label: '집 구경 마치기', color: '#ffd9a0', run: () => { this.closeMenu(); void MultiplayerClient.endVisit(v.id); this.leaveVisit(MP_VISIT_REASON_KO.endedByGuest); } });
+    }
+    if (v && v.status === 'accepted' && v.toPlayerId === me) {
+      items.push({ label: '손님 배웅하기', color: '#ffd9a0', run: () => { this.closeMenu(); void MultiplayerClient.endVisit(v.id); } });
+    }
+    if (!items.length) return;
+    items.push({ label: '그만두기', color: '#8faabf', run: () => this.closeMenu() });
+    this.openMenu('peer', name, items, () => this.closeMenu());
   }
 
   /** 구경하던 방문이 끝났다 — 밖으로 나가면 필드가 그 까닭으로 내 집으로 옮긴다 */
@@ -2151,6 +2293,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.leaving = true;
     // 188차 — 프롤로그: 저장까지 마치고 나서야 「집을 나선다」 (앞 단계를 건너뛴 채 나가면 다시 들어와 이어 한다)
     if (!this.visit && prologueStepDone('save')) markPrologue('leave');
+    MultiplayerClient.clearRoom();   // 308차 — 마당으로 나가면 방 안 자리를 거둔다
     GameState.locationTag = 'hometown';
     fadeOutThen(this, () => {
       this.scene.stop();

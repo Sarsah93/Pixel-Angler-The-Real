@@ -6988,6 +6988,8 @@ export class RegionFieldScene extends Phaser.Scene {
     this.peerSyncAt = 0;
 
     MultiplayerClient.setProfile(this.buildProfile());   // 146차 — 내용이 같으면 안 올라간다
+    // 308차 — 내 모습(만든 얼굴 · 입은 옷). 부르는 곳이 없어 남에게는 id로 지어낸 얼굴(`characterOf`)로 보였다
+    MultiplayerClient.setLook(characterLook());
     this.syncTrade();
     this.syncVisits();   // 306차 — 집 구경(청 · 답 · 집 모습)
     const peers = MultiplayerClient.peersInRegion(this.region);

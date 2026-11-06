@@ -18,7 +18,7 @@ import {
   type MpCreateSessionRes, type MpSessionInfoRes, type MpNameCheckRes, type MpJoinRes, type MpPresenceRes,
   type MpRetireRes, type MpTakenLine, type MpPlaceItem, type MpPlacedSyncRes,
   mpScopedRegionId, mpScopedMapKey, mpScopedWorldKey, mpUnscopeRegionId, isHometownRegion,
-  isVisitShape, visitAllowedFor, cleanHomeView, type MpVisit, type MpHomeView,
+  isVisitShape, visitAllowedFor, cleanHomeView, cleanRoomPos, type MpVisit, type MpHomeView, type MpRoomPos,
 } from '@tra/core';
 
 /** 로비 설정은 브라우저에 남긴다 — 다음에 켤 때 서버 주소를 다시 치지 않게 */
@@ -86,9 +86,13 @@ class MultiplayerClientImpl {
   private profileSent = true;
 
   private timer: number | null = null;
-  private pos = {
-    regionId: '', x: 0, y: 0, facing: 'down' as MpPeer['facing'], moving: false,
-    activity: 'field' as MpActivity,
+  private pos: {
+    regionId: string; x: number; y: number; facing: MpPeer['facing']; moving: boolean; activity: MpActivity;
+    /** 308차 — 집 안 자리(집 안 장면이 매 프레임 넣는다 · 필드 `reportPosition`이 지운다) */
+    room?: MpRoomPos;
+  } = {
+    regionId: '', x: 0, y: 0, facing: 'down', moving: false,
+    activity: 'field',
   };
   /** 내 외형 — 한 번 보내고 나면 서버가 들고 있으므로 다시 보내지 않는다 */
   private look: MpPeer['look'];
@@ -295,9 +299,14 @@ class MultiplayerClientImpl {
 
   /** 내 외형을 갱신한다 (캐릭터 만들기 직후·장비 변경 시) — 다음 폴링에 한 번 실린다 */
   setLook(look: MpPeer['look']): void {
+    // 308차 — 내용이 같으면 다시 올리지 않는다(필드가 위치 알림마다 부른다)
+    const key = JSON.stringify(look ?? null);
+    if (key === this.lookKey) return;
+    this.lookKey = key;
     this.look = look;
     this.lookSent = false;
   }
+  private lookKey = '';
 
   /** 남에게 보이는 프로필 — 내용이 같으면 다시 올리지 않는다 (146차) */
   setProfile(p: MpProfile): void {
@@ -320,6 +329,33 @@ class MultiplayerClientImpl {
   /** 씬을 떠날 때(1인칭·상점·실내) 활동만 갱신 — 좌표는 마지막 자리에 남는다 */
   setActivity(activity: MpActivity): void {
     this.pos.activity = activity;
+  }
+
+  /**
+   * 308차 — 홈타운 집 안 자리(집 안 장면이 매 프레임). 지역 키 · 마당 좌표는 그대로 두고 활동을 「집 안」으로 —
+   * 같은 집 집 안 장면끼리만 서로 그린다(`peersInRoom`).
+   */
+  reportRoom(room: MpRoomPos): void {
+    this.pos.activity = 'indoor';
+    this.pos.room = room;
+  }
+
+  /** 308차 — 집 안 장면을 떠났다(밖 · 타이틀) — 다음 알림부터 방 안 자리를 싣지 않는다 */
+  clearRoom(): void {
+    this.pos.room = undefined;
+  }
+
+  /** 308차 — 지금 내가 선 집(같은 세션 지역 키)의 집 안에 있는 사람 — 방 안 자리 모양을 한 번 더 거른다 */
+  peersInRoom(): (MpPeer & { room: MpRoomPos })[] {
+    const key = this.pos.regionId;
+    const out: (MpPeer & { room: MpRoomPos })[] = [];
+    if (!key || !isHometownRegion(key)) return out;
+    for (const p of this.peers) {
+      if (p.regionId !== key || p.activity !== 'indoor') continue;
+      const room = cleanRoomPos(p.room);
+      if (room) out.push({ ...p, room });
+    }
+    return out;
   }
 
   startPresence(): void {
@@ -615,7 +651,7 @@ class MultiplayerClientImpl {
     this.worldTaken.clear(); this.takenSeq = 0;
     this.clockOffsetMs = 0; this.clockSamples = 0; this.clockBestRttMs = Infinity;
     this.worldSeed = 0; this.chatSeq = 0; this.chatInbox = []; this.resume = null;
-    this.lookSent = false; this.trade = null; this.profileKey = ''; this.profileSent = true;
+    this.lookSent = false; this.lookKey = ''; this.trade = null; this.profileKey = ''; this.profileSent = true;
     this.visits = [];
   }
 }

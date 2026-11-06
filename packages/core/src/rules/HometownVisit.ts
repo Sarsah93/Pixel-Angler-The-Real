@@ -9,8 +9,8 @@
  * 순수 TS — 서버 · 클라이언트가 같이 읽는다.
  */
 
-import type { MpVisit, MpHomeView, MpHomeInteriorView } from '../types/Multiplayer.js';
-import { MP_HOME_VIEW_MAX_JSON } from '../types/Multiplayer.js';
+import type { MpVisit, MpHomeView, MpHomeInteriorView, MpRoomPos } from '../types/Multiplayer.js';
+import { MP_HOME_VIEW_MAX_JSON, MP_ROOM_COORD_MAX } from '../types/Multiplayer.js';
 import { isHomeId } from './HometownOwnership.js';
 
 /** 방문이 아직 살아 있는가(답을 기다리는 중 · 들인 뒤) */
@@ -80,6 +80,21 @@ function isInteriorShape(iv: unknown): iv is MpHomeInteriorView {
   if (iv.fishPrint !== undefined && !(isObj(iv.fishPrint) && isStr(iv.fishPrint.speciesId) && isNum(iv.fishPrint.lengthCm))) return false;
   return true;
 }
+
+/**
+ * 308차 — 집 안 자리 모양 검사(서버가 받을 때 · 클라이언트가 그릴 때). 틀리면 undefined(그 사람은 집 안에 안 그린다).
+ * 칸 좌표는 0 ~ `MP_ROOM_COORD_MAX`로 자르고, 앉은 가구 id는 64자까지.
+ */
+export function cleanRoomPos(v: unknown): MpRoomPos | undefined {
+  if (!isObj(v) || !isNum(v.x) || !isNum(v.y)) return undefined;
+  const facing = FACING_OK.includes(v.facing as string) ? (v.facing as MpRoomPos['facing']) : 'down';
+  const clamp = (n: number): number => Math.max(0, Math.min(MP_ROOM_COORD_MAX, n));
+  return {
+    x: clamp(v.x), y: clamp(v.y), facing, moving: v.moving === true,
+    ...(isStr(v.seat) ? { seat: v.seat } : {}),
+  };
+}
+const FACING_OK = ['down', 'up', 'left', 'right'];
 
 /** 방문 한 건이 서버 응답 모양인가(손님 · 주인 클라이언트가 받을 때) */
 export function isVisitShape(v: unknown): v is MpVisit {

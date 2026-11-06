@@ -49,14 +49,14 @@ multiplayerRouter.post('/presence', (req, res) => {
   const b = req.body as {
     code?: string; playerId?: string; regionId?: string;
     x?: number; y?: number; facing?: MpPeer['facing']; moving?: boolean;
-    activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile;
+    activity?: MpActivity; look?: MpPeer['look']; profile?: MpProfile; room?: unknown;
     say?: string; chatSince?: number; takenSince?: number; token?: string;
   };
   if (!b.code || !b.playerId) { res.json({ ok: false, reasonKo: '세션 정보가 없습니다.' }); return; }
   res.json(sessionRegistry.presence(b.code, b.playerId, b.token, {
     regionId: b.regionId ?? '', x: b.x ?? 0, y: b.y ?? 0,
     facing: b.facing ?? 'down', moving: b.moving ?? false,
-    activity: b.activity, look: b.look, profile: b.profile,
+    activity: b.activity, look: b.look, profile: b.profile, room: b.room,   // 308차 — 집 안 자리
   }, { say: b.say, chatSince: b.chatSince, takenSince: b.takenSince }));
 });
 
