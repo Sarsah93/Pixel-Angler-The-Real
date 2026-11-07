@@ -1,5 +1,5 @@
 {
- "date": "2026-11-07",
+ "date": "2026-11-08",
  "audited_commit": "31deb41397a05ded686f1a57a2657b1b436e3614",
  "summary": {
   "harmony_index": 67.5,
@@ -115,10 +115,10 @@
    "found_today": 0,
    "fixed_today": 0,
    "decisions": {
-    "merged": 1,
+    "merged": 2,
     "closed": 0
    },
-   "open_proposals": 1
+   "open_proposals": 0
   },
   "q6-access": {
    "name": "⑥ 접근성·사용성",
@@ -181,11 +181,11 @@
    "found_today": 0,
    "fixed_today": 0,
    "decisions": {
-    "merged": 5,
+    "merged": 4,
     "closed": 0
    },
    "open_proposals": 0
   }
  },
- "previous_date": "2026-11-06"
+ "previous_date": "2026-11-07"
 }
