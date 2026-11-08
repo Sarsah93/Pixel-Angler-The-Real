@@ -28,9 +28,11 @@ export function isPackItem(i: Pick<InvItem, 'id' | 'unpack'>): boolean {
 }
 
 /** 아이템이 들어갈 수 있는 채비 칸 종류 (없으면 채비 부품이 아니다) */
-export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rigPart' | 'sinkerKind' | 'floatBuoyG' | 'unpack' | 'forageCatch' | 'speciesId'>): RigPartKind | null {
+export function partKindOf(i: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'rigPart' | 'sinkerKind' | 'floatBuoyG' | 'unpack' | 'forageCatch' | 'speciesId' | 'blueprintId'>): RigPartKind | null {
   // 279차 — 곽 · 갑은 어느 칸에도 들어가지 않는다(채비 창 후보 · 끌어 놓기 · 트리 판정이 모두 이 함수를 본다)
   if (isPackItem(i)) return null;
+  // 하모니 — 도면(설계도 종이)은 이름에 「지그헤드」 · 「카드 채비」가 들어 있어도 채비 부품이 아니다(이름 추정이 도면을 부품으로 봄)
+  if (i.blueprintId) return null;
   if (i.rigPart) return i.rigPart;
   const sub = i.subCategory ?? '';
   const n = i.name ?? '';
