@@ -519,6 +519,21 @@
     "F-0102"
    ],
    "lane": "q5-security"
+  },
+  {
+   "id": "P-0030",
+   "date": "2026-11-09",
+   "domain": "q1-items",
+   "kind": "적용",
+   "title": "도면 종이를 채비 부품으로 보던 것 막기",
+   "pr": 20,
+   "branch": "harmony/2026-11-09-blueprint-not-rigpart",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0103"
+   ],
+   "lane": "q1-items"
   }
  ]
 }

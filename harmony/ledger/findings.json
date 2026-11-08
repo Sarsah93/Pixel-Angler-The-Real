@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "next_id": 103,
+ "next_id": 104,
  "findings": [
   {
    "id": "F-0001",
@@ -2007,6 +2007,25 @@
    "expected": "사유만 담은 JSON 응답",
    "actual": "스택과 서버 폴더 경로가 든 HTML (400/500)",
    "player_impact": "방을 연 사람의 PC 경로·내부 구조가 같은 방 사람이나 LAN에 보인다. 프로세스는 죽지 않는다."
+  },
+  {
+   "id": "F-0103",
+   "lane": "q1-items",
+   "severity": "경미",
+   "status": "수정안 제출(PR #20)",
+   "first_seen": "2026-11-09",
+   "last_seen": "2026-11-09",
+   "pattern": "BP-03",
+   "title": "도면(설계도 종이) 3종이 이름 때문에 채비 부품(지그헤드 · 카드 채비)으로 분류된다",
+   "evidence": [
+    "packages/client-pc/src/store/RigParts.ts:31"
+   ],
+   "why": "partKindOf가 이름에 「지그헤드」 · 「카드 채비」가 들어 있으면 부품으로 추정하는데 도면은 blueprintId 검사가 없다.",
+   "repro": "하네스: 가방에 inv_bp_jighead를 넣고 partKindOf 호출 → jig_head. 전 상점 353품목 대조표에서 도면 3종만 어긋남.",
+   "expected": "null(채비 부품 아님)",
+   "actual": "jig_head / card_rig",
+   "player_impact": "도면 종이가 채비 창 지그헤드 칸 · 카드 채비 칸 후보에 오를 수 있음",
+   "action": "PR #20"
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."

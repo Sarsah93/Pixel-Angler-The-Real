@@ -55,9 +55,11 @@
     "title": "분류 함수 대조표 — 같은 물건을 모든 판정이 같은 갈래로 보는가",
     "how": "카탈로그 전 아이템 × (subCategory · rigPart · tool · `isBaitItem` · `isPackItem` · `partKindOf` · `RecommendationStore` 판정 · 정리 무리 · 위키 분류) 표를 만들어 서로 어긋나는 행을 찾는다. 미끼 갑 버그(279 · 280)가 이 모양이다",
     "mode": "정적(스크립트)",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-11-09",
+    "result": "발견 1(상점 353품목 partKindOf 대조 — 도면 3종)",
+    "findings": [
+     "F-0103"
+    ]
    },
    {
     "id": "S1-07",
