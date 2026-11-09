@@ -2026,6 +2026,40 @@
    "actual": "jig_head / card_rig",
    "player_impact": "도면 종이가 채비 창 지그헤드 칸 · 카드 채비 칸 후보에 오를 수 있음",
    "action": "PR #20"
+  },
+  {
+   "id": "F-0108",
+   "lane": "q2-art-data",
+   "severity": "경미",
+   "status": "열림",
+   "first_seen": "2026-11-10",
+   "last_seen": "2026-11-10",
+   "pattern": "BP-21",
+   "title": "도움말 상점 문단의 종류 수 · 영업시간이 실제 표와 다르다",
+   "evidence": "packages/client-pc/src/data/HelpContent.ts:891 vs data/ShopCatalog.ts:66-81",
+   "why": "가게 종류(낚시용품점 · 방앗간 · 가공장)와 종묘사 8~19 · 가공장 7~20 영업시간이 도움말에 반영되지 않음",
+   "repro": "HelpContent 상점 문단과 BUILDING_HOURS 대조",
+   "expected": "11종 · 종류별 시간",
+   "actual": "9종 · 나머지 10~22시",
+   "player_impact": "20시에 종묘사를 찾아가면 닫혀 있음",
+   "action": "PR #21"
+  },
+  {
+   "id": "F-0109",
+   "lane": "q2-art-data",
+   "severity": "경미",
+   "status": "열림",
+   "first_seen": "2026-11-10",
+   "last_seen": "2026-11-10",
+   "pattern": "BP-20",
+   "title": "도움말 6문단이 영어 사전에 없어 영어에서 한국어로 나온다",
+   "evidence": "packages/client-pc/src/i18n/en_help.ts (상점 · 줄 바늘 미끼 문단 키가 원문과 어긋남, 산나물 4문단 번역 없음)",
+   "why": "원문만 고치고 번역 키를 안 바꿈 / 새 문단에 번역 미추가",
+   "repro": "HELP_LIBRARY 전 문단 × EN_DICT 키 대조 하네스(728문단 중 6 누락)",
+   "expected": "0 누락",
+   "actual": "6 누락",
+   "player_impact": "영어 설정 도움말에 한국어가 섞임",
+   "action": "PR #21"
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."

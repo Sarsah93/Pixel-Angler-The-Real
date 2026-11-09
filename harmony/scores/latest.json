@@ -1,11 +1,11 @@
 {
- "date": "2026-11-09",
- "audited_commit": "269ca4fe3420b4cc0b7298568b4d8bce7383ee95",
+ "date": "2026-11-10",
+ "audited_commit": "aea7d275d978a2a8df41348b72c20c2d229830bd",
  "summary": {
-  "harmony_index": 68.3,
+  "harmony_index": 68.8,
   "balance": 68.5,
   "weakest": "q5-security",
-  "found_today": 1,
+  "found_today": 2,
   "fixed_today": 0,
   "scoring_version": 2
  },
@@ -24,7 +24,7 @@
     "보통": 4,
     "경미": 1
    },
-   "found_today": 1,
+   "found_today": 0,
    "fixed_today": 0,
    "decisions": {
     "merged": 1,
@@ -35,24 +35,24 @@
   "q2-art-data": {
    "name": "② 그림·데이터·문구 정합",
    "kind": "product",
-   "health": 70.0,
-   "scenarios": 57.1,
+   "health": 66.0,
+   "scenarios": 71.4,
    "agency": null,
-   "overall": 65.2,
+   "overall": 68.0,
    "scenario_total": 7,
-   "scenario_recent": 4,
+   "scenario_recent": 5,
    "open_findings": {
     "심각": 0,
     "보통": 3,
-    "경미": 6
+    "경미": 8
    },
-   "found_today": 0,
+   "found_today": 2,
    "fixed_today": 0,
    "decisions": {
     "merged": 1,
     "closed": 0
    },
-   "open_proposals": 1
+   "open_proposals": 2
   },
   "q3-flow": {
    "name": "③ 플레이 흐름·예외 처리",
@@ -187,5 +187,5 @@
    "open_proposals": 0
   }
  },
- "previous_date": "2026-11-08"
+ "previous_date": "2026-11-09"
 }

@@ -268,3 +268,5 @@
 - 기전: 장면 하단에 키 나열 문구를 붙임(R11). 가이드가 없는 장면(캐릭터 생성 등)에 남기 쉽다.
 - 사례: F-0103 `CharacterCreateScene.ts:341` · F-0032.
 - 훑는 법: `rg "(↑↓|←→|Enter|ESC)\s.*(항목|변경|생성|뒤로)" scenes/`.
+
+**BP-20/21 추가 사례(2026-11-10)**: 도움말 문단을 고치거나 새로 쓰면 `en_help.ts` 키가 어긋남(6/728). 훑는 법: `HELP_LIBRARY` 전 문단 × `EN_DICT` 키 하네스(esbuild 번들 — HelpContent · en.ts는 Phaser 무의존)로 누락 0 확인. 가게 종류가 늘 때 도움말 「상점 N종」 · 영업시간 문장을 `BUILDING_HOURS`와 대조.

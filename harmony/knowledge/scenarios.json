@@ -128,9 +128,12 @@
     "title": "게임 · 도감 · 위키 · 도움말의 이름과 규칙 서술이 같은가",
     "how": "`tools/wiki_items.json` 이름 vs 게임 이름, `HelpContent` 문장 속 수치 vs core 표. 최근 워크로그가 바꾼 규칙이 도움말에 반영됐는지",
     "mode": "정적",
-    "last_run": null,
-    "result": null,
-    "findings": []
+    "last_run": "2026-11-10",
+    "result": "발견 2(도움말 영업시간 · 영어 키 6)",
+    "findings": [
+     "F-0108",
+     "F-0109"
+    ]
    },
    {
     "id": "S2-06",

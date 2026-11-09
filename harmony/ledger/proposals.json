@@ -534,6 +534,22 @@
     "F-0103"
    ],
    "lane": "q1-items"
+  },
+  {
+   "id": "P-0031",
+   "date": "2026-11-10",
+   "domain": "q2-art-data",
+   "kind": "적용",
+   "title": "도움말 가게 영업시간 · 종류 수 바로잡기 + 빠진 영어 번역 6건",
+   "pr": 21,
+   "branch": "harmony/2026-11-10-shop-hours-help",
+   "status": "열림",
+   "decided_at": null,
+   "findings": [
+    "F-0108",
+    "F-0109"
+   ],
+   "lane": "q2-art-data"
   }
  ]
 }
