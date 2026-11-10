@@ -14,6 +14,7 @@
  */
 
 import type { CephByproductId } from '../types/Butchery.js';
+import { BUTCHERY_PROFILES } from './ButcheryProfiles.js';
 
 /** 섹션 완료 시 발생하는 부산물 종류 (클라이언트 팝업/지급 레저가 소비) */
 export type ButcherySectionYield =
@@ -155,6 +156,71 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
       { id: 't_peel_skin', label: '껍질 분리', stageIds: ['peel_insert', 'peel_pull'] },
     ],
     yields: ['skin', 'pureFillet'],
+  },
+];
+
+/**
+ * 313 — **작은 생선** 섹션 트리 (꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑 — 사용자 지정 공정).
+ *  1 손질 및 세척: 비늘 제거 → 머리 · 내장 제거(머리를 자르고 항문 쪽부터 배를 갈라 내장) →
+ *    검은 막 · 혈합육 세척(안쪽 검은 막과 피를 칼로 긁어 흐르는 물에 씻기)
+ *  2 포 뜨기(삼장 뜨기): 1면 · 2면(척추에 칼을 붙여 꼬리 쪽으로 — 윗살 · 아랫살 · 척추뼈 3조각) →
+ *    갈비뼈 제거(얇게 저며 떼기) → 잔뼈 제거(횟감 — 핀셋으로 가시 뽑기) = 완료.
+ *  시메 · 방혈 · 지느러미 · 꼬리 칼집 · 박피는 없다. 잔뼈 · 갈빗대는 가늘어 부산물로 남기지 않는다.
+ *  단계 id는 원형어(`buildButcheryStages`)와 같다 — 공정이 작은 생선이면 거기서 단계를 줄이고 말을 바꾼다.
+ */
+export const SMALL_FISH_SECTIONS: ButcherySectionDef[] = [
+  {
+    id: 'sec_prep', label: '비늘 제거', anyOrder: false,
+    tasks: [
+      { id: 't_descale', label: '비늘 긁어내기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
+    ],
+  },
+  {
+    id: 'sec_gut', label: '머리 · 내장 제거', anyOrder: false,
+    tasks: [
+      { id: 't_head', label: '머리 자르기', stageIds: ['head_base', 'head_flip'], yields: ['head'] },
+      { id: 't_gut', label: '항문 쪽부터 배 갈라 내장 꺼내기', stageIds: ['gut_open', 'gut_scoop'], yields: ['viscera'] },
+    ],
+  },
+  {
+    id: 'sec_vessel', label: '검은 막 · 혈합육 세척', anyOrder: false,
+    tasks: [
+      { id: 't_vessel', label: '검은 막 · 혈합육 긁어내기', stageIds: ['vessel_scrub'] },
+      { id: 't_wash', label: '흐르는 물에 씻기', stageIds: ['gut_wash'] },
+    ],
+  },
+  {
+    id: 'sec_fillet_a', label: '삼장뜨기 — 윗살 (자유 순서)', anyOrder: true,
+    tasks: [
+      { id: 't_fa_back', label: '등쪽 → 척추까지', stageIds: ['fillet_0_score'] },
+      { id: 't_fa_belly', label: '배쪽 → 척추 + 갈비뼈 끊어 분리', stageIds: ['fillet_0_sever', 'fillet_0_ribsever'] },
+    ],
+    yields: ['filletA'],
+  },
+  {
+    id: 'sec_fillet_b', label: '삼장뜨기 — 아랫살 (자유 순서)', anyOrder: true,
+    tasks: [
+      { id: 't_fb_back', label: '등쪽 → 척추까지 + 갈비뼈 끊기', stageIds: ['fillet_1_score', 'fillet_1_score2', 'fillet_1_ribcut'] },
+      { id: 't_fb_belly', label: '꼬리쪽 → 배쪽 분리', stageIds: ['fillet_1_sever', 'fillet_1_bellyribcut'] },
+    ],
+    yields: ['filletB', 'spine'],
+    exitAfter: true,   // ← 윗살 · 아랫살 · 척추뼈 3조각 상태로 종료 가능
+  },
+  {
+    id: 'sec_rib', label: '갈비뼈 제거 (자유 순서)', anyOrder: true,
+    tasks: [
+      { id: 't_rib_a', label: '윗살 갈비뼈 저며 떼기', stageIds: ['rib_a'] },
+      { id: 't_rib_b', label: '아랫살 갈비뼈 저며 떼기', stageIds: ['rib_b'] },
+    ],
+    exitAfter: true,
+  },
+  {
+    id: 'sec_pin', label: '잔뼈 제거 (핀셋)', anyOrder: true,
+    tasks: [
+      { id: 't_pin_a', label: '윗살 잔가시 뽑기', stageIds: ['pin_a'] },
+      { id: 't_pin_b', label: '아랫살 잔가시 뽑기', stageIds: ['pin_b'] },
+    ],
+    // 마지막 섹션 — 끝나면 최종 정산이 순수 필렛을 지급한다(박피 없음)
   },
 ];
 
@@ -364,6 +430,7 @@ export function sectionsForCephalopod(speciesId: string): ButcherySectionDef[] |
   switch (speciesId) {
     // 한치 = 무늬오징어와 같은 공정 공유 (097차 — 부산물·회뜨기 규칙 공통)
     case 'squid': case 'swordtip_squid': case 'flying_squid': return SQUID_SECTIONS;   // 289차 — 살오징어는 한치 트리
+    case 'cuttlefish': return SQUID_SECTIONS;   // 313 — 갑오징어 = 무늬오징어 공정(사용자 「우선 같은 손질 방법」 · 갑 전용 §4.3은 추후)
     case 'octopus': case 'giant_octopus': return OCTOPUS_SECTIONS;
     default: return undefined;
   }
@@ -374,7 +441,10 @@ export function sectionsForCephalopod(speciesId: string): ButcherySectionDef[] |
  * ⚠ `bodyShape`만 보던 구 `sectionsForBodyShape`는 두족류를 어류 트리로 흘린다 — 신규 호출은 이쪽을 쓸 것.
  */
 export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
-  return sectionsForCephalopod(speciesId) ?? sectionsForBodyShape(bodyShape);
+  const ceph = sectionsForCephalopod(speciesId);
+  if (ceph) return ceph;
+  if (BUTCHERY_PROFILES[speciesId]?.tree === 'small') return SMALL_FISH_SECTIONS;   // 313
+  return sectionsForBodyShape(bodyShape);
 }
 
 /**

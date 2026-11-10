@@ -16,6 +16,15 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 | 돔류/방어류 가이드 좌표 | `GUIDE_COORDS: Record<'bream'|'amberjack', GuideCoordSet>` — 시메 tapPoint·방혈·머리 앞/뒤·비늘 스윕·지느러미 3선·꼬리 등 9세트 |
 | 넙치류(광어) | `FLAT_GUIDE` — 시메·방혈·머리 S커브(7점)·비늘 스윕·꼬리·중앙선·상/하 경계 칼길·포 뜨기·내장·엔가와 |
 | 개별 스테이지 컷 | `cut('id', 'ORIENT', [{x,y},…], opts)` 헬퍼 / `tapPoint` / `sweepPath` |
+| **어종별 실측**(313) | `SPECIES_GUIDE_COORDS[어종]`(측면 9항목 — 어종군 세트를 덮는다) · 넙치류 `FLAT_SPECIES_GUIDE[어종]` — **그 어종 그림 위에서 잰 값 그대로**(옮기지 않는다) |
+
+### 313 — 어종 그림 자리로 옮긴 선
+- 도마는 어종 실사 온마리(`SPECIES_WHOLE` 28 · 넙치 `FLAT_SPECIES_SPRITES` 5)를 그리고, 그림은 종횡비대로 도마의 다른 자리에 선다.
+  그래서 측면(넙치는 탑뷰 몸통) 유도선은 **어종군 대표 그림 rect → 어종 그림 rect 비례로 옮겨** 그린다(client `butcherGuideFrame` → core `guideFrame`).
+- 사용자가 어떤 어종에서 F9로 선을 고쳐 보내면 그 값은 **이미 그 어종 그림 위 좌표**다 → `GUIDE_COORDS`(어종군 세트)가 아니라
+  `SPECIES_GUIDE_COORDS[그 어종]`의 같은 항목(`ikejime` · `bleed` · `headBase` · `headFlip` · `scaleBase` · `scaleFlip` · `finectomy` · `tailA` · `tailB`)에 넣는다.
+  어종군 세트를 고치면 그 군 모든 어종이 함께 움직인다(대표 그림 — 감성돔 · 잿방어 · 광어 — 위에서 잰 값일 때만 어종군 세트).
+- 개복 뒤 전용 뷰(복면 · 체강 · 장뜨기 · 필렛 · 엔가와 · 박피) 좌표는 옮기지 않는다 — 어종 실측 표도 없다(어종군 공용 그림).
 
 ## ⚠ 함정 (반복 발생)
 

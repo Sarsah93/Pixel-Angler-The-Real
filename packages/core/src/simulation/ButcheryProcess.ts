@@ -21,6 +21,7 @@ import type {
 } from '../types/Butchery.js';
 import { primitiveInput } from '../types/Butchery.js';
 import { buildCephalopodStages } from '../db-schema/CephalopodStages.js';
+import { butcheryArtFamily } from '../db-schema/ButcheryProfiles.js';
 import { TUNING } from '../config/tuning.js';
 
 /** 0~1 등 범위 클램프 */
@@ -214,12 +215,34 @@ export interface ButcheryStageOptions {
    * 스킵 개체의 껍질(fish_skin) 부산물은 등급 하락(비늘 붙은 껍질 = 식용 불가) 대상.
    */
   skipDescale?: boolean;
+  /**
+   * 313 — **어종 그림 자리로 유도선 옮기기**. 개복 전 측면(넙치류는 탑뷰) 유도선은 어종군 대표 그림
+   * (감성돔 · 잿방어 · 광어) 위에서 F9로 잰 값이다. 도마가 어종 실사 그림(`SPECIES_WHOLE`)을 그리면
+   * 그림이 도마의 다른 자리에 놓이므로(종횡비가 다르다 — 학꽁치 128×10 · 잿방어 128×44), 선을 그 그림으로 옮긴다.
+   *  - `from` = 어종군 대표 그림이 도마에 그려진 rect · `to` = 이 어종 그림 rect (둘 다 도마 정규화 0~1)
+   *  - 옮기는 식은 rect 대 rect 비례(그림 rect 안의 상대 위치를 지킨다) — 해부 위치 차이는 F9 실측이 고친다.
+   *  - 어종 실측(`SPECIES_GUIDE_COORDS`)이 있는 항목은 옮기지 않는다(그 어종 그림 위에서 잰 값이다).
+   * client(`ButcheryPanel`)가 두 그림 크기로 계산해 넘긴다 — core는 그림을 모른다.
+   */
+  guideFrame?: GuideFrameRemap;
 }
 
-/** 방어류(방추형) — 돔류(체고형)와 실루엣이 달라 가이드 좌표를 따로 둔다 */
-const AMBERJACK_GUIDE_SPECIES: ReadonlySet<string> = new Set([
-  'yellowtail', 'amberjack', 'greater_amberjack',
-]);
+/** 313 — 도마 정규화(0~1) rect */
+export interface GuideNormRect { x: number; y: number; w: number; h: number; }
+/** 313 — 어종군 대표 그림 rect → 어종 그림 rect */
+export interface GuideFrameRemap { from: GuideNormRect; to: GuideNormRect; }
+
+/** 313 — 점 하나를 그림 rect 대 rect 비례로 옮긴다 */
+export function remapGuidePoint(p: CutPoint, m: GuideFrameRemap | undefined): CutPoint {
+  if (!m || m.from.w <= 0 || m.from.h <= 0) return p;
+  const r = (v: number): number => Math.round(v * 1000) / 1000;
+  return {
+    x: r(m.to.x + ((p.x - m.from.x) / m.from.w) * m.to.w),
+    y: r(m.to.y + ((p.y - m.from.y) / m.from.h) * m.to.h),
+  };
+}
+const remapPath = (path: CutPoint[], m: GuideFrameRemap | undefined): CutPoint[] =>
+  m ? path.map((p) => remapGuidePoint(p, m)) : path;
 
 /** 어종군별 가이드 좌표 세트 (전부 dev F9 실측 — 도마 rect 정규화) */
 interface GuideCoordSet {
@@ -299,6 +322,35 @@ const GUIDE_COORDS: Record<'bream' | 'amberjack', GuideCoordSet> = {
     tailB: [{ x: 0.247, y: 0.464 }, { x: 0.245, y: 0.651 }],
   },
 };
+
+/**
+ * 313 — **어종별 유도선 실측**(dev F9 — 그 어종 그림 위에서 잰 도마 정규화 좌표).
+ * 항목이 있으면 어종군 세트(`GUIDE_COORDS`)를 옮긴 값 대신 이 값을 그대로 쓴다(옮기지 않는다).
+ * 사용자가 F9로 어종마다 맞춘 선을 [복사]해 보내면 여기에 넣는다(스킬 `f9-guide-coords`).
+ * 넙치류는 `FLAT_SPECIES_GUIDE`.
+ */
+const SPECIES_GUIDE_COORDS: Partial<Record<string, Partial<GuideCoordSet>>> = {
+  // 예) sea_bass: { headBase: [{ x: 0.27, y: 0.24 }, { x: 0.31, y: 0.80 }] },
+};
+
+/** 어종군 세트 + 어종 실측 + 그림 자리 옮기기 → 이 어종의 측면 유도선 세트 */
+function resolveGuideSet(speciesId: string, m: GuideFrameRemap | undefined): GuideCoordSet {
+  const base = GUIDE_COORDS[butcheryArtFamily(speciesId) === 'amberjack' ? 'amberjack' : 'bream'];
+  const own = SPECIES_GUIDE_COORDS[speciesId] ?? {};
+  return {
+    ikejime: own.ikejime ?? remapGuidePoint(base.ikejime, m),
+    bleed: own.bleed ?? remapPath(base.bleed, m),
+    headBase: own.headBase ?? remapPath(base.headBase, m),
+    headFlip: own.headFlip ?? remapPath(base.headFlip, m),
+    scaleBase: own.scaleBase ?? remapPath(base.scaleBase, m),
+    scaleFlip: own.scaleFlip ?? remapPath(base.scaleFlip, m),
+    finectomy: own.finectomy ?? [
+      remapPath(base.finectomy[0], m), remapPath(base.finectomy[1], m), remapPath(base.finectomy[2], m),
+    ],
+    tailA: own.tailA ?? remapPath(base.tailA, m),
+    tailB: own.tailB ?? remapPath(base.tailB, m),
+  };
+}
 
 /**
  * 넙치류(flat) 다섯장뜨기 가이드 좌표 — 도마 rect 정규화 (근사 기본값, dev F9 실측 예정).
@@ -402,6 +454,24 @@ const FLAT_GUIDE = {
   ],
 };
 
+/** 넙치류 유도선 세트 형 — 탑뷰(도마 위 생선) 항목만 그림 자리로 옮긴다(엔가와 = 필렛 슬랩 위라 그대로) */
+type FlatGuideSet = typeof FLAT_GUIDE;
+/** 넙치류 그림 위에서 잰 키 — 탑뷰 몸통 위 선 */
+const FLAT_BODY_KEYS = [
+  'bleed', 'headScut', 'scaleSweepBase', 'scaleSweepFlip', 'tail', 'center',
+  'upScore', 'upSep1', 'upSep2', 'dnScore', 'dnSep1', 'dnSep2',
+] as const;
+/** 313 — 넙치류 어종별 F9 실측(그 어종 그림 위 도마 정규화). 있으면 옮기지 않고 그대로 쓴다 */
+const FLAT_SPECIES_GUIDE: Partial<Record<string, Partial<FlatGuideSet>>> = {
+  // 예) tonguefish: { headScut: [...] },
+};
+function resolveFlatGuide(speciesId: string, m: GuideFrameRemap | undefined): FlatGuideSet {
+  const own = FLAT_SPECIES_GUIDE[speciesId] ?? {};
+  const out: FlatGuideSet = { ...FLAT_GUIDE, ikejime: own.ikejime ?? remapGuidePoint(FLAT_GUIDE.ikejime, m) };
+  for (const k of FLAT_BODY_KEYS) out[k] = own[k] ?? remapPath(FLAT_GUIDE[k], m);
+  return out;
+}
+
 /**
  * 넙치류(광어·도다리) **다섯장뜨기** 스테이지 트리 (사용자 순서도 2026-08-05 · 공정 재정의 2026-08-06):
  *  시메 → 방혈 → [머리 S자 절단(**내장 동반 배출**) / 비늘치기 — 자유] (지느러미 제거 없음) →
@@ -410,7 +480,7 @@ const FLAT_GUIDE = {
  *  = 필렛 4장 + 중골(뼈 프레임) = 5장. **척추뼈 끊기·내장 제거 스테이지 없음**.
  */
 function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions): ButcheryStage[] {
-  const F = FLAT_GUIDE;
+  const F = resolveFlatGuide(profile.speciesId, opts?.guideFrame);
   const stages: ButcheryStage[] = [];
 
   stages.push({
@@ -566,7 +636,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   // 넙치류 = 다섯장뜨기 전용 트리 (2026-08-05 — 원형어 삼면뜨기와 구조가 다르다)
   if (profile.bodyShape === 'flat') return buildFlatStages(profile, opts);
   const stages: ButcheryStage[] = [];
-  const G = GUIDE_COORDS[AMBERJACK_GUIDE_SPECIES.has(profile.speciesId) ? 'amberjack' : 'bream'];
+  // 313 — 어종군은 core `butcheryArtFamily` 한 곳(301 고등어 · 전갱이 · 삼치는 그림은 잿방어인데 선은 돔류였다)
+  //  + 어종 F9 실측 + 어종 그림 자리로 옮기기
+  const G = resolveGuideSet(profile.speciesId, opts?.guideFrame);
 
   // 1. 시메 — 눈 뒤 뇌 지점 탭 (활어→즉살, 선도 유지)
   stages.push({
@@ -822,7 +894,73 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     ],
   });
 
-  return stages;
+  return profile.tree === 'small' ? toSmallFishStages(stages) : stages;
+}
+
+/**
+ * 313 — **작은 생선 공정**(사용자 지정 — 꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑):
+ *  비늘 제거 → 머리 · 내장 제거 → 검은 막 · 혈합육 세척 → 삼장뜨기 → 갈비뼈 제거 → 잔뼈 뽑기(핀셋).
+ * 원형어 단계 목록에서 시메 · 방혈 · 지느러미 · 꼬리 칼집 · 박피를 빼고, 말을 작은 생선 손질로 바꾼다.
+ * 잔뼈는 칼이 아니라 **핀셋**이라 칼선(guided_cut)이 아니라 잔가시 줄을 훑는 문지르기(drag_fill)다.
+ * 단계 id는 그대로 둔다 — 도마 그림 · 부산물 · 재장착이 같은 id로 돈다(`SMALL_FISH_SECTIONS`).
+ */
+const SMALL_FISH_DROP = new Set([
+  'ikejime', 'bleed_cut', 'bleed_ice', 'finectomy', 'tail_grip', 'tail_grip_b',
+  'peel_grip', 'peel_insert', 'peel_pull',
+]);
+function toSmallFishStages(stages: ButcheryStage[]): ButcheryStage[] {
+  const out: ButcheryStage[] = [];
+  for (const st of stages) {
+    if (SMALL_FISH_DROP.has(st.id)) continue;
+    switch (st.id) {
+      case 'scale_base':
+        out.push({ ...st, label: '비늘 제거 (앞면)', guide: '칼등으로 꼬리에서 머리 쪽으로 가볍게 긁어 비늘을 벗기세요' });
+        break;
+      case 'scale_flip':
+        out.push({ ...st, label: '비늘 제거 (뒷면)', guide: '뒤집어 반대면 비늘도 가볍게 긁어내세요' });
+        break;
+      case 'head_base':
+        out.push({ ...st, label: '머리 자르기 (앞면)', guide: '가슴지느러미 뒤에서 머리를 자르세요' });
+        break;
+      case 'head_flip':
+        out.push({ ...st, label: '머리 자르기 (뒷면 → 분리)', guide: '뒤집어 같은 자리를 자르면 머리가 떨어집니다' });
+        break;
+      case 'gut_open':
+        out.push({ ...st, label: '배 가르기 (항문 → 머리 쪽)', guide: '항문 쪽에서부터 배를 살짝 가르세요' });
+        break;
+      case 'gut_scoop':
+        out.push({ ...st, label: '내장 꺼내기', guide: '가른 배 안의 내장을 긁어 꺼내세요' });
+        break;
+      case 'vessel_scrub':
+        out.push({ ...st, label: '검은 막 · 혈합육 긁어내기', guide: '내장 자리 안쪽의 검은 막과 혈합육(피)을 칼로 깨끗이 긁어내세요' });
+        break;
+      case 'gut_wash':
+        out.push({ ...st, label: '흐르는 물에 씻기', guide: '긁어낸 자리를 흐르는 물에 깨끗이 씻으세요' });
+        break;
+      case 'rib_a':
+        out.push({ ...st, label: '갈비뼈 제거 (윗살)', guide: '포 뜬 살에 붙은 얇은 갈비뼈를 칼로 저며 떼어내세요' });
+        break;
+      case 'rib_b':
+        out.push({ ...st, label: '갈비뼈 제거 (아랫살)', guide: '반대쪽 살의 갈비뼈도 얇게 저며 떼어내세요' });
+        break;
+      case 'pin_a': case 'pin_b': {
+        const a = st.id === 'pin_a';
+        // 잔가시 줄(살 가운데)을 머리 쪽에서 꼬리 쪽으로 훑으며 하나씩 뽑는다
+        out.push({
+          id: st.id, orientation: st.orientation, primitive: 'drag_fill',
+          label: a ? '잔뼈 뽑기 — 핀셋 (윗살)' : '잔뼈 뽑기 — 핀셋 (아랫살)',
+          guide: a ? '살 가운데 잔가시 줄을 따라 핀셋으로 가시를 하나씩 뽑으세요'
+            : '반대쪽 살의 잔가시도 핀셋으로 뽑으세요',
+          fillTarget: 0.9,
+          sweepPath: [{ x: 0.82, y: 0.5 }, { x: 0.66, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.34, y: 0.5 }, { x: 0.2, y: 0.5 }],
+        });
+        break;
+      }
+      default:
+        out.push(st);
+    }
+  }
+  return out;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -868,6 +1006,8 @@ export class ButcheryProcess {
     this.cephalopod = !!ceph;
     this.stages = ceph ?? buildButcheryStages(profile, opts);
     if (ceph) this.orientation = ceph[0].orientation;
+    // 313 — 작은 생선 공정은 시메 · 방혈이 없다(공정에 없는 것은 「해당 없음」 — 등급을 깎지 않는다)
+    if (!ceph && profile.tree === 'small') { this._ikejime = true; this._bled = true; }
     this.resetStageCounters();
   }
 

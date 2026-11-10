@@ -105,6 +105,51 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     scaleToughness: 0.55, anusRatio: 0.5, skinToughness: 0.52, bloodAmount: 0.45, filletCount: 2,
     baseYieldRate: 0.38, sliceGramBase: 10, minFilletLengthCm: 22, bodyRatio: 0.44, filletShape: 'small',
   },
+  // 313 — 열기(불볼락) · 볼락류 셋째(방어류 흐름 · 작고 머리 큰 저수율)
+  red_snapper_rockfish: {
+    speciesId: 'red_snapper_rockfish', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.5, anusRatio: 0.5, skinToughness: 0.48, bloodAmount: 0.45, filletCount: 2,
+    baseYieldRate: 0.36, sliceGramBase: 9, minFilletLengthCm: 18, bodyRatio: 0.38, filletShape: 'small',
+  },
+
+  // ── 313 돔류 트리(체고형 소형) — 망상어 · 용치놀래기(사용자 「돔류쪽 손질 트리」) ──
+  surfperch: {
+    speciesId: 'surfperch', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.45, anusRatio: 0.52, skinToughness: 0.42, bloodAmount: 0.45, filletCount: 2,
+    baseYieldRate: 0.36, sliceGramBase: 8, minFilletLengthCm: 16, bodyRatio: 0.45, filletShape: 'small',
+  },
+  rainbow_wrasse: {
+    speciesId: 'rainbow_wrasse', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.4, anusRatio: 0.5, skinToughness: 0.4, bloodAmount: 0.4, filletCount: 2,
+    baseYieldRate: 0.34, sliceGramBase: 7, minFilletLengthCm: 14, bodyRatio: 0.26, filletShape: 'small',
+  },
+
+  // ── 313 작은 생선 공정(`tree: 'small'`) — 비늘 → 머리 · 내장 → 검은 막 · 혈합육 → 삼장뜨기 → 갈비뼈 · 잔뼈(핀셋) ──
+  pacific_saury: {
+    speciesId: 'pacific_saury', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.15, anusRatio: 0.62, skinToughness: 0.3, bloodAmount: 0.6, filletCount: 2,
+    baseYieldRate: 0.46, sliceGramBase: 7, minFilletLengthCm: 20, bodyRatio: 0.12, filletShape: 'small',
+  },
+  halfbeak: {
+    speciesId: 'halfbeak', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.15, anusRatio: 0.62, skinToughness: 0.3, bloodAmount: 0.35, filletCount: 2,
+    baseYieldRate: 0.40, sliceGramBase: 5, minFilletLengthCm: 18, bodyRatio: 0.09, filletShape: 'small',
+  },
+  round_herring: {
+    speciesId: 'round_herring', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.2, anusRatio: 0.55, skinToughness: 0.3, bloodAmount: 0.55, filletCount: 2,
+    baseYieldRate: 0.42, sliceGramBase: 6, minFilletLengthCm: 12, bodyRatio: 0.20, filletShape: 'small',
+  },
+  northern_whiting: {
+    speciesId: 'northern_whiting', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.3, anusRatio: 0.52, skinToughness: 0.32, bloodAmount: 0.35, filletCount: 2,
+    baseYieldRate: 0.40, sliceGramBase: 6, minFilletLengthCm: 14, bodyRatio: 0.18, filletShape: 'small',
+  },
+  yellowfin_goby: {
+    speciesId: 'yellowfin_goby', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.25, anusRatio: 0.48, skinToughness: 0.32, bloodAmount: 0.4, filletCount: 2,
+    baseYieldRate: 0.36, sliceGramBase: 6, minFilletLengthCm: 12, bodyRatio: 0.20, filletShape: 'small',
+  },
   filefish: {
     speciesId: 'filefish', bodyShape: 'round', hasScales: false,
     scaleToughness: 0.1, anusRatio: 0.55, skinToughness: 0.85, bloodAmount: 0.35, filletCount: 2,
@@ -157,6 +202,12 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     scaleToughness: 0.45, anusRatio: 0.42, skinToughness: 0.68, bloodAmount: 0.4, filletCount: 4,
     baseYieldRate: 0.43, sliceGramBase: 9, minFilletLengthCm: 22, bodyRatio: 0.6, filletShape: 'flat_wide',
   },
+  // 313 — 개서대(참서대류 · 사용자 「광어 손질 트리」) — 길쭉한 납작어라 살이 얇고 엔가와가 좁다
+  tonguefish: {
+    speciesId: 'tonguefish', bodyShape: 'flat', hasScales: true,
+    scaleToughness: 0.5, anusRatio: 0.38, skinToughness: 0.72, bloodAmount: 0.35, filletCount: 4,
+    baseYieldRate: 0.42, sliceGramBase: 8, minFilletLengthCm: 22, bodyRatio: 0.34, filletShape: 'flat_wide',
+  },
 };
 
 /** 미등록 어종 폴백 — 원형어 표준값 */
@@ -173,28 +224,64 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
 /**
  * 손질 미니게임이 **현재 구현된** 어종 (2026-07-30 사용자 지시 — 우선 이 그룹만 활성):
  *  - 돔류(bream): 감성돔·참돔(주/야)·벵에돔·긴꼬리벵에돔·돌돔·강담돔
+ *    313 — 망상어 · 용치놀래기도 돔류 트리(사용자 「돔류쪽 손질 트리 · 감성돔 그림으로 하면 안 됨」 — 각자 그림)
  *  - 방어류: 방어·부시리·잿방어 (손질 절차 동일 — 픽셀 가이드는 잿방어 형태 기준)
  *    300 D — **고등어**도 이 흐름이다(사용자 지시 「방어류와 동일하게 손질 — 계통상 작은 방어」 · 프로필 `chub_mackerel` 25cm부터)
- *  - 넙치류(flat): 광어·도다리류 — **다섯장뜨기** 전용 트리 (2026-08-05 개방)
- * 그 외 finfish(농어·고등어 등)·두족류·복어는 미구현(banned) — 추후 별도 구현.
+ *    313 — 몸통이 둥근 농어 · 우럭 · 볼락류 셋 · 숭어 · 가숭어도 이 흐름(사용자 「기존 흐름 그대로 · 그림은 각자 어종」)
+ *  - 작은 생선(313 · `tree: 'small'`): 꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑 — 비늘 → 머리 · 내장 → 검은 막 → 삼장뜨기 → 갈비뼈 · 잔뼈
+ *  - 넙치류(flat): 광어·도다리류 — **다섯장뜨기** 전용 트리 (2026-08-05 개방) · 313 개서대
+ * 그 외 finfish(장어류 · 참다랑어 등)·복어는 미구현(banned) — 추후 별도 구현.
  */
 export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>([
   // 돔류
   'black_seabream', 'red_seabream', 'night_seabream',
   'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw',
+  'surfperch', 'rainbow_wrasse',   // 313 — 망상어 · 용치놀래기(돔류 트리)
   // 방어류
   'yellowtail', 'amberjack', 'greater_amberjack',
   'chub_mackerel',   // 300 D — 고등어(방어류 흐름)
   'horse_mackerel', 'spanish_mackerel',   // 301 — 전갱이 · 삼치(사용자 「방어류 회뜨기로 우선 적용」 — 같은 흐름 · 전갱이는 작은 필렛 · 삼치는 두툼한 로인)
+  // 313 — 몸통이 둥근 어종(방어류 흐름 · 각자 그림)
+  'sea_bass', 'black_rockfish', 'blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish',
+  'striped_mullet', 'redlip_mullet',
+  // 313 — 작은 생선 공정
+  'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
+  'tonguefish',   // 313 — 개서대(광어 트리)
 ]);
+
+/**
+ * 313 — 손질 도마 **어종군**(유도선 좌표 세트 · 개복 뒤 공용 그림 · 부산물 아이콘) 단일 출처.
+ *  - `amberjack` = 방추형(잿방어 그림 · 방어류 유도선) — 방어류 · 고등어 · 전갱이 · 삼치 · 농어 · 우럭 · 볼락 · 숭어 · 작은 생선
+ *  - `bream` = 체고형(감성돔 그림 · 돔류 유도선) — 돔류 · 망상어 · 용치놀래기 · 그 밖 기본값
+ *  - `halibut` = 넙치류(광어 탑뷰 · 다섯장뜨기 유도선)
+ * client `butcherFamilyOf`가 이것을 그대로 읽는다 — 어종군 표를 두 곳에 두지 않는다(301 고등어 · 삼치는
+ * client만 방어류로 그리고 core는 돔류 유도선을 내 선이 그림과 어긋났다).
+ */
+export type ButcheryArtFamily = 'amberjack' | 'bream' | 'halibut';
+
+const AMBERJACK_ART_SPECIES: ReadonlySet<string> = new Set<string>([
+  'yellowtail', 'amberjack', 'greater_amberjack', 'chub_mackerel', 'horse_mackerel', 'spanish_mackerel',
+  'sea_bass', 'black_rockfish', 'blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish',
+  'striped_mullet', 'redlip_mullet',
+  'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
+]);
+
+export function butcheryArtFamily(speciesId: string): ButcheryArtFamily {
+  if (AMBERJACK_ART_SPECIES.has(speciesId)) return 'amberjack';
+  if (BUTCHERY_PROFILES[speciesId]?.bodyShape === 'flat') return 'halibut';
+  return 'bream';
+}
+
+/** 313 — 방어류 3종(잿방어 그림의 원본 어종) — 개복 뒤 공용 그림을 어종 색으로 물들이지 않는다 */
+export const BUTCHERY_NATIVE_ART_SPECIES: ReadonlySet<string> = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack']);
 
 /**
  * 어종의 손질 형태 분류.
  *  - 복어류: speciesId에 'puffer' 포함(복섬/참복/까치복) — 자격·독 제거 필요(스텁)
  *  - 두족류: 오라클 egiOnly 플래그(오징어/문어/갑오징어) — 별도 손질 트리(스텁)
- *  - finfish: **BUTCHERY_IMPLEMENTED_SPECIES(돔류+방어류)만** = 삼면/다섯장뜨기 (FSM 구현)
+ *  - finfish: **BUTCHERY_IMPLEMENTED_SPECIES만** = 삼면 · 작은 생선 · 다섯장뜨기 (FSM 구현)
  *  - 그 외(넙치류 등 미구현): unsupported (banned — 추후 구현)
  */
 export function getButcheryFamily(speciesId: string): ButcheryFamily {
@@ -210,9 +297,10 @@ export function getButcheryFamily(speciesId: string): ButcheryFamily {
 export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, string> = {
   // 188차 — 097차에 한치·참문어·대문어 트리가 열렸는데 문구가 87차(무늬오징어만)에 멈춰 있었다.
   //   지금 이 안내가 뜨는 두족류는 갑오징어뿐이다(AG ⑤f).
-  cephalopod: '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)',
+  //   313 — 갑오징어도 무늬오징어 공정으로 열려 지금 이 안내가 뜨는 두족류는 없다(새 두족류가 생기면 쓴다).
+  cephalopod: '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '아직 손질할 수 없는 어종입니다 (현재 돔류·방어류·고등어·전갱이·삼치·넙치류 지원 — 그 외는 추후 구현)',
+  unsupported: '아직 손질할 수 없는 어종입니다 (장어류 · 참다랑어 · 쥐치류 등은 추후 구현)',
 };
 
 /**

@@ -228,7 +228,9 @@ export function buildCephalopodStages(speciesId: string): ButcheryStage[] | unde
     case 'flying_squid': return buildSquidStages();   // 289차 — 살오징어(몸통이 길쭉한 오징어 — 한치와 같은 손질)
     // 참문어·대문어 = 칼 없는 8스테이지 (097차 — 스펙 §4.4 기반 축약)
     case 'octopus': case 'giant_octopus': return buildOctopusStages();
-    // TODO: cuttlefish 13 (§4.3 — 갑 들어내기·속껍질. 날개살 미지급 규칙 적용할 것)
+    // 313 — 갑오징어 = **무늬오징어 트리 공유**(사용자 「무늬오징어와 같은 손질방법으로 우선 적용」).
+    //  TODO: 갑오징어 전용 13단계(§4.3 — 갑 들어내기 · 속껍질 · 날개살 미지급)는 실사 확보 뒤 분화
+    case 'cuttlefish': return buildSquidStages();
     default: return undefined;
   }
 }

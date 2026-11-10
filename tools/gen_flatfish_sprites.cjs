@@ -6,8 +6,12 @@
  *  ② HALIBUT_WHITE — 배면(흰 면) 파생: 실루엣 테두리(지느러미 프린지)는 갈색 톤 유지,
  *     안쪽 몸통은 원본 명암을 3단 크림색으로 리매핑 (사용자 캡처 3 — 흰 뱃면 + 갈색 프린지)
  *
+ * 313 — 넙치류 어종마다 같은 방식으로 굽는다(사용자 「손질되는 이미지는 각자 어종의 이미지로」):
+ *  문치가자미 · 도다리 · 강도다리 · 개서대 → `FLAT_SPECIES_SPRITES[id] = { dark, white }`.
+ *  광어는 그대로 `HALIBUT_DARK` · `HALIBUT_WHITE`(기존 심볼 유지 — 유도선 기준 그림)이고 표에도 들어간다.
+ *
  * 출력: packages/client-pc/src/data/PixelFishFlat.ts (자동 생성 — 수동 편집 금지)
- * 재생성: node tools/gen_flatfish_sprites.cjs (Playwright + 설치 Chrome)
+ * 재생성: node tools/gen_flatfish_sprites.cjs (Playwright + 설치 Chrome — 없으면 사전 설치 Chromium)
  */
 const fs = require('fs');
 const path = require('path');
@@ -15,6 +19,7 @@ const path = require('path');
 // playwright 해석 — 로컬 설치 → npx 캐시(_npx/<hash>/node_modules) 순 (사용자 계정 무관)
 function resolvePlaywright() {
   try { return require('playwright'); } catch { /* npx 캐시 탐색 */ }
+  try { return require('/opt/node-tools/node_modules/playwright'); } catch { /* 원격 컨테이너 사전 설치본 */ }
   const base = path.join(process.env.LOCALAPPDATA || '', 'npm-cache', '_npx');
   for (const d of fs.existsSync(base) ? fs.readdirSync(base) : []) {
     const p = path.join(base, d, 'node_modules', 'playwright');
@@ -25,7 +30,15 @@ function resolvePlaywright() {
 const { chromium } = resolvePlaywright();
 
 const ROOT = path.resolve(__dirname, '..');
-const SRC = path.join(ROOT, 'food assets', 'fish', 'halibut.png');
+const FISH_DIR = path.join(ROOT, 'food assets', 'fish');
+/** 넙치류 → 원본(전부 머리 왼쪽 · 눈 있는 면) — `sym` = 생성 TS 심볼 접두 */
+const SPECIES = [
+  { id: 'flatfish',        sym: 'HALIBUT',         file: 'halibut.png' },
+  { id: 'flounder',        sym: 'FLOUNDER',        file: 'flounder.png' },          // 문치가자미
+  { id: 'frog_flounder',   sym: 'FROG_FLOUNDER',   file: 'frog_flounder.png' },     // 도다리
+  { id: 'starry_flounder', sym: 'STARRY_FLOUNDER', file: 'starry_flounder.png' },   // 강도다리
+  { id: 'tonguefish',      sym: 'TONGUEFISH',      file: 'robust_tonguefish.png' }, // 개서대
+];
 const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'PixelFishFlat.ts');
 
 const TARGET_W = 100;         // 도마 프레임(560×210) 기준 셀 3 → 300px 폭
@@ -33,9 +46,11 @@ const MAX_COLORS = 44;
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 (async () => {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const browser = await chromium.launch({ channel: 'chrome', headless: true }).catch(() => chromium.launch({ headless: true }));
   const page = await browser.newPage();
-  const b64 = fs.readFileSync(SRC).toString('base64');
+  const baked = [];
+  for (const sp of SPECIES) {
+  const b64 = fs.readFileSync(path.join(FISH_DIR, sp.file)).toString('base64');
   const grid = await page.evaluate(async ({ b64: data, targetW }) => {
     const img = new Image();
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = 'data:image/png;base64,' + data; });
@@ -82,7 +97,6 @@ const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
     }
     return { w, h, cells };
   }, { b64, targetW: TARGET_W });
-  await browser.close();
 
   const { w, h, cells } = grid;
 
@@ -149,22 +163,33 @@ const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
     return [222, 214, 200];
   }));
   const white = quantize(whiteCells);
+  baked.push({ ...sp, w, h, dark, white });
+  console.log(`  · ${sp.id.padEnd(16)} ${w}x${h} · dark ${dark.palette.length}색 / white ${white.palette.length}색`);
+  }
+  await browser.close();
 
-  const fmt = (name, q) => `export const ${name}: PixelFishSprite = {\n  w: ${w}, h: ${h}, cellPx: ${Math.round(1536 / w)},\n  palette: [${q.palette.map((p) => '0x' + p.toString(16).padStart(6, '0')).join(', ')}],\n  rows: [\n${q.rows.map((r) => `    '${r}',`).join('\n')}\n  ],\n};\n`;
+  const fmt = (name, b, q) => `${name === 'HALIBUT_DARK' || name === 'HALIBUT_WHITE' ? 'export ' : ''}const ${name}: PixelFishSprite = {\n  w: ${b.w}, h: ${b.h}, cellPx: ${Math.round(1536 / b.w)},\n  palette: [${q.palette.map((p) => '0x' + p.toString(16).padStart(6, '0')).join(', ')}],\n  rows: [\n${q.rows.map((r) => `    '${r}',`).join('\n')}\n  ],\n};\n`;
 
+  const body = baked.map((b) => fmt(`${b.sym}_DARK`, b, b.dark) + '\n' + fmt(`${b.sym}_WHITE`, b, b.white)).join('\n');
+  const map = baked.map((b) => `  ${b.id}: { dark: ${b.sym}_DARK, white: ${b.sym}_WHITE },`).join('\n');
   const ts = `/**
  * @file PixelFishFlat.ts
- * @description 넙치류(광어) 도마 픽셀 스프라이트 — **자동 생성 (수동 편집 금지)**
+ * @description 넙치류 도마 픽셀 스프라이트 — **자동 생성 (수동 편집 금지)**
  *
- * 소스: food assets/fish/halibut.png (선명 픽셀아트 — 머리 왼쪽·등면)
+ * 소스: food assets/fish/{halibut · flounder · frog_flounder · starry_flounder · robust_tonguefish}.png (머리 왼쪽 · 눈 있는 면)
  * 재생성: node tools/gen_flatfish_sprites.cjs
- *  - HALIBUT_DARK  = 등면(눈 있는 어두운 면)
- *  - HALIBUT_WHITE = 배면(흰 면 — 프린지 갈색 톤 유지) 파생
+ *  - *_DARK  = 등면(눈 있는 어두운 면)
+ *  - *_WHITE = 배면(흰 면 — 프린지 갈색 톤 유지) 파생
+ *  - HALIBUT_* = 광어(넙치류 유도선을 잰 기준 그림)
  */
 import type { PixelFishSprite } from './PixelFishSprites.js';
 
-${fmt('HALIBUT_DARK', dark)}
-${fmt('HALIBUT_WHITE', white)}`;
+${body}
+/** 313 — 넙치류 어종 id → 등면 · 배면 (없으면 광어로 폴백) */
+export const FLAT_SPECIES_SPRITES: Record<string, { dark: PixelFishSprite; white: PixelFishSprite }> = {
+${map}
+};
+`;
   fs.writeFileSync(OUT_TS, ts);
-  console.log(`[gen_flatfish] ${w}x${h} · dark ${dark.palette.length}색 / white ${white.palette.length}색 -> ${OUT_TS}`);
+  console.log(`[gen_flatfish] ${baked.length}종 -> ${OUT_TS}`);
 })();

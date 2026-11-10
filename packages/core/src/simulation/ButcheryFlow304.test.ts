@@ -16,7 +16,7 @@ import { primitiveInput } from '../types/Butchery.js';
 import type { ButcheryOrientation } from '../types/Butchery.js';
 import type { CutPoint } from '../types/Butchery.js';
 
-const CEPHALOPODS = ['squid', 'swordtip_squid', 'flying_squid', 'octopus', 'giant_octopus'];
+const CEPHALOPODS = ['squid', 'swordtip_squid', 'flying_squid', 'cuttlefish', 'octopus', 'giant_octopus'];   // 313 — 갑오징어(무늬오징어 공정)
 const ALL = [...BUTCHERY_IMPLEMENTED_SPECIES, ...CEPHALOPODS];
 const FLIPPABLE = new Set<ButcheryOrientation>(['BASE', 'FLIP', 'BELLY_UP', 'BACK_DOWN']);
 

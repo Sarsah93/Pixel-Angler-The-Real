@@ -27,7 +27,8 @@ PNG만 바꾸면 되는지, 생성기를 돌려야 하는지부터 판별한다:
 |---|---|---|---|
 | `pixelize_butchery.cjs` | `food assets/butchery/*.png` (**파일명 = 키**) | `data/PixelFishStages.ts` | 손질 단계 실사 → 도트 (누끼 BFS + 128폭 다운샘플 + 44색) |
 | `gen_sashimi_fillet.cjs` | `food assets/trimmings/{fam}/pure_pillet_*` 등 (FAMILIES 배열) | `public/sashimi/fillet_{top,side}_{fam}.png` + `piece_{fam}.png` + `SashimiFilletProfiles.ts` | 회썰기 필렛 3뷰 |
-| `gen_flatfish_sprites.cjs` | `food assets/fish/halibut.png` | `data/PixelFishFlat.ts` | 광어 도마 온마리 (등면 + 배면 파생) |
+| `gen_flatfish_sprites.cjs` | `food assets/fish/{halibut · flounder · frog_flounder · starry_flounder · robust_tonguefish}.png` | `data/PixelFishFlat.ts` | 넙치류 도마 온마리 (등면 + 배면 파생 — 313 어종 5 · `FLAT_SPECIES_SPRITES` · 광어 `HALIBUT_*` 그대로) |
+| `gen_species_sprites.cjs` | `food assets/fish/*.png`(표 `SPECIES` — 원본 · `mirror`) | `data/PixelFishSpecies.ts` | 도마 **어종별 온마리**(313 — 28키 · 손질되는 어종 전부). 다시 굽기 전 `--preview`로 머리 방향 확인(원본이 바뀌면 방향도 바뀐다 — 긴꼬리 313) · 유도선은 그림 자리로 옮겨지므로 재측정 불요 |
 | `fish_cards.cjs` (246) | `food assets/fish/*.png` · 표 `FishTextures.ts` `FISH_IMAGE_FILES` | `public/fish/<파일>`(카드 · 410×166 안) · `public/fish/icon/<파일>`(64px) | 어종 그림 게임판 — Playwright 불필요(순수 Node). `--check` = 표 ↔ 원본 ↔ 출력 대조 |
 | `gen_butchery_views.cjs` | (파라메트릭 — 입력 없음) | `data/PixelFishViews.ts` | 복면/체강/장뜨기 뷰 |
 | `gen_octo_assets.cjs` | `reference/cephalopod/octopus/` 투명 PNG 4종 + `octo_clean` 도트 | `public/trimmings/octo_boiled{,_head,_leg}.png` · `public/sashimi/piece_octopus.png` · `public/trimmings/octo_whole.png` | 삶은 문어 계열 직접 로드 아이콘 (098차) |
@@ -249,6 +250,8 @@ node tools/fish_cards.cjs --check                 # 표 ↔ 원본 ↔ 출력 �
 - 면적 평균이 알파를 문턱(0.3 · 0.85)으로 굳혀, 원본의 전면 알파 252~253 · 유령 픽셀이 카드에서 사라진다(원본은 그대로).
 - 도마 스냅숏(`gen_species_sprites.cjs` · `gen_flatfish_sprites.cjs`)은 원본(`food assets/fish/`)을 읽는다 — **이 컨테이너 크로뮴으로 돌리면 사용자 PC 크롬과 픽셀이 달라진다**
   (246 실측 — 벵에돔 64줄). 다시 굽기는 사용자 PC에서, 컨테이너에서는 데이터 diff를 되돌린다.
+  313 — 원본이 그대로인 어종(참돔 · 벵에돔 · 방어 3 · 광어)은 컨테이너 크로뮴에서도 **바이트 동일**이었다. 새 어종을 더하려면 컨테이너에서 구워도 된다 —
+  기존 어종이 달라지면 먼저 원본이 바뀌었는지(`--preview` 시트 ↔ 어획 카드) 본다(313 감성돔 · 긴꼬리 · 돌돔 둘 · 강담돔 = 원본이 바뀌어 있었다 · 긴꼬리는 방향까지).
 
 **사진 없는 어종 → Gemini**(`tools/gemini_fish_art.cjs` · 작물 ⑥과 같은 키 · `NODE_USE_ENV_PROXY=1`):
 

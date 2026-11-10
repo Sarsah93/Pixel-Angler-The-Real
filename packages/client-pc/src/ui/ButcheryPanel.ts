@@ -25,7 +25,7 @@ import {
   guideCutByKey,
   WHOLE_FISH_SECTIONS, sectionsForSpecies, resolveButcherySections, ButcherySectionDef, ButcherySectionYield,
   primitiveInput, CEPH_BYPRODUCTS, cephByproductIcon, CephByproductId, getCephalopodProfile,
-  GRADE_XP_MULT,
+  GRADE_XP_MULT, BUTCHERY_NATIVE_ART_SPECIES,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { cv, cvCss, shapeCuesOn } from './ColorAssist.js';
@@ -35,7 +35,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf } from './PixelButcherFish.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame } from './PixelButcherFish.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 import {
   drawCephalopodFish, CephFishState, CEPH_VIEW_LABEL, cephStageSprite, cephFitRect,
@@ -343,7 +343,11 @@ export class ButcheryPanel extends DraggablePanel {
     this.cbs = cbs;
 
     const speciesId = source.speciesId ?? this.guessSpecies(source);
-    this.process = new ButcheryProcess(getButcheryProfile(speciesId), this.freshnessFactor(source));
+    // 313 — 도마가 어종 실사 그림을 그리면 측면 유도선을 그 그림 자리로 옮긴다(core `guideFrame`)
+    this.process = new ButcheryProcess(getButcheryProfile(speciesId), this.freshnessFactor(source), {
+      guideFrame: butcherGuideFrame(speciesId, { lengthCm: source.lengthCm, sex: source.sex },
+        ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0),
+    });
     // 체형별 섹션 트리 — 넙치류(flat)는 다섯장뜨기 (2026-08-05)
     // 두족류는 전용 섹션 트리(스테이지 1개 = 작업 1개·순서 강제) — 어종 우선 판정 (87차)
     // 304차 — 트리를 이 공정에 있는 단계로 줄인다(비늘 없는 고등어 = 밑손질에 비늘치기 없음).
@@ -1531,6 +1535,24 @@ export class ButcheryPanel extends DraggablePanel {
     if (n.includes('강담돔')) return 'spotted_knifejaw';
     if (n.includes('전갱이')) return 'horse_mackerel';
     if (n.includes('삼치')) return 'spanish_mackerel';   // 301
+    // 313 — 새로 손질되는 어종(긴 이름을 먼저 — 학꽁치 ⊃ 꽁치 · 가숭어 ⊃ 숭어 · 강도다리 ⊃ 도다리)
+    if (n.includes('우럭') || n.includes('조피볼락')) return 'black_rockfish';
+    if (n.includes('청볼락')) return 'blue_rockfish';
+    if (n.includes('황볼락')) return 'golden_rockfish';
+    if (n.includes('열기') || n.includes('불볼락')) return 'red_snapper_rockfish';
+    if (n.includes('가숭어')) return 'redlip_mullet';
+    if (n.includes('숭어')) return 'striped_mullet';
+    if (n.includes('망상어')) return 'surfperch';
+    if (n.includes('용치놀래기')) return 'rainbow_wrasse';
+    if (n.includes('학꽁치')) return 'halfbeak';
+    if (n.includes('꽁치')) return 'pacific_saury';
+    if (n.includes('눈퉁멸')) return 'round_herring';
+    if (n.includes('보리멸')) return 'northern_whiting';
+    if (n.includes('문절망둑')) return 'yellowfin_goby';
+    if (n.includes('개서대')) return 'tonguefish';
+    if (n.includes('강도다리')) return 'starry_flounder';
+    if (n.includes('도다리')) return 'frog_flounder';
+    if (n.includes('문치가자미')) return 'flounder';
     return 'black_seabream';
   }
 
@@ -4066,7 +4088,13 @@ export class ButcheryPanel extends DraggablePanel {
   private trimHeadKey(speciesId: string): string {
     const fam = this.trimFamily(speciesId);
     const base = `trim_head_${fam}`;
-    if (fam !== 'bream') return base;   // 방어류/넙치류 = 실색 에셋 그대로
+    if (fam === 'amberjack' && !BUTCHERY_NATIVE_ART_SPECIES.has(speciesId)) {
+      // 313 — 방어류 흐름의 다른 어종(농어 · 우럭 · 숭어 · 고등어 · 작은 생선) = 잿방어 머리를 어종 색으로
+      const key = `trimhead_${speciesId}`;
+      this.bakeTintedTrim(base, key, this.blendColor(0xffffff, getFishColors(speciesId).body, 0.45), false);
+      return this.scene.textures.exists(key) ? key : base;
+    }
+    if (fam !== 'bream') return base;   // 방어류 원본 3종/넙치류 = 실색 에셋 그대로
     const HEAD_MULT: Record<string, { mult: number; stripes?: boolean }> = {
       black_seabream: { mult: 0xffffff },                    // 감성돔 — 원본
       red_seabream: { mult: 0xff7a55 },                      // 참돔 — 붉은 발색
@@ -4089,9 +4117,10 @@ export class ButcheryPanel extends DraggablePanel {
     // 넙치류 — 순수 필렛 전용 에셋 미제작: 엔가와 제거 필렛(껍질 면이 안 보이는 탑뷰)으로 대용
     if (fam === 'halibut') return 'trim_fillet_skinonly_halibut';
     const base = `trim_fillet_${fam}`;
-    if (fam === 'amberjack') return base;   // 방어류 = 잿방어 로인 실색 그대로
+    if (fam === 'amberjack' && BUTCHERY_NATIVE_ART_SPECIES.has(speciesId)) return base;   // 방어류 3종 = 잿방어 로인 실색 그대로
     const body = getFishColors(speciesId).body;
-    const key = `trimfillet_${body.toString(16)}`;
+    // 313 — 방어류 흐름의 다른 어종은 잿방어 로인을 어종 색으로(돔류 키와 갈라 둔다 — 같은 색이라도 바탕이 다르다)
+    const key = fam === 'amberjack' ? `trimfillet_aj_${body.toString(16)}` : `trimfillet_${body.toString(16)}`;
     this.bakeTintedTrim(base, key, this.blendColor(0xffffff, body, 0.26), false);
     return this.scene.textures.exists(key) ? key : base;
   }

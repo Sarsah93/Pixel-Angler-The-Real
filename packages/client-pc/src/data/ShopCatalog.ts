@@ -10,7 +10,7 @@
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
 import { reelArtKey, rodArtKey } from './TackleTextures.js';
-import { COOK_CORNER } from './CookItems.js';
+import { COOK_CORNER, COOK_SEASONINGS, COOK_STOVE_KIT, COOK_POT_CAMP } from './CookItems.js';
 import { dailyFarmEntries, nurseryFarmEntries, PRODUCE_SUB } from './CropItems.js';
 import { PROCESSED_SUB } from './ProcessedItems.js';   // 295차
 import { millShopEntries } from './MillItems.js';
@@ -46,13 +46,13 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
 export const BUILDING_GOODS: Record<BuildingKind, string> = {
   market: '미끼 · 채비 · 줄 · 잡은 고기 매입',
   mart: '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러',
-  daily: '낚싯대 · 릴 · 원줄 · 손도구 · 가구',
+  daily: '낚싯대 · 릴 · 원줄 · 손도구 · 가구 · 캠핑 요리 도구 · 양념',
   nursery: '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약',
   mill: '기름 짜기 · 들깨 갈기 · 참깨 볶기 · 곡물 봉투',
   processor: '이 고장 특산 가공 — 맡기기 · 찾기',
   tackle: '미끼 · 루어 · 에기 · 원줄 · 입문 대 · 릴 · 헤드랜턴',
   hardware: '철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑',
-  convenience: '간식 · 생수 · 각얼음 · 상비약',
+  convenience: '간식 · 생수 · 각얼음 · 상비약 · 휴대용 스토브 · 부탄 · 양념',
   pharmacy: '붕대 · 구급품 · 약',
   restaurant: '식사 · 매운탕 · 회',
   cafe: '커피 · 음료',
@@ -489,6 +489,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       KNIFE_UTILITY, KNIFE_SASHIMI,
       // 309차 — 사시미 접시 소 · 중은 편의점도 판다(24시간 — 밤에도 회를 담을 수 있게)
       ...SASHIMI_PLATES.filter((e) => e.id === 'inv_plate_s' || e.id === 'inv_plate_m'),
+      // 313차 — 휴대용 스토브 · 부탄 캐니스터 · 양념(24시간 — 밤에도 밖에서 요리할 수 있게)
+      ...COOK_STOVE_KIT, ...COOK_SEASONINGS,
     ],
   },
   mart: {
@@ -679,6 +681,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       ...SAISO_BASIC_RIG,
       ...SASHIMI_PLATES,   // 309차 — 접시(밤에도 살 수 있게)
       ...CRAFT_LIFE_MATS, MAT_CLOTH,   // 310차 — 생활 제작 재료(철사 · 목재 · 에폭시 · 도료 · 무명천 — 밤에도)
+      // 313차 — 캠핑 요리 한 벌(휴대용 스토브 · 부탄 캐니스터 · 코펠 냄비 · 양념)
+      ...COOK_STOVE_KIT, ...COOK_POT_CAMP, ...COOK_SEASONINGS,
       // 189차 — 집 화분(나중에는 텃밭)에 물을 준다. 손에 들고 화분 앞에서 [F]
       { id: 'inv_watering_can', name: '물뿌리개', icon: '', iconTexture: 'art_watering_can', category: 'gear', subCategory: '손도구',
         basePrice: 6000, price: 6000, maxPerPurchase: 1, equippable: true, tool: 'watering_can',

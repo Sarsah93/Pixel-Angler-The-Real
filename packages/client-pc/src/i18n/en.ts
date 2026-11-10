@@ -135,7 +135,9 @@ const EN_BASE: Record<string, string> = {
   '미끼 · 채비 · 줄 · 잡은 고기 매입': 'Bait · rigs · line · buys your catch',
   '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러': 'Groceries · seasoning · cookware · chum · coolers',
   '낚싯대 · 릴 · 원줄 · 손도구 · 가구': 'Rods · reels · main line · hand tools · furniture',
+  '낚싯대 · 릴 · 원줄 · 손도구 · 가구 · 캠핑 요리 도구 · 양념': 'Rods · reels · main line · hand tools · furniture · camp cooking gear · seasonings',   // 313차
   '간식 · 생수 · 각얼음 · 상비약': 'Snacks · water · ice · basic medicine',
+  '간식 · 생수 · 각얼음 · 상비약 · 휴대용 스토브 · 부탄 · 양념': 'Snacks · water · ice · basic medicine · portable stove · butane · seasonings',   // 313차
   '붕대 · 구급품 · 약': 'Bandages · first aid · medicine',
   '식사 · 매운탕 · 회': 'Meals · spicy fish stew · sashimi',
   '커피 · 음료': 'Coffee · drinks',
@@ -595,10 +597,9 @@ const EN_EXTRA: Record<string, string> = {
   '집 앞바다': 'The sea by home',
   '저장되지 않은 진행이 있습니다 — ESC를 한 번 더 누르면 타이틀로 나갑니다':
     'You have unsaved progress — press ESC again to go to the title screen',
-  '· 오징어·한치·문어도 도마에서 손질합니다 — 복어(자격·독)와 갑오징어는 준비 중입니다':
-    '· Squid, swordtip squid and octopus can be dressed on the board too — pufferfish (licence and toxin) and cuttlefish are still in progress.',
-  '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)':
-    'Cuttlefish dressing is still in progress (bigfin reef squid, swordtip squid, octopus and giant octopus can be dressed)',
+  '· 오징어·한치·갑오징어·문어도 도마에서 손질합니다 — 복어(자격·독)·장어류·참다랑어는 준비 중입니다':
+    '· Squid, swordtip squid, cuttlefish and octopus can be dressed on the board too — pufferfish (licence and toxin), eels and bluefin tuna are still in progress.',
+  '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)': 'Butchering this cephalopod is coming soon (bigfin reef squid, swordtip squid, flying squid, cuttlefish, common and giant octopus can be butchered)',
   '불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': 'You warmed up by the fire — the chills have passed',
   '[상태] 불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': '[Status] You warmed up by the fire — the chills have passed',
   '새 지역': 'a new region',

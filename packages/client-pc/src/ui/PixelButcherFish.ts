@@ -12,12 +12,13 @@
  */
 
 import Phaser from 'phaser';
-import type { OrientationState } from '@tra/core';
+import type { OrientationState, GuideFrameRemap } from '@tra/core';
+import { butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES } from '@tra/core';
 import {
   PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET,
   FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
 } from '../data/PixelFishSprites.js';
-import { HALIBUT_DARK, HALIBUT_WHITE } from '../data/PixelFishFlat.js';
+import { HALIBUT_DARK, HALIBUT_WHITE, FLAT_SPECIES_SPRITES } from '../data/PixelFishFlat.js';
 import { SPECIES_WHOLE } from '../data/PixelFishSpecies.js';
 import { isStripelessMale } from '../data/FishTextures.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
@@ -161,50 +162,78 @@ export interface ButcherSpriteSet {
   flatWhite?: PixelFishSprite;
 }
 
-/** 방어류 — 300 D: 고등어도 같은 흐름(작은 방어 — 전용 온마리 도트가 없으니 잿방어 형태 · 어종 실사 온마리가 생기면 `SPECIES_WHOLE`이 우선한다) */
-// 300 D 고등어 · 301 전갱이 · 삼치 — 방어류 흐름(core `BUTCHERY_IMPLEMENTED_SPECIES`와 함께 더한다)
-const AMBERJACK_SPECIES = new Set<string>(['yellowtail', 'amberjack', 'greater_amberjack', 'chub_mackerel', 'horse_mackerel', 'spanish_mackerel']);
-/** 넙치류 (다섯장뜨기 — 광어 형태 공유. 2026-08-05) */
-const FLAT_SPECIES = new Set<string>(['flatfish', 'flounder', 'frog_flounder', 'starry_flounder']);
-
 /**
  * 어종 → 손질/회썰기 스프라이트 어종군 ('amberjack' = 방어류 / 'halibut' = 넙치류 / 'bream' = 돔류·기본).
  * SashimiPanel·UtilizationPanel 조각 아이콘/필렛 뷰 선택도 이 판정을 공유한다 (중복 셋 금지).
+ * 313 — 판정 표는 core `butcheryArtFamily` 한 곳이다(유도선 세트와 같은 표 — 301 고등어 · 삼치는 그림만 방어류였다).
  */
 export function butcherFamilyOf(speciesId: string): 'amberjack' | 'bream' | 'halibut' {
-  if (AMBERJACK_SPECIES.has(speciesId)) return 'amberjack';
-  if (FLAT_SPECIES.has(speciesId)) return 'halibut';
-  return 'bream';
+  return butcheryArtFamily(speciesId);
+}
+
+/** 어종 실사 온마리 키 — 개체 조건으로 외형이 갈리는 어종(돌돔 30cm↑ 수컷 · 313 용치놀래기 수컷)은 전용 키 */
+function speciesWholeKey(speciesId: string, indiv?: ButcherIndividual): string {
+  if (isStripelessMale(speciesId, indiv?.lengthCm ?? 0, indiv?.sex ?? 'F')) return `${speciesId}_male`;
+  if (speciesId === 'rainbow_wrasse' && indiv?.sex === 'M') return 'rainbow_wrasse_male';   // 어획 카드와 같은 규칙
+  return speciesId;
 }
 
 /**
- * 어종별 도마 스프라이트 세트 — 방어류(방어/부시리/잿방어)는 잿방어 형태(방추형 실색),
- * 넙치류(광어·도다리)는 광어 탑뷰(등면/배면 — halibut.png 추출), 그 외는 감성돔 가이드 형태.
+ * 어종별 도마 스프라이트 세트 — 방어류 흐름은 잿방어 형태(방추형), 넙치류는 광어 탑뷰(등면/배면),
+ * 그 외는 감성돔 가이드 형태. **어종 실사 온마리가 있으면 개복 전 그림은 그 어종 그림**이다(87 · 313).
+ * 개복 뒤 전용 뷰(복면 · 체강 · 장뜨기 · 필렛)는 어종군 공용 그림 — 원본 어종(방어류 3 · 돔류 가이드군)이
+ * 아니면 어종 색으로 약하게 물들인다.
  */
 export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual): ButcherSpriteSet {
-  // 어종 실사에서 구운 온마리 (87차) — 있으면 어종군 대표 스프라이트 대신 쓴다.
-  //  돌돔처럼 개체 조건(체장·성별)으로 외형이 갈리는 어종은 전용 키로 분기 (어획 팝업과 동일 규칙)
-  const key = isStripelessMale(speciesId, indiv?.lengthCm ?? 0, indiv?.sex ?? 'F')
-    ? `${speciesId}_male` : speciesId;
-  const own = SPECIES_WHOLE[key] ?? SPECIES_WHOLE[speciesId];
-  if (AMBERJACK_SPECIES.has(speciesId)) {
+  const own = SPECIES_WHOLE[speciesWholeKey(speciesId, indiv)] ?? SPECIES_WHOLE[speciesId];
+  const fam = butcherFamilyOf(speciesId);
+  if (fam === 'amberjack') {
     return {
       whole: own ?? FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET,
-      nativeColor: true, wholeNative: !!own, familyKey: 'amberjack',
+      // 313 — 잿방어 공용 그림의 원본 어종(방어 · 부시리 · 잿방어)만 무틴트. 농어 · 우럭 · 숭어 · 작은 생선은 어종 색
+      nativeColor: BUTCHERY_NATIVE_ART_SPECIES.has(speciesId), wholeNative: !!own, familyKey: 'amberjack',
     };
   }
-  if (FLAT_SPECIES.has(speciesId)) {
+  if (fam === 'halibut') {
+    // 313 — 넙치류도 어종마다 등면 · 배면을 굽는다(`FLAT_SPECIES_SPRITES` — 광어 = HALIBUT_*)
+    const flat = FLAT_SPECIES_SPRITES[speciesId];
     return {
-      whole: HALIBUT_DARK, dressed: HALIBUT_DARK, fillet: FISH_FILLET,
-      // 광어 = 실색 그대로 / 도다리류 = 어종 색 약한 틴트
-      nativeColor: speciesId === 'flatfish',
-      familyKey: 'halibut', flat: true, flatWhite: HALIBUT_WHITE,
+      whole: flat?.dark ?? HALIBUT_DARK, dressed: flat?.dark ?? HALIBUT_DARK, fillet: FISH_FILLET,
+      // 어종 그림이 있으면 실색 그대로 / 없으면(새 넙치류) 광어 그림에 어종 색 약한 틴트
+      nativeColor: !!flat || speciesId === 'flatfish',
+      wholeNative: !!flat,
+      familyKey: 'halibut', flat: true, flatWhite: flat?.white ?? HALIBUT_WHITE,
     };
   }
   return {
     whole: own ?? FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET,
     nativeColor: false, wholeNative: !!own, familyKey: 'bream',
   };
+}
+
+/** 어종군 대표 온마리 — 유도선(core `GUIDE_COORDS` · `FLAT_GUIDE`)을 F9로 잰 기준 그림 */
+function familyReferenceWhole(fam: 'amberjack' | 'bream' | 'halibut'): PixelFishSprite {
+  return fam === 'amberjack' ? FISH_WHOLE_AMBERJACK : fam === 'halibut' ? HALIBUT_DARK : FISH_WHOLE;
+}
+
+/**
+ * 313 — **어종 그림 자리로 유도선 옮기기**(core `ButcheryStageOptions.guideFrame`).
+ * 어종군 대표 그림과 이 어종 그림이 도마(boardW × boardH)에 그려지는 rect를 도마 정규화(0~1)로 돌려준다.
+ * 두 그림이 같은 자리면(방어 · 부시리 · 잿방어 · 광어 · 어종 그림 없음) undefined — 옮길 것이 없다.
+ * 프레임은 `computeFishFrame`(도마가 실제로 그리는 식)과 같은 식이라 선이 그림에 그대로 얹힌다.
+ */
+export function butcherGuideFrame(
+  speciesId: string, indiv: ButcherIndividual | undefined, boardW: number, boardH: number,
+): GuideFrameRemap | undefined {
+  const sprites = butcherSpritesFor(speciesId, indiv);
+  const ref = familyReferenceWhole(sprites.familyKey);
+  const geom = { x: 0, y: 0, w: boardW, h: boardH };
+  const a = computeFishFrame(ref, geom), b = computeFishFrame(sprites.whole, geom);
+  if (a.ox === b.ox && a.oy === b.oy && a.dw === b.dw && a.dh === b.dh) return undefined;
+  const norm = (f: PixelFishFrame): { x: number; y: number; w: number; h: number } => ({
+    x: f.ox / boardW, y: f.oy / boardH, w: f.dw / boardW, h: f.dh / boardH,
+  });
+  return { from: norm(a), to: norm(b) };
 }
 
 /**
@@ -940,7 +969,9 @@ export function drawPixelButcherFish(
    * 그리고 **없어진 부위 영역만 지운다** → 어떤 순서로 해도 좌표가 불변.
    * 개복(gutted) 이후는 전용 뷰(복면/체강/장뜨기)가 담당하므로 기존 동작 유지.
    */
-  const useBaseFrame = !filletView && (o === 'BASE' || o === 'FLIP') && !state.gutted;
+  // 313 — 어종 실사 온마리가 있으면 개복 뒤 측면(꼬리 칼집)도 그 그림 + 지운 영역으로 그린다
+  //  (측면에서는 배 가른 자리가 안 보인다 — 어종군 공용 `{fam}_gutted`로 바꾸면 잿방어 · 감성돔으로 돌아간다)
+  const useBaseFrame = !filletView && (o === 'BASE' || o === 'FLIP') && (!state.gutted || !!sprites.wholeNative);
   const spr = filletView ? sprites.fillet
     : useBaseFrame ? sprites.whole : bodySpriteFor(sprites, state);
   const frame = useBaseFrame ? computeFishFrame(sprites.whole, geom) : undefined;

@@ -199,7 +199,9 @@ export {
 export {
   BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES, canButcherSpecies,
+  butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES,   // 313 — 도마 어종군 단일 출처
 } from './db-schema/ButcheryProfiles.js';
+export type { ButcheryArtFamily } from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
 export {
   SASHIMI_MODES, SASHIMI_SIZE_BOUNDS, sashimiSizeTier, sashimiGradeFromQuality, buildSashimiCutPaths,
@@ -210,12 +212,13 @@ export type { SashimiMode, SashimiModeSpec, SashimiSizeTier } from './db-schema/
 export type { SashimiGradeInput } from './simulation/ButcheryProcess.js';
 export {
   ButcheryProcess, evaluateCut, computeSashimiGrade, buildButcheryStages, computeFilletYield,
+  remapGuidePoint,   // 313 — 어종 그림 자리로 유도선 옮기기
 } from './simulation/ButcheryProcess.js';
-export type { ButcheryStageOptions } from './simulation/ButcheryProcess.js';
+export type { ButcheryStageOptions, GuideNormRect, GuideFrameRemap } from './simulation/ButcheryProcess.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
 export {
-  WHOLE_FISH_SECTIONS, FLAT_FISH_SECTIONS, SQUID_SECTIONS,
+  WHOLE_FISH_SECTIONS, FLAT_FISH_SECTIONS, SQUID_SECTIONS, SMALL_FISH_SECTIONS,
   sectionsForBodyShape, sectionsForCephalopod, sectionsForSpecies, findTaskOfStage,
   resolveButcherySections,   // 304차 — 공정에 있는 단계로 줄인 트리
 } from './db-schema/ButcherySections.js';
