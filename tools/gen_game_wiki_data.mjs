@@ -252,7 +252,7 @@ const SHORE_GROUP = {
   crustacean: ['crustacean', '십각류'], shellfish: ['crustacean', '만각류'],
   cephalopod: ['cephalopod', '팔완·십완류'], echinoderm: ['other', '극피동물'],
   annelid: ['other', '갯지렁이류'],   // 224차
-  wild_green: ['other', '산나물'],   // 299차 — 산자락에서 뜯고 캐고 꺾는다
+  // 314차 — 산나물(wild_green)은 어종 · 수산생물 탭이 아니라 「농작물 › 산나물」(`wildGreens`)로 간다(사용자 지적)
 };
 // 224차 — 사는 모양 → 잡는 법(채집 손놀림 놀이)
 const BEHAVIOR_KO = {
@@ -345,8 +345,10 @@ const regionalRulesKo = (s) => Object.keys(s.regional ?? {}).map((k) => {
   if (r.minLegalSizeCm) parts.push(`${r.minLegalSizeCm} cm 이하 방류`);
   return `${label} — ${parts.join(' · ')}`;
 }).join(' / ');
+/** 314차 — 산자락 산나물(채집) — 「농작물」 탭 「산나물」 갈래. 텃밭 작물 카드와 서로 잇는다(`cropId` · 작물의 `wildId`) */
+const wildGreens = [];
 for (const s of core.SHORE_CREATURE_DATABASE) {
-  const [group, subgroup] = SHORE_GROUP[s.category] ?? ['other', s.category];
+  const [group, subgroup] = s.category === 'wild_green' ? ['wild', '산나물'] : (SHORE_GROUP[s.category] ?? ['other', s.category]);
   // 170차 — 같은 생물이 어종 DB와 채집 DB에 둘 다 있으면(돌문어) **카드를 두 장 만들지 않는다**.
   //   학명으로 붙여 잡는 방법만 한 줄 덧붙인다 — 사용자 지적 "두족류 분류에서 '문어'는 없애고,
   //   해루질 가능한 문어는 돌문어야".
@@ -359,8 +361,14 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
     }
     continue;
   }
-  speciesList.push({
+  const wildHow = s.category === 'wild_green' ? core.forageBehaviorOf(s) : null;
+  (wildHow ? wildGreens : speciesList).push({
     id: s.id, group, subgroup,
+    ...(wildHow ? {
+      how: wildHow, howLabel: BEHAVIOR_KO[wildHow] ?? '산나물',
+      months: core.monthRangeKo([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((m) => !(s.absentMonths ?? []).includes(m))),
+      harvestItemId: s.harvestItemId ?? null, cropId: null,
+    } : {}),
     name: s.nameKo, nameEn: s.nameEn, scientific: s.scientificName,
     // 299차 — 산나물은 작물 초상 · 311차 — 쑥(약초)은 작물이 아니라 약초 아이템 그림(`art_herb`)
     ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : s.harvestItemId && imgOf(`px:${s.harvestItemId}`) ? [{ src: imgOf(`px:${s.harvestItemId}`), label: '' }]
@@ -436,7 +444,7 @@ const ITEM_SHELVES = [
     { id: 'trap', label: '통발 · 해루질 · 받침', test: (c, s) => c === 'etc' && ['통발', '해루질 도구', '낚시도구'].includes(s) },
     { id: 'care', label: '장비 관리 · 보냉', test: (c, s) => c === 'consumable' && ['스프레이/오일', '장비 수리', '보냉'].includes(s) },
   ] },
-  { id: 'food', label: '먹을거리', note: '상점에서 사는 식자재 · 양념 · 파는 음식과 잡은 고기입니다. 텃밭에서 거둔 농산물은 「농사」 탭에 있습니다.', groups: [
+  { id: 'food', label: '먹을거리', note: '상점에서 사는 식자재 · 양념 · 파는 음식과 잡은 고기입니다. 텃밭에서 거둔 농산물은 「농작물」 탭에 있습니다.', groups: [
     { id: 'ing', label: '식자재', test: (c, s) => c === 'food' && s === '식자재' },
     { id: 'season', label: '양념', test: (c, s) => c === 'consumable' && ['양념', '조미/손질'].includes(s) },
     { id: 'meal', label: '파는 음식', test: (c, s) => c === 'food' && ['가공품', '보양식'].includes(s) },
@@ -773,6 +781,17 @@ const rules = [
       ['칼', '편의점(24시간) = 막칼 · 회칼(사시미) · 생활용품점 사이소 = 보급형 야나기바(65,000원) · 장인 야나기바 + 초보 기본 채비 한 벌(목줄 2호 · 감성돔 바늘 · 고리 · 구멍봉돌 3호 · 좁쌀봉돌 · 핀 도래 · 구멍찌 0.8호) · 식자재마트(10~22시) = 막칼 · 회칼 · 장인 · 장인 단조'],
       ['생선 값', '식용 어획물은 한 마리 1,000원 밑으로 내려가지 않는다(상점에 팔 때도 — 보통 500 · 나쁨 100 · 부패 0). 꽁치 kg 단가는 원양 냉동 경락 밴드(5,000)에서 국내 생물 · 냉동 도매(8,000)로 — 25cm 꽁치 1,000원 · 45cm 약 3,000원'],
       ['참다랑어 어종군', '참다랑어는 잡어 폴백(2.2)이 아니라 전용 군 「참치류」(5.0)로 싸운다 — 방어류(5.5)와 체형은 같지만 체급이 커서 체중당 힘은 조금 낮고, 대신 오래 달린다(부분 온혈). 평균 25kg 개체가 줄에 거는 힘은 약 134kg(합사 15호급) — 가게 줄(합사 1호)로는 못 올린다. 희귀도는 우량부터'],
+    ],
+  },
+  {
+    id: 'wild_greens_tab_314', round: 314, hidden: false, title: '「농작물」 탭 · 산나물은 산나물끼리',
+    lede: '산자락에서 캐는 산나물이 어종 · 수산생물 사이에 섞여 있던 것을 갈랐다. 위키는 「농사」 탭이 「농작물」이 되고 그 안에서 작물 · 산나물로 나뉜다. 게임 도감(N)에도 「산나물」 탭이 생겼다.',
+    rows: [
+      ['위키 「농작물」', '윗단 두 갈래 — 작물(텃밭 · 집 안 선반에서 기르는 86종과 농산물 · 씨앗 · 모종 · 농자재) / 산나물(산자락에서 뜯고 캐고 꺾는 아홉 — 곰취 · 산마늘 · 눈개승마 · 부지깽이 · 어수리 · 두릅 · 곤드레 · 엄나무순 · 쑥)'],
+      ['산나물 카드', '자라는 곳 · 나는 달 · 보이는 때 · 거두는 법 · 나는 고장 · 거두면 — 금어기 · 조명 · 미끼처럼 바다 생물 줄은 없다. 텃밭에서도 기르는 여덟은 그 작물 카드로 건너가고, 작물 카드에서도 산나물로 돌아온다'],
+      ['작물 쪽 이름', '텃밭에서 기르는 산나물 갈래는 「텃밭 산나물」'],
+      ['어종 · 수산생물', '물고기 · 두족류 · 조개 · 갑각류 · 극피 · 자포동물만(86)'],
+      ['게임 도감(N)', '탭 일곱 — 어종 도감 · 해양생물 · 산나물 · 아이템 · 요리 · 특산 · 나의 조과 기록. 해양생물 탭은 바다 생물 22, 산나물 탭은 아홉(손놀림 · kg당 값 · 나는 달 · 발견 줄 · 못 본 것은 실루엣과 「주간 · 산자락」)'],
     ],
   },
   {
@@ -1279,7 +1298,7 @@ const guide = {
 // ─────────────────────────────────────────────
 const CROP_CAT_KO = {
   leaf: '잎채소', fruit: '열매채소', root: '뿌리채소', tuber: '덩이', bulb: '마늘 · 파', grain: '곡식', legume: '콩',
-  wild: '산나물', herb: '향채', mushroom: '버섯', sprout: '시루 · 새싹',
+  wild: '텃밭 산나물', herb: '향채', mushroom: '버섯', sprout: '시루 · 새싹',   // 314차 — 「산나물」은 농작물 탭 윗단(산자락 채집)이 쓴다
 };
 const CROP_RARITY_KO = { common: '흔하다', uncommon: '드물다', rare: '귀하다', very_rare: '아주 귀하다' };
 const WATER_KO = { low: '적게', mid: '보통', high: '많이' };
@@ -1514,7 +1533,20 @@ for (const sp of farmSupplies) farmByItem[sp.id] = { supply: sp.id, role: 'suppl
 for (const fc of farmCrops) if (fc.harvest.pack) for (const sfx of ['', '_sp', '_nm']) farmByItem[fc.harvest.pack.itemId + sfx] = { crop: fc.id, role: 'pack' };
 // 241차 — 조각(나눈 것)도 작물로 잇는다
 for (const fc of farmCrops) for (const r of fc.rawEat) if (r.pieces) farmByItem[r.pieces.id] = { crop: fc.id, role: 'piece' };
+// 314차 — 산나물(채집) ↔ 텃밭 산나물(작물) 서로 잇기: 거두는 물건이 같다(곰취 = `crop_gomchwi`)
+for (const w of wildGreens) {
+  const crop = w.harvestItemId ? farmCrops.find((c) => c.harvest.itemId === w.harvestItemId) : null;
+  if (!crop) continue;
+  w.cropId = crop.id; w.cropName = crop.name;
+  crop.wildId = w.id; crop.wildName = w.name;
+}
 const farming = {
+  // 314차 — 「농작물」 탭 윗단 「산나물」 — 산자락에서 뜯고 캐고 꺾는 것(캡처의 아홉)
+  wild: {
+    groups: [['leaf', '잎 뜯기'], ['root', '뿌리 캐기'], ['shoot', '새순 꺾기']]
+      .map(([id, label]) => ({ id, label, count: wildGreens.filter((w) => w.how === id).length })).filter((g) => g.count > 0),
+    list: wildGreens,
+  },
   groups: Object.entries(CROP_CAT_KO).map(([id, label]) => ({ id, label, count: farmCrops.filter((c) => c.cat === id).length })).filter((g) => g.count > 0),
   tiers: [1, 2, 3, 4].map((t) => ({ id: String(t), label: core.CROP_TIER_KO[t], level: core.FARM_TUNING.tierLevels[t - 1], license: t >= core.FARM_TUNING.certTier ? licenseKo(core.FARM_TUNING.certLicense) : '' })),
   crops: farmCrops, supplies: farmSupplies, byItem: farmByItem,
@@ -1841,7 +1873,7 @@ const out = {
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
 const used = new Set();
 for (const r of recipes) { if (r.img) used.add(r.img); for (const v of r.variants) if (v.img) used.add(v.img); }
-for (const s of speciesList) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }
+for (const s of [...speciesList, ...wildGreens]) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }   // 314차 — 산나물 그림도
 for (const i of items) if (i.img) used.add(i.img);
 for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }

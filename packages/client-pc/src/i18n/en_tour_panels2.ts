@@ -136,8 +136,8 @@ export const EN_TOUR_PANELS2: Record<string, string> = {
     'Hold the mouse button and drag along the glowing line to the end to make the cut. Washing or ice-water steps use the button on the right or Enter.',
 
   // ── 도감 (tour 'codex') ──
-  '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 아이템 · 요리 · 특산 · 내 조과 기록을 넘겨 본다.':
-    'Everything you catch or come across is recorded in this codex. Use the tabs at the top to browse fish · sea life · items · dishes · specialties · your catch log.',
+  '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 산나물 · 아이템 · 요리 · 특산 · 내 조과 기록을 넘겨 본다.':
+    'Everything you catch or come across is recorded in this codex. Use the tabs at the top to browse fish · sea life · wild greens · items · dishes · specialties · your catch log.',
   '처음 잡거나 만난 것부터 카드가 채워진다. 오른쪽 위에 지금까지 몇 종을 만났는지 나온다.':
     'Cards fill in as you catch or meet things for the first time. The top right shows how many species you have found so far.',
   '「나의 조과 기록」을 눌러 보자.': 'Click "My Catch Log".',

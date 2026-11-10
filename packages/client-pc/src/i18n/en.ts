@@ -514,6 +514,7 @@ const EN_BASE: Record<string, string> = {
 
   // ── 도감 ──
   '나가기': 'Exit', '어종 도감': 'Fish Codex', '아이템 위키': 'Item Wiki', '특산': 'Specialties', '나의 조과 기록': 'My Catch Log', '이미지 없음': 'No image', '제철 연중': 'In season all year', '낚시 기록 없음': 'No catch record', '표층': 'Surface',
+  '잎을 뜯는다': 'Pluck the leaves', '뿌리를 캔다': 'Dig up the root', '새순을 꺾는다': 'Snap off the shoots',   // 314차
   '금어기 없음': 'No closed season', '주야': 'Day/Night', '출조지 필터:': 'Spot filter:', '전체': 'All', '정렬 방식:': 'Sort:', '최신순': 'Newest', '최대어순': 'Largest', '무게순': 'Heaviest', '기록된 조과 정보가 없습니다.': 'No catches recorded.',
   '이 카테고리에 등록된 품목이 없습니다.': 'No items in this category.', '조개류': 'Shellfish', '갑각류': 'Crustaceans', '극피동물': 'Echinoderms', '이매패류': 'Bivalves', '복족류': 'Gastropods',
   '도감 & 조과첩 (Angler\'s Log)': "Codex & Angler's Log", 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.': 'Press ESC or [Exit] to return.',
@@ -1414,6 +1415,7 @@ export const EN_RULES: Rule[] = [
   [/^(.+) 선택$/, 'Select $1'], [/^추천 \((.+)\): (.+)$/, (m, tr) => `Pick (${m[1].split('·').map((x) => tr(x)).join(' · ')}): ${m[2].split(' · ').map((x) => tr(x)).join(' · ')}`], [/^조법 (.+)$/, (m, tr) => `Method ${tr(m[1])}`], [/^찌 (.+)호$/, 'Float #$1'], [/^미끼 (.+)$/, (m, tr) => `Bait ${m[1].split('·').map((x) => tr(x)).join(' · ')}`],
   [/^배합 완료 — 남은 밑밥 (\d+) \/ (\d+) \(1인칭 C 투척 1회당 (\d+) 소모\)$/, 'Mixed — chum left $1 / $2 (C throw uses $3)'],
   [/^발견 (\d+) \/ (\d+)종$/, 'Found $1 / $2 species'], [/^제철 (.+)월$/, 'Season: months $1'], [/^최대어 (.+) cm$/, 'Record $1 cm'], [/^누적 (\d+) 수$/, 'Total $1'], [/^kg당 (.+)원$/, '₩$1/kg'],
+  [/^나는 달 (.+)$/, 'In season: $1'],   // 314차 — 도감 산나물 탭
   [/^금어기 ([\d.~ ·]+)$/, 'Closed $1'], [/^금지체중 (\d+)g 이하$/, 'At or under the $1 g legal weight limit'],
   [/^금어기 (.+)월$/, 'Closed: months $1'], [/^(.+)월$/, 'months $1'], [/^(.+)에서 구매$/, 'Sold at $1'], [/^(.+) — 플레이로 입수$/, '$1 — obtained in play'],
   [/^발견 (\d+) \/ (\d+) — 취득하면 등록$/, 'Found $1 / $2 — registers when obtained'], [/^발견 (\d+) \/ (\d+)종 — 해루질·통발로 채집해 발견$/, 'Found $1 / $2 — discover by gathering/traps'],

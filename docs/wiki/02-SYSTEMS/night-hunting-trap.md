@@ -81,6 +81,7 @@
 | 단서 보기(숨구멍 · 배설 둔덕) | ⬜ 기획 §2 A — 동해엔 갯벌이 거의 없어 후순위 | — |
 | **통발 전용 생물 — 독도새우**(295 — `ShoreCreatureDatabase` `pandalus_hypsinotus` `trapOnly · trapTypes ['shrimp_trap'] · trapSeas ['ulleung']` · `rollForageSpots` 풀 제외 · `harvestTrap`이 통발 종류 · `seaOf(regionId)`로 거름 · 120,000원/kg · 특산(울릉 · 독도 10~4월)) | ✅ | **295** |
 | **산나물 캐기 — 산자락 스팟**(299 — 분류 `wild_green` 8(곰취 · 명이 · 눈개승마 · 부지깽이 · 어수리 · 두릅 · 곤드레 · 엄나무순) · 스팟 `hill_grass`(클라이언트 `computeHillCandidates` — 숲 · 풀밭 안쪽 · 반지름 3 안 길 · 집 · 물 없음) · 바다와 따로 굴림(`spotsPerHundred` 0.6 · 상한 24 · 씨앗 다름) · `regions` · `absentMonths` · 낮만 · 사는 모양 `leaf · root · shoot` → 줍기 · 파기 · 떼기 판(제목 뜯기 · 캐기 · 꺾기 · 풀밭 바탕) · 거두면 `cropItemTemplate(harvestItemId)` 묶음 + `originRegion`(울릉 명이 · 설악 곰취 특산) · 풍랑 · 미끄러짐 밖 · 면허 없음 · **자리 표식 = 땅에 뿌리내린 포기 도트**(299(2) — `data/WildGreenArt.ts` 종마다 손으로 찍은 15×14 · 2px 입자 · `WildGreenSprites` 굽기 · 밑동 = 칸 아래 변 · 사람 깊이 규칙 · 놀이 판 · 도감 · 가이드도 같은 포기 · 정수 배율)) | ✅ | **299 · 299(2)** |
+| **산나물 보이는 곳**(314 — 위키 어종 탭 · 게임 해양생물 탭에서 빼고 위키 「농작물 › 산나물」 · 게임 도감 「산나물」 탭 — 채집 표 · 판정은 그대로) | ✅ | **314** |
 | **쑥(약초)**(311 — `green_herb` · 3~10월 · 낮 · 전국 산자락 · 뜯기 · 거두면 가게 약초(`inv_mat_herb` — 상비약 · 쑥 모기향 재료)와 같은 물건 · 수확 틀 `cropItemTemplate ?? craftMaterialTemplate` · 포기 도트 · dev `devNight`) | ✅ | **311** |
 | **걷은 통발이 사라지지 않는다**(296 — `returnTrapItem`이 `recoverPlaceable` 실패 때 `addItemOrMail`로 집 우편함에 보낸다 · 채널 `[통발] … 집 우편함으로` — 하모니 F-0009) | ✅ | **296** |
 
