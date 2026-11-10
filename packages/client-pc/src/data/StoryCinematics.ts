@@ -8,7 +8,7 @@
  * ⚠ 대사는 플레이어가 읽는 말이다 — 내부 id·구조 명칭을 쓰지 않는다(AGENTS §8-9).
  */
 
-import type { CineScript } from '../ui/StoryCinematicPanel.js';
+import type { CineScript, CineStep } from '../ui/StoryCinematicPanel.js';
 
 /** M1-01 ① 영금정 도착 — 기억을 더듬는 혼잣말 */
 export const CINE_M1_YEONGGEUMJEONG: CineScript = {
@@ -25,19 +25,24 @@ export const CINE_M1_YEONGGEUMJEONG: CineScript = {
   ],
 };
 
-/** M1-01 ② 정옥선 좌판 근처 — 할머니가 계속 지켜보고 있었다 */
+/** M1-01 ② 앞부분 — 좌판 거리에 선 나의 혼잣말(낮 · 밤 갈래가 같이 쓴다) */
+const OKSEON_STALL_OPENING: CineStep[] = [
+  { kind: 'focus', who: 'player', ms: 520 },
+  { kind: 'face', who: 'player', dir: 'up' },
+  { kind: 'say', who: 'player', thought: true, text: '아, 여기였지 참. 많이 바뀌긴 했구나.', textEn: 'Ah, this was the place. It has changed a lot.' },
+  { kind: 'move', who: 'player', dxTiles: 1, dyTiles: -1, ms: 760 },
+  { kind: 'say', who: 'player', thought: true, text: '기억이 새록새록 나네… 눈물이 나올 것만 같다.', textEn: 'The memories keep coming back… I feel like I could cry.' },
+  { kind: 'emote', who: 'player', emote: 'sad', ms: 900 },
+  { kind: 'say', who: 'player', thought: true, text: '앞으로 어떻게 해야 할까…?', textEn: 'What should I do from here…?' },
+];
+
+/** M1-01 ② 정옥선 좌판 근처 — 할머니가 계속 지켜보고 있었다(좌판에 있을 때 — 낮) */
 export const CINE_M1_OKSEON_STALL: CineScript = {
   id: 'm1-okseon-stall',
   placeKo: '동명항 방파제 · 좌판 거리',
   placeEn: 'Dongmyeong Harbour breakwater · stall row',
   steps: [
-    { kind: 'focus', who: 'player', ms: 520 },
-    { kind: 'face', who: 'player', dir: 'up' },
-    { kind: 'say', who: 'player', thought: true, text: '아, 여기였지 참. 많이 바뀌긴 했구나.', textEn: 'Ah, this was the place. It has changed a lot.' },
-    { kind: 'move', who: 'player', dxTiles: 1, dyTiles: -1, ms: 760 },
-    { kind: 'say', who: 'player', thought: true, text: '기억이 새록새록 나네… 눈물이 나올 것만 같다.', textEn: 'The memories keep coming back… I feel like I could cry.' },
-    { kind: 'emote', who: 'player', emote: 'sad', ms: 900 },
-    { kind: 'say', who: 'player', thought: true, text: '앞으로 어떻게 해야 할까…?', textEn: 'What should I do from here…?' },
+    ...OKSEON_STALL_OPENING,
     // 할머니가 먼저 플레이어를 향한다 — 대사보다 그림이 먼저 알려준다
     { kind: 'focus', who: 'okseon', ms: 560 },
     { kind: 'face', who: 'okseon', dir: 'down' },
@@ -48,6 +53,33 @@ export const CINE_M1_OKSEON_STALL: CineScript = {
     { kind: 'say', who: 'player', thought: true, text: '저분께 고민 상담을 해볼까?', textEn: 'Should I ask her for advice?' },
   ],
 };
+
+/**
+ * 312차 — M1-01 ② 의 밤 갈래: 할머니가 좌판에 없을 때(일과 밖 — 집이 200m 넘게 떨어져 있다).
+ *  사용자 「200m도 더 멀리있는 정옥선이 '나를 지켜보고 있다'는 말이 안되지 않을까? … 정옥선이 근처 건물에서 나와서 마주친 후 처다보는 것으로 연결」.
+ *  혼잣말은 같고, 할머니가 가까운 가게 문에서 나와(`fade`) 몇 걸음 다가와 나를 본다. `walk` = 씬이 찾은 길의 꺾이는 칸(문 앞 → 나와 두 칸 앞).
+ */
+export function cineM1OkseonStallLate(walk: readonly { tx: number; ty: number }[]): CineScript {
+  return {
+    id: 'm1-okseon-stall-late',
+    placeKo: '동명항 방파제 · 좌판 거리',
+    placeEn: 'Dongmyeong Harbour breakwater · stall row',
+    steps: [
+      ...OKSEON_STALL_OPENING,
+      // 가까운 가게 문이 열리고 할머니가 나온다 — 혼잣말하던 나와 마주친다
+      { kind: 'focus', who: 'okseon', ms: 560 },
+      { kind: 'fade', who: 'okseon', alpha: 1, ms: 420 },
+      ...walk.map((p): CineStep => ({ kind: 'moveTo', who: 'okseon', tx: p.tx, ty: p.ty })),
+      { kind: 'faceTo', who: 'okseon', target: 'player' },
+      { kind: 'emote', who: 'okseon', emote: 'surprise', ms: 700 },
+      { kind: 'focus', who: 'player', ms: 480 },
+      { kind: 'faceTo', who: 'player', target: 'okseon' },
+      { kind: 'say', who: 'player', thought: true, text: '…음? 방금 가게에서 나오신 분이 날 빤히 보고 계시네…', textEn: '…Hm? The woman who just stepped out of that shop is looking right at me…' },
+      { kind: 'say', who: 'okseon', text: '...' },
+      { kind: 'say', who: 'player', thought: true, text: '저분께 고민 상담을 해볼까?', textEn: 'Should I ask her for advice?' },
+    ],
+  };
+}
 
 /** M1-02 — 얼음 상자를 지정 위치에 내려놓는 순간 */
 export const CINE_M1_ICE_DROP: CineScript = {

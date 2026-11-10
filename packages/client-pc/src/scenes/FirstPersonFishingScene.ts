@@ -684,6 +684,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     }
     // 루어/원투 모두 찌 없이 초릿대 끝으로 입질 판단 (수면 찌 미표시)
     this.surfMode = this.lureMode || InventoryStore.isSurfRigReady();
+    // 312차 — 찌가 없는 채비에는 면사매듭(찌멈춤) 한계가 없다. 위에서 찌 채비 설정(`hasFloatStop` 기본 참 · 5m)을 먼저 읽어
+    //   원투 게이지 바닥에 노란 「매듭 한계선」을 긋고 디버그 줄에 「매듭 5m」를 찍었다(사용자 「채비가 바닥까지 내려가지 않네」의 한 원인)
+    if (this.surfMode) this.zLimitM = Number.POSITIVE_INFINITY;
 
     this.buildBackdrop();
     this.dynamicG = this.add.graphics().setDepth(30);
@@ -2312,10 +2315,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 무게가 조류 임계를 뚫어야 가라앉고, 못 뚫으면 표층에서 조류 방향으로 쓸린다.
     // 단일 루어 = 루어 무게 / 봉돌 채비(원투) = 봉돌 무게. 찌 채비는 기존 stepUnderwater 유지.
     const applySinkModel = (this.lureMode || this.surfMode) && !holding && !this.upKey.isDown;
+    let rigSinkMps = 0;   // 312차 — 이번 프레임 채비 침강 속도(릴링 중 바닥을 따라 내려갈 때 이 속도로 — 순간 이동 없음)
     if (applySinkModel) {
       this.rig.baitZ = prevZ;   // stepUnderwater 수직 침강 취소 (수평 드리프트는 유지) — 이중적용 방지
       const bottom = this.getBottomDepthAt();
-      const retrieving0 = this.reeling && this.time.now - this.pointerDownAt > 220;
+      // 312차 — 아래 릴링 블록과 같은 판정(베일(R)이 열려 있으면 감기지 않는다 — 옛 판정은 R + 좌클릭이면 채비가 중층에 얼었다)
+      const retrieving0 = this.reeling && !this.spoolKey?.isDown && this.time.now - this.pointerDownAt > 220;
       // 라인각 모델 rev2 — 실제 조류 속도(m/s)를 그대로 넘긴다 (구 cur01 클램프는 약~강조류를
       // 전부 1로 뭉개 약조류 침강을 막았음). 조류 존 보정(조경지대=잘 가라앉음 → θ↓ / 본류 θ↑)
       const curMps = Math.hypot(tide.x, tide.y);
@@ -2339,6 +2344,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           ? 'sinker' : (this.lureSpec ? lureBodyType(this.lureSpec.kind) : 'softPlastic');
         const sr = computeSinkRate(curMps, weightG, body, threshMult, this.rigSwept);   // 301 — 직전 스윕 상태 = 히스테리시스
         this.rigSwept = sr.swept;
+        rigSinkMps = sr.sinkRateMps;
         if (retrieving0) {
           // 릴링 — 채비 상승은 아래 릴링 블록이 담당. 라인각만 상승각으로 표기.
           this.rigLineAngleDeg = TUNING.sink.reelAngleDeg;
@@ -2421,13 +2427,24 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.rig.floatX += side * (withCurrent ? 0.9 : 0.45) * dt;
       this.rig.baitX += side * (withCurrent ? 0.9 : 0.45) * dt;
       // 릴링하면 채비가 조금씩 상층으로 떠오른다 (루어 리트리브)
+      const zReel0 = this.rig.baitZ;
       this.rig.baitZ = Math.max(0.3, this.rig.baitZ - 0.28 * dt);
       // 207차 — 원투 봉돌은 무거울수록 바닥을 긁으며 끌려온다(60g 이상은 거의 뜨지 않는다) — 여 위라면 이때 걸린다
+      // 312차 — 옛 식(`baitZ = bed − (bed − baitZ) · liftK`)은 **매 프레임** 바닥까지의 높이를 liftK배로 줄였다(dt 없음).
+      //   중층에 있던 채비도 감기 시작하면 0.15초 안에 바닥으로 꽂혔고(3호 11g · 60fps — 약 4m/s) 프레임 수에 따라 빠르기가 달랐다
+      //   (사용자 리포트 「천천히 채비를 내리다가 … 릴링을 하니까 밑채비가 갑자기 땅에 가깝게 내려가 버리네」).
+      //   지금: 떠오름은 무게대로(무거울수록 덜) · 바닥을 따라가는 것은 **이미 바닥에 있던** 무거운 봉돌만 · 내려갈 때는 그 채비의 침강 속도로.
       if (this.surfMode && !this.lureMode) {
         const liftK = Phaser.Math.Clamp(1 - InventoryStore.getSinkerWeightG() / 60, 0, 1);
-        const bed = this.seabed.depthAt(this.distM);
-        this.rig.baitZ = bed - (bed - this.rig.baitZ) * liftK;
-        this.rig.settled = liftK < 0.5;
+        this.rig.baitZ = zReel0 - (zReel0 - this.rig.baitZ) * liftK;
+        const clear = TUNING.seabed.rigClearanceM;
+        const wasOnBed = prevZ >= bedHereM - clear - 0.05;
+        const dragging = wasOnBed && liftK < 0.5;
+        if (dragging) {
+          const floor = this.seabed.depthAt(this.distM) - clear;   // 끌려온 자리의 바닥(아래 지형 관통 방지와 같은 여유)
+          if (this.rig.baitZ < floor) this.rig.baitZ = Math.min(floor, this.rig.baitZ + Math.max(rigSinkMps, 0.3) * dt);
+        }
+        this.rig.settled = dragging;
       }
       if (this.rigPose !== 'twitch' && this.rigPose !== 'lift') this.rigPose = 'retrieve';
       if (!withCurrent && Math.random() < dt * 0.5) this.biteEngine.triggerReactionLift();
@@ -4738,9 +4755,14 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       // 원투 모드: 찌 대신 수면 진입점만 표시하고, 채비 위에 무게추 봉돌을 그린다
       g.fillStyle(0x9fd0e4, 0.9);
       g.fillTriangle(centerX - 4, gaugeTop, centerX + 4, gaugeTop, centerX, gaugeTop + 6);
-      const sinkerY = yOf(this.rig.baitZ) - 9;
+      // 312차 — 봉돌 채비가 바닥에 닿았으면 봉돌을 바닥에 눕힌다(미끼는 목줄 끝에서 바닥 위 여유만큼 떠 있다).
+      //   옛 그림은 봉돌을 미끼보다 9px 위에 그려 바닥에 닿은 채비가 떠 보였다(사용자 「채비가 바닥까지 내려가지 않네」)
+      const bedZ = this.seabed.depthAt(this.distM);
+      const onBed = !this.lureMode && this.rig.baitZ >= bedZ - TUNING.seabed.rigClearanceM - 0.05;
+      const sinkerY = onBed ? yOf(bedZ) - 5 : yOf(this.rig.baitZ) - 9;
+      if (onBed) { g.lineStyle(1, 0x9fd0e4, 0.7); g.lineBetween(rigX, sinkerY, rigX, yOf(this.rig.baitZ)); }
       g.fillStyle(0x6a6f78, 1);
-      g.fillEllipse(rigX, sinkerY, 6, 10);
+      g.fillEllipse(rigX, sinkerY, onBed ? 10 : 6, onBed ? 6 : 10);
     } else {
       // 찌 — 수면(0m) 상단 경계에 걸침 + 입질 잠김 반영
       g.fillStyle(0xff6a2a, 1);
@@ -4837,7 +4859,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.depthValsText?.setText([
       ...topRows,
       `채비  ${this.rig.baitZ.toFixed(1)}m`,
-      `바닥  ${bedHere.toFixed(1)}m`,
+      // 312차 — 봉돌 채비가 바닥에 닿았으면 그렇다고(미끼는 바닥 위 여유만큼 떠 있어 두 수가 0.1 ~ 0.2m 다르다)
+      this.surfMode && !this.lureMode && this.rig.baitZ >= bedHere - TUNING.seabed.rigClearanceM - 0.05
+        ? `바닥  ${bedHere.toFixed(1)}m · ${t('닿음')}` : `바닥  ${bedHere.toFixed(1)}m`,
       spoolRow,
       ...(laRow ? [laRow] : []),
       inReefHere ? (kelpHere ? '여 밭 + 수초' : '여 밭 (암초)') : '모래/갯벌',
@@ -4906,7 +4930,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       `입질 확률 ${(probPerSec * 100).toFixed(1)}%/s${actionLeft > 0 ? '  [리액션 x2.0]' : ''}${this.lureMode ? (this.lureActionMult < 1 ? '  [루어 방치 x0.15 — 액션 필요!]' : `  [액션 x${this.lureActionMult.toFixed(1)}]`) : ''}`,
       `피딩 ${this.feeding.label} x${this.feeding.activity.toFixed(2)}${this.cfg.fieldEvent ? `  [${this.cfg.fieldEvent.label} x${this.cfg.fieldEvent.biteMult.toFixed(1)}]` : ''}`,
       `지형: ${inReef ? (hold ? '여 밭 안착 (x2.5)' : '여 밭') : '모래/갯벌'}${snagProgress > 0.3 ? '  · 밑걸림 주의' : ''}`,
-      `미끼 수심 ${this.rig.baitZ.toFixed(1)}m / 매듭 ${this.zLimitM}m / 바닥 ${this.cfg.zMaxM.toFixed(0)}m`,
+      `미끼 수심 ${this.rig.baitZ.toFixed(1)}m / 매듭 ${Number.isFinite(this.zLimitM) ? `${this.zLimitM}m` : '없음'} / 바닥 ${this.seabed.depthAt(this.distM).toFixed(1)}m (지점 최대 ${this.cfg.zMaxM.toFixed(0)}m)`,   // 312차 — 옛 「바닥」은 지점 최대 수심이었다
     ];
     this.probText.setText(lines.join('\n')).setPosition(16, 40);
   }

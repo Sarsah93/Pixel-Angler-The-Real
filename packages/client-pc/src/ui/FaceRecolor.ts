@@ -10,6 +10,8 @@
  *  기본 머리(민머리 · 민낯 · 성별 × 얼굴형) + 라벨 마스크(피부 · 눈썹 · 눈동자 · 입술 · 흰자 — `tools/face_layers.cjs`가 굽고 손으로 고정) ·
  *  머리 모양 층 · 수염 층(알파 = 주인). 칠하기는 라벨 · 층 단위이고 추측 규칙은 없다. 두 톤 칠하기(270)는 그대로 — 한 층 안에서는 잘 맞는다.
  *  합성 순서 = 기본판 칠하기(라벨) → 입 모양 · 볼 홍조(269 — 픽셀을 옮기므로 칠한 뒤) → 수염 층 → 머리 모양 층.
+ *  312 — 머리 모양 층을 얹기 전에 **머리에 맞춘다**(`fitHairToHead` — 층은 얹기만 해서 상투처럼 당겨 묶은 머리 둘레에 민머리 윤곽이
+ *  피부색 호로 남았다 → 머리칼 밖 정수리 두피는 비우고, 머리칼 안에 갇힌 두피 구멍은 머리칼로 메운다).
  */
 
 import { HAIR_COLORS, SKIN_TONES, EYE_COLORS, type CharConfig } from '@tra/core';
@@ -204,6 +206,147 @@ export function applyBlush(data: Uint8ClampedArray, w: number, h: number, m: Mou
 /** 층 한 벌(전부 같은 크기 RGBA) — 기본판 · 라벨 마스크 · 머리 모양 층 · 수염 층(없으면 민낯) */
 export interface FaceLayerSet { w: number; h: number; base: Uint8ClampedArray; mask: Uint8ClampedArray; hair?: Uint8ClampedArray | null; beard?: Uint8ClampedArray | null }
 
+/**
+ * 312 — 머리칼 밖으로 비어져 나온 민머리 두피의 너비 문턱(px · 192px 판 기준).
+ * 머리 모양 층이 기본판 두피 윤곽(2px 칸 하나)에 붙어 그 윤곽을 자기 테두리로 쓰는 것은 정상이라(모든 머리 모양 — 실측 두께 ≤ 4px) 이것보다 두꺼운 것만 비운다.
+ */
+export const SKULL_CUT_MARGIN = 4;
+
+/** 정사각 상자 팽창(반지름 r · 가로 → 세로 두 번) */
+function dilateBox(m: Uint8Array, w: number, h: number, r: number): Uint8Array {
+  const t = new Uint8Array(w * h), o = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let run = -1;   // 마지막으로 본 켜진 칸(앞쪽)
+    for (let x = 0; x < w; x++) { if (m[y * w + x]) run = x; if (run >= 0 && x - run <= r) t[y * w + x] = 1; }
+    run = -1;
+    for (let x = w - 1; x >= 0; x--) { if (m[y * w + x]) run = x; if (run >= 0 && run - x <= r) t[y * w + x] = 1; }
+  }
+  for (let x = 0; x < w; x++) {
+    let run = -1;
+    for (let y = 0; y < h; y++) { if (t[y * w + x]) run = y; if (run >= 0 && y - run <= r) o[y * w + x] = 1; }
+    run = -1;
+    for (let y = h - 1; y >= 0; y--) { if (t[y * w + x]) run = y; if (run >= 0 && run - y <= r) o[y * w + x] = 1; }
+  }
+  return o;
+}
+
+/** 312 — 두피 윤곽이 아니라 **살갗**으로 보는 밝기(기본판 윤곽선은 남 · 여 모두 이보다 어둡다 — 남은 윤곽이 따뜻한 갈색이라 라벨로는 못 가른다) */
+const SKULL_SKIN_L = 90;
+
+/** 312 — 머리 층을 머리에 맞춘 결과(합성 · 검수 도구가 같이 쓴다) */
+export interface HairFit {
+  /** 비울 기본판 픽셀(머리칼 밖으로 비어져 나온 정수리 두피) — 없으면 null */
+  cut: Uint8Array | null;
+  /** 머리칼 안에 갇혀 두피가 비치는 구멍 — 머리칼로 메운다. 없으면 null */
+  holes: Uint8Array | null;
+  cutCount: number;
+  holeCount: number;
+}
+
+/**
+ * 312 — 머리 모양 층을 기본판(민머리)에 맞춘다(사용자 리포트 「초상화 이미지를 잘 보면 머리 원형이 뒤에 비춰지고 있어」 — 상투 · 흰 머리).
+ *  층은 기본판 위에 얹기만 해서 기본판을 지우지 못한다. 그래서 두 가지가 샜다.
+ *  ① 머리칼 밖 두피 — 상투처럼 당겨 묶은 머리는 민머리보다 윤곽이 작아 그 바깥으로 피부색 호가 남았다. 비우는 곳은 둘이다.
+ *     ⓐ 두꺼운 호 — 눈썹 줄 위 · 그 열에 머리칼이 있고 그 머리칼보다 위인 기본판 픽셀 가운데 머리칼에서 `margin`보다 먼 것(+ 둘레 `margin`).
+ *     ⓑ 살갗 주머니 — 머리칼이 아닌 밝은 살갗 조각(4-이웃)이 눈썹 줄까지 내려가지 못하고(얼굴과 이어지지 않는다) 머리 바깥(투명) 3px 안에 있다
+ *        (+ 둘레 2px의 어두운 윤곽). 머리 옆으로 비어져 나온 두피 · 머리칼 윤곽 사이로 내민 살색 점이 여기다.
+ *     머리칼에 붙은 어두운 2px 윤곽은 남긴다 — 모든 머리 모양이 그것을 자기 테두리로 쓴다. 이마 · 관자놀이는 눈썹 줄 아래 얼굴로 이어져 남는다.
+ *  ② 머리칼 안의 구멍 — 원판에서 밝은 갈색 머리칼이 피부와 채널 차 40 안이라 층에서 빠진 칸(271 추출 문턱). 기본 머리색에선 안 보이고
+ *     흰 · 밝은 머리에서 살색 점이 된다. 눈썹 줄 위에서 머리칼에 완전히 둘러싸인 두피 조각을 머리칼로 메운다(`fillHairHoles`).
+ */
+export function fitHairToHead(base: Uint8ClampedArray, hair: Uint8ClampedArray, labels: Uint8Array, w: number, h: number, margin = SKULL_CUT_MARGIN): HairFit {
+  const n = w * h;
+  const hm = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (hair[i * 4 + 3] >= 8) hm[i] = 1;
+  let browTop = h;
+  for (let i = 0; i < n; i++) if (labels[i] === LABEL_BROW) { browTop = (i / w) | 0; break; }
+  if (browTop >= h) browTop = Math.round(h * 0.36);   // 눈썹 라벨이 없으면 기본판 눈썹 줄 어림(설치판 70 ~ 72 / 192)
+  const top = new Int32Array(w).fill(h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (hm[y * w + x] && top[x] === h) top[x] = y;
+  // ① 정수리 두피
+  const cand = new Uint8Array(n);
+  for (let y = 0; y < browTop; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    if (top[x] < h && y < top[x] && base[i * 4 + 3] >= 8) cand[i] = 1;
+  }
+  const near = dilateBox(hm, w, h, margin);
+  const thick = new Uint8Array(n); let anyThick = false;
+  for (let i = 0; i < n; i++) if (cand[i] && !near[i]) { thick[i] = 1; anyThick = true; }
+  // ⓑ 살갗 주머니 — 밝은 살갗(머리칼 아님) 조각이 눈썹 줄까지 못 내려가고 머리 바깥 3px 안
+  const bright = new Uint8Array(n);
+  for (let i = 0; i < n; i++) { const o = i * 4; if (!hm[i] && base[o + 3] >= 8 && lum(base[o], base[o + 1], base[o + 2]) >= SKULL_SKIN_L) bright[i] = 1; }
+  const empty = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (base[i * 4 + 3] < 8) empty[i] = 1;
+  const nearEmpty = dilateBox(empty, w, h, 3);
+  const pocket = new Uint8Array(n), seenB = new Uint8Array(n); let anyPocket = false;
+  for (let s = 0; s < n; s++) {
+    if (!bright[s] || seenB[s] || ((s / w) | 0) >= browTop) continue;
+    const st = [s], mem: number[] = []; seenB[s] = 1; let face = false, edge = false;
+    while (st.length) {
+      const p = st.pop()!; mem.push(p); const x = p % w, y = (p / w) | 0;
+      if (y >= browTop) face = true;
+      if (nearEmpty[p] || x === 0 || y === 0 || x === w - 1 || y === h - 1) edge = true;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const q = ny * w + nx; if (bright[q] && !seenB[q]) { seenB[q] = 1; st.push(q); }
+      }
+    }
+    if (!face && edge) for (const p of mem) { pocket[p] = 1; anyPocket = true; }
+  }
+  let cut: Uint8Array | null = null, cutCount = 0;
+  if (anyThick || anyPocket) {
+    const g1 = anyThick ? dilateBox(thick, w, h, margin) : null, g2 = anyPocket ? dilateBox(pocket, w, h, 2) : null;
+    cut = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      if (hm[i] || base[i * 4 + 3] < 8 || ((i / w) | 0) >= browTop) continue;
+      // 두꺼운 호는 후보 안에서만 · 주머니는 그 조각 + 둘레의 어두운 윤곽만(다른 살갗은 먹지 않는다)
+      if ((g1 && g1[i] && cand[i]) || pocket[i] || (g2 && g2[i] && !bright[i])) { cut[i] = 1; cutCount++; }
+    }
+  }
+  // ② 구멍 — 눈썹 줄 위 · 머리칼 아닌 두피 조각이 머리칼로만 둘러싸였다(투명 · 눈썹 줄 아래로 새지 않는다)
+  const seen = new Uint8Array(n), holes = new Uint8Array(n); let holeCount = 0;
+  const solid = (i: number): boolean => base[i * 4 + 3] >= 8 && !(cut && cut[i]);
+  for (let s = 0; s < n; s++) {
+    if (seen[s] || hm[s] || !solid(s) || ((s / w) | 0) >= browTop) continue;
+    const st = [s], mem: number[] = []; seen[s] = 1; let open = false;
+    while (st.length) {
+      const p = st.pop()!; mem.push(p); const x = p % w, y = (p / w) | 0;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) { open = true; continue; }
+        const q = ny * w + nx;
+        if (hm[q]) continue;
+        if (!solid(q) || ny >= browTop) { open = true; continue; }
+        if (!seen[q]) { seen[q] = 1; st.push(q); }
+      }
+    }
+    if (!open) for (const p of mem) { holes[p] = 1; holeCount++; }
+  }
+  return { cut, holes: holeCount ? holes : null, cutCount, holeCount };
+}
+
+/** 312 — 구멍을 둘레 머리칼 색으로 메운 머리 층 사본(바깥에서 안으로 — 닿은 머리칼 이웃의 평균). 칠하기는 그 뒤 머리 층과 같다 */
+export function fillHairHoles(hair: Uint8ClampedArray, holes: Uint8Array, w: number, h: number): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(hair);
+  let left: number[] = [];
+  for (let i = 0; i < holes.length; i++) if (holes[i]) left.push(i);
+  while (left.length) {
+    const next: number[] = [], done: [number, number, number, number][] = [];
+    for (const p of left) {
+      const x = p % w, y = (p / w) | 0; let r = 0, g = 0, b = 0, k = 0;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const o = (ny * w + nx) * 4; if (out[o + 3] < 8) continue;
+        r += out[o]; g += out[o + 1]; b += out[o + 2]; k++;
+      }
+      if (k) done.push([p, r / k, g / k, b / k]); else next.push(p);
+    }
+    if (!done.length) break;   // 둘레가 비었다(구멍 정의상 없지만 무한 반복 방지)
+    for (const [p, r, g, b] of done) { const o = p * 4; out[o] = Math.round(r); out[o + 1] = Math.round(g); out[o + 2] = Math.round(b); out[o + 3] = 255; }
+    left = next;
+  }
+  return out;
+}
+
 /** 층 하나를 얹는다 — 불투명 픽셀을 복사하고(알파가 주인) 고른 색으로 칠한다(기준색 그대로면 복사만) */
 function overlay(out: Uint8ClampedArray, layer: Uint8ClampedArray, n: number, swap: Swap | undefined, keep: boolean): void {
   for (let i = 0; i < n; i++) {
@@ -216,7 +359,7 @@ function overlay(out: Uint8ClampedArray, layer: Uint8ClampedArray, n: number, sw
 
 /**
  * 주인공 얼굴 한 장 — 기본판을 라벨대로 칠하고(피부 · 눈썹은 머리색의 색조 + 원래 밝기까지 · 눈동자 · 입술은 피부 밝기 비의 0.6제곱),
- * 입 모양 · 볼 홍조를 넣은 뒤(269 — 픽셀을 옮기므로 칠한 다음), 수염 층 → 머리 모양 층을 얹는다. 돌려준 배열은 새것(입력은 그대로).
+ * 입 모양 · 볼 홍조를 넣은 뒤(269 — 픽셀을 옮기므로 칠한 다음), 수염 층 → (312 머리 층을 머리에 맞추기 — 정수리 두피 비우기 · 구멍 메우기) → 머리 모양 층을 얹는다. 돌려준 배열은 새것(입력은 그대로).
  */
 export function composePlayerFace(set: FaceLayerSet, cfg: CharConfig): Uint8ClampedArray {
   const { w, h } = set, n = w * h;
@@ -249,7 +392,13 @@ export function composePlayerFace(set: FaceLayerSet, cfg: CharConfig): Uint8Clam
     if (cfg.look.blush) applyBlush(out, w, h, m, SKIN_TONES[cfg.look.skin] ?? SKIN_TONES[PLAYER_BASE.skin]);
   }
   if (set.beard) overlay(out, set.beard, n, swaps.beard, !!swaps.keepBeard);
-  if (set.hair) overlay(out, set.hair, n, swaps.hair, swaps.keepHair);
+  if (set.hair) {
+    // 312 — 머리칼 밖으로 비어져 나온 정수리 두피는 그리지 않고(상투 — 층이 기본판을 지우지 못해 피부색 호가 남았다),
+    //       머리칼 안에 갇힌 두피 구멍은 머리칼로 메운다(흰 · 밝은 머리에서 살색 점)
+    const fit = fitHairToHead(set.base, set.hair, labels, w, h);
+    if (fit.cut) for (let i = 0; i < n; i++) if (fit.cut[i]) out[i * 4 + 3] = 0;
+    overlay(out, fit.holes ? fillHairHoles(set.hair, fit.holes, w, h) : set.hair, n, swaps.hair, swaps.keepHair);
+  }
   return out;
 }
 

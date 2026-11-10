@@ -30,5 +30,15 @@
   "tx": 306,
   "ty": 230,
   "osmId": 853678589
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "독도 보급철물",
+  "nameEn": "Dokdo Supply Hardware",
+  "tx": 300,
+  "ty": 234,
+  "osmId": -9050,
+  "src": "manual"
  }
 ]
