@@ -3324,5 +3324,15 @@
   "tx": 1039,
   "ty": 604,
   "osmId": 1233275849
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "모슬포철물",
+  "nameEn": "Moseulpo Hardware",
+  "tx": 527,
+  "ty": 248,
+  "osmId": -9046,
+  "src": "manual"
  }
 ]
