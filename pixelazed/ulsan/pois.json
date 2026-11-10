@@ -2236,5 +2236,15 @@
   "tx": 345,
   "ty": 370,
   "osmId": 737556022
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "방어진철물",
+  "nameEn": "Bangeojin Hardware",
+  "tx": 575,
+  "ty": 193,
+  "osmId": -9039,
+  "src": "manual"
  }
 ]

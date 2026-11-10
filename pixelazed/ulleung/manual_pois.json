@@ -18,5 +18,15 @@
   "ty": 649,
   "osmId": -9035,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "도동철물",
+  "nameEn": "Dodong Hardware",
+  "tx": 579,
+  "ty": 709,
+  "osmId": -9047,
+  "src": "manual"
  }
 ]

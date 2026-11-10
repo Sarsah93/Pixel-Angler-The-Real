@@ -889,5 +889,15 @@
   "tx": 447,
   "ty": 8,
   "osmId": 1258512698
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "연안철물",
+  "nameEn": "Yeonan Hardware",
+  "tx": 322,
+  "ty": 396,
+  "osmId": -9048,
+  "src": "manual"
  }
 ]

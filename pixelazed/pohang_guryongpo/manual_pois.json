@@ -38,5 +38,15 @@
   "ty": 448,
   "osmId": -9030,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "구룡포철물",
+  "nameEn": "Guryongpo Hardware",
+  "tx": 549,
+  "ty": 381,
+  "osmId": -9040,
+  "src": "manual"
  }
 ]

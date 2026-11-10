@@ -8,5 +8,15 @@
   "ty": 643,
   "osmId": -9003,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "해금강철물",
+  "nameEn": "Haegeumgang Hardware",
+  "tx": 312,
+  "ty": 646,
+  "osmId": -9042,
+  "src": "manual"
  }
 ]

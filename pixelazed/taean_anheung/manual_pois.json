@@ -18,5 +18,15 @@
   "ty": 360,
   "osmId": -9033,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "안흥철물",
+  "nameEn": "Anheung Hardware",
+  "tx": 523,
+  "ty": 369,
+  "osmId": -9043,
+  "src": "manual"
  }
 ]
