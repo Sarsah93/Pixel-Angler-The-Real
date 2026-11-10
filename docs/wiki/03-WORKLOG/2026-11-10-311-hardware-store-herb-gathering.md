@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-10 |
 | **시스템** | `경제` · `필드` · `제작` · `채집(산나물)` · `위키` |
 | **트리거** | 사용자 지시(310 보고 뒤) 넷 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (main · gh-pages 반영은 지시 대기) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `79b8f03` (main · gh-pages 반영은 지시 대기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 553(+1) · 하네스 r311 8/8 · pageerror 0 |
 
 ---
