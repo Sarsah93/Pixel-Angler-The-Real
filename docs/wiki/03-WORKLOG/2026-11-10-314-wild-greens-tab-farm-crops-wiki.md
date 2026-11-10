@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-10 |
 | **시스템** | `위키` · `도감(UI)` · `채집(산나물)` |
 | **트리거** | 사용자 지적(313 보고 뒤 — 위키 캡처) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck`(main · gh-pages 반영은 지시 대기) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `cdd7a5a`(main · gh-pages 반영은 지시 대기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · 위키 헤드리스 9/9 · 하네스 r314 5/5 · pageerror 0 |
 
 ---
