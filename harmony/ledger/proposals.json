@@ -550,6 +550,20 @@
     "F-0109"
    ],
    "lane": "q2-art-data"
+  },
+  {
+   "id": "P-0032",
+   "lane": "q3-flow",
+   "kind": "제안",
+   "pr": null,
+   "status": "제안",
+   "date": "2026-11-11",
+   "title": "어획 사건 · 통발 판정의 달 · 날을 KST로(kstParts) — 2파일 5줄",
+   "findings": [
+    "F-0110"
+   ],
+   "patch": "harmony/drafts/2026-11-11-kst-month.patch",
+   "note": "열린 하모니 PR 3건(#18 · #20 · #21)으로 상한 — 하나가 병합 · 닫히면 올린다. 하네스 고치기 전 FAIL → 고친 뒤 PASS · verify 3/3"
   }
  ]
 }

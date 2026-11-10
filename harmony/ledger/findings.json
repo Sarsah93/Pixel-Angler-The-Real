@@ -2060,6 +2060,49 @@
    "actual": "6 누락",
    "player_impact": "영어 설정 도움말에 한국어가 섞임",
    "action": "PR #21"
+  },
+  {
+   "id": "F-0110",
+   "lane": "q3-flow",
+   "severity": "경미",
+   "status": "열림",
+   "first_seen": "2026-11-11",
+   "last_seen": "2026-11-11",
+   "pattern": "BP-46",
+   "title": "어획 사건 · 통발 금어기 판정이 KST가 아니라 기기 시간대의 달 · 날을 쓴다",
+   "evidence": [
+    "packages/client-pc/src/store/GameState.ts:752",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:222",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:401",
+    "packages/client-pc/src/scenes/field/TrapFieldSystem.ts:432"
+   ],
+   "why": "232차에 이야기 호스트 · 채집은 KST 달(kstParts)로 바꿨지만 어획 사건 month와 통발 설치 · 수거 · 강원 조례 판정은 new Date().getMonth()/getDate() 그대로다.",
+   "repro": "Playwright timezoneId America/Los_Angeles + clock.setFixedTime(2027-03-01 05:30 KST) → __GS.addCaughtFish → __STORY.event 캡처: month 2(겨울) · 채집 env().month 3 · kstParts 3(봄)",
+   "expected": "어획 사건 달 = KST 달(3 · 봄)",
+   "actual": "2(겨울)",
+   "player_impact": "해외 · 시간대가 다른 기기에서 달이 바뀌는 날 계절 조건 어획 목표가 안 세지거나 엉뚱하게 세지고, 통발 금어기 · 도루묵 조례 벌금이 하루 어긋난다.",
+   "action": "제안(PR 상한 3건 — 패치 drafts/2026-11-11-kst-month.patch · verify 통과)"
+  },
+  {
+   "id": "F-0111",
+   "lane": "q3-flow",
+   "severity": "경미",
+   "status": "열림",
+   "first_seen": "2026-11-11",
+   "last_seen": "2026-11-11",
+   "pattern": "BP-46",
+   "title": "입질 전망 · 추천의 밤 판정과 로그 시각이 기기 시간대 시각이다(HUD 시계는 KST)",
+   "evidence": [
+    "packages/client-pc/src/store/ExternalDataStore.ts:735",
+    "packages/client-pc/src/store/RecommendationStore.ts:44",
+    "packages/client-pc/src/ui/RegionHud.ts:2270"
+   ],
+   "why": "같은 모양 훑기 — new Date().getHours()로 밤/시각을 정한다.",
+   "repro": "정적 훑기(F-0110 하네스와 같은 조건이면 LA 12:30 = 낮, KST 05:30 = 밤 경계)",
+   "expected": "KST 시각(kstParts().hh)",
+   "actual": "기기 시각",
+   "player_impact": "시간대가 다른 기기에서 입질 전망 · 추천이 낮 · 밤을 반대로 말하고, 로그 줄 시각이 HUD 시계와 다르다.",
+   "action": "다음 실행에서 하네스 재현 후 PR"
   }
  ],
  "lane_note": "2026-10-27 v2 — 갈래(lane)를 붙였다. domain은 v1 기록으로 남긴다."

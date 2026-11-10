@@ -181,6 +181,12 @@
 - 사례: 278 1칸 폭 대각 다리가 꼭짓점만 닿음(12지역 137칸) · 258 '#' 칸 충돌이 윤곽보다 16px 안쪽 → 건물 뒤로 그려짐 · 277 [F] 5,053곳 중 차도 위 972(차에 치임) · 266 문을 길 건너로 169곳 · 275 벽을 본 냉장고를 뒤에서 엶.
 - 훑는 법: 지역별 감사 스크립트(278 `bridge_audit.py` · 277 `road_audit.cjs` · 266 `sign_audit.cjs` 방식) — 꼭짓점만 닿는 걷기 성분 쌍 · 차도 밴드 위 [F] · 인물 앵커 · 문-간판 거리 1.6칸 초과.
 
+**BP-46 KST가 아니라 기기 시간대로 잰 달 · 날 · 시각**
+- 기전: 게임 시계는 KST(AGENTS §10)인데 `new Date().getMonth()` · `getDate()` · `getHours()`가 기기 시간대를 읽는다. KST 기기에서는 같아서 안 보인다.
+- 사례: 232 채집 · 이야기 호스트 달을 `kstParts`로 바꿈 · F-0110 어획 사건 month · 통발 금어기 · 조례(2026-11-11) · F-0111 입질 전망 밤 · 로그 시각 · F-0007(core).
+- 훑는 법: `rg "\.get(Hours|Month|Date|Day)\(\)" packages/client-pc/src | rg -v getUTC` — 판정에 쓰이면 `kstParts()`. 표시만(세이브 시각 · 메뉴 시계)이면 기기 시각도 된다.
+  하네스: `newContext({ timezoneId: 'America/Los_Angeles' })` + `page.clock.setFixedTime('2027-03-01T05:30:00+09:00')`(KST 3/1 · LA 2/28).
+
 ## ④ 기획 현실성·밸런스
 
 **BP-33 단위 · 축척 · 제도 착오**

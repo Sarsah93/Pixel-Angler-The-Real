@@ -1,9 +1,9 @@
 {
- "date": "2026-11-10",
- "audited_commit": "aea7d275d978a2a8df41348b72c20c2d229830bd",
+ "date": "2026-11-11",
+ "audited_commit": "1f3f806fed3787872905b62106dd46dc687360a7",
  "summary": {
-  "harmony_index": 68.8,
-  "balance": 68.5,
+  "harmony_index": 67.3,
+  "balance": 70.3,
   "weakest": "q5-security",
   "found_today": 2,
   "fixed_today": 0,
@@ -46,10 +46,10 @@
     "보통": 3,
     "경미": 8
    },
-   "found_today": 2,
+   "found_today": 0,
    "fixed_today": 0,
    "decisions": {
-    "merged": 1,
+    "merged": 0,
     "closed": 0
    },
    "open_proposals": 2
@@ -57,18 +57,18 @@
   "q3-flow": {
    "name": "③ 플레이 흐름·예외 처리",
    "kind": "product",
-   "health": 82.0,
-   "scenarios": 85.7,
+   "health": 78.0,
+   "scenarios": 87.5,
    "agency": null,
-   "overall": 83.4,
-   "scenario_total": 7,
-   "scenario_recent": 6,
+   "overall": 81.6,
+   "scenario_total": 8,
+   "scenario_recent": 7,
    "open_findings": {
     "심각": 0,
     "보통": 2,
-    "경미": 3
+    "경미": 5
    },
-   "found_today": 0,
+   "found_today": 2,
    "fixed_today": 0,
    "decisions": {
     "merged": 1,
@@ -81,8 +81,8 @@
    "kind": "product",
    "health": 82.0,
    "scenarios": 42.9,
-   "agency": 100.0,
-   "overall": 73.9,
+   "agency": null,
+   "overall": 67.3,
    "scenario_total": 7,
    "scenario_recent": 3,
    "open_findings": {
@@ -93,7 +93,7 @@
    "found_today": 0,
    "fixed_today": 0,
    "decisions": {
-    "merged": 3,
+    "merged": 0,
     "closed": 0
    },
    "open_proposals": 0
@@ -147,8 +147,8 @@
    "kind": "support",
    "health": 48.0,
    "scenarios": 0.0,
-   "agency": 100.0,
-   "overall": 44.0,
+   "agency": null,
+   "overall": 30.0,
    "scenario_total": 2,
    "scenario_recent": 0,
    "open_findings": {
@@ -159,7 +159,7 @@
    "found_today": 0,
    "fixed_today": 0,
    "decisions": {
-    "merged": 3,
+    "merged": 1,
     "closed": 0
    },
    "open_proposals": 0
@@ -169,8 +169,8 @@
    "kind": "support",
    "health": 0.0,
    "scenarios": 0.0,
-   "agency": 100.0,
-   "overall": 20.0,
+   "agency": null,
+   "overall": 0.0,
    "scenario_total": 2,
    "scenario_recent": 0,
    "open_findings": {
@@ -181,11 +181,11 @@
    "found_today": 0,
    "fixed_today": 0,
    "decisions": {
-    "merged": 4,
+    "merged": 2,
     "closed": 0
    },
    "open_proposals": 0
   }
  },
- "previous_date": "2026-11-09"
+ "previous_date": "2026-11-10"
 }

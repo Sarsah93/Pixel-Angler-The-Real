@@ -1,0 +1,52 @@
+diff --git a/packages/client-pc/src/scenes/field/TrapFieldSystem.ts b/packages/client-pc/src/scenes/field/TrapFieldSystem.ts
+index 67c7b20..4598829 100644
+--- a/packages/client-pc/src/scenes/field/TrapFieldSystem.ts
++++ b/packages/client-pc/src/scenes/field/TrapFieldSystem.ts
+@@ -21,6 +21,7 @@ import {
+   calculateTideInfo, TUNING,
+ } from '@tra/core';
+ import { isHometownRegion, hometownBlockReasonKo } from '@tra/core';   // 305차
++import { kstParts } from '@tra/core';   // 하모니 — 금어기 · 조례 판정의 달 · 날은 KST(채집 · 이야기와 같은 날)
+ import { GameState } from '../../store/GameState.js';
+ import { MultiplayerClient } from '../../net/MultiplayerClient.js';
+ import { StoryStore } from '../../store/StoryStore.js';
+@@ -219,7 +220,7 @@ export class TrapFieldSystem {
+     const tide = calculateTideInfo();
+     const depthM = this.host.depthAtWaterTile(tx, ty);
+     const v = validateTrapDeployment(spec.id, {
+-      spotType: this.spotTypeAt(tx, ty), depthM, tide, month: new Date().getMonth() + 1, day: new Date().getDate(), regionId: this.host.regionId, currentStrength: tide.currentStrength,
++      spotType: this.spotTypeAt(tx, ty), depthM, tide, month: Number(kstParts().mo), day: Number(kstParts().d), regionId: this.host.regionId, currentStrength: tide.currentStrength,
+     }, GameState.deployedTraps.filter((t) => !t.isLostOrDamaged).length,
+       GameState.hasLicense('commercial_trap'), GameState.hasLicense('trap_advanced'));
+     if (!v.valid) { this.host.floatingHint(v.reason ?? '설치 불가'); this.cancelPlacement(); return; }
+@@ -398,7 +399,7 @@ export class TrapFieldSystem {
+     }
+     const result = harvestTrap(t, {
+       spotType: this.spotTypeAt(t.tileX, t.tileY), depthM: t.depthM ?? 5, tide,
+-      month: new Date().getMonth() + 1, day: new Date().getDate(), regionId: this.host.regionId, currentStrength: tide.currentStrength,
++      month: Number(kstParts().mo), day: Number(kstParts().d), regionId: this.host.regionId, currentStrength: tide.currentStrength,
+       baitDurationMult: GameState.skillMult('trap_bait_duration'),   // 222차 「미끼 절약」
+       extraAttempts: GameState.skillBonus('trap_attempts'),          // 222차 「통발 운」
+     });
+@@ -429,7 +430,7 @@ export class TrapFieldSystem {
+     this.host.floatingHint(result.items.length ? `${result.items.length}종 수거 (${coolerCount} 쿨러)` : '빈 통발…');
+ 
+     // 강원 조례 — 산란기 도루묵
+-    const viol = trapSeasonViolations(result.items, new Date().getMonth() + 1);
++    const viol = trapSeasonViolations(result.items, Number(kstParts().mo));
+     if (viol.length) {
+       // 바다 평판이 나쁘면(전에 걸린 적이 있으면) 더 자주 걸린다
+       const enf = rollEnforcement(GameState.player.inventory.coins, Math.random, GameState.repeatOffenderMult());
+diff --git a/packages/client-pc/src/store/GameState.ts b/packages/client-pc/src/store/GameState.ts
+index 62e228b..5eaff3f 100644
+--- a/packages/client-pc/src/store/GameState.ts
++++ b/packages/client-pc/src/store/GameState.ts
+@@ -749,7 +749,7 @@ export class GameStateManager {
+     this.addProficiency('landing');   // 140차 — 챔질·파이팅 숙련
+     this.addProficiency('fight');
+     // 134차 — 퀘스트·조행록 어획 이벤트 (자가어획)
+-    StoryStore.event({ kind: 'catch', speciesId, lengthCm, method, selfCaught: true, regionId: this.currentRegionId, month: new Date().getMonth() + 1, spotKind });
++    StoryStore.event({ kind: 'catch', speciesId, lengthCm, method, selfCaught: true, regionId: this.currentRegionId, month: Number(kstParts().mo), spotKind });   // 하모니 — KST 달(이야기 호스트 · 채집과 같은 달)
+   }
+ 
+   // ─── 플레이어 레벨 XP (124차 — core Progression 곡선 · MAX_LEVEL 200 캡) ───
