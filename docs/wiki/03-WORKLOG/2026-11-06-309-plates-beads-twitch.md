@@ -93,4 +93,4 @@ QA 원문:
 - [x] `fishing-loop.md` §4 · §6 · `economy-data.md` §4 · `sashimi-cooking.md` §5 · 백로그 DK
 - [x] `AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트 4개 — 남은 과업 설계 59 · 구현 라이브러리 58 · 채비 모딩 순서도 51(「309차 기준」 줄) · 위키 111(시스템 「접시 · 반달구슬 · 트위칭」)
-- [ ] main · gh-pages — 지시 대기
+- [x] main · gh-pages — 310차와 함께 반영(main `1691324` · 112차 배포 gh-pages `534d745`)
