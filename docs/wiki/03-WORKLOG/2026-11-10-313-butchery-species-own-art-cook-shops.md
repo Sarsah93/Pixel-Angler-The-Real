@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-10 |
 | **시스템** | `손질` · `에셋` · `경제(가게 상품)` · `위키` |
 | **트리거** | 사용자 지시(312 보고 뒤 — 「회뜨기 미구현 어종」 · 「밖에서 요리하려면 도구를 어디서」 질문에 답한 뒤 결정) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck`(main · gh-pages 반영은 지시 대기) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `55b73bd`(main · gh-pages 반영은 지시 대기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 시험 558(+5 · `ButcheryFlow313`) · 하네스 r313(28종 도마 그림 · pageerror 0) · r313d 4/4 |
 
 ---
