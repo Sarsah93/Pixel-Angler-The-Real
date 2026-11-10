@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-10 |
 | **시스템** | `캐릭터(초상)` · `스토리(컷씬)` · `경제(축제 · 철물점)` · `낚시(원투 채비)` · `위키` |
 | **트리거** | 사용자 지시 하나 + 리포트 넷(311(2) 보고 뒤 · 작업 중에 더 들어왔다) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck`(main · gh-pages 반영은 지시 대기) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `b31c0f6`(main · gh-pages 반영은 지시 대기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · 하네스 r312 face · fest · hw 2 · okseon 4 + skip · rfp312 6/6 · pageerror 0 |
 
 ---
