@@ -120,6 +120,8 @@ const STORE_VARIANT: Record<string, { accent: number; goods: number[]; cooler: b
   nursery: { accent: 0x4a8a3a, goods: [0x5cb84a, 0x8fd16a, 0x5c3f24, 0xd8b878, 0x3a8ad0, 0xe8d040], cooler: false, greet: '모종은 철 봐 가며 들여요. 뭐 찾으세요?' },
   // 284차 — 방앗간: 기름병 · 깨 자루 · 고춧가루 봉지 · 떡
   mill: { accent: 0x8a5a2a, goods: [0xd8a040, 0xb8862a, 0x5a4a3a, 0xe8d8b0, 0xc8402a, 0xf0e8d8], cooler: false, greet: '깨 털어 오셨어요? 볶아서 바로 짜 드려요.' },
+  // 311차 — 철물점: 철사 타래 · 목재 · 도료 통 · 공구
+  hardware: { accent: 0x5a6a7a, goods: [0x9aa4ac, 0xc8a070, 0x3a6ab0, 0xd84a3a, 0x5a5a5a, 0xe8e0c8], cooler: false, greet: '뭐 만드시게요? 철사 · 목재는 안쪽이에요.' },
   // 295차 — 가공장: 말린 생선 · 장독 · 소금 자루
   processor: { accent: 0x9a6a3a, goods: [0xd8b090, 0x7a5a3a, 0xe8e0d0, 0xc89070, 0x4a5a52, 0xf0e8d8], cooler: false, greet: '맡기러 오셨어요? 재료 보여 주세요.' },
 };
@@ -541,7 +543,7 @@ export function interiorLayoutOf(kind: BuildingKind | null, name: string): Inter
 
 /** 개발 · 검증용 — 다섯 틀의 대표 배치 */
 export const SAMPLE_LAYOUTS = (): InteriorLayout[] => [
-  storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'), storeLayout('nursery'), storeLayout('mill'), storeLayout('processor'),
+  storeLayout('convenience'), storeLayout('mart'), storeLayout('daily'), storeLayout('pharmacy'), storeLayout('nursery'), storeLayout('mill'), storeLayout('processor'), storeLayout('hardware'),
   foodLayout('restaurant'), foodLayout('cafe'), foodLayout('pub'),
   tackleLayout(), clinicLayout(), auctionLayout(),
   ...Object.entries(HOME_LAYOUTS).map(([id, f]) => f(id)),

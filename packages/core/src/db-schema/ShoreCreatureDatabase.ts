@@ -707,6 +707,17 @@ export const SHORE_CREATURE_DATABASE: ShoreCreature[] = [
     requiredLicense: null, behavior: 'shoot', spotKinds: ['hill_grass'], tools: ['hand'], handInjury: true, absentMonths: [1, 2, 3, 6, 7, 8, 9, 10, 11, 12],
     harvestItemId: 'crop_eomnamu', harvestQty: [1, 1], regions: ['gangwon_sokcho', 'gyeongbuk_pohang', 'ulsan', 'gyeongnam_geoje', 'jeonnam_yeosu', 'chungnam_taean', 'busan', 'jeju'],
   },
+  // 311차 — 약초(사용자 지시 「약초는 산나물 캐기에 넣어줘」). 산과 들 어디나 나는 쑥을 뜯어 말린 것이 약초다 —
+  //   거두면 가게의 약초(`inv_mat_herb` · 상비약 · 쑥 모기향 재료)와 같은 물건이다(작물이 아니라 제작 재료).
+  {
+    id: 'green_herb', nameKo: '쑥(약초)', nameEn: 'Mugwort (medicinal herb)', scientificName: 'Artemisia princeps', spriteKey: 'creature_green_herb',
+    category: 'wild_green', habitatSpotTypes: [], habitatDesc: '볕 드는 산자락 · 풀밭 가장자리. 향이 짙은 잎을 뜯어 말린다 — 뿌리는 남긴다.',
+    minLegalSizeCm: 0, dailyLimitG: 0, closedSeasonMonths: [], discoveryTime: 'day', minLampLumens: 0, marketValuePerKg: 9000,
+    isRestaurantIngredient: false, canBeUsedAsBait: false,
+    description: '산과 들 어디서나 나는 쑥. 말려 두면 약초가 된다 — 상비약을 달이고 모기향을 만다. 단오 무렵 뜯은 약쑥이 가장 좋다고 한다.',
+    requiredLicense: null, behavior: 'leaf', spotKinds: ['hill_grass'], tools: ['hand'], absentMonths: [1, 2, 11, 12],
+    harvestItemId: 'inv_mat_herb', harvestQty: [1, 2], regions: ['gangwon_sokcho', 'gyeongbuk_pohang', 'ulsan', 'gyeongnam_geoje', 'jeonnam_yeosu', 'chungnam_taean', 'incheon', 'busan', 'jeju', 'ulleungdo'],
+  },
 ];
 
 export function getCreatureById(id: string): ShoreCreature | undefined {

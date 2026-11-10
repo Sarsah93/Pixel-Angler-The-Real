@@ -1,6 +1,7 @@
 /**
  * @file Greens299.test.ts
  * @description 299차 — 산나물(산자락 채집): 표 · 수확물 · 지역 · 제철 · 놀이 갈래 · 굴림(산자락 후보에서만 · 지역 · 달)
+ *   311차 — 쑥(약초) 하나 더 — 거두면 작물이 아니라 제작 재료 약초(`inv_mat_herb`)
  */
 import { describe, it, expect } from 'vitest';
 import { SHORE_CREATURE_DATABASE } from '../db-schema/ShoreCreatureDatabase.js';
@@ -9,15 +10,19 @@ import { WORLD_NODE_DATABASE } from '../types/WorldMap.js';
 import { rollForageSpots, forageGameKindOf, isWildGreen, creatureTools, creatureSpotKinds } from '../simulation/ForagingEngine.js';
 import type { ForageCandidate } from '../types/Foraging.js';
 import { specialtyOf } from '../db-schema/RegionalSpecialty.js';
+import { CRAFT_BLUEPRINTS } from '../db-schema/CraftingDatabase.js';
 
 const greens = SHORE_CREATURE_DATABASE.filter(isWildGreen);
 const hill = (n = 12): ForageCandidate[] => { const out: ForageCandidate[] = []; for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) out.push({ tx: x * 3, ty: y * 3, kind: 'hill_grass' }); return out; };
 const base = { seed: 7, isNight: false, tideLevel01: 1, hasAdvancedLicense: true, farms: [], maxSpots: 40, spotsPerHundred: 20 };
 
 describe('299 — 산나물', () => {
-  it('표 — 8종 · 수확물이 텃밭 작물에 있다 · 지역 id · 산자락 · 낮 · 맨손', () => {
-    expect(greens.length).toBe(8);
-    const harvestIds = new Set(CROP_DATABASE.map((c) => c.harvest.itemId));
+  it('표 — 9종(산나물 8 + 쑥 약초) · 수확물이 텃밭 작물(약초는 제작 재료)에 있다 · 지역 id · 산자락 · 낮 · 맨손', () => {
+    expect(greens.length).toBe(9);
+    // 311차 — 쑥은 가게 약초와 같은 물건(제작 재료) — 상비약 · 쑥 모기향 도면이 쓰는 id
+    const herbUsed = CRAFT_BLUEPRINTS.some((b) => b.materials.some((m) => m.itemId === 'inv_mat_herb'));
+    expect(herbUsed).toBe(true);
+    const harvestIds = new Set([...CROP_DATABASE.map((c) => c.harvest.itemId), 'inv_mat_herb']);
     const regionIds = new Set(WORLD_NODE_DATABASE.map((n) => n.id));
     for (const g of greens) {
       expect(g.harvestItemId && harvestIds.has(g.harvestItemId), g.id).toBe(true);
@@ -48,6 +53,17 @@ describe('299 — 산나물', () => {
     expect(nov.length).toBe(0);
     const night = rollForageSpots(hill(), { ...base, month: 5, isNight: true, regionId: 'gangwon_sokcho' });
     expect(night.length).toBe(0);
+  });
+
+  it('311 — 쑥(약초)은 봄 · 여름 · 가을 전국 산자락 · 한겨울엔 없다 · 9월엔 산나물이 지고 쑥만 남는다', () => {
+    const herb = greens.find((g) => g.id === 'green_herb')!;
+    expect(herb.harvestItemId).toBe('inv_mat_herb');
+    expect(herb.absentMonths).toEqual([1, 2, 11, 12]);
+    const sep = rollForageSpots(hill(), { ...base, month: 9, regionId: 'busan' });
+    expect(sep.length).toBeGreaterThan(0);
+    for (const s of sep) expect(s.creatureId).toBe('green_herb');
+    const jan = rollForageSpots(hill(), { ...base, month: 1, regionId: 'busan' });
+    expect(jan.length).toBe(0);
   });
 
   it('굴림 — 갯바위 후보에는 산나물이 안 난다 · 밀도 덮어쓰기', () => {

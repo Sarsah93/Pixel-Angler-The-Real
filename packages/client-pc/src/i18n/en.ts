@@ -151,6 +151,10 @@ const EN_BASE: Record<string, string> = {
   '거래하기': 'Trade', '편의점': 'Convenience Store', '식자재마트': 'Grocery Mart', '직판장': 'Fish Market', '음식점': 'Restaurant', '카페': 'Cafe', '주점': 'Pub',
   '낚시용품점': 'Tackle Shop', '미끼 · 루어 · 에기 · 원줄 · 입문 대 · 릴 · 헤드랜턴': 'Bait, lures, egi, line, starter rods, reels, headlamps',
   '밤낚시 가세요? 미끼는 새벽에 들어온 겁니다.': 'Night fishing? The bait came in this morning.',
+  // 311차 — 철물점
+  '철물점': 'Hardware Store', '철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑': 'Wire, wood, epoxy, paint, cotton cloth, work gloves',
+  '뭐 만드시게요? 철사 · 목재는 안쪽, 도료는 계산대 옆이에요.': 'Making something? Wire and wood are in the back, paint by the counter.',
+  '뭐 만드시게요? 철사 · 목재는 안쪽이에요.': 'Making something? Wire and wood are in the back.',
   '종묘사': 'Seed & Seedling Shop', '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약': 'Seedlings, seeds, sets, stakes, fertilizer, pesticides',
   '모종은 철 봐 가며 들여요. 고추는 늦서리 지나고 심으세요.': 'Seedlings come in by the season. Plant chili after the last frost.',
   '모종은 철 봐 가며 들여요. 뭐 찾으세요?': 'Seedlings come in by the season. What are you after?',

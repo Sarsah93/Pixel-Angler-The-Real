@@ -362,7 +362,9 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
   speciesList.push({
     id: s.id, group, subgroup,
     name: s.nameKo, nameEn: s.nameEn, scientific: s.scientificName,
-    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : s.harvestItemId && imgOf(`px:${s.harvestItemId}`) ? [{ src: imgOf(`px:${s.harvestItemId}`), label: '' }] : []),   // 299차 — 산나물은 작물 초상
+    // 299차 — 산나물은 작물 초상 · 311차 — 쑥(약초)은 작물이 아니라 약초 아이템 그림(`art_herb`)
+    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : s.harvestItemId && imgOf(`px:${s.harvestItemId}`) ? [{ src: imgOf(`px:${s.harvestItemId}`), label: '' }]
+      : s.harvestItemId === 'inv_mat_herb' && imgOf('art_herb') ? [{ src: imgOf('art_herb'), label: '' }] : []),
     desc: s.description ?? '',
     source: s.category === 'wild_green' ? '채집 (산자락 — 산나물)' : '채집 (해루질)',
     valuePerKg: s.marketValuePerKg ?? 0,
@@ -383,7 +385,7 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
       ['미끼 활용', s.canBeUsedAsBait ? '가능' : '불가'],
       ['사는 모양', BEHAVIOR_KO[core.forageBehaviorOf(s)] ?? '—'],
       ...(s.regions ? [['나는 고장', s.regions.map((r) => core.getRegionById?.(r)?.shortNameKo ?? r).join(' · ')]] : []),   // 299차
-      ...(s.harvestItemId ? [['거두면', '텃밭 수확물과 같은 묶음 — 그 고장 특산이면 산지 봉인']] : []),
+      ...(s.harvestItemId ? [['거두면', s.harvestItemId === 'inv_mat_herb' ? '약초(제작 재료) — 약국에서 파는 것과 같은 물건 · 상비약 · 쑥 모기향' : '텃밭 수확물과 같은 묶음 — 그 고장 특산이면 산지 봉인']] : []),   // 311차
       ['들어가는 곳', (s.spotKinds ?? []).includes('shallows') ? ((s.spotKinds ?? []).length === 1 ? '얕은 물(장화)만' : '뭍 · 얕은 물(장화)') : '뭍(갯바위 · 안벽)'],
       ['동해(속초)', (s.eastSeaWeight ?? 1) <= 0 ? '살지 않는다' : (s.eastSeaWeight ?? 1) < 0.5 ? '드물다' : '있다'],
       ['여름잠 · 안 보이는 달', s.absentMonths?.length ? MONTHS(s.absentMonths) : '없음'],
@@ -771,6 +773,17 @@ const rules = [
       ['칼', '편의점(24시간) = 막칼 · 회칼(사시미) · 생활용품점 사이소 = 보급형 야나기바(65,000원) · 장인 야나기바 + 초보 기본 채비 한 벌(목줄 2호 · 감성돔 바늘 · 고리 · 구멍봉돌 3호 · 좁쌀봉돌 · 핀 도래 · 구멍찌 0.8호) · 식자재마트(10~22시) = 막칼 · 회칼 · 장인 · 장인 단조'],
       ['생선 값', '식용 어획물은 한 마리 1,000원 밑으로 내려가지 않는다(상점에 팔 때도 — 보통 500 · 나쁨 100 · 부패 0). 꽁치 kg 단가는 원양 냉동 경락 밴드(5,000)에서 국내 생물 · 냉동 도매(8,000)로 — 25cm 꽁치 1,000원 · 45cm 약 3,000원'],
       ['참다랑어 어종군', '참다랑어는 잡어 폴백(2.2)이 아니라 전용 군 「참치류」(5.0)로 싸운다 — 방어류(5.5)와 체형은 같지만 체급이 커서 체중당 힘은 조금 낮고, 대신 오래 달린다(부분 온혈). 평균 25kg 개체가 줄에 거는 힘은 약 134kg(합사 15호급) — 가게 줄(합사 1호)로는 못 올린다. 희귀도는 우량부터'],
+    ],
+  },
+  {
+    id: 'hardware_herb_311', round: 311, hidden: false, title: '철물점 · 쑥(약초)',
+    lede: '철사 · 목재 같은 제작 재료는 철물점이 판다. 약초는 산자락에서 쑥을 뜯어도 얻는다.',
+    rows: [
+      ['철물점', '철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑 — 8~20시. 속초 항구 앞(항구철물) · 남쪽 시내(설악철물공구) · 부산 남항(남항철물) · 여수 · 서귀포'],
+      ['식자재마트', '식재료 가게 — 제작 재료는 팔지 않는다(굵은소금은 판다)'],
+      ['밤에는', '생활용품점 사이소 · 수산물 직판장도 같은 재료를 판다(직판장은 철사 · 목재)'],
+      ['편의점 이름의 가게', '지도에서 생활용품점으로 잡히던 편의점 체인(속초 11곳)은 이제 편의점이다'],
+      ['쑥(약초)', '3~10월 · 낮 · 어느 고장 산자락에나 난다 — 잎을 뜯는다(1~2개). 거두면 약국에서 파는 것과 같은 약초 — 상비약 · 쑥 모기향 재료'],
     ],
   },
   {
@@ -1577,7 +1590,8 @@ const regions = core.WORLD_NODE_DATABASE.map((n) => {
 const MAP_PX = 8, MAP_SHEET = 4096, MAP_OV_PX = 2;
 const mapData = readJson(path.join(ROOT, 'tools/wiki_map_data.json'))
   ?? { placements: [], places: [], triggers: [], buildingLabel: {}, buildingGoods: {}, buildingHours: {}, poiLabel: {}, hometown: null, poiKinds: {} };
-const MM_ICON = { convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food', cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery' };
+// 311차 — 낚시용품점 · 방앗간 · 가공장(빠져 있었다) · 철물점 — 게임 미니맵(`RegionFieldScene.MINI_SHOP_ICON`)과 같은 아이콘
+const MM_ICON = { convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food', cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', tackle: 'mm_tackle', mill: 'mm_mill', processor: 'mm_mill', hardware: 'mm_hardware' };
 const HOURS_KO = (h) => (!h ? '' : h === 'always' ? '24시간' : `${h.open}~${h.close}시`);
 const NPC_BEHAVIOR_KO = { stall: '좌판을 지킨다', patrol: '오가며 둘러본다', fishing: '낚시한다', wander: '서성인다' };
 const FACING_KO = { down: '정면', left: '왼쪽', right: '오른쪽', up: '뒤' };
@@ -1733,9 +1747,9 @@ for (const m of mapList) {
 }
 const maps = {
   px: MAP_PX, sheet: MAP_SHEET,
-  icons: ['mm_conv', 'mm_mart', 'mm_market', 'mm_food', 'mm_cafe', 'mm_pub', 'mm_pharm', 'mm_daily', 'mm_nursery', 'mm_poi', 'mm_npc', 'mm_quest', 'mm_ready']
+  icons: ['mm_conv', 'mm_mart', 'mm_market', 'mm_food', 'mm_cafe', 'mm_pub', 'mm_pharm', 'mm_daily', 'mm_nursery', 'mm_tackle', 'mm_mill', 'mm_hardware', 'mm_poi', 'mm_npc', 'mm_quest', 'mm_ready']
     .map((id) => ({ id, img: imgOf(`px:${id}`) })).filter((x) => x.img),
-  legend: [['mm_market', '직판장 · 위판장 · 좌판'], ['mm_tackle', '낚시용품점'], ['mm_mart', '식자재마트'], ['mm_daily', '생활용품점'], ['mm_nursery', '종묘사'], ['mm_conv', '편의점'], ['mm_pharm', '약국'],
+  legend: [['mm_market', '직판장 · 위판장 · 좌판'], ['mm_tackle', '낚시용품점'], ['mm_mart', '식자재마트'], ['mm_daily', '생활용품점'], ['mm_hardware', '철물점'], ['mm_nursery', '종묘사'], ['mm_mill', '방앗간 · 가공장'], ['mm_conv', '편의점'], ['mm_pharm', '약국'],
     ['mm_food', '음식점'], ['mm_cafe', '카페'], ['mm_pub', '주점'], ['mm_poi', '장소(거래 없음)'], ['mm_npc', '이야기 인물']],
   list: mapList, npcAt, placeAt, triggersByQuest, regionMaps,
 };

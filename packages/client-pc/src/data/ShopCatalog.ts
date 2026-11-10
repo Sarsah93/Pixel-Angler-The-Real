@@ -21,7 +21,7 @@ import type { FurnKind } from './HomeFurniture.js';
 
 /** 건물(상점) 종류 */
 export type BuildingKind =
-  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery' | 'mill' | 'tackle' | 'processor';   // 295차 — 지역 가공장
+  | 'convenience' | 'mart' | 'market' | 'restaurant' | 'cafe' | 'pub' | 'pharmacy' | 'daily' | 'nursery' | 'mill' | 'tackle' | 'processor' | 'hardware';   // 295차 — 지역 가공장
 
 export const BUILDING_LABEL: Record<BuildingKind, string> = {
   convenience: '편의점',
@@ -36,6 +36,7 @@ export const BUILDING_LABEL: Record<BuildingKind, string> = {
   mill: '방앗간',      // 284차 — 참기름 · 들기름 짜기 · 들깨 갈기 · 참깨 볶기
   processor: '가공장',   // 295차 — 지역 특산 가공(덕장 · 장아찌 · 순대)
   tackle: '낚시용품점', // 292차 — 미끼 · 루어 · 줄 · 입문 대(24시간 · 위판 창구 없음)
+  hardware: '철물점',   // 311차 — 철사 · 목재 · 에폭시 · 도료 · 무명천(제작 재료)
 };
 
 /**
@@ -50,6 +51,7 @@ export const BUILDING_GOODS: Record<BuildingKind, string> = {
   mill: '기름 짜기 · 들깨 갈기 · 참깨 볶기 · 곡물 봉투',
   processor: '이 고장 특산 가공 — 맡기기 · 찾기',
   tackle: '미끼 · 루어 · 에기 · 원줄 · 입문 대 · 릴 · 헤드랜턴',
+  hardware: '철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑',
   convenience: '간식 · 생수 · 각얼음 · 상비약',
   pharmacy: '붕대 · 구급품 · 약',
   restaurant: '식사 · 매운탕 · 회',
@@ -75,6 +77,7 @@ export const BUILDING_HOURS: Record<BuildingKind, ShopHours> = {
   nursery: { open: 8, close: 19 },   // 238차 — 종묘사는 아침 일찍 열고 저녁에 닫는다
   mill: { open: 8, close: 19 },      // 284차 — 방앗간도 아침 일찍 연다(새벽 떡 · 기름 짜기)
   processor: { open: 7, close: 20 },   // 295차 — 덕장은 해 뜰 때부터
+  hardware: { open: 8, close: 20 },   // 311차 — 철물점은 공사 일 시작 전에 연다
   pharmacy: { open: 10, close: 22 },
   restaurant: { open: 10, close: 22 },
   cafe: { open: 10, close: 22 },
@@ -429,16 +432,34 @@ export const SASHIMI_PLATES: ShopEntry[] = [
  * 생활 제작 재료(129차 P7 — 도면 `CRAFT_BLUEPRINTS`가 소비한다) — 한 물건 = 한 정의, 여러 가게가 나눠 진열한다.
  * 310차 — 철사 · 목재 · 에폭시 · 도료가 식자재마트(10~22시)에만, 무명천이 약국(10~22시)에만 있어
  *   밤에는 간이 백팩 · 통발 · 부목 같은 도면이 막혔다(QA 「철사와 목재는 어디서 구할 수 있는 지? 그물망 파는 곳에는 안팔고 편의점 사이소 이런 곳에도 안파는거 같음」).
- *   식자재마트 = 넷 그대로 / 생활용품점 사이소 = 넷 + 무명천 / 수산물 직판장 = 철사 · 목재(통발 틀 — 그물망 옆) + 굵은소금(문어 손질).
+ *   생활용품점 사이소 = 넷 + 무명천 / 수산물 직판장 = 철사 · 목재(통발 틀 — 그물망 옆) + 굵은소금(문어 손질).
+ * 311차 — 넷 · 무명천은 식자재마트가 아니라 **철물점**(새 가게 종류 `hardware`)이 판다(사용자 「식자재마트보다는 철물점 같은 데서 팔아야 하는 거 아니야?」).
+ *   식자재마트는 굵은소금(식재료)만 남는다. 사이소 · 직판장은 그대로 — 철물점이 닫는 밤(20~08시)의 길이다.
  */
 const MAT_WOOD: ShopEntry = { id: 'inv_mat_wood',  name: '목재',       icon: '', iconTexture: 'art_wood', category: 'etc', subCategory: '재료', basePrice: 800,   price: 1000,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '부목·통발 틀 재료.' };
 const MAT_WIRE: ShopEntry = { id: 'inv_mat_wire',  name: '철사',       icon: '', iconTexture: 'art_wire', category: 'etc', subCategory: '재료', basePrice: 1000,  price: 1300,  maxPerPurchase: 30, equippable: false, craftMaterial: true, desc: '통발 프레임·바늘 고정 재료.' };
 const MAT_RESIN: ShopEntry = { id: 'inv_mat_resin', name: '에폭시 수지', icon: '', iconTexture: 'art_resin', category: 'etc', subCategory: '재료', basePrice: 4000,  price: 5000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '로드 도장·루어 코팅 재료.' };
 const MAT_PAINT: ShopEntry = { id: 'inv_mat_paint', name: '도료 세트',  icon: '', iconTexture: 'art_paint', category: 'etc', subCategory: '재료', basePrice: 5000,  price: 6000,  maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '루어 컬러링 재료.' };
 const MAT_CLOTH: ShopEntry = { id: 'inv_mat_cloth', name: '무명천',      icon: '', iconTexture: 'art_cloth', category: 'etc', subCategory: '재료', basePrice: 1200, price: 1500, maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '붕대·손잡이 그립 재료.' };
+const MAT_HERB: ShopEntry = { id: 'inv_mat_herb',  name: '약초',        icon: '', iconTexture: 'art_herb', category: 'etc', subCategory: '재료', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '상비약 · 쑥 모기향 재료. 볕 드는 산자락에서 쑥을 뜯어도 된다(산나물 캐기).' };
+/** 목장갑 — 사이소 · 철물점이 같은 정의를 진열한다(311) */
+const GLOVES_WORK: ShopEntry = { id: 'inv_gloves_work', name: '목장갑', icon: '', iconTexture: 'art_gloves_work', category: 'gear', subCategory: '장갑',
+  basePrice: 2000, price: 2000, maxPerPurchase: 3, equippable: true,
+  desc: '테트라포드·그물 작업 기본. 손을 베지 않는 것이 먼저다.' };
 const COARSE_SALT: ShopEntry = { id: 'inv_coarse_salt', name: '굵은소금',        icon: '', iconTexture: 'art_coarse_salt', category: 'consumable', subCategory: '조미/손질', basePrice: 2000, price: 2500, maxPerPurchase: 10, equippable: false, desc: '문어 손질(소금 치대기) 재료 — 점액과 이물을 걷어낸다. 1회 1개 소모.' };
-/** 마트 · 사이소가 함께 파는 생활 제작 재료 넷 */
+/** 철물점 · 사이소가 함께 파는 생활 제작 재료 넷 */
 const CRAFT_LIFE_MATS: ShopEntry[] = [MAT_WOOD, MAT_WIRE, MAT_RESIN, MAT_PAINT];
+
+/**
+ * 311차 — 가게에서 파는 제작 재료의 가방 아이템 틀(가게 값 · 진열 필드를 뗀 것).
+ * 산나물 캐기(약초)처럼 가게 밖에서 같은 재료를 얻을 때 쓴다 — 한 물건 = 한 정의.
+ */
+export function craftMaterialTemplate(id: string): InvItemTemplate | null {
+  const e = [...CRAFT_LIFE_MATS, MAT_CLOTH, MAT_HERB].find((m) => m.id === id);
+  if (!e) return null;
+  const { price: _price, maxPerPurchase: _max, ...tpl } = e;
+  return tpl;
+}
 
 // 309차 — 반유동 찌채비의 반달구슬 · 쿠션고무도(QA 「반유동 채비에서 반달구슬이 반드시 필요 … 상점에도 없음」 — 직판장 채비 코너 끝에만 있었다)
 const SAISO_BASIC_RIG_IDS = ['inv_nylon2', 'inv_chinu3', 'inv_sinker_ring_3', 'inv_sinker_hole_3', 'inv_sinkerG2', 'inv_swivel', 'inv_float08', 'inv_bead_halfmoon', 'inv_cushion_bell'];
@@ -484,8 +505,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_veges',    name: '식자재 묶음 (대파/양파)', icon: '', iconTexture: 'art_veges', category: 'food',       subCategory: '식자재',     basePrice: 5000, price: 6000, maxPerPurchase: 10, condition: 'fresh', equippable: false, desc: '요리 기본 재료 묶음.' },
       { id: 'shop_rice',    name: '쌀 1kg',                  icon: '', iconTexture: 'art_rice_bag', category: 'food',       subCategory: '식자재',     basePrice: 4000, price: 4800, maxPerPurchase: 10, equippable: false, desc: '요리 주재료.' },
       { id: 'shop_sauce',   name: '양념 세트',               icon: '', iconTexture: 'art_sauce_set', category: 'food',       subCategory: '식자재',     basePrice: 7000, price: 8500, maxPerPurchase: 5,  equippable: false, desc: '요리 풍미를 올려주는 양념.' },
-      // 제작 재료 (129차 P7) — 도면(CRAFT_BLUEPRINTS)이 소비한다. 채집·벌목·채굴이 붙기 전까지의 공급처.
-      ...CRAFT_LIFE_MATS,
+      // 제작 재료(철사 · 목재 · 에폭시 · 도료)는 311차부터 철물점 · 사이소가 판다 — 식자재마트는 식재료 가게다(사용자 지시).
       { id: 'inv_chum',     name: '집어제 (크릴 배합)',      icon: '', iconTexture: 'art_chum_mix', category: 'consumable', subCategory: '집어제/밑밥', basePrice: 6000, price: 7000, maxPerPurchase: 10, equippable: false, chumKind: 'powder', desc: '어군 활성도 상승.' },
       // 224차 — 미끼용 빵가루 반죽은 200g 한 봉지로 판다. 가방에서 「포장 뜯기」를 하면 바늘에 다는 경단 10개가 된다.
       { id: 'inv_breadbait_pack', name: '빵가루 반죽 (200g)', icon: '', iconTexture: 'art_breadpack', category: 'tackle', subCategory: '반죽미끼', basePrice: 3000, price: 4000, maxPerPurchase: 10, equippable: false,
@@ -626,7 +646,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'shop_medicine', name: '종합 상비약', icon: '', iconTexture: 'art_medicine', category: 'consumable', subCategory: '구급품', basePrice: 9000,  price: 11000, maxPerPurchase: 10, equippable: false, desc: '감기·독감·식중독·생물중독을 치료하고 HP를 조금 회복한다.' },
       // 제작 재료 (약초·천) — 나머지 재료는 마트·직판장에서 판다.
       MAT_CLOTH,
-      { id: 'inv_mat_herb',  name: '약초',        icon: '', iconTexture: 'art_herb', category: 'etc', subCategory: '재료', basePrice: 2500, price: 3000, maxPerPurchase: 20, equippable: false, craftMaterial: true, desc: '상비약 재료. 산과 들에서 채집할 수도 있다.' },
+      MAT_HERB,   // 311차 — 산나물 캐기(산자락 쑥)로도 얻는다
     ],
   },
   /**
@@ -652,9 +672,7 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
       { id: 'inv_line_nylon3', name: '나일론 원줄 3호 100m', icon: '', iconTexture: 'line_spool_saiso', category: 'tackle', subCategory: '원줄 스풀',
         basePrice: 4000, price: 4000, maxPerPurchase: 5, equippable: false,
         desc: '거친 구멍 바닥에 쓸려도 덜 아픈 값싼 원줄.' },
-      { id: 'inv_gloves_work', name: '목장갑', icon: '', iconTexture: 'art_gloves_work', category: 'gear', subCategory: '장갑',
-        basePrice: 2000, price: 2000, maxPerPurchase: 3, equippable: true,
-        desc: '테트라포드·그물 작업 기본. 손을 베지 않는 것이 먼저다.' },
+      GLOVES_WORK,
       // 301차 — 사용자 「사이소에도 저급~중급 야나기바가 있는 걸 실제로 확인 … 생초보를 위한 기본 채비 물품들도 있었음」.
       //  칼은 보급형(새 id · 수율 1.05) + 장인 야나기바(마트와 같은 객체) · 채비는 직판장 채비 코너의 기본 한 벌(같은 객체 — 값 · 묶음 수가 같다).
       KNIFE_YANAGIBA_BASIC, KNIFE_YANAGIBA,
@@ -701,6 +719,19 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     name: '특산 가공장',
     greeting: '맡기러 오셨어요? 재료 보여 주세요.',
     sells: [],
+    buysCategories: [],
+  },
+  /**
+   * 철물점 — 311차(사용자 「철사/목재/에폭시/도료/천 같은 것들은 식자재마트보다는 철물점 같은 데서 팔아야 하는 거 아니야?」).
+   * 생활 제작 재료 넷 + 무명천 + 목장갑. 8~20시 — 밤에는 사이소 · 직판장이 같은 재료를 판다(310).
+   */
+  hardware: {
+    kind: 'hardware',
+    name: '철물점',
+    greeting: '뭐 만드시게요? 철사 · 목재는 안쪽, 도료는 계산대 옆이에요.',
+    sells: [
+      ...CRAFT_LIFE_MATS, MAT_CLOTH, GLOVES_WORK,
+    ],
     buysCategories: [],
   },
   mill: {

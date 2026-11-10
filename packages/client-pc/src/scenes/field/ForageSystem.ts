@@ -32,9 +32,10 @@ import {
 } from '@tra/core';
 import { GameState } from '../../store/GameState.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
-import { InventoryStore } from '../../store/InventoryStore.js';
+import { InventoryStore, type InvItemTemplate } from '../../store/InventoryStore.js';
 import { CoolerStore } from '../../store/CoolerStore.js';
 import { cropItemTemplate } from '../../data/CropItems.js';   // 299차 — 산나물은 텃밭 수확물로 들어간다
+import { craftMaterialTemplate } from '../../data/ShopCatalog.js';   // 311차 — 쑥(약초)은 가게 약초와 같은 제작 재료
 import { ensureWildGreenTextures, wildGreenTexKey } from './WildGreenSprites.js';   // 299(2)차 — 산나물은 땅에 뿌리내린 포기 도트
 import { DiscoveryStore } from '../../store/DiscoveryStore.js';
 import { ExternalDataStore } from '../../store/ExternalDataStore.js';
@@ -223,6 +224,13 @@ const BAIT_TEMPLATES: Record<string, { name: string; iconTexture: string; basePr
 };
 
 /**
+ * 산나물 캐기로 얻는 물건의 가방 틀 — 산나물은 텃밭 수확물(`cropItemTemplate`), 311차 쑥은 가게 약초와 같은 제작 재료(`craftMaterialTemplate`).
+ */
+function wildHarvestTemplate(itemId: string): InvItemTemplate | null {
+  return cropItemTemplate(itemId) ?? craftMaterialTemplate(itemId);
+}
+
+/**
  * 287차 — dev 콘솔(F10) 갯것 지급. 사용자 「갯것 3마리를 dev 모드로 아이템 얻어서 강제 진행해보려고 해 …
  * 해루질이나 작물에 대한 아이템 강제로 얻는 기능이 추가되지 않았더라고. 전부 추가해줘.」
  * 실제로 캔 것과 같은 아이템을 만든다 — 미끼 갯것(쫄장게 · 갯강구 · 갯지렁이)은 미끼로, 그 밖은 가방 채집물(개체 id · 크기 · 무게).
@@ -237,8 +245,8 @@ export function devGrantForage(c: ShoreCreature, countGather: boolean, pre?: For
   // 288차 — 금지체장은 「이하」라 그 크기 그대로는 못 잡는다 — 0.1cm 위로
   if (res.undersized) res = { ...res, sizeCm: Math.round((resolveLegal(c, regionId).minLegalSizeCm + 0.1) * 10) / 10, undersized: false };
   let ok = false;
-  if (c.harvestItemId) {   // 299차 — 산나물: 텃밭 수확물 한 묶음(얻은 지역 꼬리표 → 특산)
-    const tpl = cropItemTemplate(c.harvestItemId);
+  if (c.harvestItemId) {   // 299차 — 산나물: 텃밭 수확물 한 묶음(얻은 지역 꼬리표 → 특산) · 311 쑥 = 약초(제작 재료)
+    const tpl = wildHarvestTemplate(c.harvestItemId);
     ok = !!tpl && InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, 1);
   } else if (c.baitItemId) {
     const seed = InventoryStore.seedTemplate(c.baitItemId);
@@ -291,6 +299,8 @@ export class ForageSystem {
   private hillCandidates: ForageCandidate[] = [];
   /** 299차 dev — 달을 고정한다(산나물 제철 검증 · `__FIELD.forage.devMonth = 5`) */
   devMonth: number | null = null;
+  /** 311차 dev — 낮 · 밤을 고정한다(산나물은 낮에만 — 해 진 뒤에도 하네스가 낮 스팟을 굴리게 `__FIELD.forage.devNight = false`) */
+  devNight: boolean | null = null;
   private spots: ForageSpot[] = [];
   private spotSprites = new Map<string, Phaser.GameObjects.Image>();
   private runners = new Map<string, RunnerState>();
@@ -477,7 +487,7 @@ export class ForageSystem {
     return {
       // 232차 — 월 · 일은 KST(OS 시간대가 다른 사람끼리 금어기 · 스팟 풀이 하루 어긋나지 않게)
       month: this.devMonth ?? Number(kstParts().mo),   // 299차 — dev 달 고정
-      isNight: isNightNow(),
+      isNight: this.devNight ?? isNightNow(),
       windSpeedMs: kma?.windSpeedMs ?? marine?.windSpeedMs ?? 4,
       waveHeightM: ExternalDataStore.getWaveHeightM(this.host.regionId) ?? 0.5,
       tideLevel01: Math.max(0, Math.min(1, level)),
@@ -682,7 +692,7 @@ export class ForageSystem {
 
     const p = this.host.player();
     const tr = this.host.tr;
-    const night = isNightNow();
+    const night = this.devNight ?? isNightNow();   // 311 dev — 낮 고정이면 발견 반경도 낮
     const lm = this.lampLumens();
     // 스킬 채집 눈(122차) — 발견 반경 배율
     // 222차 「헤드랜턴 효율」 — 밤 랜턴 반경만
@@ -1092,15 +1102,18 @@ export class ForageSystem {
   private deliver(spot: ForageSpot, c: ShoreCreature, res: ForageHarvest): void {
     // 299차 — 산나물: 텃밭 수확물 한두 묶음(작물 초상 · 얻은 지역 꼬리표 → 울릉 명이 · 설악 곰취 특산)
     if (c.harvestItemId) {
-      const tpl = cropItemTemplate(c.harvestItemId);
+      const tpl = wildHarvestTemplate(c.harvestItemId);
       const [lo, hi] = c.harvestQty ?? [1, 1];
       const qty = lo + Math.floor(Math.random() * (hi - lo + 1));
       if (tpl && InventoryStore.addItem({ ...tpl, originRegion: GameState.originRegionId }, qty)) {
         playSfx('forage_get');
         DiscoveryStore.record('creature', c.id, 'night_hunting');
         GameState.addActivityXp('forage');
-        this.host.floatingHint(`${c.nameKo} ${qty}묶음 — 가방`);
-        this.host.pushLog(`[채집] ${c.nameKo} ${qty}묶음 — 가방(농산물)`);
+        // 311차 — 쑥은 작물이 아니라 약초(제작 재료) — 가방의 「기타」 칸 · 이름은 가방 아이템 이름으로
+        const isCrop = !!cropItemTemplate(c.harvestItemId);
+        const what = isCrop ? `${c.nameKo} ${qty}묶음` : `${tpl.name} ${qty}개`;
+        this.host.floatingHint(`${what} — 가방`);
+        this.host.pushLog(`[채집] ${what} — 가방(${isCrop ? '농산물' : '재료'})`);
         this.host.scene.cameras.main.flash(120, 90, 160, 60);
         return;
       }
