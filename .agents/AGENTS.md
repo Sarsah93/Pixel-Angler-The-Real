@@ -325,7 +325,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 새 가게 종류 `hardware` 철물점(철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑 · 8~20시 · 식자재마트에서 제작 재료 뺌) · 속초 둘 · 부산 하나 손 POI · OSM 철물 · 공구 · 페인트 → 철물점 · 편의점 체인(GX24 · QU)이 생활용품점이던 것(속초 11) 바로잡음.
 - 쑥(약초) `green_herb` — 3~10월 · 낮 · 전국 산자락 · 거두면 가게 약초와 같은 물건 · 포기 도트 · 위키 지도 판정 복제 · 아이콘 맞춤.
 - 311(2) 사용자 「그 지역들에서도 세워줘 … main 반영 & gh-pages 재배포까지」 — 울산 · 포항 · 거제 둘 · 태안 둘 · 제주시 · 모슬포 · 울릉 · 인천 철물점 손 POI 10(가게 앞이 내리는 자리와 같은 걷기 성분).
-- 검증: r311 8/8 · core 553(+1) · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0. 상세: [311차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-311-hardware-store-herb-gathering.md).
+- 검증: r311 8/8 · core 553(+1) · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0 · main `517b539` · **113차 배포**(gh-pages `22aad35` · 4xx 0 · pageerror 0). 상세: [311차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-311-hardware-store-herb-gathering.md).
 
 **이전 변경 (2026-11-10 310차) — 철사 · 목재 밤에도 사는 길 · 농사 입문 퀘스트 확인(QA)**
 
