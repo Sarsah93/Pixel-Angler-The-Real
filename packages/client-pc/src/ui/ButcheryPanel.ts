@@ -2705,8 +2705,10 @@ export class ButcheryPanel extends DraggablePanel {
   private editableLines(): CutPoint[][] | null {
     const stage = this.process.stage;
     if (!stage || primitiveInput(stage.primitive) !== 'path' || !stage.cut) return null;
-    if (!stage.cut.guidePaths) stage.cut.guidePaths = [stage.cut.guidePath];
-    return stage.cut.guidePaths;
+    // 317 — 단일 선 단계는 스테이지를 바꾸지 않고 임시 목록(같은 선 배열 참조)으로 감싼다.
+    //  구 구현은 편집기를 열기만 해도 `guidePaths = [선]`을 박아, 같은 선을 여러 번 긋는 칼집(1면 등쪽 3회)이
+    //  「선마다 한 번」 판정으로 바뀌어 첫 칼 뒤 막혔다. 선을 늘리는 것은 [+ 선](`editAddLine`)뿐이다.
+    return stage.cut.guidePaths ?? [stage.cut.guidePath];
   }
 
   /** 현재 스테이지의 편집 대상 점들(가변 참조) — wash는 없음 */
@@ -2847,6 +2849,9 @@ export class ButcheryPanel extends DraggablePanel {
       x: Phaser.Math.Clamp(p.x, 0, 1),
       y: Phaser.Math.Clamp(p.y + 0.18, 0, 1),   // 겹치지 않게 아래로 살짝 내려 복제
     })));
+    // 단일 선 단계를 다중 유도선으로 바꾸는 것은 여기서만(명시적으로 선을 더했을 때) — 317
+    const st = this.process.stage;
+    if (st?.cut && !st.cut.guidePaths) st.cut.guidePaths = lines;
     this.editLineIdx = lines.length - 1;
     this.flash(`유도선 ${lines.length}개 — 선 ${this.editLineIdx + 1} 편집 중 (드래그/곡선 그리기로 조정)`, true);
     this.refresh();

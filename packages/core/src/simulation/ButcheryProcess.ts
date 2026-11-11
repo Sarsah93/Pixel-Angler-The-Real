@@ -1243,11 +1243,14 @@ export class ButcheryProcess {
       if (r.passed) { this.cutQualities.push(r.quality); this._ikejime = true; this.advance(); }
       return { ...r, strokesLeft: 0, stageDone: r.passed, matchedPath: r.passed ? 0 : -1 };
     }
-    const multi = s.cut.guidePaths;
+    // 317 — 선이 하나뿐인 목록은 「다중 유도선」이 아니다(같은 선을 strokesRequired번 긋는 칼집).
+    //  dev F9 편집기가 단일 선 단계를 선 1개짜리 목록으로 바꿔 두면 첫 칼 뒤 그 선이 「끝낸 선」으로 빠져
+    //  둘째 칼부터 무조건 커버율 부족이었다(사용자 리포트 — 1면 등쪽 3회 칼집이 첫 칼 뒤 막힘)
+    const multi = s.cut.guidePaths && s.cut.guidePaths.length > 1 ? s.cut.guidePaths : undefined;
     let res: CutEvalResult;
     let matchedPath = -1;
 
-    if (multi && multi.length > 0) {
+    if (multi) {
       // ── 다중 유도선 — 미완료 선 중 **가장 잘 맞는 것**으로 판정 (그은 순서 자유) ──
       let best: CutEvalResult | null = null;
       for (let i = 0; i < multi.length; i++) {
@@ -1257,7 +1260,7 @@ export class ButcheryProcess {
       }
       res = best ?? { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false };
     } else {
-      res = evaluateCut(traced, s.cut);
+      res = evaluateCut(traced, s.cut.guidePaths?.length === 1 ? { ...s.cut, guidePath: s.cut.guidePaths[0] } : s.cut);
     }
 
     if (!res.passed) {
@@ -1421,7 +1424,7 @@ export class ButcheryProcess {
     const s = this.stage;
     this.fillProgress = 0;
     // 다중 유도선이면 선 개수만큼 = 각 선 1회씩 (strokesRequired보다 우선)
-    const multiN = s?.cut?.guidePaths?.length ?? 0;
+    const multiN = (s?.cut?.guidePaths?.length ?? 0) > 1 ? s!.cut!.guidePaths!.length : 0;   // 317 — 선 1개 목록은 단일 선
     // 경로형 프리미티브는 기본 1회 (nerve_cut은 자체 판정이라 카운터를 쓰지 않는다)
     const pathPrim = !!s && primitiveInput(s.primitive) === 'path' && s.primitive !== 'nerve_cut';
     this.strokesLeft = multiN > 0
