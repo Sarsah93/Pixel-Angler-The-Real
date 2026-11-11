@@ -73,4 +73,6 @@
 - 시스템 페이지 `butchery.md` §6 51 · 스킬 `f9-guide-coords`(그림이 바뀌면 그 뷰의 어종 확정 좌표는 낡는다) · `asset-pipeline`(가르기 도구) · 백로그 DQ ⑦.
 - AGENTS §9 · PLAN · CLAUDE.md.
 - 아티팩트 4개(같은 주소): 남은 과업 설계 Version 70 · 구현 라이브러리 69 · 채비 모딩 순서도 62(「319차 기준」 줄만) · 위키 122(필렛 시트 webp 2를 `files`로 · 헤드리스 7 / 7 · pageerror 0).
-- 커밋은 작업 브랜치 → main 빨리 감기(사용자 「main에 반영」). gh-pages 재배포는 이번 지시에 없어 하지 않았다(116차 = 318까지).
+- 커밋 `a1d03bb` — 작업 브랜치 → main 빨리 감기(사용자 「main에 반영」).
+- 117차 배포(사용자 후속 「main commit & push, gh-pages 재배포까지」) — 워크플로 「테스트 배포」(ref `main`) → gh-pages `ca5ea4f`.
+  gh-pages 브랜치를 로컬(4173 · 하위 경로)로 띄워 확인: 기동 8.0초 · 정적 2,237(소스맵 0 · `public/` 2,234개 바이트 같음) · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 번들에 벵에돔 확정 좌표.
