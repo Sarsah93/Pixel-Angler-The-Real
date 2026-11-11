@@ -782,5 +782,15 @@
   "tx": 582,
   "ty": 49,
   "osmId": 1466268284
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "용호철물",
+  "nameEn": "Yongho Hardware",
+  "tx": 371,
+  "ty": 258,
+  "osmId": -9049,
+  "src": "manual"
  }
 ]
