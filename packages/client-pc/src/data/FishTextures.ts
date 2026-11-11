@@ -176,6 +176,8 @@ export function fishIconKey(cardKey: string): string {
   if (cardKey in FORAGE_IMAGE_FILES || cardKey in TACKLE_IMAGE_FILES || cardKey in ITEM_IMAGE_FILES || cardKey === 'forage_octopus_vulgaris') return `${cardKey}__icon`;
   // 255차 — 요리 사진(`food_<레시피>` · 모둠회)도 64px 칸 아이콘 판이 있다(`food/icon/` — `tools/dish_photos.cjs`)
   if (cardKey.startsWith('food_')) return `${cardKey}__icon`;
+  // 315차 — 작물 초상 카드(`cropimg_`)도 64px 아이콘 판(`cropicon_`)이 있다(도감 산나물 칸 · 특산 · 실루엣)
+  if (cardKey.startsWith('cropimg_')) return `cropicon_${cardKey.slice(8)}`;
   return cardKey;
 }
 

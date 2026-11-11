@@ -164,7 +164,7 @@ export type {
   FilletShape, KnifeSpec, FilletYieldInput, FilletYieldResult, ButcheryFamily,
   ButcheryByproducts,
   BoardRotation, ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
-  PrimitiveInputKind,
+  PrimitiveInputKind, ButcheryGuideOverride, ButcheryGuideOverrideTable, EelGuideSet,
 } from './types/Butchery.js';
 export { ORIENTATION_LABEL, ROTATION_LABEL, canStack, primitiveInput } from './types/Butchery.js';
 // 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC v3.1) — 뷰 유니온 2종 + 프로필 4종 + 가이드 좌표
@@ -215,6 +215,11 @@ export {
   remapGuidePoint,   // 313 — 어종 그림 자리로 유도선 옮기기
 } from './simulation/ButcheryProcess.js';
 export type { ButcheryStageOptions, GuideNormRect, GuideFrameRemap } from './simulation/ButcheryProcess.js';
+export { applyGuideOverrides, isBodyGuideStage, butcheryGuideFamilyKey } from './simulation/ButcheryProcess.js';   // 315차 — F9 [확정]
+export { BUTCHERY_GUIDE_OVERRIDES } from './db-schema/ButcheryGuideOverrides.js';
+export { buildEelStages, isEelButcherySpecies } from './db-schema/EelStages.js';   // 315차 — 장어류 손질
+export { EEL_GUIDE } from './db-schema/EelGuideGeometry.js';
+export { EEL_SECTIONS } from './db-schema/ButcherySections.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
 export {

@@ -440,10 +440,61 @@ export function sectionsForCephalopod(speciesId: string): ButcherySectionDef[] |
  * 어종 → 섹션 트리 선택. 두족류 우선, 그다음 체형(넙치/원형어).
  * ⚠ `bodyShape`만 보던 구 `sectionsForBodyShape`는 두족류를 어류 트리로 흘린다 — 신규 호출은 이쪽을 쓸 것.
  */
+/**
+ * 315 — 장어류 섹션(순서 강제 — 송곳에 박은 채 한 방향으로 흘러가는 공정).
+ * 어종마다 단계가 달라(등/배 가르기 · 뼈끊기 · 껍질 벗기기) 전체 목록을 두고 `resolveButcherySections`가 없는 단계를 뺀다.
+ */
+export const EEL_SECTIONS: ButcherySectionDef[] = [
+  {
+    id: 'sec_eel_fix', label: '고정 · 점액', anyOrder: false,
+    tasks: [
+      { id: 't_eel_pin', label: '송곳 고정', stageIds: ['eel_pin'] },
+      { id: 't_eel_slime', label: '점액 빼기', stageIds: ['eel_slime'] },
+    ],
+  },
+  {
+    id: 'sec_eel_skin', label: '껍질 벗기기', anyOrder: false,
+    tasks: [
+      { id: 't_eel_neck', label: '목 둘레 칼집', stageIds: ['eel_neck_cut'] },
+      { id: 't_eel_peel', label: '껍질 벗기기', stageIds: ['eel_skin_peel'], yields: ['skin'] },
+    ],
+  },
+  {
+    id: 'sec_eel_open', label: '가르기 · 펼치기', anyOrder: false,
+    tasks: [
+      { id: 't_eel_open', label: '가르기', stageIds: ['eel_back_cut', 'eel_belly_cut'] },
+      { id: 't_eel_spread', label: '펼치기', stageIds: ['eel_spread'] },
+    ],
+  },
+  {
+    id: 'sec_eel_gut', label: '내장', anyOrder: false,
+    tasks: [
+      { id: 't_eel_gut', label: '내장 빼기', stageIds: ['eel_gut_out'], yields: ['viscera'] },
+      { id: 't_eel_wash', label: '씻기', stageIds: ['eel_wash'] },
+    ],
+  },
+  {
+    id: 'sec_eel_bone', label: '중골 · 지느러미', anyOrder: false,
+    tasks: [
+      { id: 't_eel_spine', label: '중골 발라내기', stageIds: ['eel_spine_cut'], yields: ['spine'] },
+      { id: 't_eel_fins', label: '지느러미 떼기', stageIds: ['eel_fin_trim'] },
+    ],
+  },
+  {
+    id: 'sec_eel_head', label: '머리', anyOrder: false,
+    tasks: [{ id: 't_eel_head', label: '머리 떼기', stageIds: ['eel_head_off'], yields: ['head'] }],
+  },
+  {
+    id: 'sec_eel_honekiri', label: '뼈끊기', anyOrder: false,
+    tasks: [{ id: 't_eel_honekiri', label: '뼈끊기', stageIds: ['eel_honekiri'] }],
+  },
+];
+
 export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
   const ceph = sectionsForCephalopod(speciesId);
   if (ceph) return ceph;
   if (BUTCHERY_PROFILES[speciesId]?.tree === 'small') return SMALL_FISH_SECTIONS;   // 313
+  if (BUTCHERY_PROFILES[speciesId]?.tree === 'eel') return EEL_SECTIONS;            // 315
   return sectionsForBodyShape(bodyShape);
 }
 

@@ -17,11 +17,13 @@
 import type {
   ButcheryProfile, ButcheryStage, CutSpec, CutPoint, CutEvalResult,
   ButcheryOrientation, BoardRotation, ButcheryResult, SashimiGrade,
-  FilletYieldInput, FilletYieldResult,
+  FilletYieldInput, FilletYieldResult, ButcheryGuideOverride, ButcheryGuideOverrideTable,
 } from '../types/Butchery.js';
 import { primitiveInput } from '../types/Butchery.js';
+import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js';
 import { buildCephalopodStages } from '../db-schema/CephalopodStages.js';
-import { butcheryArtFamily } from '../db-schema/ButcheryProfiles.js';
+import { buildEelStages } from '../db-schema/EelStages.js';
+import { butcheryArtFamily, BUTCHERY_PROFILES } from '../db-schema/ButcheryProfiles.js';
 import { TUNING } from '../config/tuning.js';
 
 /** 0~1 등 범위 클램프 */
@@ -225,6 +227,11 @@ export interface ButcheryStageOptions {
    * client(`ButcheryPanel`)가 두 그림 크기로 계산해 넘긴다 — core는 그림을 모른다.
    */
   guideFrame?: GuideFrameRemap;
+  /**
+   * 315 — dev F9 [확정] 좌표(dev 서버에서 받아 둔 것). 저장된 표(`BUTCHERY_GUIDE_OVERRIDES`)보다 먼저 쓴다.
+   * 확정 직후 다시 연 손질 창에도 그 좌표가 보이게 하려는 것 — 배포본은 넘기지 않는다(저장된 표만).
+   */
+  guideOverrides?: ButcheryGuideOverrideTable;
 }
 
 /** 313 — 도마 정규화(0~1) rect */
@@ -243,6 +250,67 @@ export function remapGuidePoint(p: CutPoint, m: GuideFrameRemap | undefined): Cu
 }
 const remapPath = (path: CutPoint[], m: GuideFrameRemap | undefined): CutPoint[] =>
   m ? path.map((p) => remapGuidePoint(p, m)) : path;
+
+/**
+ * 315 — **온마리 그림 위 유도선** 스테이지(어종 그림 자리로 옮겨 그리는 선 — `resolveGuideSet` · `resolveFlatGuide`).
+ * 「군 전체 확정」 좌표는 어종군 대표 그림 자리에 저장되므로, 이 스테이지들만 어종 그림 자리로 옮겨 쓴다.
+ * 개복 뒤 뷰(복면 · 체강 · 장뜨기 · 필렛 · 두족류)는 어종군 공용 그림이라 잰 좌표 그대로다.
+ */
+const BODY_GUIDE_STAGES: ReadonlySet<string> = new Set([
+  'ikejime', 'bleed_cut', 'scale_base', 'scale_flip', 'head_base', 'head_flip', 'finectomy', 'tail_grip', 'tail_grip_b',
+  'flat_head_scut', 'flat_belly_center', 'flat_back_center',
+  ...(['belly', 'back'] as const).flatMap((sd) => (['up', 'dn'] as const).flatMap((h) =>
+    ['score', 'sep1', 'sep2'].map((k) => `flat_${sd}_${h}_${k}`))),
+]);
+
+/** 315 — 이 스테이지의 유도선이 온마리 그림 위 선인가(「군 전체 확정」을 어종 그림 자리로 옮겨 쓰는 대상) */
+export function isBodyGuideStage(stageId: string): boolean {
+  return BODY_GUIDE_STAGES.has(stageId);
+}
+
+/** 315 — 「군 전체 확정」 키(`@amberjack` · `@bream` · `@halibut`). 두족류 · 장어류는 어종마다 그림이 달라 군 키가 없다(null) */
+export function butcheryGuideFamilyKey(speciesId: string, cephalopod: boolean): string | null {
+  // 두족류 · 장어류는 어종마다 그림 · 기하가 따로라 군 키가 없다
+  if (cephalopod || BUTCHERY_PROFILES[speciesId]?.tree === 'eel') return null;
+  return `@${butcheryArtFamily(speciesId)}`;
+}
+
+/**
+ * 315 — 확정 좌표를 지은 스테이지에 끼운다. 찾는 순서: dev 받아 둔 어종 → 저장 어종 → dev 군 → 저장 군.
+ * 좌표만 바꾼다(판정 옵션은 그대로) · 스테이지 · 컷 객체는 복사해 바꾼다(공용 스테이지 표를 건드리지 않는다).
+ */
+export function applyGuideOverrides(
+  stages: ButcheryStage[], speciesId: string, cephalopod: boolean,
+  m: GuideFrameRemap | undefined, live?: ButcheryGuideOverrideTable,
+): ButcheryStage[] {
+  const fam = butcheryGuideFamilyKey(speciesId, cephalopod);
+  const pick = (id: string): ButcheryGuideOverride | undefined =>
+    live?.[speciesId]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[speciesId]?.[id]
+    ?? (fam ? live?.[fam]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[fam]?.[id] : undefined);
+  return stages.map((st) => {
+    const o = pick(st.id);
+    if (!o) return st;
+    const mv = o.familyFrame && BODY_GUIDE_STAGES.has(st.id)
+      ? (p: CutPoint): CutPoint => remapGuidePoint(p, m)
+      : (p: CutPoint): CutPoint => ({ x: p.x, y: p.y });
+    const next: ButcheryStage = { ...st };
+    if (o.tapPoint && st.primitive === 'tap') next.tapPoint = mv(o.tapPoint);
+    if (o.sweepPath && o.sweepPath.length >= 2) next.sweepPath = o.sweepPath.map(mv);
+    if (st.cut && (o.guidePath || o.guidePaths)) {
+      const c: CutSpec = { ...st.cut };
+      if (o.guidePaths && o.guidePaths.length > 1) {
+        c.guidePaths = o.guidePaths.map((l) => l.map(mv));
+        c.guidePath = c.guidePaths[0];
+      } else {
+        const line = (o.guidePaths?.[0] ?? o.guidePath ?? c.guidePath).map(mv);
+        c.guidePath = line;
+        if (c.guidePaths) c.guidePaths = [line];
+      }
+      next.cut = c;
+    }
+    return next;
+  });
+}
 
 /** 어종군별 가이드 좌표 세트 (전부 dev F9 실측 — 도마 rect 정규화) */
 interface GuideCoordSet {
@@ -633,6 +701,8 @@ function buildFlatStages(profile: ButcheryProfile, opts?: ButcheryStageOptions):
 
 /** 프로필 기반 손질 스테이지 목록 생성 (오리엔티드 뷰 정규화 좌표 — 머리는 항상 왼쪽 기준) */
 export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcheryStageOptions): ButcheryStage[] {
+  // 315 — 장어류 = 송곳 고정 · 가르기 · 펼친 포 트리(뒤집기 없음 · 그림과 같은 기하의 유도선)
+  if (profile.tree === 'eel') { const eel = buildEelStages(profile.speciesId); if (eel) return eel; }
   // 넙치류 = 다섯장뜨기 전용 트리 (2026-08-05 — 원형어 삼면뜨기와 구조가 다르다)
   if (profile.bodyShape === 'flat') return buildFlatStages(profile, opts);
   const stages: ButcheryStage[] = [];
@@ -1005,9 +1075,12 @@ export class ButcheryProcess {
     const ceph = buildCephalopodStages(profile.speciesId);
     this.cephalopod = !!ceph;
     this.stages = ceph ?? buildButcheryStages(profile, opts);
+    // 315 — dev F9 [확정] 좌표(저장된 표 + dev 서버에서 받아 둔 것)를 좌표만 바꿔 끼운다
+    this.stages = applyGuideOverrides(this.stages, profile.speciesId, !!ceph, opts?.guideFrame, opts?.guideOverrides);
     if (ceph) this.orientation = ceph[0].orientation;
     // 313 — 작은 생선 공정은 시메 · 방혈이 없다(공정에 없는 것은 「해당 없음」 — 등급을 깎지 않는다)
-    if (!ceph && profile.tree === 'small') { this._ikejime = true; this._bled = true; }
+    //  315 — 장어류도 같다(송곳 고정은 즉살이 아니다 · 방혈 단계가 공정에 없다)
+    if (!ceph && (profile.tree === 'small' || profile.tree === 'eel')) { this._ikejime = true; this._bled = true; }
     this.resetStageCounters();
   }
 

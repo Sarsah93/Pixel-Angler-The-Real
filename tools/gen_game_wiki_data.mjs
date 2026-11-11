@@ -1813,6 +1813,48 @@ const maps = {
   list: mapList, npcAt, placeAt, triggersByQuest, regionMaps,
 };
 
+// 315차 — 「어종 손질」 탭(사용자 「방어류 / 작은 생선류 / 돔류 / 광어류 / 오징어류 … 손질 공정 과정을 한 눈에 · 어종 이름 → 어종 도감」).
+//  어종 갈래는 core 손질 표(어종군 · 공정 갈래 · 체형)에서 · 공정 그림은 `tools/capture_butchery_wiki.cjs`가 게임 손질 창에서 찍은 시트.
+const bkMan = fs.existsSync(path.join(IMG_DIR, 'butchery/manifest.json'))
+  ? JSON.parse(fs.readFileSync(path.join(IMG_DIR, 'butchery/manifest.json'), 'utf8')) : {};
+const fishName = (id) => core.FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id;
+const bkProf = (id) => core.BUTCHERY_PROFILES[id];
+const finfish = [...core.BUTCHERY_IMPLEMENTED_SPECIES];
+const BK_CATS = [
+  { id: 'amberjack', label: '방어류', flows: ['amberjack'],
+    pick: finfish.filter((id) => core.butcheryArtFamily(id) === 'amberjack' && !bkProf(id)?.tree),
+    note: '방추형 몸통 — 시메 · 방혈 → 머리 · 지느러미 · 비늘 → 배따기 · 내장 → 핏줄 → 꼬리 칼집 → 삼장뜨기(등 · 배) → 갈빗대 → 지아이뼈 → 박피. 그림은 잿방어이고 어종마다 제 그림 위에서 같은 순서로 한다.' },
+  { id: 'small', label: '작은 생선류', flows: ['small'],
+    pick: finfish.filter((id) => bkProf(id)?.tree === 'small'),
+    note: '시메 · 방혈 · 박피가 없는 짧은 공정 — 비늘 → 머리 · 내장 → 검은 막 · 혈합육 → 삼장뜨기 → 갈비뼈 · 잔뼈(핀셋). 그림은 꽁치.' },
+  { id: 'bream', label: '돔류', flows: ['bream'],
+    pick: finfish.filter((id) => core.butcheryArtFamily(id) === 'bream' && !bkProf(id)?.tree && bkProf(id)?.bodyShape !== 'flat'),
+    note: '체고가 높은 몸통 — 방어류와 같은 삼장뜨기 순서에 비늘이 단단하다. 그림은 감성돔.' },
+  { id: 'halibut', label: '광어류', flows: ['halibut'],
+    pick: finfish.filter((id) => bkProf(id)?.bodyShape === 'flat'),
+    note: '납작한 몸 — 다섯장뜨기. 머리 S자 절단(내장 함께) → 꼬리 칼집 → 배쪽 · 등쪽 중앙선 → 위 · 아래 포 뜨기(세로로 세워 꼬리 → 머리) → 엔가와 → 박피. 그림은 광어.' },
+  { id: 'squid', label: '오징어류', flows: ['squid'],
+    pick: ['squid', 'swordtip_squid', 'flying_squid', 'cuttlefish'].filter((id) => core.isCephalopodButcherable(id)),
+    note: '몸통을 갈라 내장 · 연골을 빼고 껍질을 두 번 뜯는다. 갑오징어도 같은 공정(갑을 들어낸다). 그림은 무늬오징어.' },
+  { id: 'octopus', label: '문어류', flows: ['octopus'],
+    pick: ['octopus', 'giant_octopus'].filter((id) => core.isCephalopodButcherable(id)),
+    note: '머리(몸통)를 뒤집어 내장 · 먹물을 떼고 굵은소금으로 치대 점액을 빼 삶는다. 그림은 참문어.' },
+  { id: 'eel', label: '장어류', flows: ['eel_conger', 'eel_pike', 'eel_hag'],
+    pick: finfish.filter((id) => bkProf(id)?.tree === 'eel'),
+    note: '송곳으로 머리를 도마에 박은 채 한 자리에서 — 뒤집기가 없다. 붕장어는 등을, 갯장어 · 먹장어는 배를 가른다. 갯장어는 마지막에 뼈끊기, 먹장어는 껍질을 통째로 벗긴다(단단한 뼈가 없다).' },
+];
+const butchery = {
+  cats: BK_CATS.map((c) => ({
+    id: c.id, label: c.label, note: c.note,
+    species: c.pick.map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
+    flows: c.flows.map((fid) => {
+      const m = bkMan[fid];
+      return m ? { id: fid, sp: m.sp, title: `${fishName(m.sp)} — ${m.steps.length}단계`, img: m.file, tileW: m.tileW, tileH: m.tileH, steps: m.steps }
+        : { id: fid, sp: '', title: '그림 준비 중', img: null, tileW: 300, tileH: 170, steps: [] };
+    }),
+  })),
+};
+
 const out = {
   generatedFrom: '@tra/core dist + client wiki catalog + docs/wiki/02-SYSTEMS',
   generatedAt: new Date().toISOString(),
@@ -1868,6 +1910,7 @@ const out = {
   farming,
   regions,
   maps,
+  butchery,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
@@ -1878,6 +1921,7 @@ for (const i of items) if (i.img) used.add(i.img);
 for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
 for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
+for (const c of butchery.cats) for (const f of c.flows) if (f.img) used.add(f.img);   // 315차 — 어종 손질 공정 시트
 for (const ic of maps.icons) used.add(ic.img);   // 264차 — 지도 탭 핀 아이콘(16px — 전부 HTML 안)
 for (const m of maps.list) for (const n of m.npcs ?? []) if (n.img) used.add(n.img);   // 268차 — 인물 얼굴(192px · 20KB 아래면 HTML 안)
 // 249차 — 아티팩트 한 판에는 파일이 511개까지만 들어간다(위키가 쓰는 그림 512장 + index.html — 그 전까지 코드 그림 141장이 빠진 채였다).

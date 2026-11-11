@@ -259,6 +259,24 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .icard .nm{font-size:14px; font-weight:600; color:var(--ink); line-height:1.4; overflow-wrap:anywhere}
 .icard .mt{font-size:11.5px; color:var(--muted); margin-top:3px; overflow-wrap:anywhere}
 .icard .pr{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); margin-top:5px}
+/* 315차 — 어종 손질 탭: 맨 위 어종 이름(어종 도감으로) · 작업마다 도마 그림(게임 손질 창에서 찍은 것) */
+.bview{margin-top:12px}
+.bk-sp{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; padding:12px 14px;
+  background:var(--card); border:1px solid var(--rule); border-radius:6px}
+.bk-sp .lbl{font-size:12px; color:var(--muted); letter-spacing:.02em; margin-right:4px}
+.bk-sp .xl{font-size:15px}
+.bk-sp .nolink{font-size:15px; color:var(--ink2)}
+.bk-note{margin:10px 2px 0; color:var(--ink2); font-size:13.5px; line-height:1.65; max-width:76ch}
+.bk-flow{margin-top:22px}
+.bk-flow h3{font-family:'Hahmlet',serif; font-size:17px; margin:0 0 10px; color:var(--ink)}
+.bk-steps{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px}
+.bk-steps li{background:var(--card); border:1px solid var(--rule); border-radius:6px; overflow:hidden; display:flex; flex-direction:column}
+.bk-steps .bimg{width:100%; aspect-ratio:300/170; background-repeat:no-repeat; background-color:#0c1622}
+.bk-steps .cap{padding:9px 11px 11px; display:grid; grid-template-columns:auto 1fr; gap:2px 8px; align-items:baseline}
+.bk-steps .n{grid-row:span 3; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); min-width:1.6em}
+.bk-steps b{font-size:14px; color:var(--ink)}
+.bk-steps .sec{font-size:11.5px; color:var(--muted)}
+.bk-steps .g{font-size:12.5px; color:var(--ink2); line-height:1.5}
 
 /* 상세 시트 */
 .sheet{position:fixed; inset:0; z-index:60; background:rgba(12,14,18,.55); display:flex;
@@ -382,6 +400,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <button data-tab="quests" aria-pressed="true">조행록</button>
     <button data-tab="cooking" aria-pressed="false">요리</button>
     <button data-tab="species" aria-pressed="false">어종·수산생물</button>
+    <button data-tab="butchery" aria-pressed="false">어종 손질</button>
     <button data-tab="it_gear" aria-pressed="false">낚시 장비</button>
     <button data-tab="it_food" aria-pressed="false">먹을거리</button>
     <button data-tab="it_life" aria-pressed="false">생활 · 도구</button>
@@ -1406,6 +1425,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .filter(s => !sub || s.subgroup === sub)
         .map(toSpeciesCard),
     },
+    // 315차 — 어종 손질: 갈래(어종군)를 고르면 맨 위에 그 공정으로 손질하는 어종(이름 → 어종 도감) · 아래에 작업마다 도마 그림
+    butchery: {
+      note: '게임 손질 창에서 실제로 하는 공정입니다. 갈래를 고르면 맨 위에 그 공정으로 손질하는 어종이 모이고(이름을 누르면 어종 도감 카드로 건너갑니다), 아래에 작업마다 도마 위 모습과 그을 선이 차례로 나옵니다.',
+      noAll: true,
+      groups: () => ((G.butchery && G.butchery.cats) || []).map(c => ({ id: c.id, label: c.label, count: c.species.length })),
+      list: () => [],
+      render: () => bkRender(),
+    },
     farming: {
       // 314차 — 「농사」 → 「농작물」 · 윗단 「작물」(텃밭 · 집 안 선반) / 「산나물」(산자락 채집 — 어종 탭에 섞여 있던 아홉)
       kinds: () => [{ id: 'crop', label: '작물', count: G.farming.crops.length }, { id: 'wild', label: '산나물', count: G.farming.wild.list.length }],
@@ -2011,6 +2038,25 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 
   // ── 목록 렌더 ────────────────────────────────
   let cards = [];
+  /** 315차 — 어종 손질 갈래 한 장: 어종 이름 줄 → 공정 설명 → 공정마다 작업 그림 칸(시트 한 장을 칸마다 잘라 보인다) */
+  function bkRender(){
+    const c = ((G.butchery && G.butchery.cats) || []).find(x => x.id === group);
+    if (!c) return '<p class="empty">갈래를 고르세요.</p>';
+    let h = '<div class="bk-sp"><span class="lbl">이 공정으로 손질하는 어종</span>' +
+      c.species.map(sp => sp.inWiki ? xl('species', sp.id, sp.name) : '<span class="nolink">' + esc(sp.name) + '</span>').join('') + '</div>';
+    if (c.note) h += '<p class="bk-note">' + esc(c.note) + '</p>';
+    for (const f of c.flows) {
+      h += '<section class="bk-flow"><h3>' + esc(f.title) + '</h3>';
+      if (!f.img || !f.steps.length) { h += '<p class="dim">그림 준비 중</p></section>'; continue; }
+      const n = f.steps.length;
+      h += '<ol class="bk-steps">' + f.steps.map((st, i) =>
+        '<li><div class="bimg" role="img" aria-label="' + esc(st.stage) + '" style="background-image:url(\'' + imgSrc(f.img) + '\');background-size:100% ' + (n * 100) + '%;background-position:0 ' + (n > 1 ? (i / (n - 1) * 100).toFixed(4) : 0) + '%"></div>' +
+        '<div class="cap"><span class="n">' + (i + 1) + '</span><b>' + esc(st.task) + '</b><span class="sec">' + esc(st.sec) + (st.stage !== st.task ? ' · ' + esc(st.stage) : '') + '</span><span class="g">' + esc(st.guide) + '</span></div></li>').join('') +
+        '</ol></section>';
+    }
+    return h;
+  }
+
   function renderCat(){
     const def = TABS[tab]; if (!def) return;
     // 314차 — 윗단 갈래(있는 탭만) — 처음 · 모르는 값이면 첫 갈래
@@ -2020,6 +2066,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       '<button class="chip" data-k="' + esc(k.id) + '" aria-pressed="' + (kind === k.id) + '">' +
       esc(k.label) + '<b>' + k.count + '</b></button>').join('');
     const gs = def.groups();
+    // 315차 — 「전체」가 없는 탭(어종 손질)은 처음 · 모르는 값이면 첫 갈래
+    if (def.noAll && gs.length && !gs.some(g => g.id === group)) group = gs[0].id;
     document.getElementById('groups').innerHTML = gs.map(g =>
       '<button class="chip" data-g="' + esc(g.id) + '" aria-pressed="' + (group === g.id) + '">' +
       esc(g.label) + '<b>' + g.count + '</b></button>').join('');
@@ -2030,6 +2078,17 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       esc(x.label) + '<b>' + x.count + '</b></button>').join('') : '';
     document.getElementById('gnote').textContent = (kind === 'wild' && def.wildNote) ? def.wildNote : def.note;
 
+    // 315차 — 카드 대신 한 장으로 그리는 탭(어종 손질)
+    const gridEl = document.getElementById('grid');
+    if (def.render) {
+      cards = [];
+      gridEl.className = 'bview';
+      gridEl.innerHTML = def.render();
+      const c0 = ((G.butchery && G.butchery.cats) || []).find(x => x.id === group);
+      document.getElementById('ccount').textContent = c0 ? c0.species.length + '종 · ' + c0.flows.reduce((n, f) => n + f.steps.length, 0) + '단계' : '';
+      return;
+    }
+    gridEl.className = 'grid';
     cards = def.list();
     const t = cterm.toLowerCase();
     const shown = t ? cards.filter(c => (c.search || c.name).toLowerCase().includes(t)) : cards;
@@ -2108,6 +2167,9 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
   });
   document.getElementById('grid').addEventListener('click', e => {
+    // 315차 — 어종 손질 탭의 어종 이름(어종 도감 카드로)
+    const a = e.target.closest('a.xl[data-open]');
+    if (a) { e.preventDefault(); const [t, ...rest] = a.dataset.open.split(':'); openByKey(t, rest.join(':')); return; }
     const b = e.target.closest('.icard'); if (b) openSheet(Number(b.dataset.i));
   });
   document.getElementById('kinds').addEventListener('click', e => {

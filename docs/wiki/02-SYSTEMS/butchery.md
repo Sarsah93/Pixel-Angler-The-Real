@@ -25,6 +25,8 @@
 | `simulation/ButcheryProcess.ts` | **FSM 본체** — 스테이지 트리 생성(`buildButcheryStages`/`buildFlatStages`) · `evaluateCut` · 수율 `computeFilletYield` · 어종군 판정 `getButcheryFamily` |
 | `db-schema/ButcheryProfiles.ts` | 어종별 프로필(체형·수율·필렛 수·최소 체장·비늘/껍질 강도 · 313 `tree: 'small'`) · 구현 목록 · **어종군 표 `butcheryArtFamily`(313 — 유도선 세트 · 도마 그림 · 부산물 아이콘 단일 출처)** |
 | `db-schema/ButcherySections.ts` | 섹션(순서 강제) → 작업(선택) 정의 + `sectionsForSpecies`(두족류 → 작은 생선 `SMALL_FISH_SECTIONS` → 체형) |
+| `db-schema/EelStages.ts` · `EelGuideGeometry.ts`(자동) | **장어류 공정(315)** — 붕장어 등 가르기 · 갯장어 배 가르기 + 뼈끊기 · 먹장어 껍질 벗기기 · 유도선은 그림과 같은 몸 윤곽(`gen_eel_views.cjs`) |
+| `db-schema/ButcheryGuideOverrides.ts`(자동) | **F9 [확정] 좌표 표(315)** — `tools/f9_captures/captures.json` → `apply_f9_captures.cjs` · `applyGuideOverrides`가 좌표만 끼운다 |
 | `db-schema/ButcheryGuideCuts.ts` | 돔류 47컷 가이드 시트 매핑(`LIVE_STAGE_GUIDE`) |
 | `db-schema/KnifeDatabase.ts` | 회칼 3등급(막칼/사시미/야나기바) — 수율·등급 배율·게이트 |
 | `db-schema/CephalopodProfiles.ts` · `CephalopodGuides.ts` | **두족류 준비(80차)** — 프로필 4종·부산물 19·가이드 좌표 |
@@ -37,8 +39,11 @@
 | `ui/PixelButcherFish.ts` | 도마 생선 렌더 — 어종군 분기(`butcherFamilyOf` = core 표) · `drawFlatFish`(넙치) · 원형 틀 고정 + 부위 삭제 · 313 `butcherGuideFrame`(대표 그림 rect → 어종 그림 rect) |
 | `ui/FishTemplateRenderer.ts` | 파라메트릭 생선 템플릿(폴백·프리뷰 공용) |
 | `data/PixelFishSprites/Stages/Views/Flat.ts` · `PixelFishSpecies.ts` | **구운 스냅샷** — PNG를 바꿔도 생성기 재실행 전엔 반영 안 됨. 313 어종 온마리 28키(`gen_species_sprites`) · 넙치류 5종 등면 · 배면(`gen_flatfish_sprites` → `FLAT_SPECIES_SPRITES`) |
+| `ui/EelBoard.ts` · `data/PixelEelViews.ts`(자동) | **장어 도마 렌더러(315)** — 측면 → 펼친 살 · 단계마다 층(머리 · 내장 · 뼈 · 지느러미)이 빠진다 · 결과물 그림 굽기 |
+| `ui/DevGuideCaptures.ts` · `vite.config.ts` `devButcheryGuidePlugin` | **F9 [확정](315)** — dev 서버에 저장 · 받아 둔 정본을 공정에 넘김(`guideOverrides`) |
 | `ui/UtilizationPanel.ts` | 도마(요리 탭) — 드래그 투입·[손질 시작]·재장착 체인·조각 스테이징 |
-| `tools/pixelize_butchery.cjs` · `gen_flatfish_sprites.cjs` · `gen_butchery_views.cjs` | 에셋 → 도트 파이프라인 |
+| `tools/pixelize_butchery.cjs` · `gen_flatfish_sprites.cjs` · `gen_butchery_views.cjs` · `gen_eel_views.cjs`(315) | 에셋 → 도트 파이프라인 |
+| `tools/capture_butchery_wiki.cjs`(315) | 위키 「어종 손질」 공정 그림 — 손질 창을 작업마다 찍은 시트(dev 서버 필요) |
 
 ---
 
@@ -102,8 +107,10 @@ inv_engwskin_   → sec_peel → 순수 엔가와
 | **어종별 도마 온마리 스프라이트** | ✅ | 87 · **313** | 87 = 10키 → **313 = 28키 + 넙치류 5**(손질되는 어종 전부 — 고등어 · 전갱이 · 삼치 · 문치가자미 · 도다리 · 강도다리도) · `wholeNative`(개복 전 실색 · 313부터 꼬리 칼집도) |
 | **어종 그림 자리로 유도선 옮기기** | ✅ | **313** | `guideFrame` — 대표 그림 rect → 어종 그림 rect 비례(측면 · 넙치 탑뷰 몸통 선만) · 어종 F9 실측 = `SPECIES_GUIDE_COORDS` · `FLAT_SPECIES_GUIDE`(옮기지 않음 — 지금 비어 있음) |
 | **손질 어종 확대** | ✅ | **313** | 둥근 어종 7(방어류 흐름) · 작은 생선 5(`SMALL_FISH_SECTIONS` — 잔뼈 = 핀셋 `drag_fill` · 시메 · 방혈 해당 없음) · 개서대(넙치) · 망상어 · 용치놀래기(돔류 · 암수 그림) · [워크로그](../03-WORKLOG/2026-11-10-313-butchery-species-own-art-cook-shops.md) |
-| 어종별 F9 실측(313 새 어종 · 바뀐 그림) | ⬜ | — | §5-⑦ 사용자 실검증 |
-| 장어류 · 참다랑어 공정 | ⬜ | — | §5-⑧ 제안만(313) |
+| 어종별 F9 실측(313 새 어종 · 바뀐 그림) | ⬜ | — | §5-⑦ 사용자 실검증 — **315부터 [확정] 단추**(복사 붙여 넣기 없음) |
+| **F9 [확정] · [군 확정]** | ✅ | **315** | dev 서버 POST → `tools/f9_captures/`(정본 · 한 줄 기록) → core 표 `ButcheryGuideOverrides.ts`(자동) · 좌표만 끼움(`applyGuideOverrides`) · [워크로그](../03-WORKLOG/2026-11-11-315-eel-butchery-f9-confirm-butchery-wiki.md) |
+| **장어류 손질**(붕장어 · 갯장어 · 먹장어) | ✅ | **315** | `tree: 'eel'` · 송곳 고정 · 등/배 가르기 · 펼치기 · 뼈끊기 · 껍질 통째로 · 전용 렌더러 `EelBoard` · 그림과 유도선이 한 몸 윤곽(`gen_eel_views.cjs`) · 실제 마우스 입력 완주 |
+| 참다랑어 · 대방어급 4덩어리 해체 | ⬜ | — | §5-⑧ — 315 제안(방어 70cm↑ · 잿방어 · 부시리 대 등급부터) · 사용자 결정 |
 | 돌돔 성별 분기(40cm↑ 수컷 무늬 소실) | ✅ | 87 | `isStripelessMale` 공용 술어 · `InvItem.sex` 신설·4경로 배선 |
 | **광어 F9 잔여 5종** | 🔶 | — | §5-① |
 | 실사 에셋 보정 3건 | 🔶 | — | §5-② (사용자 대기) |
@@ -165,9 +172,12 @@ inv_engwskin_   → sec_peel → 순수 엔가와
 ```
 **⑦ 어종별 F9 실측(313)** — 새 어종 15 · 그림이 바뀐 5(감성돔 · 긴꼬리벵에돔 · 돌돔 둘 · 강담돔) · 고등어 · 전갱이 · 삼치(301부터 어긋났던 선을 방어류 세트로) — 옮긴 선은 그림 rect 비례라 머리 크기 · 꼬리자루 길이 차이가 남는다(긴꼬리벵에돔 꼬리 선이 지느러미 쪽).
   실측은 `SPECIES_GUIDE_COORDS[어종]`(측면 9항목) · `FLAT_SPECIES_GUIDE[어종]`(넙치 탑뷰)에 — 그 항목은 옮기지 않는다. 사용자 「dev로 하나하나 실검증」.
-**⑧ 장어류 · 참다랑어 공정(313 제안 — 착수는 사용자 결정 뒤)** — 장어 = 고정 → 점액 → 등 가르기 → 내장 · 핏줄 → 척추뼈 → 머리 · 지느러미 + 갈래 끝(붕장어 껍질 · 잘게 / 갯장어 뼈끊기 잔칼질 / 먹장어 껍질 당겨 벗기기 · 토막) ·
-  참다랑어 = 해체(머리 · 가마 → 로인 4 → 블록 아카미 · 주토로 · 오토로 → 혈합육 · 껍질) · 큰 개체는 해체대. 상세 [313 워크로그 §6](../03-WORKLOG/2026-11-10-313-butchery-species-own-art-cook-shops.md).
-**⑨ 개복 뒤 어종 전용 그림(313)** — 장뜨기 · 필렛 뷰는 어종군 공용(어종 색 물듦). 어종별로 그리려면 단계 그림 × 어종(Gemini) — 사용자 결정 대기.
+**⑧ 참다랑어 · 대방어급 해체(장어류는 ✅315)** — 4덩어리(등살 2 · 뱃살 2 + 중골) 해체 트리를 참다랑어와 대방어급이 함께 쓴다(315 제안):
+  머리 · 가마 → 옆줄(혈합육) 칼집 → 등살 · 뱃살을 따로 → 뒤집어 반대편 → 중골 → 덩어리마다 껍질 · 혈합육 → 사쿠. 기준 = 방어 70cm↑(대 등급 · 약 5kg) · 부시리 80cm↑ · 잿방어 100cm↑(`SIZE_TIER_BOUNDS` 대).
+  그보다 작으면 지금 삼장뜨기. 상세 [313 워크로그 §6](../03-WORKLOG/2026-11-10-313-butchery-species-own-art-cook-shops.md) · [315 워크로그](../03-WORKLOG/2026-11-11-315-eel-butchery-f9-confirm-butchery-wiki.md).
+  장어 남은 것 = 장어 포 회썰기(붕장어회 잘게 · 하모 샤부샤부)는 회썰기 창에 장어 그림이 없어 닫혀 있다 · 장어 유도선 손맛 F9 [확정].
+**⑨ 개복 뒤 어종 전용 그림(313)** — 장뜨기 · 필렛 뷰는 어종군 공용(어종 색 물듦). **315 Gemini 시범 4장**(농어 · 우럭 · 참돔 · 고등어 순수 필렛 — 어종다운 살색) —
+  전 어종 적용(순수 필렛 · 껍질 필렛 · 갈빗대 필렛 × 28종 ≈ 84장 · 약 3달러 + 회썰기 필렛 3뷰)은 사용자 결정 뒤.
 **④ 손질 배선 없는 어종 — 300 D 감사 · 301 갱신 · 313 대부분 해소(남은 것 = 쥐치 · 말쥐치 · 대구 · 갈치 · 쏨뱅이 · 노래미류 · 눈볼대 · 병어 · 덕대 · 도루묵 · 양태 · 성대 · 자리돔 · 혹돔 · 옥돔 · 장어류 3 · 참다랑어 · 복어 3)(오라클 60종 · 구현 finfish 16 = 돔류 7 · 방어류 3 + 고등어 · 전갱이 · 삼치 · 넙치류 4)**:
   프로필은 있는데 미구현 11 — ~~전갱이 · 삼치~~ ✅301(방어류 흐름 — 전갱이 15cm 이상 작은 필렛 · 삼치 40cm 이상 두툼한 로인 · 잿방어 형태 스프라이트) · 농어 · 숭어 · 가숭어 · 쥐치 · 청볼락 · 황볼락 · 조피볼락 · 대구 · 갈치.
   프로필도 없는 24 — 용치놀래기 · 붕장어 · 문절망둑 · 망상어 · 쏨뱅이 · 쥐노래미 · 노래미 · 개서대 · 갯장어 · 꽁치 · 눈볼대 · 눈퉁멸 · 덕대 · 병어 · 도루묵 · 말쥐치 ·
@@ -341,3 +351,11 @@ inv_engwskin_   → sec_peel → 순수 엔가와
    단계 id는 원형어와 같고 `toSmallFishStages`가 빼고 말을 바꾼다 — 도마 그림 · 재장착(`inv_filletribs_` → `sec_rib`) · 부산물이 같은 id로 돈다.
 40. **`gen_species_sprites`를 다시 돌리면 원본이 바뀐 기존 어종도 새로 구워진다**(313 — 감성돔 · 긴꼬리벵에돔 · 돌돔 둘 · 강담돔) · 원본 방향도 다시 본다(긴꼬리 원본이 머리 왼쪽으로 바뀌어 옛 `mirror: true`가 거꾸로 뒤집었다).
    바뀌지 않은 원본은 컨테이너 크로뮴에서도 바이트 동일(참돔 · 벵에돔 · 방어 3 · 광어 확인) — §6-1 「컨테이너 크로뮴은 픽셀이 다르다」는 이 두 생성기에는 해당하지 않았다.
+
+41. **장어류는 뷰가 고정이다**(315) — 두족류처럼 뒤집기 · 회전이 없다(`fixedView` — 버튼 · F/V/R 키 · 가이드 단계 전부). 측면 → 펼친 살 전환은 「펼치기」 완료가 정한다(렌더러가 완료 집합에서 파생).
+   그림(`PixelEelViews`)과 유도선(`EelGuideGeometry`)은 **같은 생성기 한 번**에서 나온다 — 하나만 손으로 고치면 어긋난다. 그림을 고치려면 `gen_eel_views.cjs` 매개변수를 바꾸고 다시 돌린다(실측은 [확정] 표로 — 생성기가 덮지 않는다).
+   결과물은 `inv_eelfillet_`(「손질한 붕장어」) — 회썰기(`inv_fillet_`)가 열리지 않게 일부러 접두를 갈랐다.
+42. **[확정] 표는 좌표만 바꾼다**(315) — `applyGuideOverrides`가 스테이지 · 컷 객체를 복사해 좌표만 끼운다(공용 스테이지 표를 건드리지 않는다). 판정 옵션을 바꾸려면 core 스테이지를 고친다.
+   군 좌표(`@amberjack` 등)는 대표 그림 자리로 되옮겨 저장되고 온마리 선(`isBodyGuideStage`)만 어종 그림 자리로 다시 옮겨진다 — 개복 뒤 공용 뷰 좌표는 그대로.
+   새 온마리 선 스테이지를 만들면 `BODY_GUIDE_STAGES`에도 넣는다(빠지면 군 좌표가 어종 그림 자리로 안 옮겨진다).
+43. **dev 서버는 [확정] 표 파일을 지켜보지 않는다**(315 — `server.watch.ignored`) — 지켜보면 굽는 순간 페이지가 새로 고쳐져 손질이 끊긴다. 그래서 같은 판의 새 창은 서버 정본(GET · `ui/DevGuideCaptures`)을 쓴다.

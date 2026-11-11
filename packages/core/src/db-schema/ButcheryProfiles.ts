@@ -180,6 +180,24 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     baseYieldRate: 0.45, sliceGramBase: 11, minFilletLengthCm: 30, bodyRatio: 0.30, filletShape: 'loin_thick',
   },
 
+  // ── 장어류 (315 — `tree: 'eel'` · 송곳 고정 · 펼친 포 한 장) ──
+  //  붕장어 = 등 가르기 · 갯장어 = 배 가르기 + 뼈끊기 · 먹장어 = 껍질 통째로 벗기기(뼈 없음)
+  conger_eel: {
+    speciesId: 'conger_eel', bodyShape: 'round', hasScales: false, tree: 'eel',
+    scaleToughness: 0, anusRatio: 0.40, skinToughness: 0.3, bloodAmount: 0.4, filletCount: 1,
+    baseYieldRate: 0.55, sliceGramBase: 8, minFilletLengthCm: 35, bodyRatio: 0.07, filletShape: 'small',
+  },
+  pike_conger: {
+    speciesId: 'pike_conger', bodyShape: 'round', hasScales: false, tree: 'eel',
+    scaleToughness: 0, anusRatio: 0.38, skinToughness: 0.3, bloodAmount: 0.4, filletCount: 1,
+    baseYieldRate: 0.50, sliceGramBase: 8, minFilletLengthCm: 50, bodyRatio: 0.06, filletShape: 'small',
+  },
+  hagfish: {
+    speciesId: 'hagfish', bodyShape: 'round', hasScales: false, tree: 'eel',
+    scaleToughness: 0, anusRatio: 0.86, skinToughness: 0.2, bloodAmount: 0.3, filletCount: 1,
+    baseYieldRate: 0.60, sliceGramBase: 10, minFilletLengthCm: 30, bodyRatio: 0.10, filletShape: 'small',
+  },
+
   // ── 납작형 (광어 5장뜨기 — 대형 ≥45cm는 computeFilletYield에서 5장 분기) ──
   flatfish: {
     speciesId: 'flatfish', bodyShape: 'flat', hasScales: true,
@@ -230,7 +248,8 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
  *    313 — 몸통이 둥근 농어 · 우럭 · 볼락류 셋 · 숭어 · 가숭어도 이 흐름(사용자 「기존 흐름 그대로 · 그림은 각자 어종」)
  *  - 작은 생선(313 · `tree: 'small'`): 꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑 — 비늘 → 머리 · 내장 → 검은 막 → 삼장뜨기 → 갈비뼈 · 잔뼈
  *  - 넙치류(flat): 광어·도다리류 — **다섯장뜨기** 전용 트리 (2026-08-05 개방) · 313 개서대
- * 그 외 finfish(장어류 · 참다랑어 등)·복어는 미구현(banned) — 추후 별도 구현.
+ *  - 장어류(315 · `tree: 'eel'`): 붕장어 · 갯장어 · 먹장어 — 송곳 고정 → 점액 · 껍질 → 가르기 · 펼치기 → 내장 → 중골 · 지느러미 → 머리
+ * 그 외 finfish(참다랑어 등)·복어는 미구현(banned) — 추후 별도 구현.
  */
 export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>([
   // 돔류
@@ -246,6 +265,8 @@ export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>
   'striped_mullet', 'redlip_mullet',
   // 313 — 작은 생선 공정
   'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
+  // 315 — 장어류(송곳 고정 · 가르기 · 펼친 포)
+  'conger_eel', 'pike_conger', 'hagfish',
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
   'tonguefish',   // 313 — 개서대(광어 트리)
@@ -300,7 +321,7 @@ export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, 
   //   313 — 갑오징어도 무늬오징어 공정으로 열려 지금 이 안내가 뜨는 두족류는 없다(새 두족류가 생기면 쓴다).
   cephalopod: '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '아직 손질할 수 없는 어종입니다 (장어류 · 참다랑어 · 쥐치류 등은 추후 구현)',
+  unsupported: '아직 손질할 수 없는 어종입니다 (참다랑어 · 쥐치류 등은 추후 구현)',
 };
 
 /**

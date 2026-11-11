@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-10 314차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 315차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-10 314차) — 산나물을 어종에서 가르기 · 위키 「농작물」 탭 · 게임 도감 「산나물」 탭**
+**최근 변경 (2026-11-11 315차) — 장어류 손질 · F9 [확정] 단추 · 위키 「어종 손질」 탭 · 도감 산나물 그림**
+
+- 사용자 지시 여섯(도감 산나물 그림 · 위키 어종 손질 탭 · 어종별 개복 뒤 그림 · 장어 손질 구현 + SVG · 대방어 해체 · F9 확정 단추).
+- 장어류 손질(`tree: 'eel'` — 붕장어 등 가르기 · 갯장어 배 가르기 + 뼈끊기 · 먹장어 껍질 통째로) · 곧게 편 장어 그림과 유도선을 한 몸 윤곽에서(`gen_eel_views.cjs`) · 전용 렌더러 `EelBoard` · 뒤집기 없음.
+- F9 [확정] · [군 확정] → dev 서버(`devButcheryGuidePlugin`)가 `tools/f9_captures/`에 쓰고 core 표(`ButcheryGuideOverrides.ts` — 좌표만 끼움 `applyGuideOverrides`)를 굽는다 · 위키 「어종 손질」 탭(갈래 일곱 · 어종 이름 → 도감 · 작업마다 도마 그림) · 도감 산나물 큰 그림 = 작물 초상 · 필드 포기 = 모서리 판.
+- 검증: 아래 워크로그 §5. 상세: [315차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-315-eel-butchery-f9-confirm-butchery-wiki.md).
+
+**이전 변경 (2026-11-10 314차) — 산나물을 어종에서 가르기 · 위키 「농작물」 탭 · 게임 도감 「산나물」 탭**
 
 - 사용자 「wiki '어종' 카테고리에 왜 산나물이 같이 있는 건지 … '농사'를 '농작물'로 · 그 안에서 '작물'과 '산나물'로 … 인게임에서도 영향 받을 요소들이 있다면 체크」.
 - 채집 생물 표(`SHORE_CREATURE_DATABASE` — 갯것 + 산나물)를 통째로 바다 생물로 그렸다 → 보이는 곳만 `isWildGreen`으로 가름: 위키 「농작물 › 산나물」(`farming.wild` · 윗단 갈래 줄 `#kinds`) · 게임 도감 「산나물」 탭(`renderWildGreens` · `LOG_TABS`).
@@ -333,13 +340,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 손질 31종(+15) · 작은 생선 공정(`SMALL_FISH_SECTIONS` · `toSmallFishStages` — 잔뼈 = 핀셋 훑기) · 갑오징어 = 무늬오징어 공정 · 도마 온마리 28 + 넙치류 5(`gen_species_sprites` · `gen_flatfish_sprites`).
 - 어종 그림은 도마의 다른 자리에 선다 → client `butcherGuideFrame`이 그림 rect를 넘기고 core가 측면 유도선만 옮긴다(`guideFrame` · 어종 F9 실측 = `SPECIES_GUIDE_COORDS` · `FLAT_SPECIES_GUIDE`) · 어종군 표 core `butcheryArtFamily` 한 곳.
 - 검증: core 558 · r313(28종 그림) · r313d 4/4 · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0. 상세: [313차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-313-butchery-species-own-art-cook-shops.md).
-
-**이전 변경 (2026-11-10 312차) — 상투 초상 · 첫날 축제 알림 · 밤의 정옥선 · 원투 봉돌 릴링 · 백운포 · 독도 철물점**
-
-- 사용자 「백운포 · 독도에도 철물점」 · 리포트 넷(「초상화 … 머리 원형이 뒤에 비춰지고」 · 「튜토리얼 중에 … 축제 … 고지」 · 「200m도 더 멀리있는 정옥선이 '나를 지켜보고 있다'는 말이 안되지」 · 「릴링을 하니까 밑채비가 갑자기 땅에 가깝게」 · 「채비가 바닥까지 내려가지 않네」).
-- 초상 — 층은 얹기만 해 상투 둘레로 민머리 정수리가 비쳤다 → 합성이 머리 층을 머리에 맞춘다(`fitHairToHead` — 비움 · 구멍 메움 · 상투 6조합) · 축제 절정 알림은 집 안 튜토리얼 뒤(`prologueStepDone('leave')`).
-- 정옥선이 좌판에 없으면(밤 · 230m 밖 집) 가까운 가게 문에서 나와 마주친다(`cineEntrance` · 밤 각본 · 말을 걸 때까지 밖 `holdOut`) · 원투 릴링 식이 매 프레임 dt 없이 바닥으로 꽂던 것 고침(바닥에 있던 30g 초과만 침강 속도로 따라감) · 찌 없는 채비 매듭 한계 없음 · 「바닥 · 닿음」 · 봉돌이 바닥에 눕는 게이지 · 용호철물 · 독도 보급철물.
-- 검증: r312 face · fest · hw 2/2 · okseon 4/4 + skip · rfp312 6/6 · face_layers_qa leak · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0. 상세: [312차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-312-portrait-fit-festival-okseon-night-surf-reel.md).
 
 ---
 

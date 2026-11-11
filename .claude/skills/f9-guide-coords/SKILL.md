@@ -7,7 +7,21 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 
 ## 흐름
 
-사용자가 dev(F9) 편집기에서 선을 조정 → [복사] 스니펫 전달 → **core 데이터에 반영** → core 리빌드 → 판정 검증. F9 편집은 런타임 전용이라 코드 반영 없이는 휘발된다.
+**315차부터 기본은 [확정] 단추**(사용자 지시 — 「좌표값을 일일이 복사 붙여넣기 하지 않아도 확정」):
+
+1. 사용자가 dev 서버 위 게임에서 F9로 선을 맞추고 **[확정]**(이 어종) 또는 **[군 확정]**(어종군 전체 — 두족류 · 장어류는 없음)을 누른다.
+2. dev 서버(`vite.config.ts` `devButcheryGuidePlugin`)가 `tools/f9_captures/captures.json`(정본)에 합치고 `log.jsonl`에 한 줄을 남긴 뒤
+   `node tools/apply_f9_captures.cjs`로 core 표 `ButcheryGuideOverrides.ts`(자동 생성)를 굽는다.
+3. 에이전트는 `log.jsonl` 새 줄을 읽고 → `npx pnpm --filter @tra/core run build` → 아래 「검증」(가이드 그대로 그으면 cov 1.00) → 커밋.
+   - 컨테이너 dev 서버로 확정했으면 파일이 이 컨테이너에 바로 생긴다. 실시간으로 받으려면 백그라운드로 `log.jsonl` 줄 수를 지켜본다
+     (`until [ $(wc -l < tools/f9_captures/log.jsonl) -gt N ]; do sleep 5; done` — 끝나면 에이전트가 다시 깨어난다).
+   - 사용자 PC dev 서버로 확정했으면 그 PC 저장소에 생긴다 — 사용자가 커밋 · 푸시한 뒤 읽는다.
+- 확정 표는 **좌표만** 바꿔 끼운다(`applyGuideOverrides` — 스테이지를 다 지은 뒤) — 판정 옵션(strong · tolerance · guidePaths 수)은 core 스테이지 그대로라 아래 함정 1이 없다.
+- 찾는 순서: dev 서버에서 받아 둔 어종 → 저장 어종 → dev 군 → 저장 군. 군 좌표(`familyFrame: true`)는 온마리 선(`isBodyGuideStage`)만 어종 그림 자리로 옮긴다.
+- 확정 표는 dev 서버가 지켜보지 않는다(`server.watch.ignored` — 굽는 순간 화면이 새로 고쳐져 손질이 끊긴다). 같은 판에서 다시 연 창은 서버 정본(GET)을 받아 쓴다.
+- 손으로 다듬은 값을 기존 표(`GUIDE_COORDS` 등)로 옮겨 굳히고 싶을 때만 아래 옛 흐름을 쓴다.
+
+옛 흐름: 사용자가 dev(F9) 편집기에서 선을 조정 → [복사] 스니펫 전달 → **core 데이터에 반영** → core 리빌드 → 판정 검증. F9 편집은 런타임 전용이라 코드 반영 없이는 휘발된다.
 
 ## 반영 위치 (전부 `packages/core/src/simulation/ButcheryProcess.ts`)
 
@@ -16,6 +30,8 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 | 돔류/방어류 가이드 좌표 | `GUIDE_COORDS: Record<'bream'|'amberjack', GuideCoordSet>` — 시메 tapPoint·방혈·머리 앞/뒤·비늘 스윕·지느러미 3선·꼬리 등 9세트 |
 | 넙치류(광어) | `FLAT_GUIDE` — 시메·방혈·머리 S커브(7점)·비늘 스윕·꼬리·중앙선·상/하 경계 칼길·포 뜨기·내장·엔가와 |
 | 개별 스테이지 컷 | `cut('id', 'ORIENT', [{x,y},…], opts)` 헬퍼 / `tapPoint` / `sweepPath` |
+| **[확정] 표**(315 — 자동 생성) | `packages/core/src/db-schema/ButcheryGuideOverrides.ts` ← `tools/f9_captures/captures.json` — 손으로 고치지 않는다 |
+| **장어류**(315) | `EelGuideGeometry.ts`(자동 생성 — `tools/gen_eel_views.cjs`가 그림과 같은 몸 윤곽에서) — 실측은 [확정]으로(생성기를 다시 돌리면 덮인다) |
 | **어종별 실측**(313) | `SPECIES_GUIDE_COORDS[어종]`(측면 9항목 — 어종군 세트를 덮는다) · 넙치류 `FLAT_SPECIES_GUIDE[어종]` — **그 어종 그림 위에서 잰 값 그대로**(옮기지 않는다) |
 
 ### 313 — 어종 그림 자리로 옮긴 선

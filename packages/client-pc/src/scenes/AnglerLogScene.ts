@@ -30,7 +30,7 @@ import { itemWikiByCategory, type WikiItemEntry } from '../data/WikiCatalog.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { restoreHandCursor } from '../ui/DraggablePanel.js';
 import type { InvItem } from '../store/InventoryStore.js';
-import { createItemIcon } from '../ui/ItemIcon.js';
+import { createItemIcon, itemArtKeyOf, itemImageKeyOf } from '../ui/ItemIcon.js';
 import { CATEGORY_LABEL } from '../store/InventoryStore.js';
 import type { InvCategory } from '../store/InventoryStore.js';
 import { clampTextWidth } from '../ui/TextFit.js';
@@ -305,6 +305,13 @@ export class AnglerLogScene extends Phaser.Scene {
    */
   private creaturePic(cr: ShoreCreature, x: number, y: number, box: number): Phaser.GameObjects.Image {
     ensureForageDotTextures(this);
+    // 315차 — 산나물은 거두는 물건의 그림(작물 초상 · 약초 — 위키와 같은 생성 그림)이 먼저다.
+    //   필드 포기 도트는 칸 모서리 배지(`addFieldDotBadge`)로 따로 붙인다(사용자 지적 「도감 한 칸 우측 하단에」).
+    const art = this.wildGreenArtKey(cr);
+    if (art) {
+      const fit = fitFishTexture(this.textures, art, box, box);
+      return this.add.image(x, y, fit.key).setOrigin(0.5).setDisplaySize(Math.round(fit.w), Math.round(fit.h));
+    }
     const photo = forageTexKey(cr);
     if (this.textures.exists(photo)) {
       // 248차 — 카드(300×160 안) · 64px 아이콘 중 상자에 맞는 판(`fitFishTexture` — 72px 이하면 아이콘)
@@ -372,9 +379,46 @@ export class AnglerLogScene extends Phaser.Scene {
     return obj;
   }
 
+  /**
+   * 315차 — 산나물 그림 키: 거두는 물건(`harvestItemId`)의 생성 그림. 작물이면 작물 초상 카드(`cropimg_` —
+   * 위키 `px_crop_*`와 같은 그림), 약초(쑥)면 아이템 그림(`art_herb`). 산나물이 아니거나 그림이 없으면 null.
+   */
+  private wildGreenArtKey(cr: ShoreCreature): string | null {
+    if (!isWildGreen(cr) || !cr.harvestItemId) return null;
+    const id = cr.harvestItemId;
+    if (id.startsWith('crop_')) {
+      for (const k of [`cropimg_${id}`, `cropicon_${id}`]) if (this.textures.exists(k)) return k;
+      return null;
+    }
+    for (const k of [itemImageKeyOf(this, { id }), itemArtKeyOf({ id })]) if (k && this.textures.exists(k)) return k;
+    return null;
+  }
+
+  /**
+   * 315차 — 필드에서 보이는 모습(갯것 점 · 산나물 포기 도트)을 칸 오른쪽 아래 작은 판에 붙인다.
+   * 큰 그림이 이미 그 도트면(사진 없는 갯것) 붙이지 않는다. 돌려주는 값 = 판의 왼쪽 · 위(글 줄이 피할 경계) — 없으면 null.
+   */
+  private addFieldDotBadge(cr: ShoreCreature, right: number, bottom: number, mainKey: string | null): { left: number; top: number } | null {
+    const dot = forageSpotTexKey(cr);
+    if (!this.textures.exists(dot) || dot === mainKey) return null;
+    const S = 30;                                   // 판 한 변
+    const bx = right - S, by = bottom - S;
+    const g = this.add.graphics();
+    g.fillStyle(0x24301f, 0.95); g.fillRoundedRect(bx, by, S, S, 3);   // 흙빛 바탕 — 필드 땅 위에 선 모습
+    g.lineStyle(1, 0x5a7a48, 0.9); g.strokeRoundedRect(bx, by, S, S, 3);
+    const img = this.add.image(bx + S / 2, by + S / 2, dot).setOrigin(0.5);
+    const raw = Math.max(1, img.width, img.height);
+    img.setScale(Math.max(1, Math.floor((S - 6) / raw)));   // 도트는 정수 배율(§8)
+    if (raw > S - 6) img.setScale((S - 6) / raw);            // 판보다 큰 도트만 줄인다
+    this.tabContainer?.add([g, img]);
+    return { left: bx, top: by };
+  }
+
   /** 300차 — 갯것 · 산나물 그림 키: 사진 카드가 있으면 그것, 없으면 필드 자리 그림(점 · 포기) */
   private creaturePicKey(cr: ShoreCreature): string | null {
     ensureForageDotTextures(this);
+    const art = this.wildGreenArtKey(cr);   // 315차 — 산나물은 거두는 물건 그림
+    if (art) return art;
     const photo = forageTexKey(cr);
     if (this.textures.exists(photo)) return photo;
     const spot = forageSpotTexKey(cr);
@@ -606,15 +650,20 @@ export class AnglerLogScene extends Phaser.Scene {
         // 생물 그림 — 실사 도트(아이템 아이콘)가 있으면 그것, 없으면 필드 스팟 도트 (188차 — 이모지 대체)
         const pic = this.creaturePic(cr, x + 44, y + 84, 64);
         this.tabContainer?.add([nameText, sciText, pic]);
+        // 315차 — 필드에서 보이는 모습은 오른쪽 아래 작은 판(큰 그림은 생성 그림 · 사진)
+        const badge = this.addFieldDotBadge(cr, x + itemW - 6, y + itemH - 6, this.creaturePicKey(cr));
 
         const SX = x + 92;
         const SW = itemW - 92 - 12;
         const discLine = this.discoveryLine('creature', cr.id);
         const rows: [string, string][] = [...rowsOf(cr), [discLine ?? '발견', '#8fd4b8']];
         rows.forEach(([label, color], i) => {
-          const t = clampTextWidth(this.add.text(SX, y + 54 + i * 19, label, {
+          const ty = y + 54 + i * 19;
+          // 판과 같은 높이에 걸치는 줄은 판 왼쪽에서 끊는다(겹침 0)
+          const w = badge && ty + 16 > badge.top ? Math.min(SW, badge.left - 6 - SX) : SW;
+          const t = clampTextWidth(this.add.text(SX, ty, label, {
             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
-          }), SW);
+          }), w);
           this.tabContainer?.add(t);
         });
       } else {
