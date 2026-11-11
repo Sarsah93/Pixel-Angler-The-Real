@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-11 |
 | **시스템** | `손질` · `위키` · `도감(UI)` · `dev 도구` |
 | **트리거** | 사용자 지시 여섯(314 보고 뒤) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` (main · gh-pages 반영은 지시 대기) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `8dea5e5` · `74bea40`(main · gh-pages 반영은 지시 대기) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 566 · 장어 실입력 완주 3/3 어종 · r315log 5/5 · pageerror 0 |
 
 ---
