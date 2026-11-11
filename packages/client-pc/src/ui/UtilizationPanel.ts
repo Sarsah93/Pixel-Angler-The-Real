@@ -29,6 +29,7 @@ import {
   isBaitItem, isLureItem, isWeightSinker, isInstanceItem,
   PlateWipData, plateWipProgress, worstCondition, refreshCondition,
 } from '../store/InventoryStore.js';
+import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { partKindOf, baitKeyOf, isPackItem } from '../store/RigParts.js';
 import { clampTextWidth, fitTextHeight } from './TextFit.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
@@ -1358,6 +1359,8 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   private dropFishOnBoard(item: InvItem): void {
+    // 318차 — 첫날 판매 체험용 오징어(속초 직판장에서 팔 것)는 도마에 올리지 않는다(U가 첫날에도 열린다)
+    if (prologueProtects(item.id)) { this.flashBoardToast(PROLOGUE_PROTECT_MSG, true); return; }
     // 회 조각 = 도마 스테이징 (썰린 조각 진열 — 접시 드래그의 출발점)
     if (this.isSashimiPiece(item)) {
       playSfx('item_move');

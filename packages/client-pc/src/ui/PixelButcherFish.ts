@@ -502,6 +502,54 @@ export function fishPolyContains(px: number, py: number, poly: FishPoly): boolea
 }
 
 /**
+ * 318 — **지운 뒤 몸통과 끊긴 조각까지 지운다**(사용자 「지느러미가 남아있네. 이런 부분은 디테일하게 날려줘야 해」).
+ * 칼선 다각형은 선이 닿은 만큼만 지우므로, 선 끝 너머 지느러미(둘째 등지느러미 · 뒷지느러미 끝)가 밑동을 잃고
+ * 몸 밖에 떠서 남았다(머리 절단선 앞 부스러기도 같다). 원래 그림에서 몸통과 한 덩어리였던 칸(4-이웃) 가운데
+ * 지운 뒤 가장 큰 덩어리(몸통)와 끊긴 칸은 그리지 않는다. 원래부터 떨어져 있던 그림 조각은 건드리지 않는다.
+ * @param erasedAt 칸(그림 열 · 행 — 미러 전)이 삭제 영역 안인가
+ * @returns 그릴 칸 표(`r * w + c` — 1 = 그린다)
+ */
+export function prepKeepMask(spr: PixelFishSprite, erasedAt: (c: number, r: number) => boolean): Uint8Array {
+  const W = spr.w, H = spr.h, N = W * H;
+  const solid = new Uint8Array(N), keep = new Uint8Array(N);
+  for (let r = 0; r < H; r++) {
+    const row = spr.rows[r];
+    for (let c = 0; c < W; c++) {
+      if (row[c] === '.') continue;
+      solid[r * W + c] = 1;
+      if (!erasedAt(c, r)) keep[r * W + c] = 1;
+    }
+  }
+  /** 4-이웃 덩어리 번호(0 = 없음) · 덩어리 크기 */
+  const label = (m: Uint8Array): { id: Int32Array; size: number[] } => {
+    const id = new Int32Array(N), size = [0];
+    const q = new Int32Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!m[i] || id[i]) continue;
+      const k = size.length; size.push(0);
+      let h = 0, t = 0; q[t++] = i; id[i] = k;
+      while (h < t) {
+        const j = q[h++]; size[k]++;
+        const x = j % W, y = (j - x) / W;
+        if (x > 0 && m[j - 1] && !id[j - 1]) { id[j - 1] = k; q[t++] = j - 1; }
+        if (x < W - 1 && m[j + 1] && !id[j + 1]) { id[j + 1] = k; q[t++] = j + 1; }
+        if (y > 0 && m[j - W] && !id[j - W]) { id[j - W] = k; q[t++] = j - W; }
+        if (y < H - 1 && m[j + W] && !id[j + W]) { id[j + W] = k; q[t++] = j + W; }
+      }
+    }
+    return { id, size };
+  };
+  const big = (sz: number[]): number => { let b = 0; for (let k = 1; k < sz.length; k++) if (!b || sz[k] > sz[b]) b = k; return b; };
+  const before = label(solid), after = label(keep);
+  const body0 = big(before.size), body1 = big(after.size);
+  if (!body0 || !body1) return keep;
+  for (let i = 0; i < N; i++) {
+    if (keep[i] && before.id[i] === body0 && after.id[i] !== body1) keep[i] = 0;
+  }
+  return keep;
+}
+
+/**
  * 박피 칼 (탑뷰 — **세로**: 칼끝 위·손잡이 아래). 캡처의 "칼은 x축 anchor, y로 위아래 움직임".
  * 에셋 이미지 전 플레이스홀더 글리프.
  */
@@ -1012,6 +1060,9 @@ function drawSprite(
     const py = (ry + cell / 2 - oy) / dh;
     return erase.some((poly) => pointInPoly(px, py, poly));
   };
+  // 318 — 지운 뒤 몸통과 끊긴 조각(선 끝 너머 지느러미 · 부스러기)도 그리지 않는다
+  const keepMask = erase ? prepKeepMask(spr, (c, r) => erased(
+    ox + (mirrorX ? spr.w - 1 - c : c) * cell, oy + (mirrorY ? spr.h - 1 - r : r) * cell)) : null;
 
   for (let r = 0; r < spr.h; r++) {
     const row = spr.rows[r];
@@ -1031,7 +1082,8 @@ function drawSprite(
         // 삭제 영역과 겹치면 런을 쪼개 남는 부분만 그린다 (원형 틀 유지 부분 제거)
         let s = -1;
         for (let k = 0; k <= run; k++) {
-          const keep = k < run && !erased(ox + (cx + k) * cell, ry);
+          const sc = mirrorX ? spr.w - 1 - (cx + k) : cx + k;   // 그린 칸 → 그림 열
+          const keep = k < run && !!keepMask && keepMask[r * spr.w + sc] === 1;
           if (keep && s < 0) s = k;
           if (!keep && s >= 0) { g.fillRect(ox + (cx + s) * cell, ry, (k - s) * cell, cell); s = -1; }
         }

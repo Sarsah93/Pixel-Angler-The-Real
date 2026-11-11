@@ -56,6 +56,7 @@ import { MonologuePanel } from '../ui/MonologuePanel.js';
 import { InventoryStore, FATHER_BOX_ITEMS, type InvItem } from '../store/InventoryStore.js';
 import { QUEST_REWARD_ITEMS } from '../data/QuestRewardItems.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
+import { UtilizationPanel, type UtilizationTab } from '../ui/UtilizationPanel.js';
 import { EquipmentPanel } from '../ui/EquipmentPanel.js';
 import { JournalPanel } from '../ui/JournalPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
@@ -301,6 +302,8 @@ export class HomeInteriorScene extends Phaser.Scene {
   private invPanel: InventoryPanel | null = null;
   private equipPanel: EquipmentPanel | null = null;
   private journalPanel: JournalPanel | null = null;
+  /** 318차 — 활용 창(U — 채비하기 · 요리(도마) · 밑밥 · 제작). 필드와 같은 창이다 */
+  private utilPanel: UtilizationPanel | null = null;
   /** 191차 — 프롤로그 말풍선 코치 (구 상단 「지금 할 일」 띠·금색 자리 표시를 대신한다) */
   private coach?: PrologueCoach;
   private syncAcc = 0;
@@ -361,6 +364,7 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.invPanel = null;
     this.equipPanel = null;
     this.journalPanel = null;
+    this.utilPanel = null;
     this.walked = 0; this.ranMs = 0; this.satCount = 0; this.stoodCount = 0;
     this.wakeStarted = false;
     this.tourPanel = undefined;
@@ -433,6 +437,9 @@ export class HomeInteriorScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-I', () => { if (this.hotkeyOk('KeyI')) this.toggleInventory(); });
     this.input.keyboard!.on('keydown-E', () => { if (this.hotkeyOk('KeyE')) this.toggleEquipment(); });
     this.input.keyboard!.on('keydown-J', () => { if (this.hotkeyOk('KeyJ')) this.toggleJournal(); });
+    // 318차 — 집 안에서도 활용 창(U). 사용자 리포트 「홈타운과 집 내부에서는 왜 U키를 누를 수 없도록 … 칼 장착하고 회뜨려고 하는데 아예 안먹히네?」
+    //   — 실내에는 U 연결이 아예 없었다(가방 · 장비 · 일지만). 도마 손질 · 회썰기 · 채비 · 제작이 필드와 같은 창으로 열린다.
+    this.input.keyboard!.on('keydown-U', () => { if (this.hotkeyOk('KeyU')) this.toggleUtilization('tackles'); });
     const onInv = (): void => {
       syncPrologue();
       this.charSprite.setConfig(characterLook());
@@ -509,7 +516,14 @@ export class HomeInteriorScene extends Phaser.Scene {
     if (this.tourPanel) return;   // 혼잣말 창이 ESC를 '다음'으로 받는다
     if (GuideTour.blocksKey('Escape')) return;
     if (this.decor) { this.decor.escape(); return; }
-    if (this.popups.length) { this.popups[this.popups.length - 1].close(); return; }
+    if (this.popups.length) {
+      const top = this.popups[this.popups.length - 1];
+      // 318차 — 활용 창이 띄운 손질 · 회썰기 · 가이드는 그 창이 먼저 닫는다(필드 `closeTopPopup`과 같은 위임 — 손질 도중 U 창째 닫으면 부산물 기록이 사라진다)
+      const intercept = top.panel as unknown as { onEscIntercept?: () => boolean };
+      if (intercept.onEscIntercept?.()) return;
+      top.close();
+      return;
+    }
     if (this.cookPanel) { this.closeCook(); return; }
     if (this.fridgePanel) { this.closeFridge(); return; }
     if (this.menu) { this.menu.onCancel(); return; }
@@ -690,9 +704,21 @@ export class HomeInteriorScene extends Phaser.Scene {
       (close) => new InventoryPanel(this, 70, 60, {
         onClose: close,
         onOpenDetail: (item) => this.openItemDetail(item),
-        onOpenTackle: () => { /* 실내에는 채비 창이 없다 */ },
+        onOpenTackle: () => this.toggleUtilization('tackles', true),   // 318차 — 실내에도 활용 창이 있다
       }),
       () => { this.invPanel = null; },
+    );
+  }
+
+  /** 318차 — 활용 창(U) 열고 닫기 — 필드 `RegionFieldScene.toggleUtilization`과 같은 규칙(같은 키 = 닫기 · forceOpen = 그 탭으로 다시 열기) */
+  private toggleUtilization(tab: UtilizationTab, forceOpen = false): void {
+    if (this.utilPanel) {
+      this.popups.find((e) => e.panel === this.utilPanel)?.close();
+      if (!forceOpen) return;
+    }
+    this.utilPanel = this.openPopup(
+      (close) => new UtilizationPanel(this, close, tab),
+      () => { this.utilPanel = null; },
     );
   }
 

@@ -16,7 +16,7 @@ import {
 } from '@tra/core';
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
 import {
-  computeFishFrame, prepEraseFor, fishPolyContains,
+  computeFishFrame, prepEraseFor, fishPolyContains, prepKeepMask,
   type ButcherSpriteSet, type PixelFishGeom, type PixelFishState, type FishPoly,
 } from './PixelButcherFish.js';
 
@@ -66,13 +66,13 @@ export interface LoinColumns { c0: number; c1: number; top: number[]; bot: numbe
 export function loinColumnsFor(sprites: ButcherSpriteSet, prep: PixelFishState): LoinColumns {
   const spr = sprites.whole;
   const erase = prepEraseFor(sprites, { ...prep, orientation: 'BASE' }, 'BASE');
+  // 318 — 몸통과 끊긴 지느러미 조각은 몸통 열 재기에서도 뺀다(도마 그림과 같은 표)
+  const keep = prepKeepMask(spr, (c, r) => erase.some((poly) => fishPolyContains((c + 0.5) / spr.w, (r + 0.5) / spr.h, poly)));
   const top: number[] = [], bot: number[] = [], h: number[] = [];
   for (let c = 0; c < spr.w; c++) {
     let t = -1, b = -1;
     for (let r = 0; r < spr.h; r++) {
-      if (spr.rows[r][c] === '.') continue;
-      const px = (c + 0.5) / spr.w, py = (r + 0.5) / spr.h;
-      if (erase.some((poly) => fishPolyContains(px, py, poly))) continue;
+      if (!keep[r * spr.w + c]) continue;
       if (t < 0) t = r;
       b = r;
     }
@@ -169,6 +169,11 @@ export function drawLoinSide(
   const f = computeFishFrame(spr, geom);
   const cell = f.cell, ox = f.ox, oy = f.oy;
   const erase: FishPoly[] = prepEraseFor(sprites, prep, o);
+  // 318 — 지운 뒤 몸통과 끊긴 조각은 그리지 않는다(표는 그림 열 기준 — 삭제 영역은 그려진 방향 정규화)
+  const keep = prepKeepMask(spr, (c, r) => {
+    const sc = mirror ? spr.w - 1 - c : c;
+    return erase.some((poly) => fishPolyContains((sc + 0.5) / spr.w, (r + 0.5) / spr.h, poly));
+  });
   const L = loinLook(st.speciesId);
   const side = mirror ? st.b : st.a, other = mirror ? st.a : st.b;
   const cols = st.cols;
@@ -178,9 +183,8 @@ export function drawLoinSide(
     for (let c = 0; c < spr.w; c++) {
       const ch = spr.rows[r][c];
       if (ch === '.') continue;
+      if (!keep[r * spr.w + c]) continue;
       const sc = mirror ? spr.w - 1 - c : c;
-      const px = (sc + 0.5) / spr.w, py = (r + 0.5) / spr.h;
-      if (erase.some((poly) => fishPolyContains(px, py, poly))) continue;
       let col: number | null = pal[AB.indexOf(ch)] ?? 0;
       if (c >= cols.c0 && c <= cols.c1) {
         const half: LoinPart = r + 0.5 < cols.mid[c] ? 'back' : 'belly';
