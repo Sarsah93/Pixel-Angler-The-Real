@@ -252,6 +252,8 @@ node tools/fish_cards.cjs --check                 # 표 ↔ 원본 ↔ 출력 �
   (246 실측 — 벵에돔 64줄). 다시 굽기는 사용자 PC에서, 컨테이너에서는 데이터 diff를 되돌린다.
   313 — 원본이 그대로인 어종(참돔 · 벵에돔 · 방어 3 · 광어)은 컨테이너 크로뮴에서도 **바이트 동일**이었다. 새 어종을 더하려면 컨테이너에서 구워도 된다 —
   기존 어종이 달라지면 먼저 원본이 바뀌었는지(`--preview` 시트 ↔ 어획 카드) 본다(313 감성돔 · 긴꼬리 · 돌돔 둘 · 강담돔 = 원본이 바뀌어 있었다 · 긴꼬리는 방향까지).
+  319 — 지아이뼈 흐름(돔류 · 방어류) 19종의 순수 · 껍질 필렛은 **한 덩어리**다 — `node tools/split_fillet_art.cjs`가 316 그림(`species/_whole_side_316/`)을 혈합육 줄(3차 곡선)로 가른다.
+    그다음 `gemini_fillet_art.cjs --bake` → `gen_sashimi_fillet.cjs --species` → `gemini_fillet_art.cjs --wiki-sheets`. Gemini로 다시 그리면 새 지시문(`splitTask` — 감성돔 · 잿방어 원본 구도)이 같은 모양을 낸다.
   317 — 참다랑어(`bluefin_tuna` · 128×53)를 같은 방법으로 더했다(다른 어종은 바이트 그대로). 해체(4덩어리) 측면 그림 · 다듬기 뷰 · 사쿠는 생성기가 아니라 코드 그림(`ui/LoinArt.ts`)이다.
 
 **사진 없는 어종 → Gemini**(`tools/gemini_fish_art.cjs` · 작물 ⑥과 같은 키 · `NODE_USE_ENV_PROXY=1`):

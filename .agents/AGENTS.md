@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 318차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 319차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,15 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-11 318차) — 홈타운 · 집 안에서 U(활용 창) · 칼선 밖 지느러미 조각 지우기 · main 반영 · 116차 배포**
+**최근 변경 (2026-11-11 319차) — 벵에돔 F9 확정 반영 · 지아이뼈로 가른 「한 덩어리」 필렛 그림(19종) · 붙어 남은 지느러미 끝 · main 반영**
+
+- 사용자 「벵에돔 … 전 과정을 확정했어 … main에 반영」(`captures.json` · `log.jsonl` 첨부) · 「다른 애들은 … 두 덩어리로 잘려진 필렛 중 '하나'의 이미지로 보여져야」.
+- 벵에돔 22단계 반영(`tools/f9_captures/` → `ButcheryGuideOverrides.ts`) — 지아이 · 박피 4단계는 바뀌는 그림 위 선이라 빼고 다시 확정을 청한다.
+- 316 Gemini 필렛 19종(반쪽 통째)을 혈합육 줄 3차 곡선으로 갈라 감성돔 · 잿방어 원본 같은 등살 한 덩어리로(`tools/split_fillet_art.cjs` — Gemini는 402 크레딧 소진) · 도마 · 회썰기 · 위키 시트.
+- 확정 칼선 끝 너머 지느러미 끝이 좁은 목으로 붙어 남던 것 — `prepKeepMask`가 지우기 전 두툼했다가 지운 뒤 가늘어진 칸도 뺀다.
+- 검증: 벵에돔 실제 마우스 완주 30/30 · 지느러미 10종 끔/켬 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [319차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-319-blackfish-f9-split-fillet-art.md).
+
+**이전 변경 (2026-11-11 318차) — 홈타운 · 집 안에서 U(활용 창) · 칼선 밖 지느러미 조각 지우기 · main 반영 · 116차 배포**
 
 - 사용자 「홈타운과 집 내부에서는 왜 U키를 누를 수 없도록 … 칼 장착하고 회뜨려고 하는데 아예 안먹히네?」 · 「지느러미가 남아있네 … 디테일하게 날려줘야 해」.
 - 집 안 씬에 U가 아예 없었다 → 필드와 같은 활용 창(ESC는 손질 · 회썰기 창부터 `onEscIntercept` · 가방 「채비 열기」) · 첫날 안내 중 U 잠금 해제(`prologueKeyAllowed` — 판매 체험 오징어는 도마 거절).
@@ -332,13 +340,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 해체 갈래 `tree: 'loin'`(참다랑어는 늘 · 방어 70 · 부시리 80 · 잿방어 100cm부터 — `butcheryProfileFor(어종, 체장)`) — 1면 · 2면 옆줄 칼집 → 등살 → 뱃살 · 중골 살 · 덩어리 넷 다듬기(혈합육 · 껍질 · 사쿠) · 측면 선은 몸통 열 실루엣에서(`LoinArt`) · 덩어리 재장착 · 사쿠 회썰기.
 - 지느러미 지우기 = F9 칼선(`finErasePolys`) · 스윕 게이지 경로 지문 · 게이지 도마 아래 · F9 편집기가 단일 선 단계에 `guidePaths = [선]`을 박던 것(1면 뜨기 막힘) · 초상 티셔츠 = 상의 색(`shirtRegion`).
 - 검증: 워크로그 §5. 상세: [317차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-317-loin-breakdown-fin-cut-shirt.md).
-
-**이전 변경 (2026-11-11 316차) — 어종별 필렛 그림(Gemini) · 배를 가른 뒤에도 그 어종 · main 반영 · 114차 배포**
-
-- 사용자 「어종별 필렛 그림 Gemini로 전부 진행해줘 · main & gh-pages 재배포까지 · 실검증은 집 pc에서 dev로」.
-- 둥근 생선 27종 × 순수 · 껍질 붙은 · 갈빗대 붙은 74장(`tools/gemini_fillet_art.cjs` — 껍질 = 순수를 고쳐서 · 갈빗대 = 공용 그림 구도 · 실루엣 IoU로 다시 뽑기) → 도마 `PixelFilletSpecies` · 가방 아이콘(스프라이트 굽기 `trimsp_*`) · 회썰기 3뷰(`public/sashimi/sp/` — 창 열 때 싣기).
-- 필렛 뷰 유도선은 어종 그림의 열 실루엣을 따라 옮긴다(core `filletFrames` · `GuideColumnProfile` — 꼬리가 뾰족한 필렛에서 박피 선이 살 밖으로 나갔다) · 위키 「어종 손질」 어종별 필렛 그림.
-- 검증: core 572 · r316 8/8 · 위키 6/6 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [316차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-316-fillet-species-art.md).
 
 ---
 

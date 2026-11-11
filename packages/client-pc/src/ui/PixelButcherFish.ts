@@ -546,6 +546,39 @@ export function prepKeepMask(spr: PixelFishSprite, erasedAt: (c: number, r: numb
   for (let i = 0; i < N; i++) {
     if (keep[i] && before.id[i] === body0 && after.id[i] !== body1) keep[i] = 0;
   }
+  // 319 — **좁은 목으로 붙어 남은 자투리**도 지운다(벵에돔 확정 칼선 — 등 선 끝 너머 둘째 등지느러미 끝이 2 ~ 3칸 목으로 몸에 붙어 남았다).
+  //  열기(opening — 침식 2번 뒤 팽창 2번 · 4-이웃) 결과가 지우기 **전에는 두툼한 자리였는데 지운 뒤에는 가는 자리**가 된 칸만 뺀다.
+  //  원래부터 가는 곳(꼬리 끝 · 가시 끝 · 작은 생선 꼬리자루)은 전과 뒤가 같아 그대로다.
+  const open2 = (m: Uint8Array): Uint8Array => {
+    let cur = m;
+    for (let k = 0; k < 2; k++) {
+      const nx = new Uint8Array(N);
+      for (let i = 0; i < N; i++) {
+        if (!cur[i]) continue;
+        const x = i % W, y = (i - x) / W;
+        if (x > 0 && cur[i - 1] && x < W - 1 && cur[i + 1] && y > 0 && cur[i - W] && y < H - 1 && cur[i + W]) nx[i] = 1;
+      }
+      cur = nx;
+    }
+    for (let k = 0; k < 2; k++) {
+      const nx = new Uint8Array(cur);
+      for (let i = 0; i < N; i++) {
+        if (cur[i]) continue;
+        const x = i % W, y = (i - x) / W;
+        if ((x > 0 && cur[i - 1]) || (x < W - 1 && cur[i + 1]) || (y > 0 && cur[i - W]) || (y < H - 1 && cur[i + W])) nx[i] = 1;
+      }
+      cur = nx;
+    }
+    return cur;
+  };
+  const thickBefore = open2(solid), thickAfter = open2(keep);
+  let trimmed = 0;
+  for (let i = 0; i < N; i++) if (keep[i] && thickBefore[i] && !thickAfter[i]) { keep[i] = 0; trimmed++; }
+  if (trimmed) {
+    // 자투리를 빼다 몸통에서 끊긴 칸이 생겼으면 그것도 뺀다
+    const again = label(keep), b2 = big(again.size);
+    if (b2) for (let i = 0; i < N; i++) if (keep[i] && before.id[i] === body0 && again.id[i] !== b2) keep[i] = 0;
+  }
   return keep;
 }
 

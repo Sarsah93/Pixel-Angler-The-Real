@@ -41,6 +41,18 @@ const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'PixelFil
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const STYLE_REF = path.join(TRIM, 'amberjack', 'pure_pillet_amberjack.png');   // 315 시범과 같은 화풍 참고
+/**
+ * 318(2) — **지아이뼈를 가르는 흐름(돔류 · 방어류)의 순수 · 껍질 필렛은 「두 덩어리 중 한 덩어리」**다(사용자 「지아이뼈를 분리하는 과정에서
+ *  한 면이 두 덩어리로 잘려진 필렛 중 '하나'의 이미지로 보여져야 하는데」 — 316 그림은 반쪽 필렛 통째였다). 구도 기준 = 그 흐름의 원본(감성돔 · 잿방어).
+ *  작은 생선(`small`)은 잔뼈를 핀셋으로 뽑아 필렛이 한 덩이로 남는다 — 옛 지시문 그대로.
+ */
+const SPLIT_REF = {
+  bream: path.join(TRIM, 'bream', 'pure_pillet_bream.png'),
+  amberjack: path.join(TRIM, 'amberjack', 'pure_pillet_amberjack.png'),
+};
+/** 돔류 흐름(나머지 둥근 생선은 방어류 흐름) */
+const BREAM_FLOW = new Set(['black_seabream', 'red_seabream', 'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw', 'surfperch', 'rainbow_wrasse']);
+const splitFlowOf = (id, t) => (t.small ? null : BREAM_FLOW.has(id) ? 'bream' : 'amberjack');
 const RIBS_REF = path.join(TRIM, 'skinned_pillet_with_ribs.png');             // 갈빗대 필렛 구도 참고(도마 갈빗대 유도선을 잰 그림)
 
 /**
@@ -142,6 +154,14 @@ const pureIntro = '첫째 그림은 낚시 게임 손질 화면의 「순수 필
 const pureTask = (t) => `둘째 그림의 어종 ${t.ko}의 순수 필렛을 첫째 그림과 같은 화풍(진한 윤곽선 도트 · 고해상도 픽셀 아트)으로 그려라. `
   + '꼬리 쪽이 왼쪽(가늘다) · 머리 쪽이 오른쪽(두껍고 비스듬히 잘린 면), 윗변이 등 쪽 · 아랫변이 배 쪽. 살 면이 보이게 위에서 내려다본 한 덩이만, 그림 가로 폭의 대부분을 채운다. '
   + `${t.flesh} 필렛 모양은 그 어종 몸 비율을 따른다(${t.shape}). `
+  + '껍질 · 뼈 · 머리 · 도마 · 접시 · 그림자 · 글자 없음. 배경은 단색 흰색.';
+// 318(2) — 지아이뼈로 가른 두 덩어리 중 한 덩어리(돔류 · 방어류 흐름)
+const splitIntro = '첫째 · 둘째 그림은 낚시 게임 손질 화면의 「순수 필렛」 예시다 — 생선 반쪽 필렛을 가운데 지아이뼈(혈합육) 줄을 따라 등 쪽 · 배 쪽 **두 덩어리로 가른 뒤**, '
+  + '껍질을 벗긴 살코기 **한 덩어리**를 살 면이 위로 오게 도마 위에서 내려다본 고해상도 픽셀 아트다. 셋째 그림은 손질할 어종의 온마리 그림(어종을 알아보는 참고)이다.';
+const splitTask = (t) => `셋째 그림의 어종 ${t.ko}의 순수 필렛 한 덩어리를 첫째 그림과 같은 구도 · 모양 · 방향 · 화풍(진한 윤곽선 도트 · 고해상도 픽셀 아트)으로 그려라. `
+  + '반쪽 필렛 통째(넓은 나뭇잎 모양)가 아니라, 첫째 그림처럼 **가늘고 긴 덩어리 하나**다 — 가로가 세로의 약 4배. '
+  + '꼬리 쪽이 왼쪽(가늘게 끝난다) · 머리 쪽이 오른쪽(두껍고 비스듬히 잘린 면). 한 덩어리만, 그림 가로 폭의 대부분을 채운다. '
+  + `${t.flesh} 혈합육이 있는 어종이면 가른 쪽 긴 가장자리를 따라 띠로만 보인다(덩어리 한가운데를 가로지르지 않는다). `
   + '껍질 · 뼈 · 머리 · 도마 · 접시 · 그림자 · 글자 없음. 배경은 단색 흰색.';
 const skinIntro = '첫째 그림은 낚시 게임 손질 화면의 「순수 필렛」(껍질을 벗긴 살코기) 픽셀 아트다. 둘째 그림은 그 어종의 온마리 그림이다.';
 const skinTask = (t) => '첫째 그림을 고쳐 「껍질이 아직 붙어 있는 필렛」으로 만들어라. 필렛의 모양 · 크기 · 위치 · 방향 · 살 무늬 · 화풍은 첫째 그림과 똑같이 둔다. '
@@ -293,7 +313,27 @@ async function genSpecies(t, P) {
   const file = (k, tag = '') => path.join(P.out, `${t.id}_${k}${tag}.png`);
   const lines = [];
   // ① 순수 필렛
-  if (t.kinds.includes('pure') && (P.force || !fs.existsSync(file('pure')))) {
+  const flow = splitFlowOf(t.id, t);
+  if (t.kinds.includes('pure') && (P.force || !fs.existsSync(file('pure'))) && flow) {
+    // 318(2) — 한 덩어리 구도: 그 흐름 원본과 실루엣 IoU · 종횡비를 보고 고른다(거울상도 본다 — 설치가 방향을 맞춘다)
+    const ref = SPLIT_REF[flow], other = SPLIT_REF[flow === 'bream' ? 'amberjack' : 'bream'];
+    const rs = await silhouette(ref), rm = normMask(rs);
+    let best = null;
+    for (let k = 1; k <= P.tries; k++) {
+      const tmp = file('pure', `.try${k}`);
+      const r = await callGemini([{ text: splitIntro }, refPart(P.out, ref, `_split_${flow}.png`), refPart(P.out, other, `_split_${flow === 'bream' ? 'amberjack' : 'bream'}.png`), fishRef(), { text: splitTask(t) }], P, tmp);
+      if (!r.ok) { lines.push(`pure 시도 ${k} 실패 ${r.err}`); continue; }
+      const s = await silhouette(tmp);
+      const q = Math.max(iou(normMask(s), rm), iou(normMask(s, 96, 40, true), rm)), ar = aspectOf(s) / aspectOf(rs);
+      log(P, { id: t.id, kind: 'pure', split: flow, try: k, ms: r.ms, iou: +q.toFixed(3), aspect: +aspectOf(s).toFixed(2), aspectRatio: +ar.toFixed(3), main: +s.mainFrac.toFixed(3), inTok: r.inTok, outTok: r.outTok });
+      const score = q - Math.abs(1 - ar) * 0.5;
+      if (!best || score > best.score) best = { tmp, q, ar, score, asp: aspectOf(s) };
+      if (q >= 0.8 && Math.abs(1 - ar) < 0.3 && s.mainFrac > 0.97) break;
+    }
+    if (!best) return lines;
+    fs.copyFileSync(best.tmp, file('pure'));
+    lines.push(`pure(한 덩어리 · ${flow}) IoU ${best.q.toFixed(2)} 비 ${best.asp.toFixed(2)}(기준의 ${best.ar.toFixed(2)}배)`);
+  } else if (t.kinds.includes('pure') && (P.force || !fs.existsSync(file('pure')))) {
     const r = await callGemini([{ text: pureIntro }, refPart(P.out, STYLE_REF, '_style_pure.png'), fishRef(), { text: pureTask(t) }], P, file('pure'));
     if (!r.ok) { lines.push(`pure 실패 ${r.err}`); return lines; }
     const s = await silhouette(file('pure'));
