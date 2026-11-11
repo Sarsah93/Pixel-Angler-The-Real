@@ -110,6 +110,8 @@ const { chromium } = resolvePlaywright();
   그림 수는 `__FIELD.farmField.devWormViews()` · 줍기는 `farmField.devAim(plotId, idx)` → `update(16)` → `options()[0].run()`(라벨 「지렁이 줍기」).
   바로 드러내기는 `__FARM.devWorms(plotId, idx, n)`.
 - **채집 놀이 판 열기**: `__FIELD.forage.host.openForageGame(creature, 'hand', { dex: 1, underwater: false }, () => {})` — 팝업 스택은 `{ panel, close }` 묶음이다(`s.popupStack.map((e) => e.panel)` · 닫기는 `e.close()`).
+- **첫 열기 안내(GuideTour)는 허용 키 말고 키를 막는다**(315) — 손질 창 Enter(씻기)가 조용히 안 먹었다. 하네스에서 `import('/src/ui/GuideTour.ts').setGuideTipsEnabled(false)`는 게임과 **다른 모듈 인스턴스**라 안 꺼진다 —
+  창을 열기 전에 `__GS.setFlag('tour.<id>', true)`(예: `tour.butchery`)로 본 것으로 둔다.
 - 필드 화살표·추적기 검증은 `__STORY.setTracked(id)` → `s.updateQuestGuide(500)` → `s.hud.trackerC.list`(Text)·`s.questGuideG.visible`.
 - ⚠ **하네스의 `import('/src/store/…ts')`가 게임 전역을 갈아 끼울 수 있다**(235차 실측) — HMR로 게임 쪽 URL에 `?t=`가 붙은 상태면
   하네스 import가 **모듈을 새로 평가**하고, 모듈 끝의 `globalThis.__INV = InventoryStore`가 **새 인스턴스로 덮어쓴다**.
