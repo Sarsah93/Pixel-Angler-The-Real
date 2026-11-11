@@ -31,6 +31,7 @@ const FLOWS = [
   { id: 'eel_conger', sp: 'conger_eel', len: 70, wg: 900 },
   { id: 'eel_pike', sp: 'pike_conger', len: 90, wg: 1200 },
   { id: 'eel_hag', sp: 'hagfish', len: 50, wg: 500 },
+  { id: 'loin', sp: 'bluefin_tuna', len: 110, wg: 25000 },   // 317 — 4덩어리 해체(참다랑어 · 대방어급)
 ].filter((f) => !ONLY.length || ONLY.includes(f.id));
 
 const TW = 300, TH = 170;   // 시트 한 칸(도마 600 × 340을 절반으로)

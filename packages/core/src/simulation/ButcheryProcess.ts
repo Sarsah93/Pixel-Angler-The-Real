@@ -23,6 +23,7 @@ import { primitiveInput } from '../types/Butchery.js';
 import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js';
 import { buildCephalopodStages } from '../db-schema/CephalopodStages.js';
 import { buildEelStages } from '../db-schema/EelStages.js';
+import { buildLoinTailStages, defaultLoinSideGeometry, LOIN_FRONT_STAGE_IDS, type LoinStageOptions } from '../db-schema/LoinStages.js';
 import { butcheryArtFamily, BUTCHERY_PROFILES } from '../db-schema/ButcheryProfiles.js';
 import { TUNING } from '../config/tuning.js';
 
@@ -240,6 +241,11 @@ export interface ButcheryStageOptions {
    * 확정 직후 다시 연 손질 창에도 그 좌표가 보이게 하려는 것 — 배포본은 넘기지 않는다(저장된 표만).
    */
   guideOverrides?: ButcheryGuideOverrideTable;
+  /**
+   * 317 — **4덩어리 해체**(`tree: 'loin'`) 기하. 측면 유도선은 client가 어종 그림 실루엣에서 굽고(`side` — 그림과 같은 윤곽),
+   * 덩어리마다 사쿠 수(`sakuPieces`)는 덩어리 무게에서 정한다. 없으면 잿방어 대표 그림 근사 · 사쿠 3.
+   */
+  loin?: LoinStageOptions;
 }
 
 /** 313 — 도마 정규화(0~1) rect */
@@ -1059,6 +1065,19 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     ],
   });
 
+  // 317 — 4덩어리 해체: 앞 단계(시메 ~ 세척)만 방어류 흐름에서 가져오고 꼬리 칼집 · 장뜨기 · 갈빗대 · 지아이 · 박피 대신
+  //  양면 해체 → 중골 살 → 덩어리 다듬기를 붙인다. 측면 선은 client가 어종 그림에서 구운 것 — 없으면 기본값을 그림 자리로 옮긴다
+  if (profile.tree === 'loin') {
+    const front = stages.filter((st) => LOIN_FRONT_STAGE_IDS.has(st.id));
+    let side = opts?.loin?.side;
+    if (!side) {
+      const d = defaultLoinSideGeometry();
+      const m = opts?.guideFrame;
+      const mv = (l: typeof d.a): typeof d.a => ({ mid: remapPath(l.mid, m), back: remapPath(l.back, m), belly: remapPath(l.belly, m) });
+      side = m ? { a: mv(d.a), b: mv(d.b), nakaochi: remapPath(d.nakaochi, m) } : d;
+    }
+    return [...front, ...buildLoinTailStages({ side, sakuPieces: opts?.loin?.sakuPieces })];
+  }
   // 316 — 어종 필렛 그림이 있으면 갈빗대 · 지아이뼈 · 박피 선을 그 그림 자리로(작은 생선 핀셋 스윕도 같은 뷰)
   return applyFilletFrames(profile.tree === 'small' ? toSmallFishStages(stages) : stages, opts?.filletFrames);
 }

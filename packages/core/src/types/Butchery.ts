@@ -132,8 +132,29 @@ export interface ButcheryProfile {
    *    시메 · 방혈 · 지느러미 · 꼬리 칼집 · 박피가 없다.
    *  - `'eel'`(315) = 장어류(붕장어 · 갯장어 · 먹장어): 송곳 고정 → 점액 → 가르기 · 펼치기 → 내장 → 중골 · 지느러미 → 머리
    *    (+ 갯장어 뼈끊기 · 먹장어 목 칼집과 껍질 벗기기). 펼친 포 한 장이 나온다.
+   *  - `'loin'`(317) = **4덩어리 해체**(참다랑어 · 대방어급 — 사용자 「참치처럼 해체 공정(4개의 덩어리로)」):
+   *    시메 · 방혈 → 머리(+ 가마) · 지느러미 → 내장 → 옆줄 칼집 → 등살 · 뱃살 떼기(양면) → 중골 살 긁기 →
+   *    덩어리마다 혈합육 · 껍질 · 사쿠 나누기. 참다랑어는 프로필이 늘 이 갈래이고, 방어류 셋은 대 등급부터
+   *    (`butcheryProfileFor` — 방어 70 · 부시리 80 · 잿방어 100cm)이다.
    */
-  tree?: 'small' | 'eel';
+  tree?: 'small' | 'eel' | 'loin';
+}
+
+/** 317 — 4덩어리 해체의 덩어리 부위(등살 · 뱃살) · 면(1면 = BASE · 2면 = FLIP) */
+export type LoinPart = 'back' | 'belly';
+export type LoinSide = 'a' | 'b';
+
+/**
+ * 317 — 해체 측면 유도선 한 벌(도마 생선 틀 정규화). 면마다 따로 준다 — 2면(FLIP)은 그림이 좌우로 뒤집혀 있다.
+ *  - `mid` = 옆줄 칼집(머리 쪽 절단면 → 꼬리자루) · `back` = 등 가장자리(등살을 뗄 선) · `belly` = 배 가장자리(뱃살을 뗄 선)
+ * client가 어종 그림 실루엣에서 구워 넘긴다(`ButcheryStageOptions.loin.side`) — 없으면 core 기본값(잿방어 대표 그림 근사).
+ */
+export interface LoinSideLines { mid: CutPoint[]; back: CutPoint[]; belly: CutPoint[] }
+export interface LoinSideGeometry {
+  a: LoinSideLines;
+  b: LoinSideLines;
+  /** 중골 살 긁기 — 2면(FLIP) 뷰의 뼈대를 훑는 지그재그 */
+  nakaochi: CutPoint[];
 }
 
 /**

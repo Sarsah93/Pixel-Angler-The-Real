@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 316차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 317차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-11 316차) — 어종별 필렛 그림(Gemini) · 배를 가른 뒤에도 그 어종 · main 반영 · 114차 배포**
+**최근 변경 (2026-11-11 317차) — 참다랑어 · 대방어급 4덩어리 해체 · 지느러미 잘린 모양 = 그은 칼선 · 초상 상의 색 · 손질 리포트 셋**
+
+- 사용자 「참다랑어 · 대방어급 4덩어리 해체 진행해줘 · 상의 색 변경하면 초상화에서 상의 부분 색은 연동」 + 집 PC 실검증 리포트 넷(지느러미 곡선 · 게이지 자리 · 핏줄 게이지 · 1면 뜨기 둘째 칼).
+- 해체 갈래 `tree: 'loin'`(참다랑어는 늘 · 방어 70 · 부시리 80 · 잿방어 100cm부터 — `butcheryProfileFor(어종, 체장)`) — 1면 · 2면 옆줄 칼집 → 등살 → 뱃살 · 중골 살 · 덩어리 넷 다듬기(혈합육 · 껍질 · 사쿠) · 측면 선은 몸통 열 실루엣에서(`LoinArt`) · 덩어리 재장착 · 사쿠 회썰기.
+- 지느러미 지우기 = F9 칼선(`finErasePolys`) · 스윕 게이지 경로 지문 · 게이지 도마 아래 · F9 편집기가 단일 선 단계에 `guidePaths = [선]`을 박던 것(1면 뜨기 막힘) · 초상 티셔츠 = 상의 색(`shirtRegion`).
+- 검증: 워크로그 §5. 상세: [317차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-317-loin-breakdown-fin-cut-shirt.md).
+
+**이전 변경 (2026-11-11 316차) — 어종별 필렛 그림(Gemini) · 배를 가른 뒤에도 그 어종 · main 반영 · 114차 배포**
 
 - 사용자 「어종별 필렛 그림 Gemini로 전부 진행해줘 · main & gh-pages 재배포까지 · 실검증은 집 pc에서 dev로」.
 - 둥근 생선 27종 × 순수 · 껍질 붙은 · 갈빗대 붙은 74장(`tools/gemini_fillet_art.cjs` — 껍질 = 순수를 고쳐서 · 갈빗대 = 공용 그림 구도 · 실루엣 IoU로 다시 뽑기) → 도마 `PixelFilletSpecies` · 가방 아이콘(스프라이트 굽기 `trimsp_*`) · 회썰기 3뷰(`public/sashimi/sp/` — 창 열 때 싣기).
@@ -332,13 +339,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 장어류 손질(`tree: 'eel'` — 붕장어 등 가르기 · 갯장어 배 가르기 + 뼈끊기 · 먹장어 껍질 통째로) · 곧게 편 장어 그림과 유도선을 한 몸 윤곽에서(`gen_eel_views.cjs`) · 전용 렌더러 `EelBoard` · 뒤집기 없음.
 - F9 [확정] · [군 확정] → dev 서버(`devButcheryGuidePlugin`)가 `tools/f9_captures/`에 쓰고 core 표(`ButcheryGuideOverrides.ts` — 좌표만 끼움 `applyGuideOverrides`)를 굽는다 · 위키 「어종 손질」 탭(갈래 일곱 · 어종 이름 → 도감 · 작업마다 도마 그림) · 도감 산나물 큰 그림 = 작물 초상 · 필드 포기 = 모서리 판.
 - 검증: 아래 워크로그 §5. 상세: [315차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-315-eel-butchery-f9-confirm-butchery-wiki.md).
-
-**이전 변경 (2026-11-10 314차) — 산나물을 어종에서 가르기 · 위키 「농작물」 탭 · 게임 도감 「산나물」 탭**
-
-- 사용자 「wiki '어종' 카테고리에 왜 산나물이 같이 있는 건지 … '농사'를 '농작물'로 · 그 안에서 '작물'과 '산나물'로 … 인게임에서도 영향 받을 요소들이 있다면 체크」.
-- 채집 생물 표(`SHORE_CREATURE_DATABASE` — 갯것 + 산나물)를 통째로 바다 생물로 그렸다 → 보이는 곳만 `isWildGreen`으로 가름: 위키 「농작물 › 산나물」(`farming.wild` · 윗단 갈래 줄 `#kinds`) · 게임 도감 「산나물」 탭(`renderWildGreens` · `LOG_TABS`).
-- 작물 ↔ 산나물 서로 잇기(거두는 물건이 같다) · 작물 갈래 「텃밭 산나물」 · 도감 가이드 테두리 폭을 탭 표에서 잼(옛 손 계산 20px 김).
-- 검증: 위키 헤드리스 9/9 · r314 5/5 · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0. 상세: [314차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-314-wild-greens-tab-farm-crops-wiki.md).
 
 ---
 

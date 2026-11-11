@@ -32,6 +32,13 @@ export type ButcherySectionYield =
   | 'flatFillet'      // 껍질+엔가와 붙은 필렛 1장 (포 뜨기 작업마다 1장 — 총 4장)
   | 'engawaSkin'      // 껍질이 붙어있는 엔가와 1장 (엔가와 분리 작업마다 — 총 4장)
   | 'flatSkinFillet'  // 엔가와 제거된 껍질 필렛 ×4 (엔가와 섹션 완료 — 기존 flatFillet 대체)
+  // ── 317 4덩어리 해체(참다랑어 · 대방어급) ──
+  | 'kama'            // 가마살 ×2 (머리를 떼며 함께 — 아가미 뒤 턱밑살)
+  | 'loinBlock'       // 껍질 붙은 덩어리 1개 (등살 · 뱃살 떼기 작업마다 — 면 · 부위는 작업 id로)
+  | 'nakaochi'        // 중골 살(뼈 사이 살)
+  | 'saku'            // 사쿠 n개 (덩어리 다듬기 작업마다 — 그 덩어리를 대신한다)
+  | 'chiai'           // 혈합육 (다듬은 덩어리 수만큼 모아 한 칸)
+  | 'loinSkin'        // 생선 껍질 (다듬은 덩어리 수만큼)
   /**
    * ── 두족류 (87차) ──
    * 어류는 부위 종류를 yield 키로 추상화했지만, 두족류는 부산물 테이블
@@ -490,9 +497,68 @@ export const EEL_SECTIONS: ButcherySectionDef[] = [
   },
 ];
 
-export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat'): ButcherySectionDef[] {
+/**
+ * 317 — **4덩어리 해체** 섹션 트리(참다랑어 · 대방어급 — `tree: 'loin'`).
+ *  앞은 방어류와 같다(머리 작업이 가마살 둘을 함께 낸다) → 1면 해체(옆줄 → 등살 → 뱃살 — 덩어리마다 지급) → 2면 해체 →
+ *  중골 살 긁기[여기서 마칠 수 있다 — 껍질 붙은 덩어리 넷] → 덩어리 다듬기(자유 순서 — 덩어리마다 혈합육 · 껍질 · 사쿠 = 사쿠 지급).
+ *  껍질 붙은 덩어리는 도마에 다시 올리면 다듬기부터 이어서 한다(그 덩어리 하나).
+ */
+export const LOIN_SECTIONS: ButcherySectionDef[] = [
+  WHOLE_FISH_SECTIONS[0],
+  {
+    id: 'sec_prep', label: '밑손질 (자유 순서)', anyOrder: true,
+    tasks: [
+      { id: 't_head', label: '머리 · 가마 떼기', stageIds: ['head_base', 'head_flip'], yields: ['head', 'kama'] },
+      { id: 't_fins', label: '지느러미 제거', stageIds: ['finectomy'] },
+      { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
+    ],
+  },
+  WHOLE_FISH_SECTIONS[2], WHOLE_FISH_SECTIONS[3], WHOLE_FISH_SECTIONS[4],
+  {
+    id: 'sec_loin_a', label: '1면 해체 (등살 · 뱃살)', anyOrder: false,
+    tasks: [
+      { id: 't_la_mid', label: '옆줄 칼집', stageIds: ['loin_a_mid'] },
+      { id: 't_la_back', label: '등살 떼기', stageIds: ['loin_a_back'], yields: ['loinBlock'] },
+      { id: 't_la_belly', label: '뱃살 떼기', stageIds: ['loin_a_belly'], yields: ['loinBlock'] },
+    ],
+  },
+  {
+    id: 'sec_loin_b', label: '2면 해체 (등살 · 뱃살)', anyOrder: false,
+    tasks: [
+      { id: 't_lb_mid', label: '옆줄 칼집', stageIds: ['loin_b_mid'] },
+      { id: 't_lb_back', label: '등살 떼기', stageIds: ['loin_b_back'], yields: ['loinBlock'] },
+      { id: 't_lb_belly', label: '뱃살 떼기', stageIds: ['loin_b_belly'], yields: ['loinBlock'] },
+    ],
+  },
+  {
+    id: 'sec_loin_frame', label: '중골', anyOrder: false,
+    tasks: [{ id: 't_nakaochi', label: '중골 살 긁기', stageIds: ['loin_nakaochi'] }],
+    yields: ['spine', 'nakaochi'],
+    exitAfter: true,   // ← 껍질 붙은 덩어리 넷으로 마칠 수 있다(다듬기는 도마에 다시 올려 덩어리마다)
+  },
+  {
+    id: 'sec_loin_trim', label: '덩어리 다듬기 (자유 순서)', anyOrder: true,
+    tasks: [1, 2, 3, 4].map((k) => ({
+      id: `t_trim_${k}`,
+      label: ['등살 (1면)', '뱃살 (1면)', '등살 (2면)', '뱃살 (2면)'][k - 1],
+      stageIds: [`trim_${k}_chiai`, `trim_${k}_skin`, `trim_${k}_saku`],
+      yields: ['saku'] as ButcherySectionYield[],
+    })),
+    yields: ['chiai', 'loinSkin'],
+  },
+];
+
+/** 317 — 해체 작업 id → 덩어리(면 · 부위) */
+export function loinBlockOfTask(taskId: string | undefined): { side: 'a' | 'b'; part: 'back' | 'belly' } | null {
+  const m = taskId ? /^t_l([ab])_(back|belly)$/.exec(taskId) : null;
+  return m ? { side: m[1] as 'a' | 'b', part: m[2] as 'back' | 'belly' } : null;
+}
+
+export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat', tree?: string): ButcherySectionDef[] {
   const ceph = sectionsForCephalopod(speciesId);
   if (ceph) return ceph;
+  // 317 — 해체는 크기로도 갈린다(대방어급) — 개체 프로필의 갈래(`butcheryProfileFor`)를 넘겨받는다
+  if (tree === 'loin' || BUTCHERY_PROFILES[speciesId]?.tree === 'loin') return LOIN_SECTIONS;
   if (BUTCHERY_PROFILES[speciesId]?.tree === 'small') return SMALL_FISH_SECTIONS;   // 313
   if (BUTCHERY_PROFILES[speciesId]?.tree === 'eel') return EEL_SECTIONS;            // 315
   return sectionsForBodyShape(bodyShape);

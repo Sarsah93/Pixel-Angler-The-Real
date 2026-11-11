@@ -493,6 +493,14 @@ function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState,
   return out;
 }
 
+/** 317 — 밑손질 삭제 영역(머리 · 지느러미 — 그림 rect 정규화) · 다각형 안 판정. 해체 측면 렌더(`LoinArt`)가 같은 영역을 쓴다 */
+export function prepEraseFor(sprites: ButcherSpriteSet, state: PixelFishState, o: OrientationState): FishPoly[] {
+  return buildPrepErase(sprites.familyKey, state, o, sprites.whole);
+}
+export function fishPolyContains(px: number, py: number, poly: FishPoly): boolean {
+  return pointInPoly(px, py, poly);
+}
+
 /**
  * 박피 칼 (탑뷰 — **세로**: 칼끝 위·손잡이 아래). 캡처의 "칼은 x축 anchor, y로 위아래 움직임".
  * 에셋 이미지 전 플레이스홀더 글리프.

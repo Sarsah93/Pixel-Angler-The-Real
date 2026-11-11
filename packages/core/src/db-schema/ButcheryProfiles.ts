@@ -14,6 +14,7 @@
 import type { ButcheryProfile, ButcheryFamily } from '../types/Butchery.js';
 import { ORACLE_FISH_DB } from '../simulation/FishSpawningOracle.js';
 import { isCephalopodTreeReady } from './CephalopodStages.js';
+import { SIZE_TIER_BOUNDS } from '../simulation/SizeTierRules.js';
 
 /** 어종별 손질 프로필 */
 export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
@@ -180,6 +181,13 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     baseYieldRate: 0.45, sliceGramBase: 11, minFilletLengthCm: 30, bodyRatio: 0.30, filletShape: 'loin_thick',
   },
 
+  // ── 317 참다랑어 — 늘 4덩어리 해체(`tree: 'loin'` · 등살 2 · 뱃살 2 + 중골). 비늘치기 없음(잔비늘 · 갑옷 비늘은 껍질과 함께 벗긴다) ──
+  bluefin_tuna: {
+    speciesId: 'bluefin_tuna', bodyShape: 'round', hasScales: false, tree: 'loin',
+    scaleToughness: 0.1, anusRatio: 0.55, skinToughness: 0.7, bloodAmount: 1.0, filletCount: 4,
+    baseYieldRate: 0.60, sliceGramBase: 16, minFilletLengthCm: 50, bodyRatio: 0.28, filletShape: 'loin_thick',
+  },
+
   // ── 장어류 (315 — `tree: 'eel'` · 송곳 고정 · 펼친 포 한 장) ──
   //  붕장어 = 등 가르기 · 갯장어 = 배 가르기 + 뼈끊기 · 먹장어 = 껍질 통째로 벗기기(뼈 없음)
   conger_eel: {
@@ -240,6 +248,33 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
 }
 
 /**
+ * 317 — **4덩어리 해체로 가는 방어류의 체장 기준**(cm 이상). 크기 등급 「대」의 아래 끝(`SIZE_TIER_BOUNDS` 둘째 값)과 같다 —
+ * 방어 70(대방어 5kg+) · 부시리 80 · 잿방어 100. 그보다 작으면 지금 삼장뜨기(필렛 둘)다. 참다랑어는 프로필이 늘 해체다.
+ */
+export const LOIN_BREAKDOWN_MIN_CM: Readonly<Record<string, number>> = {
+  yellowtail: SIZE_TIER_BOUNDS.yellowtail?.[1] ?? 70,
+  amberjack: SIZE_TIER_BOUNDS.amberjack?.[1] ?? 80,
+  greater_amberjack: SIZE_TIER_BOUNDS.greater_amberjack?.[1] ?? 100,
+};
+
+/** 317 — 이 개체는 4덩어리 해체인가(참다랑어 · 대방어급) */
+export function isLoinBreakdown(speciesId: string, lengthCm?: number): boolean {
+  if (BUTCHERY_PROFILES[speciesId]?.tree === 'loin') return true;
+  const min = LOIN_BREAKDOWN_MIN_CM[speciesId];
+  return min !== undefined && (lengthCm ?? 0) >= min;
+}
+
+/**
+ * 317 — **개체에 맞는 손질 프로필**. 손질 공정은 어종만이 아니라 크기로도 갈린다(대방어급 = 해체).
+ * 손질 창 · 섹션 트리 · 시험은 이것을 쓴다 — `getButcheryProfile`은 어종 기본값(수율 · 형상 표)이다.
+ */
+export function butcheryProfileFor(speciesId: string, lengthCm?: number): ButcheryProfile {
+  const p = getButcheryProfile(speciesId);
+  if (p.tree === 'loin' || !isLoinBreakdown(speciesId, lengthCm)) return p;
+  return { ...p, tree: 'loin', filletCount: 4 };
+}
+
+/**
  * 손질 미니게임이 **현재 구현된** 어종 (2026-07-30 사용자 지시 — 우선 이 그룹만 활성):
  *  - 돔류(bream): 감성돔·참돔(주/야)·벵에돔·긴꼬리벵에돔·돌돔·강담돔
  *    313 — 망상어 · 용치놀래기도 돔류 트리(사용자 「돔류쪽 손질 트리 · 감성돔 그림으로 하면 안 됨」 — 각자 그림)
@@ -249,7 +284,8 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
  *  - 작은 생선(313 · `tree: 'small'`): 꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑 — 비늘 → 머리 · 내장 → 검은 막 → 삼장뜨기 → 갈비뼈 · 잔뼈
  *  - 넙치류(flat): 광어·도다리류 — **다섯장뜨기** 전용 트리 (2026-08-05 개방) · 313 개서대
  *  - 장어류(315 · `tree: 'eel'`): 붕장어 · 갯장어 · 먹장어 — 송곳 고정 → 점액 · 껍질 → 가르기 · 펼치기 → 내장 → 중골 · 지느러미 → 머리
- * 그 외 finfish(참다랑어 등)·복어는 미구현(banned) — 추후 별도 구현.
+ *  - 4덩어리 해체(317 · `tree: 'loin'`): 참다랑어(늘) · 방어 70 · 부시리 80 · 잿방어 100cm 이상(`butcheryProfileFor`)
+ * 그 외 finfish(쥐치 · 대구 · 갈치 등)·복어는 미구현(banned) — 추후 별도 구현.
  */
 export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>([
   // 돔류
@@ -267,6 +303,8 @@ export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>
   'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
   // 315 — 장어류(송곳 고정 · 가르기 · 펼친 포)
   'conger_eel', 'pike_conger', 'hagfish',
+  // 317 — 참다랑어(4덩어리 해체 — 방어류 앞 단계 + 양면 해체 · 중골 살 · 덩어리 다듬기)
+  'bluefin_tuna',
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
   'tonguefish',   // 313 — 개서대(광어 트리)
@@ -287,6 +325,7 @@ const AMBERJACK_ART_SPECIES: ReadonlySet<string> = new Set<string>([
   'sea_bass', 'black_rockfish', 'blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish',
   'striped_mullet', 'redlip_mullet',
   'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
+  'bluefin_tuna',   // 317 — 방추형(앞 단계 유도선 · 복면 · 체강 공용 그림은 방어류)
 ]);
 
 export function butcheryArtFamily(speciesId: string): ButcheryArtFamily {
@@ -321,7 +360,7 @@ export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, 
   //   313 — 갑오징어도 무늬오징어 공정으로 열려 지금 이 안내가 뜨는 두족류는 없다(새 두족류가 생기면 쓴다).
   cephalopod: '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '아직 손질할 수 없는 어종입니다 (참다랑어 · 쥐치류 등은 추후 구현)',
+  unsupported: '아직 손질할 수 없는 어종입니다 (쥐치류 · 대구 · 갈치 등은 추후 구현)',
 };
 
 /**

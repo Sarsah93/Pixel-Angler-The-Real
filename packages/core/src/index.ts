@@ -165,6 +165,7 @@ export type {
   ButcheryByproducts,
   BoardRotation, ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
   PrimitiveInputKind, ButcheryGuideOverride, ButcheryGuideOverrideTable, EelGuideSet,
+  LoinPart, LoinSide, LoinSideLines, LoinSideGeometry,   // 317차 — 4덩어리 해체
 } from './types/Butchery.js';
 export { ORIENTATION_LABEL, ROTATION_LABEL, canStack, primitiveInput } from './types/Butchery.js';
 // 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC v3.1) — 뷰 유니온 2종 + 프로필 4종 + 가이드 좌표
@@ -200,6 +201,7 @@ export {
   BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES, canButcherSpecies,
   butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES,   // 313 — 도마 어종군 단일 출처
+  LOIN_BREAKDOWN_MIN_CM, isLoinBreakdown, butcheryProfileFor,   // 317 — 대방어급 · 참다랑어 = 4덩어리 해체
 } from './db-schema/ButcheryProfiles.js';
 export type { ButcheryArtFamily } from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
@@ -221,6 +223,14 @@ export { BUTCHERY_GUIDE_OVERRIDES } from './db-schema/ButcheryGuideOverrides.js'
 export { buildEelStages, isEelButcherySpecies } from './db-schema/EelStages.js';   // 315차 — 장어류 손질
 export { EEL_GUIDE } from './db-schema/EelGuideGeometry.js';
 export { EEL_SECTIONS } from './db-schema/ButcherySections.js';
+// 317차 — 4덩어리 해체(참다랑어 · 대방어급)
+export {
+  LOIN_FRONT_STAGE_IDS, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE, LOIN_SAKU_TARGET_G,
+  buildLoinTailStages, defaultLoinSideGeometry, mirrorLoinLines, loinBlockIndex, loinBlockEdges, loinBlockPoint,
+  loinBlockLines, loinSakuCuts, loinSakuPieces, loinValueShare, isLoinStageId, loinTrimBlockOf,
+} from './db-schema/LoinStages.js';
+export type { LoinBlockDef, LoinBlockEdges, LoinStageOptions } from './db-schema/LoinStages.js';
+export { LOIN_SECTIONS, loinBlockOfTask } from './db-schema/ButcherySections.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
 export {

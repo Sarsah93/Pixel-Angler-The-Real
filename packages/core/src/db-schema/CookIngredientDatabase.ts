@@ -140,7 +140,9 @@ export function ingredientOfItem(item: CookableItemLike): IngredientMatch | null
     return { ing: 'squid', units: w, weightG: w };
   }
   // 손질 원물·필렛 — 손질 생선
-  if (item.id.startsWith('inv_dressed_') || item.id.startsWith('inv_fillet') || item.id.startsWith('inv_engawa_') || item.id.startsWith('inv_engwskin_')) {
+  // 317 — 해체 산출물(껍질 붙은 덩어리 · 가마살 · 중골 살 · 혈합육)도 손질 생선이다(사쿠는 `inv_fillet_`)
+  if (item.id.startsWith('inv_dressed_') || item.id.startsWith('inv_fillet') || item.id.startsWith('inv_engawa_') || item.id.startsWith('inv_engwskin_')
+    || item.id.startsWith('inv_loinskin_') || item.id.startsWith('inv_kama_') || item.id.startsWith('inv_nakaochi_') || item.id.startsWith('inv_byp_chiai_')) {
     return { ing: 'fish_dressed', units: w, weightG: w };
   }
   // 어획물 원물

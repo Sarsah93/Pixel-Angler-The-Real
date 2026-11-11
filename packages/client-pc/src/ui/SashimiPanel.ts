@@ -31,6 +31,7 @@ import { butcherFamilyOf } from './PixelButcherFish.js';
 import { canvasContextOf, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
+import { ensureLoinTexture, sakuArtKey, SAKU_TOP_PROFILE, SAKU_SIDE_PROFILE } from './LoinArt.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -50,6 +51,11 @@ export class SashimiPanel extends DraggablePanel {
   private readonly fam: SashimiFilletFamily;
   /** 316 — 어종 회썰기 그림 키(실려 있을 때만 — 아니면 어종군 그림) */
   private readonly spArt: string | undefined;
+  /**
+   * 317 — 해체 사쿠(참다랑어 · 대방어급 등살 · 뱃살 — `inv_fillet_<어종>_<번호>_saku_<부위>_<등급>`).
+   * 혈합육 · 껍질을 뗀 반듯한 살 덩어리라 필렛 그림이 아니라 사쿠 그림(`LoinArt` — 캔버스로 굽는다) · 반듯한 프로필이다.
+   */
+  private readonly saku: 'back' | 'belly' | null;
   /** 뷰 — 일반 = 탑뷰(위에서 본 필렛) / 고급 = 측면 뷰 (사용자 정정 2026-08-03) */
   private readonly view: 'top' | 'side';
   /**
@@ -152,9 +158,10 @@ export class SashimiPanel extends DraggablePanel {
     this.mode = mode;
     this.fam = butcherFamilyOf(source.speciesId ?? '');
     // 316 — 어종 필렛 그림(Gemini)이 실려 있으면 그 탑뷰 · 측면 · 프로필(여는 쪽이 `ensureSashimiSpeciesArt`로 싣는다)
+    this.saku = (/_saku_(back|belly)(?:_[a-z])?$/.exec(source.id)?.[1] as 'back' | 'belly' | undefined) ?? null;
     {
       const sp = sashimiSpeciesOf(source.speciesId);
-      this.spArt = sp && scene.textures.exists(sashimiSpeciesTex(sp, 'top')) && scene.textures.exists(sashimiSpeciesTex(sp, 'side'))
+      this.spArt = !this.saku && sp && scene.textures.exists(sashimiSpeciesTex(sp, 'top')) && scene.textures.exists(sashimiSpeciesTex(sp, 'side'))
         ? sp : undefined;
     }
     this.ceph = cephKind;
@@ -177,6 +184,7 @@ export class SashimiPanel extends DraggablePanel {
           this.ceph === 'mantle' ? 'ceph_mantle_fillet' : this.ceph === 'fin' ? 'ceph_fin_meat' : 'ceph_arms',
           source.speciesId) ?? 'trim_ceph_mantle_squid')
         : this.engawa ? 'trim_engawa'
+          : this.saku ? this.sakuTex(this.view)
           : this.spArt ? sashimiSpeciesTex(this.spArt, this.view) : SASHIMI_FILLET_TEX[this.view][this.fam];
 
     // 닫기(X/ESC) — 완료 전 = 단순 취소(필렛 보존) / 완료 후 = onComplete로 정리
@@ -346,12 +354,20 @@ export class SashimiPanel extends DraggablePanel {
 
   /** 오버라이드 키 — 레이아웃 결정 인자(두족류 부위 / 엔가와 여부 / 어종군×모드) 단위 */
   private overrideKey(): string {
-    return this.ceph ? `ceph_${this.ceph}` : this.engawa ? 'engawa' : `${this.spArt ?? this.fam}_${this.mode}`;
+    return this.ceph ? `ceph_${this.ceph}` : this.engawa ? 'engawa' : this.saku ? `saku_${this.mode}` : `${this.spArt ?? this.fam}_${this.mode}`;
   }
 
-  /** 316 — 필렛 실루엣 프로필(어종 그림이면 어종 것 · 아니면 어종군) */
+  /** 316 — 필렛 실루엣 프로필(어종 그림이면 어종 것 · 아니면 어종군) · 317 사쿠는 반듯한 덩어리 */
   private get filletProfile(): { top: SashimiTopProfile; side: SashimiSideProfile } {
+    if (this.saku) return { top: SAKU_TOP_PROFILE, side: SAKU_SIDE_PROFILE };
     return (this.spArt ? SASHIMI_SPECIES_PROFILES[this.spArt] : undefined) ?? SASHIMI_FILLET_PROFILES[this.fam];
+  }
+
+  /** 317 — 사쿠 그림 키(없으면 굽는다) */
+  private sakuTex(view: 'top' | 'side' | 'piece'): string {
+    const key = sakuArtKey(view, this.saku ?? 'back', this.source.speciesId ?? 'bluefin_tuna');
+    ensureLoinTexture(this.scene, key);
+    return key;
   }
 
   /** ESC 위임 진입점 (UtilizationPanel.onEscIntercept → 여기) */
@@ -1043,7 +1059,7 @@ export class SashimiPanel extends DraggablePanel {
     //  아이콘 = 엔가와는 실사 스트립 / 두족류는 부위 실사 / 필렛은 탑뷰 슬라이스(sashimi_piece_{fam})
     //  문어 숙회(098차)는 전용 실사('문어 숙회 한점') — 이름도 사용자 지정 명칭 그대로.
     const partLbl = this.ceph === 'mantle' ? '몸통살 ' : this.ceph === 'fin' ? '날개살 '
-      : this.engawa ? '엔가와 ' : '';
+      : this.engawa ? '엔가와 ' : this.saku === 'back' ? '등살 ' : this.saku === 'belly' ? '뱃살 ' : '';
     const seq = InventoryStore.nextCatchSeq();
     const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}`
       + `${this.ceph ? `ceph_${this.ceph}_` : this.engawa ? 'engw_' : ''}${speciesId}_${seq}`;
@@ -1057,6 +1073,7 @@ export class SashimiPanel extends DraggablePanel {
       icon: '',
       iconTexture: octoLeg ? 'sashimi_piece_octopus'
         : this.ceph ? this.texKey : this.engawa ? 'trim_engawa'
+          : this.saku ? this.sakuTex('piece')
           : this.spArt && this.scene.textures.exists(sashimiSpeciesTex(this.spArt, 'piece'))
             ? sashimiSpeciesTex(this.spArt, 'piece') : `sashimi_piece_${this.fam}`,
       category: 'food', subCategory: '요리(회)',
@@ -1068,8 +1085,8 @@ export class SashimiPanel extends DraggablePanel {
       cutQuality: Math.round(avg * 100) / 100, knifeTier: knife?.tier ?? 'sashimi',
     }, pieceCount);
     this.grantedPieceId = grantedId;
-    // 날개살·삶은 문어 다리는 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)
-    if (this.ceph === 'fin' || octoLeg) InventoryStore.removeQty(this.source.id, 1);
+    // 날개살·삶은 문어 다리·사쿠(317 — 한 칸에 토막 여럿)는 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)
+    if (this.ceph === 'fin' || octoLeg || this.saku) InventoryStore.removeQty(this.source.id, 1);
     else InventoryStore.removeItem(this.source.id, false);
 
     this.buildResultOverlay(`${spec.label} 완료!`, [

@@ -1308,8 +1308,14 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_engwskin_');
   }
 
+  /** 317 — 껍질 붙은 해체 덩어리(참다랑어 · 대방어급 등살 · 뱃살) — 도마에 올리면 **그 덩어리 다듬기부터** */
+  private isLoinBlock(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_loinskin_');
+  }
+
   /** 도마 재장착 가능한 중간 산출물 → 시작 섹션 */
   private resumeSectionOf(item: InvItem): string | undefined {
+    if (this.isLoinBlock(item)) return 'sec_loin_trim';
     if (this.isRibFillet(item)) return 'sec_rib';
     if (this.isPinFillet(item)) return 'sec_pin';
     if (this.isEngwFillet(item)) return 'sec_engawa';
@@ -1507,8 +1513,8 @@ export class UtilizationPanel extends DraggablePanel {
       '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리·개서대 = 다섯장뜨기(4~5필렛) / 꽁치 같은 작은 생선 = 비늘 → 머리·내장 → 삼장뜨기 → 잔뼈(핀셋)',
       '· 순수 필렛을 올리면 [일반 회뜨기]/[고급 사시미 뜨기(야나기바)]로 회를 썹니다',
       '· 썰어진 회 조각은 아래 [사시미 만들기] 접시에 담아 완성 (모듬/단품)',
-      // 188차 — 오징어·한치·문어 손질은 090~098차에 들어왔다 · 313 — 갑오징어(무늬오징어 공정) · 아직 = 복어 · 장어류 · 참다랑어
-      '· 오징어·한치·갑오징어·문어도 도마에서 손질합니다 — 복어(자격·독)·장어류·참다랑어는 준비 중입니다',
+      // 188차 — 오징어·한치·문어 손질은 090~098차에 들어왔다 · 313 — 갑오징어 · 315 장어류 · 317 참다랑어 · 큰 방어류 해체 · 아직 = 복어
+      '· 오징어·한치·갑오징어·문어·장어류도 도마에서 손질합니다 — 참다랑어와 큰 방어류는 등살 · 뱃살 4덩어리로 해체합니다 · 복어(자격·독)는 준비 중입니다',
       '· 신선도가 높을수록 회 등급이 오릅니다 (활어회는 활어 상태에서만 특 가능)',
     ].join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
@@ -2172,6 +2178,7 @@ export class UtilizationPanel extends DraggablePanel {
         : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '갈빗대 제거부터 이어서 손질'
           : this.isPinFillet(selItem) ? '지아이뼈 분리부터 이어서 손질'
           : this.isEngwFillet(selItem) ? '엔가와 분리부터 이어서 손질'
+          : this.isLoinBlock(selItem) ? '혈합육 · 껍질 · 사쿠 나누기부터 이어서 손질'
           : '박피부터 이어서 손질')
         : selFam === 'finfish' || selFam === 'cephalopod'
           ? '도마에 올려 손질할 수 있다'

@@ -10,6 +10,7 @@
 import Phaser from 'phaser';
 import { speciesFilletSprite, type SpeciesFilletKind } from './PixelButcherFish.js';
 import { ensureEelTrimTexture } from './EelBoard.js';
+import { ensureLoinTexture } from './LoinArt.js';
 import { FILLET_SPECIES_ALIAS } from '../data/PixelFilletSpecies.js';
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
 
@@ -59,6 +60,8 @@ export function ensureTrimTexture(scene: Phaser.Scene, key: string | undefined):
     const m = /^trimsp_(pure|skin|ribs)_(.+)$/.exec(key);
     return !!(m && speciesFilletIconKey(scene, m[2], m[1] as SpeciesFilletKind));
   }
+  // 317 — 해체 결과물(덩어리 · 사쿠 · 가마살 · 혈합육 · 중골 살) · 사쿠 회썰기 그림
+  if (key.startsWith('trimloin_') || key.startsWith('sakuart_')) return ensureLoinTexture(scene, key);
   if (key.startsWith('trim_eel_')) {
     const m = /^trim_eel_(fillet|head|spine)_(.+)$/.exec(key);
     return !!(m && ensureEelTrimTexture(scene, m[2], m[1] as 'fillet' | 'head' | 'spine'));

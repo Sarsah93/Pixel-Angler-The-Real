@@ -79,6 +79,8 @@ const SPECIES = [
   { id: 'round_herring',       sym: 'ROUND_HERRING',       file: 'round_herring.png',         ko: '눈퉁멸',       mirror: false },
   { id: 'northern_whiting',    sym: 'NORTHERN_WHITING',    file: 'northern_whiting.png',      ko: '보리멸',       mirror: false },
   { id: 'yellowfin_goby',      sym: 'YELLOWFIN_GOBY',      file: 'yellowfin_goby.png',        ko: '문절망둑',     mirror: false },
+  // 317 — 4덩어리 해체(참다랑어 — 방어류 앞 단계 + 해체)
+  { id: 'bluefin_tuna',        sym: 'BLUEFIN_TUNA',        file: 'pacific_bluefin_tuna.png',  ko: '참다랑어',     mirror: false },
 ];
 
 /** 픽셀 격자 추출 — bbox 크롭 + 박스평균 다운샘플 (브라우저 컨텍스트에서 실행) */
