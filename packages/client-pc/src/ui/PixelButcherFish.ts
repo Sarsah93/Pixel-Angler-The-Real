@@ -422,11 +422,58 @@ function pickStageSprite(
 }
 
 /**
+ * 317 — 지느러미 칼선이 몸의 **위 가장자리 선**(등지느러미 밑동)인가 **아래 가장자리 선**(배 · 뒷지느러미 밑동)인가.
+ * 선의 점마다 그 열의 그림(지느러미 포함) 위 끝 ~ 아래 끝 중 어디쯤인지를 평균한다 — 위 절반이면 위 선, 아래 절반이면 아래 선.
+ * 짧고 가파른 선(가슴지느러미 — 몸 위에 겹쳐 그려져 있어 지우면 구멍이 난다 · 가로 폭이 세로 폭의 1.5배 미만)은 null.
+ * 선 · 그림 모두 BASE(머리 왼쪽) 그림 rect 정규화.
+ */
+export function finLineSide(path: FishPoly, spr: PixelFishSprite): 'top' | 'bottom' | null {
+  if (path.length < 2) return null;
+  // 가슴지느러미 밑동 선은 짧고 가파르다(아가미 뒤를 위아래로) — 등 · 배 선은 몸을 따라 가로로 길다(칸 단위로 잰다)
+  const xs = path.map((p) => p.x * spr.w), ys = path.map((p) => p.y * spr.h);
+  const spanX = Math.max(...xs) - Math.min(...xs), spanY = Math.max(...ys) - Math.min(...ys);
+  if (spanX < spanY * 1.5) return null;
+  let sum = 0, n = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1];
+    for (let k = 0; k < 4; k++) {
+      const t = k / 4, x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+      const c = Math.max(0, Math.min(spr.w - 1, Math.floor(x * spr.w)));
+      let top = -1, bot = -1;
+      for (let r = 0; r < spr.h; r++) if (spr.rows[r][c] !== '.') { if (top < 0) top = r; bot = r; }
+      if (top < 0 || bot <= top) continue;
+      sum += (y * spr.h - top) / (bot + 1 - top);
+      n++;
+    }
+  }
+  if (!n) return null;
+  return sum / n < 0.5 ? 'top' : 'bottom';
+}
+
+/**
+ * 317 — **지느러미 칼선을 따라 지우는 영역**(사용자 「내가 그린 곡선 모양을 따라 이미지를 잘라주면」).
+ * 위 선이면 선 위쪽 전부, 아래 선이면 선 아래쪽 전부 — 선의 처음 · 끝 x에서 세로로 닫는다(선이 닿은 만큼만 잘린다).
+ * 구 어종군 고정 영역(`FIN_ERASE` — 돔류는 직사각형 띠)은 선과 상관없이 직선으로 잘려 보였다. 선이 없을 때만 그 영역을 쓴다.
+ */
+function finErasePolys(paths: FishPoly[], spr: PixelFishSprite | undefined): FishPoly[] {
+  const out: FishPoly[] = [];
+  for (const path of paths) {
+    if (!spr || path.length < 2) continue;
+    const side = finLineSide(path, spr);
+    if (!side) continue;
+    const edge = side === 'top' ? -0.5 : 1.5;
+    const first = path[0], last = path[path.length - 1];
+    out.push([...path, { x: last.x, y: edge }, { x: first.x, y: edge }]);
+  }
+  return out;
+}
+
+/**
  * 밑손질 삭제 영역 조립 — 완료된 작업의 부위만 지운다.
  *  머리 = 실제 절단선(현재 표시 방향의 head 스테이지 guidePath)을 따라 머리 쪽 전체 /
- *  지느러미 = 어종군 지느러미 영역 테이블 (FLIP이면 좌우 반전).
+ *  지느러미 = **그은 칼선을 따라**(317 — `finCutPaths` · 선 하나 끝낼 때마다) · 선이 없으면 어종군 영역 테이블 (FLIP이면 좌우 반전).
  */
-function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState): FishPoly[] {
+function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState, spr?: PixelFishSprite): FishPoly[] {
   const out: FishPoly[] = [];
   /** BASE 기준 폴리곤 — FLIP이면 좌우 반전 */
   const oriented = (polys: FishPoly[]): FishPoly[] => (o === 'FLIP'
@@ -441,7 +488,8 @@ function buildPrepErase(fam: string, state: PixelFishState, o: OrientationState)
     // 절단선 너머 추가 제거 (방어류 목덜미·가슴지느러미 자리)
     if (HEAD_EXTRA_ERASE[fam]) out.push(...oriented(HEAD_EXTRA_ERASE[fam]));
   }
-  if (state.finsOff) out.push(...oriented(FIN_ERASE[fam] ?? FIN_ERASE.bream));
+  if (state.finCutPaths) out.push(...oriented(finErasePolys(state.finCutPaths, spr)));
+  else if (state.finsOff) out.push(...oriented(FIN_ERASE[fam] ?? FIN_ERASE.bream));
   return out;
 }
 
@@ -546,6 +594,11 @@ export interface PixelFishState {
   headCutPath?: FishPoly;
   /** 지느러미 제거 완료 (finectomy) — 몸통 스프라이트 분기 */
   finsOff?: boolean;
+  /**
+   * 317 — **이미 그은 지느러미 칼선**(BASE 그림 rect 정규화 — 머리 왼쪽). 있으면 이 선을 따라 지운다(선 하나 끝낼 때마다).
+   * 없으면(undefined) 구 어종군 영역(`finsOff`일 때) — 빈 배열이면 아직 지운 지느러미가 없다.
+   */
+  finCutPaths?: FishPoly[];
   gutted: boolean;
   scaledSides: number;
   hasScales: boolean;
@@ -1070,7 +1123,7 @@ export function drawPixelButcherFish(
   const spr = filletView ? sprites.fillet
     : useBaseFrame ? sprites.whole : bodySpriteFor(sprites, state);
   const frame = useBaseFrame ? computeFishFrame(sprites.whole, geom) : undefined;
-  const erase = useBaseFrame ? buildPrepErase(sprites.familyKey, state, o) : undefined;
+  const erase = useBaseFrame ? buildPrepErase(sprites.familyKey, state, o, sprites.whole) : undefined;
   // 어종 실사 온마리(87차)·방어류 실색 스프라이트는 틴트 금지 — 어종군 공용 도형일 때만 색을 입힌다
   const bodyTint = (useBaseFrame && (sprites.wholeNative || sprites.nativeColor)) ? null : tint;
   // ⚠ 상하 미러 금지 — **뱃살은 항상 아래쪽**에 오도록 배치한다 (사용자 지시 2026-07-30).

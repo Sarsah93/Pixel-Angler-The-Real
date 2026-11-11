@@ -12,12 +12,16 @@
  *  합성 순서 = 기본판 칠하기(라벨) → 입 모양 · 볼 홍조(269 — 픽셀을 옮기므로 칠한 뒤) → 수염 층 → 머리 모양 층.
  *  312 — 머리 모양 층을 얹기 전에 **머리에 맞춘다**(`fitHairToHead` — 층은 얹기만 해서 상투처럼 당겨 묶은 머리 둘레에 민머리 윤곽이
  *  피부색 호로 남았다 → 머리칼 밖 정수리 두피는 비우고, 머리칼 안에 갇힌 두피 구멍은 머리칼로 메운다).
+ *  317 — 사용자 「상의 색 변경하면 적어도 초상화에서 상의 부분 색은 연동」: 기본판 아래 남색 티셔츠(라벨 없음)를
+ *  **바닥 줄에서 번진 남색 덩어리**(`shirtRegion`)로 찾아 상의 색(`outfit.shirtColor`)으로 두 톤 칠한다. 맨몸(`shirt: 'none'`)이면 그대로.
  */
 
 import { HAIR_COLORS, SKIN_TONES, EYE_COLORS, type CharConfig } from '@tra/core';
 
 /** 주인공 기본 얼굴의 기준색(`tools/gemini_face_art.cjs` PLAYER_BASE와 같다 — 층 원판은 전부 이 색으로 그린다) */
 const PLAYER_BASE = { hair: 2, skin: 1, eye: 0 };
+/** 317 — 기본판 티셔츠의 기준색(층 원판 여섯 장 실측 최빈값 (61,88,124) — 그림자는 (34,48,68)) */
+export const PLAYER_BASE_SHIRT = 0x3d587c;
 const WHITE_KEEP_MIN = 0.35;
 const LIP_TONE_EXP = 0.6;
 const LIP_TONE_MAX = 1.15;
@@ -36,7 +40,7 @@ export interface Swap {
   ff: number; fw: number; det: number; whiteKeep: number; compress: number;
 }
 /** 치환 표 — 머리는 항상 있다(기준색 그대로면 `keepHair`). 수염은 수염 층이 있을 때만(기준색 그대로면 `keepBeard`) */
-export interface PlayerSwaps { hair: Swap; keepHair: boolean; skin?: Swap; eye?: Swap; beard?: Swap; keepBeard?: boolean }
+export interface PlayerSwaps { hair: Swap; keepHair: boolean; skin?: Swap; eye?: Swap; beard?: Swap; keepBeard?: boolean; shirt?: Swap }
 
 export function swapOf(from: number, to: number, loK: number, hiK: number): Swap {
   const f = split(from), t = split(to);
@@ -85,6 +89,36 @@ export function playerSwaps(cfg: CharConfig, hasBeardLayer: boolean): PlayerSwap
   if (hasBeardLayer && look.beard >= 0) {
     out.beard = swapOf(HAIR_COLORS[PLAYER_BASE.hair], HAIR_COLORS[look.beard] ?? HAIR_COLORS[0], 0.4, 1.7);
     out.keepBeard = look.beard === PLAYER_BASE.hair;
+  }
+  const shirtTo = playerShirtColor(cfg);
+  if (shirtTo !== null && shirtTo !== PLAYER_BASE_SHIRT) out.shirt = swapOf(PLAYER_BASE_SHIRT, shirtTo, 0.3, 1.3);
+  return out;
+}
+
+/** 317 — 초상에 칠할 상의 색(맨몸이거나 옷 정보가 없으면 null = 기본판 그대로) */
+export function playerShirtColor(cfg: CharConfig): number | null {
+  const o = cfg.outfit;
+  if (!o || o.shirt === 'none' || typeof o.shirtColor !== 'number') return null;
+  return o.shirtColor & 0xffffff;
+}
+
+/**
+ * 317 — 기본판의 티셔츠 픽셀. 바닥 줄에서 시작해 「라벨 없음 · 불투명 · 파란 기(B > R + 4)」인 이웃으로만 번진다
+ * (머리 윤곽선 · 귀 그늘은 붉은 갈색이라 여기서 멈춘다 — 여섯 장 실측: 옷 위끝 154줄 · 피부 아래끝 177~179줄).
+ */
+export function shirtRegion(base: Uint8ClampedArray, labels: Uint8Array, w: number, h: number): Uint8Array {
+  const n = w * h, out = new Uint8Array(n);
+  const ok = (i: number): boolean => {
+    if (labels[i]) return false;
+    const o = i * 4;
+    return base[o + 3] >= 8 && base[o + 2] > base[o] + 4;
+  };
+  const stack: number[] = [];
+  for (let x = 0; x < w; x++) { const i = (h - 1) * w + x; if (ok(i)) { out[i] = 1; stack.push(i); } }
+  while (stack.length) {
+    const i = stack.pop() as number, x = i % w, y = (i / w) | 0;
+    const nb = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1];
+    for (const j of nb) if (j >= 0 && !out[j] && ok(j)) { out[j] = 1; stack.push(j); }
   }
   return out;
 }
@@ -385,6 +419,10 @@ export function composePlayerFace(set: FaceLayerSet, cfg: CharConfig): Uint8Clam
       out[o] = Math.min(255, Math.round(out[o] * lipK)); out[o + 1] = Math.min(255, Math.round(out[o + 1] * lipK)); out[o + 2] = Math.min(255, Math.round(out[o + 2] * lipK));
     }
   }
+  if (swaps.shirt) {
+    const shirt = shirtRegion(set.base, labels, w, h);
+    for (let i = 0; i < n; i++) if (shirt[i]) paint(out, i * 4, swaps.shirt);
+  }
   const mouth = cfg.look.mouth ?? 'neutral';
   if (mouth !== 'neutral' || cfg.look.blush) {
     const m = mouthFromLabels(labels, set.base, w, h);
@@ -406,5 +444,7 @@ export function composePlayerFace(set: FaceLayerSet, cfg: CharConfig): Uint8Clam
 export function playerFaceVariant(cfg: CharConfig, hasBeardLayer: boolean): string {
   const { look } = cfg;
   const mouth = look.mouth ?? 'neutral';
-  return `_v_${look.skin}_${look.hair}_${look.eye}${hasBeardLayer && look.beard >= 0 ? `_bd_${look.beard}` : ''}${mouth !== 'neutral' ? `_m_${mouth}` : ''}${look.blush ? '_b' : ''}`;
+  const shirt = playerShirtColor(cfg);
+  const shirtTail = shirt !== null && shirt !== PLAYER_BASE_SHIRT ? `_s_${shirt.toString(16)}` : '';
+  return `_v_${look.skin}_${look.hair}_${look.eye}${hasBeardLayer && look.beard >= 0 ? `_bd_${look.beard}` : ''}${mouth !== 'neutral' ? `_m_${mouth}` : ''}${look.blush ? '_b' : ''}${shirtTail}`;
 }

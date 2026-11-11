@@ -231,6 +231,8 @@ export class ButcheryPanel extends DraggablePanel {
   private renderedRotation: BoardRotation = 0;
   /** 스윕 커버리지 게이지 상태 (drag_fill·scoop) — 스테이지 단위 */
   private sweepCoverStage = '';
+  /** 317 — 표본을 만든 스윕 경로의 지문(F9로 선을 옮기면 표본을 다시 만든다) */
+  private sweepCoverSig = '';
   private sweepCover: { pts: CutPoint[]; hit: boolean[] } | null = null;
   /** 비늘 튐 파티클 (드래그 중 커서 위치마다 생성 — destroy 시 일괄 정리) */
   private flakes = new Set<Phaser.GameObjects.Rectangle>();
@@ -2308,6 +2310,8 @@ export class ButcheryPanel extends DraggablePanel {
       // 머리 삭제 영역 = **실제 머리 절단선**을 따라간다 (F9로 선을 옮기면 잘린 모양도 따라옴)
       headCutPath: this.headCutPathForFrame(geom, sprites),
       finsOff,
+      // 317 — 지느러미는 그은 칼선을 따라 지운다(선 하나 끝낼 때마다 그 지느러미)
+      finCutPaths: this.finCutPathsForFrame(geom, sprites),
       scaledSides: this.scaledSides,
       gutted,
       hasScales: this.process.profile.hasScales,
@@ -2392,6 +2396,29 @@ export class ButcheryPanel extends DraggablePanel {
       live,
       scaled: has(belly ? 'scale_flip' : 'scale_base') || !this.process.profile.hasScales,
     };
+  }
+
+  /**
+   * 317 — **이미 그은 지느러미 칼선**을 BASE 그림 rect 정규화로(사용자 「내가 그린 곡선 모양을 따라 이미지를 잘라주면」).
+   * 지느러미 단계를 끝냈으면 선 전부, 그 단계 중이면 그은 선만, 아니면 빈 배열. 칼선은 BASE(머리 왼쪽)에서 긋는다 —
+   * FLIP 화면은 렌더가 좌우로 뒤집는다. F9로 선을 옮기거나 [확정]하면 잘린 모양도 그 선을 따라온다.
+   */
+  private finCutPathsForFrame(geom: { x: number; y: number; w: number; h: number },
+    sprites: ReturnType<typeof butcherSpritesFor>): { x: number; y: number }[][] | undefined {
+    if (this.process.cephalopod || this.isEel || this.process.profile.bodyShape === 'flat') return undefined;
+    const st = this.process.stageList.find((s) => s.id === 'finectomy');
+    const cut = st?.cut;
+    if (!cut) return undefined;
+    const lines = cut.guidePaths?.length ? cut.guidePaths : [cut.guidePath];
+    const all = this.doneStages.has('finectomy');
+    const live = this.process.stage?.id === 'finectomy' ? this.process.donePathIndices : null;
+    const f = computeFishFrame(sprites.whole, geom);
+    return lines
+      .filter((_, i) => all || !!live?.has(i))
+      .map((path) => path.map((p) => ({
+        x: (geom.x + p.x * geom.w - f.ox) / f.dw,
+        y: (geom.y + p.y * geom.h - f.oy) / f.dh,
+      })));
   }
 
   /**
@@ -2590,8 +2617,11 @@ export class ButcheryPanel extends DraggablePanel {
 
   /** 현재 스테이지의 스윕 샘플/체크 배열 확보 (스테이지 전환 시 리셋) */
   private sweepSamplesFor(stage: ButcheryStage): { pts: CutPoint[]; hit: boolean[] } {
-    if (this.sweepCoverStage !== stage.id || !this.sweepCover) {
-      const path = this.sweepPathFor(stage);
+    const path = this.sweepPathFor(stage);
+    // 317 — 경로가 바뀌었으면(F9 편집 · 확정) 표본도 새 선으로. 구 구현은 단계마다 한 번만 만들어
+    //  긁던 중 선을 옮기면 새 선을 따라 긁어도 옛 선 자리 표본만 남아 게이지가 멈췄다(사용자 리포트 — 핏줄 긁기)
+    const sig = path.map((q) => `${q.x.toFixed(4)},${q.y.toFixed(4)}`).join(';');
+    if (this.sweepCoverStage !== stage.id || !this.sweepCover || this.sweepCoverSig !== sig) {
       const n = ButcheryPanel.SWEEP_SAMPLES;
       const pts: CutPoint[] = [];
       // 호길이 균등 샘플 (pathPointAt은 패널 픽셀 반환이라 정규 좌표로 별도 보간)
@@ -2613,6 +2643,7 @@ export class ButcheryPanel extends DraggablePanel {
         });
       }
       this.sweepCoverStage = stage.id;
+      this.sweepCoverSig = sig;
       this.sweepCover = { pts, hit: pts.map(() => false) };
     }
     return this.sweepCover;
@@ -4306,12 +4337,19 @@ export class ButcheryPanel extends DraggablePanel {
   /** 채움 진행 바 (비늘/내장 — 즉석 표시) — 고정 도마 rect 기준 */
   private updateFillBar(progress: number): void {
     this.traceG.clear();
-    const bx = this.boardX, by = this.boardY - 40, bw = this.boardW;
+    // 317 — 도마 **아래**(사용자 리포트 「비늘치기 게이지바 위치가 손질 단계 창과 겹쳐지고 있어」 — 도마 위 40px는 오른쪽 위
+    //  작업 목록 창 자리였다). 도마 틀 아래 끝(+26)과 안내 글(+66 가운데 · 위 끝 약 +58) 사이 — 외곽 화살표 큐(+16)도 피한다.
+    const bx = this.boardX, by = this.boardY + this.boardH + ButcheryPanel.FILL_BAR_DY, bw = this.boardW;
     this.traceG.fillStyle(0x101820, 0.9);
-    this.traceG.fillRoundedRect(bx, by, bw, 12, 4);
-    this.traceG.fillStyle(0x4af2a1, 0.95);
-    this.traceG.fillRoundedRect(bx, by, bw * Math.min(1, progress), 12, 4);
+    this.traceG.fillRoundedRect(bx, by, bw, ButcheryPanel.FILL_BAR_H, 4);
+    if (progress > 0) {
+      this.traceG.fillStyle(0x4af2a1, 0.95);
+      this.traceG.fillRoundedRect(bx, by, Math.max(8, bw * Math.min(1, progress)), ButcheryPanel.FILL_BAR_H, 4);
+    }
   }
+  /** 317 — 채움 진행 바 자리(도마 rect 아래 끝에서) · 높이 */
+  private static readonly FILL_BAR_DY = 34;
+  private static readonly FILL_BAR_H = 10;
 
   private flashMsg?: Phaser.GameObjects.Text;
   private flash(msg: string, good: boolean): void {

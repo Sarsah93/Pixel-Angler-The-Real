@@ -337,7 +337,7 @@ export class CharacterCreateScene extends Phaser.Scene {
   /** 300차 — 얼굴 초상을 지금 옵션으로(대화창 · 일지와 같은 합성 — 변형마다 한 번만 굽는다) */
   private refreshFace(): void {
     if (!this.faceImg) return;
-    const key = ensureFacePortrait(this, this.cfg(false), FACE_FALLBACK_SCALE, 'player');
+    const key = ensureFacePortrait(this, this.cfg(true), FACE_FALLBACK_SCALE, 'player');   // 317 — 상의 색도 초상에(옷 입은 설정)
     if (key !== this.faceImg.texture.key) this.faceImg.setTexture(key);
     this.sizeFace(this.faceBig ? FACE_BIG : FACE_SMALL);
   }

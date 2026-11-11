@@ -11,7 +11,8 @@
  *    mask                              기본판 6 · 라벨 마스크 겹침(피부 청록 · 눈썹 주황 · 눈 초록 · 입술 분홍 · 흰자 흰색) — 2배
  *    leak                              312 — 머리 층을 머리에 맞추기(`fitHairToHead`) 표(성별 × 얼굴형 × 머리 모양 — 비운 정수리 두피 · 메운 구멍) +
  *                                      둥근형의 전(자홍 = 비움 · 청록 = 메움) · 뒤 몽타주 — 2배. 새 머리 · 기본판을 설치하면 이 표부터 본다
- *  세트를 안 주면 boxed · mix · mouth · all:7:4:2:7 · all:0:0:2:0 · all:3:2:3:5 · mask · leak을 만든다.
+ *    shirt                             317 — 상의 색(CLOTH_COLORS 10) × 성별 2 × 얼굴형 3(긴 머리 · 수염 — 어깨를 덮는 층과 함께) — 1배
+ *  세트를 안 주면 boxed · mix · mouth · all:7:4:2:7 · all:0:0:2:0 · all:3:2:3:5 · mask · leak · shirt를 만든다.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -71,7 +72,7 @@ function maskOverlay(baseKey) {
 }
 
 const args = process.argv.slice(3);
-const sets = args.length ? args : ['boxed', 'mix', 'mouth', 'all:7:4:2:7', 'all:0:0:2:0', 'all:3:2:3:5', 'mask', 'leak'];
+const sets = args.length ? args : ['boxed', 'mix', 'mouth', 'all:7:4:2:7', 'all:0:0:2:0', 'all:3:2:3:5', 'mask', 'leak', 'shirt'];
 for (const set of sets) {
   if (set === 'boxed') {
     const cells = [
@@ -89,6 +90,15 @@ for (const set of sets) {
   } else if (set === 'mouth') {
     const cells = []; for (const sex of ['m', 'f']) for (const blush of [false, true]) for (const mouth of ['neutral', 'smile', 'small', 'open']) cells.push(cfgOf(sex, sex === 'm' ? 'short' : 'bob', { mouth, blush, skin: blush ? 3 : 1 }));
     montage(cells.map(render), 4, path.join(OUT, 'mouth.png'), 2);
+  } else if (set === 'shirt') {
+    // 317 — 상의 색이 초상 옷에 칠해지는지(옷 입은 설정 — 티셔츠 + 상의 색)
+    const cells = [];
+    for (const sex of ['m', 'f']) for (const shape of core.FACE_SHAPES) for (const col of core.CLOTH_COLORS) {
+      const c = cfgOf(sex, sex === 'm' ? (shape === 'square' ? 'long' : 'short') : (shape === 'round' ? 'long' : 'bob'), { faceShape: shape, beard: sex === 'm' && shape === 'round' ? 0 : -1 });
+      c.outfit = { ...core.starterOutfit(sex), shirtColor: col };
+      cells.push(c);
+    }
+    montage(cells.map(render), 10, path.join(OUT, 'shirt.png'));
   } else if (set === 'mask') {
     const keys = fs.readdirSync(dir).filter((f) => /^base_[mf]_[a-z]+\.png$/.test(f)).map((f) => f.slice(0, -4)).sort();
     montage(keys.map(maskOverlay), 3, path.join(OUT, 'mask.png'), 2);
