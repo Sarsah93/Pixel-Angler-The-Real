@@ -17,7 +17,8 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
      (`until [ $(wc -l < tools/f9_captures/log.jsonl) -gt N ]; do sleep 5; done` — 끝나면 에이전트가 다시 깨어난다).
    - 사용자 PC dev 서버로 확정했으면 그 PC 저장소에 생긴다 — 사용자가 커밋 · 푸시한 뒤 읽는다.
 - 확정 표는 **좌표만** 바꿔 끼운다(`applyGuideOverrides` — 스테이지를 다 지은 뒤) — 판정 옵션(strong · tolerance · guidePaths 수)은 core 스테이지 그대로라 아래 함정 1이 없다.
-- 찾는 순서: dev 서버에서 받아 둔 어종 → 저장 어종 → dev 군 → 저장 군. 군 좌표(`familyFrame: true`)는 온마리 선(`isBodyGuideStage`)만 어종 그림 자리로 옮긴다.
+- 찾는 순서: dev 서버에서 받아 둔 어종 → 저장 어종 → dev 군 → 저장 군. 군 좌표(`familyFrame: true`)는 온마리 선(`isBodyGuideStage`) · **316부터 필렛 뷰**(갈빗대 · 지아이 · 박피 ① · ③ — `filletGuideView`)를 어종 그림 자리로 옮긴다(`stageGuideRemap`).
+  필렛 뷰는 어종 필렛 그림의 **열 실루엣**까지 따라 옮긴다(세로 = 살 높이 비례 · 0~100%로 묶음) — 「군 확정」은 그 역변환(`invertGuideRemap`)으로 군 그림 자리에 저장한다. 어종 그림 위에서 맞춘 값은 [확정](어종)이 정확하다.
 - 확정 표는 dev 서버가 지켜보지 않는다(`server.watch.ignored` — 굽는 순간 화면이 새로 고쳐져 손질이 끊긴다). 같은 판에서 다시 연 창은 서버 정본(GET)을 받아 쓴다.
 - 손으로 다듬은 값을 기존 표(`GUIDE_COORDS` 등)로 옮겨 굳히고 싶을 때만 아래 옛 흐름을 쓴다.
 
@@ -48,6 +49,7 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 2. **core 리빌드 필수**: 반영 후 `npx pnpm --filter @tra/core run build` — 하지 않으면 client가 stale dist의 옛 좌표를 봄 (31·32차 패턴).
 3. 좌표는 **도마 rect 정규화 (0~1)** — 측정 시점의 뷰/방향(BASE/FLIP/BELLY_UP…)과 스테이지 orientation이 일치해야 한다. 개복 이후 전용 뷰(복면/체강)는 **그 뷰 안에서만** 유효한 좌표.
 4. 55차 원형 틀 고정(computeFishFrame) 이후 개복 전 측면 뷰 좌표는 스프라이트 교체와 무관하게 유효 — 재측정 불요. 단 **뷰 자체가 바뀌면**(신규 전용 뷰 도입) 그 구간은 재측정.
+   316 — 필렛 뷰(갈빗대 · 지아이 · 박피)는 어종 필렛 그림(`PixelFilletSpecies`)이 생겨 어종마다 그림이 다르다 — 군 좌표는 열 실루엣으로 옮겨지지만 해부 위치(갈빗대 끝 · 지아이 줄)는 어종 [확정]으로 다듬는다.
 5. 머리 절단선은 삭제 영역(headErasePoly)도 자동으로 따라온다 — 선만 반영하면 됨.
 
 ## 다중 선·스윕 규칙

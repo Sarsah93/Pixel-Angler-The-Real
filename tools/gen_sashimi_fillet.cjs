@@ -15,6 +15,11 @@
  *  - packages/client-pc/src/data/SashimiFilletProfiles.ts     (뷰별 실루엣 — 유도선 배치용)
  *
  * 방향 규칙: **살코기 머리쪽 = 오른쪽**. 실행: node tools/gen_sashimi_fillet.cjs
+ *
+ * 316차 — `--species`: **어종별 필렛 그림**(Gemini · `food assets/trimmings/species/<어종>_pure.png`)으로 같은 세 가지를 굽는다.
+ *  - 출력 `public/sashimi/sp/<어종>_{top,side,piece}.png` + `src/data/SashimiSpeciesProfiles.ts`(어종군 표는 건드리지 않는다)
+ *  - 어종 그림은 꼬리 왼쪽 · 머리 오른쪽(두껍게 비스듬히 잘린 면)이라 뒤집지 않는다(flipX · flipTop = false)
+ *  - 게임은 회썰기 창을 열 때 그 어종 그림만 싣는다(`SashimiSpeciesArt.ensureSashimiSpeciesArt` — 부팅에 싣지 않는다)
  */
 const fs = require('fs');
 const path = require('path');
@@ -31,6 +36,12 @@ function resolvePlaywright() {
 }
 const { chromium } = resolvePlaywright();
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+// 316 — 리눅스 컨테이너에는 윈도 크롬이 없다 → Playwright 기본 크로미움
+const LAUNCH = fs.existsSync(CHROME) ? { executablePath: CHROME } : {};
+const SPECIES_MODE = process.argv.includes('--species');
+const SPECIES_SRC = path.join(__dirname, '..', 'food assets', 'trimmings', 'species');
+const SPECIES_OUT = path.join(__dirname, '..', 'packages', 'client-pc', 'public', 'sashimi', 'sp');
+const SPECIES_TS = path.join(__dirname, '..', 'packages', 'client-pc', 'src', 'data', 'SashimiSpeciesProfiles.ts');
 
 const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'packages', 'client-pc', 'public', 'sashimi');
@@ -54,13 +65,18 @@ const SIDE_W = 384;
 const SIDE_H = 120;
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: CHROME });
+  const browser = await chromium.launch(LAUNCH);
   const page = await (await browser.newContext()).newPage();
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const profiles = {};
 
-  for (const { fam, src, flipX, flipTop } of FAMILIES) {
+  const jobs = SPECIES_MODE
+    ? fs.readdirSync(SPECIES_SRC).filter((f) => f.endsWith('_pure.png')).sort()
+      .map((f) => ({ fam: f.replace(/_pure\.png$/, ''), src: path.join(SPECIES_SRC, f), flipX: false, flipTop: false }))
+    : FAMILIES;
+  if (SPECIES_MODE) fs.mkdirSync(SPECIES_OUT, { recursive: true });
+  for (const { fam, src, flipX, flipTop } of jobs) {
     const b64 = fs.readFileSync(src).toString('base64');
     const result = await page.evaluate(async ({ b64, flipX, flipTop, TOP_W, SIDE_W, SIDE_H }) => {
       const img = new Image();
@@ -227,9 +243,11 @@ const SIDE_H = 120;
       };
     }, { b64, flipX, flipTop, TOP_W, SIDE_W, SIDE_H });
 
-    fs.writeFileSync(path.join(OUT_DIR, `fillet_top_${fam}.png`), Buffer.from(result.topPng, 'base64'));
-    fs.writeFileSync(path.join(OUT_DIR, `fillet_side_${fam}.png`), Buffer.from(result.sidePng, 'base64'));
-    fs.writeFileSync(path.join(OUT_DIR, `piece_${fam}.png`), Buffer.from(result.piecePng, 'base64'));
+    const outName = (kind) => (SPECIES_MODE ? path.join(SPECIES_OUT, `${fam}_${kind}.png`)
+      : path.join(OUT_DIR, kind === 'piece' ? `piece_${fam}.png` : `fillet_${kind}_${fam}.png`));
+    fs.writeFileSync(outName('top'), Buffer.from(result.topPng, 'base64'));
+    fs.writeFileSync(outName('side'), Buffer.from(result.sidePng, 'base64'));
+    fs.writeFileSync(outName('piece'), Buffer.from(result.piecePng, 'base64'));
     const step = 8;
     const ds = (arr) => {
       const out = [];
@@ -241,6 +259,24 @@ const SIDE_H = 120;
       side: { top: ds(result.sideTop), baseY: Number(result.sideBaseY.toFixed(4)) },
     };
     console.log(`[gen_sashimi_fillet] ${fam}: top ${result.topW}x${result.topH} / side ${SIDE_W}x${SIDE_H}`);
+  }
+
+  if (SPECIES_MODE) {
+    const sts = `/**
+ * @file SashimiSpeciesProfiles.ts
+ * @description 316차 — 어종별 회썰기 필렛 실루엣 프로필(자동 생성 — 수동 편집 금지).
+ *  tools/gen_sashimi_fillet.cjs --species 가 \`food assets/trimmings/species/<어종>_pure.png\`(Gemini 어종 필렛)에서 굽는다.
+ *  그림은 \`public/sashimi/sp/<어종>_{top,side,piece}.png\` — 회썰기 창을 열 때 그 어종 것만 싣는다(\`SashimiSpeciesArt\`).
+ *  형식은 어종군 표(\`SashimiFilletProfiles\`)와 같다.
+ */
+import type { SashimiTopProfile, SashimiSideProfile } from './SashimiFilletProfiles.js';
+
+export const SASHIMI_SPECIES_PROFILES: Record<string, { top: SashimiTopProfile; side: SashimiSideProfile }> = ${JSON.stringify(profiles, null, 2).replace(/"(\w+)":/g, '$1:')};
+`;
+    fs.writeFileSync(SPECIES_TS, sts, 'utf8');
+    console.log(`[gen_sashimi_fillet] species profiles -> ${SPECIES_TS} (${Object.keys(profiles).length}종)`);
+    await browser.close();
+    return;
   }
 
   const ts = `/**

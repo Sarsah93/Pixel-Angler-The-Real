@@ -47,6 +47,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { CONDITION_MARK, cv, drawMark, shapeCuesOn } from './ColorAssist.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
 import { SashimiPanel } from './SashimiPanel.js';
+import { ensureSashimiSpeciesArt, sashimiSpeciesPieceKey } from './SashimiSpeciesArt.js';
 import { GuidePanel } from './GuidePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { makeFishPreview } from './FishTemplateRenderer.js';
@@ -157,6 +158,8 @@ export class UtilizationPanel extends DraggablePanel {
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
   private sashimiPanel?: SashimiPanel;
+  /** 316 — 어종 회썰기 그림을 싣는 중(두 번 눌러 창이 둘 열리지 않게) */
+  private sashimiLoading = false;
 
   // ── 사시미 만들기 (접시 플레이팅 — 2026-08-03 사용자 도식) ──
   /** 도마 아래 서브 영역 상태 — 'sashimi' = 사시미 만들기 확장 */
@@ -2002,7 +2005,7 @@ export class UtilizationPanel extends DraggablePanel {
     const fam = butcherFamilyOf(item.speciesId ?? '');
     // 문어 숙회 한 점은 전용 실사 조각 (098차) — 어류 fam 폴백(bream 슬라이스)을 타면 안 된다
     const texKey = item.speciesId === 'octopus' || item.speciesId === 'giant_octopus'
-      ? 'sashimi_piece_octopus' : `sashimi_piece_${fam}`;
+      ? 'sashimi_piece_octopus' : sashimiSpeciesPieceKey(this.scene, item.speciesId) ?? `sashimi_piece_${fam}`;
     const hasTex = this.scene.textures.exists(texKey);
     const n = Math.min(item.qty, 16);
     const cols = 8;
@@ -2668,6 +2671,17 @@ export class UtilizationPanel extends DraggablePanel {
 
   /** 회썰기(사시미) 미니게임 열기 — 순수 필렛 + 모드 (버튼 게이트는 renderCooking이 담당) */
   private openSashimi(fillet: InvItem, mode: SashimiMode): void {
+    if (this.sashimiPanel || this.butcheryPanel || this.sashimiLoading) return;
+    // 316 — 어종 회썰기 그림(탑뷰 · 측면)을 먼저 싣는다(부팅에 싣지 않는다 · 못 실으면 어종군 그림으로 연다)
+    this.sashimiLoading = true;
+    void ensureSashimiSpeciesArt(this.scene, fillet.speciesId).then(() => {
+      this.sashimiLoading = false;
+      if (!this.scene || !this.active) return;   // 싣는 사이에 창이 닫혔다
+      this.openSashimiNow(fillet, mode);
+    });
+  }
+
+  private openSashimiNow(fillet: InvItem, mode: SashimiMode): void {
     if (this.sashimiPanel || this.butcheryPanel) return;
     this.sashimiPanel = new SashimiPanel(this.scene, fillet, mode, {
       onClose: () => {

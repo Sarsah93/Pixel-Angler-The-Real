@@ -12,7 +12,7 @@
  */
 
 import Phaser from 'phaser';
-import type { OrientationState, GuideFrameRemap } from '@tra/core';
+import type { OrientationState, GuideFrameRemap, GuideColumnProfile } from '@tra/core';
 import { butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES } from '@tra/core';
 import {
   PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET,
@@ -23,6 +23,20 @@ import { SPECIES_WHOLE } from '../data/PixelFishSpecies.js';
 import { isStripelessMale } from '../data/FishTextures.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
 import { FISH_VIEW_SPRITES } from '../data/PixelFishViews.js';
+import { FILLET_SPECIES_SPRITES, FILLET_SPECIES_ALIAS } from '../data/PixelFilletSpecies.js';
+
+/** 316 — 어종 필렛 그림 종류(순수 · 껍질 붙은 · 갈빗대 붙은) */
+export type SpeciesFilletKind = 'pure' | 'skin' | 'ribs';
+
+/**
+ * 316 — **어종별 필렛 도마 스프라이트**(Gemini 그림 · `PixelFilletSpecies`). 없으면 undefined → 어종군 공용 그림.
+ * 같은 생물종(참돔 야간 = 참돔)은 그 어종 그림을 쓴다.
+ */
+export function speciesFilletSprite(speciesId: string | undefined, kind: SpeciesFilletKind): PixelFishSprite | undefined {
+  if (!speciesId) return undefined;
+  const sp = FILLET_SPECIES_ALIAS[speciesId] ?? speciesId;
+  return FILLET_SPECIES_SPRITES[`${sp}_${kind}`];
+}
 
 /** 단계 스프라이트 조회 — 실사 사진 레지스트리 우선, 없으면 파라메트릭 뷰 폴백 */
 function stageSpr(key: string): PixelFishSprite | undefined {
@@ -160,6 +174,8 @@ export interface ButcherSpriteSet {
   flat?: boolean;
   /** 넙치류 배면(흰 면) 스프라이트 */
   flatWhite?: PixelFishSprite;
+  /** 316 — 어종 id(어종 필렛 그림 조회 — `speciesFilletSprite`) */
+  speciesId?: string;
 }
 
 /**
@@ -191,7 +207,7 @@ export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual):
     return {
       whole: own ?? FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET,
       // 313 — 잿방어 공용 그림의 원본 어종(방어 · 부시리 · 잿방어)만 무틴트. 농어 · 우럭 · 숭어 · 작은 생선은 어종 색
-      nativeColor: BUTCHERY_NATIVE_ART_SPECIES.has(speciesId), wholeNative: !!own, familyKey: 'amberjack',
+      nativeColor: BUTCHERY_NATIVE_ART_SPECIES.has(speciesId), wholeNative: !!own, familyKey: 'amberjack', speciesId,
     };
   }
   if (fam === 'halibut') {
@@ -202,13 +218,77 @@ export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual):
       // 어종 그림이 있으면 실색 그대로 / 없으면(새 넙치류) 광어 그림에 어종 색 약한 틴트
       nativeColor: !!flat || speciesId === 'flatfish',
       wholeNative: !!flat,
-      familyKey: 'halibut', flat: true, flatWhite: flat?.white ?? HALIBUT_WHITE,
+      familyKey: 'halibut', flat: true, flatWhite: flat?.white ?? HALIBUT_WHITE, speciesId,
     };
   }
   return {
     whole: own ?? FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET,
-    nativeColor: false, wholeNative: !!own, familyKey: 'bream',
+    nativeColor: false, wholeNative: !!own, familyKey: 'bream', speciesId,
   };
+}
+
+/** 316 — 필렛 뷰마다 어종군 공용 그림(유도선을 잰 그림) */
+function familyFilletSprite(fam: 'amberjack' | 'bream' | 'halibut', kind: SpeciesFilletKind): PixelFishSprite | undefined {
+  if (kind === 'ribs') return stageSpr('fillet_ribs');
+  if (kind === 'skin') return stageSpr(`skin_fillet_${fam}`) ?? stageSpr(`pure_fillet_${fam}`);
+  return stageSpr(`pure_fillet_${fam}`);
+}
+
+/**
+ * 316 — 스프라이트 열 실루엣(그림 rect 높이에 대한 살 위 · 아래 끝 — 열 n개 균등).
+ * 이웃 ±k열과 묶는다(가장 위 · 가장 아래) — 그림 끝의 둥근 모서리 열(살이 위쪽에만 조금)을 기준으로 비례를 잡으면
+ * 그 열의 아래쪽 점이 크게 튀어 나갔다(316 잿방어 껍질 필렛 첫 열 0.08 ~ 0.29 → 농어 박피 당기기 끝이 살 밖).
+ */
+function columnProfile(spr: PixelFishSprite, n = 48, k = 2): GuideColumnProfile {
+  const raw: Array<[number, number] | null> = [];
+  for (let i = 0; i < n; i++) {
+    const x0 = Math.floor((i * spr.w) / n), x1 = Math.max(x0 + 1, Math.floor(((i + 1) * spr.w) / n));
+    let t = spr.h, b = -1;
+    for (let x = x0; x < x1; x++) for (let y = 0; y < spr.h; y++) {
+      if (spr.rows[y][x] === '.') continue;
+      if (y < t) t = y;
+      if (y > b) b = y;
+    }
+    raw.push(b < 0 ? null : [t / spr.h, (b + 1) / spr.h]);
+  }
+  const top: number[] = [], bot: number[] = [];
+  for (let i = 0; i < n; i++) {
+    let t = 1, b = 0;
+    for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) {
+      const c = raw[j];
+      if (c) { t = Math.min(t, c[0]); b = Math.max(b, c[1]); }
+    }
+    top.push(b > t ? Math.round(t * 1e4) / 1e4 : 0.5);
+    bot.push(b > t ? Math.round(b * 1e4) / 1e4 : 0.5);
+  }
+  return { top, bot };
+}
+
+/**
+ * 316 — **필렛 뷰 유도선을 어종 필렛 그림 자리로**(core `ButcheryStageOptions.filletFrames`).
+ * 갈빗대 · 지아이뼈 · 박피 선은 어종군 공용 필렛 그림 위에서 잰 값이다 — 어종 필렛 그림은 종횡비 · 모양이 달라
+ * 도마의 다른 자리에 놓이므로 뷰마다 rect 대 rect(`butcherGuideFrame`과 같은 식 · 같은 `computeFishFrame`)에
+ * **열 실루엣**(세로 = 살 높이 비례)까지 넘긴다 — 꼬리가 뾰족한 어종 필렛에서 박피 손잡이 · 당기기 선이 살 밖으로 나가지 않게.
+ * 어종 그림이 없는 뷰는 빠진다.
+ */
+export function butcherFilletFrames(
+  speciesId: string, boardW: number, boardH: number,
+): Partial<Record<SpeciesFilletKind, GuideFrameRemap>> | undefined {
+  const fam = butcherFamilyOf(speciesId);
+  if (fam === 'halibut') return undefined;   // 넙치류 필렛 뷰는 다섯장뜨기 전용 그림(어종 그림 없음)
+  const geom = { x: 0, y: 0, w: boardW, h: boardH };
+  const norm = (f: PixelFishFrame): { x: number; y: number; w: number; h: number } => ({
+    x: f.ox / boardW, y: f.oy / boardH, w: f.dw / boardW, h: f.dh / boardH,
+  });
+  const out: Partial<Record<SpeciesFilletKind, GuideFrameRemap>> = {};
+  for (const kind of ['ribs', 'pure', 'skin'] as const) {
+    const own = speciesFilletSprite(speciesId, kind);
+    const ref = familyFilletSprite(fam, kind);
+    if (!own || !ref) continue;
+    const a = computeFishFrame(ref, geom), b = computeFishFrame(own, geom);
+    out[kind] = { from: norm(a), to: norm(b), fromCols: columnProfile(ref), toCols: columnProfile(own) };
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 /** 어종군 대표 온마리 — 유도선(core `GUIDE_COORDS` · `FLAT_GUIDE`)을 F9로 잰 기준 그림 */
@@ -262,22 +342,25 @@ function bodySpriteFor(sprites: ButcherSpriteSet, state: PixelFishState): PixelF
  *  2면(fillet_1_*)은 좌우 미러. 방향이 안 맞으면 null → 측면 몸통(뒤집기 유도).
  */
 function pickStageSprite(
-  fam: string, state: PixelFishState,
-): { spr: PixelFishSprite; mirrorX: boolean; view?: 'ventral' | 'cavity' | 'dorsal' | 'belly' } | null {
+  fam: string, state: PixelFishState, speciesId?: string,
+): { spr: PixelFishSprite; mirrorX: boolean; view?: 'ventral' | 'cavity' | 'dorsal' | 'belly'; native?: boolean } | null {
   const o = state.orientation;
   // 갈빗대 제거 — 실사 사진 픽셀화(`fillet_ribs` = 껍질 벗긴 갈빗대 붙은 필렛).
   //  구 파라메트릭 FISH_FILLET 폴백은 갈빗대가 안 보였다 (사용자 지시 2026-07-31).
   if (o === 'FLESH_UP' && !state.finished
     && (state.stageId === 'rib_a' || state.stageId === 'rib_b')) {
-    const spr = stageSpr('fillet_ribs');
-    if (spr) return { spr, mirrorX: state.stageId === 'rib_b' };
+    // 316 — 어종 필렛 그림(갈빗대 붙은)이 있으면 그것 · 제 색이라 틴트하지 않는다
+    const own = speciesFilletSprite(speciesId, 'ribs');
+    const spr = own ?? stageSpr('fillet_ribs');
+    if (spr) return { spr, mirrorX: state.stageId === 'rib_b', native: !!own };
   }
   // 지아이뼈 분리·완료 뷰 = **실사 순수 필렛**(pure_pillet 픽셀화) — 구 파라메트릭
   //  FISH_FILLET 폴백이 지아이 단계와 완료 안내 창 뒤에 "구 이미지"로 남아 있었다
   //  (사용자 지시 2026-08-04). 박피 단계는 전용 렌더(drawPeelTop 등)가 담당.
   if (state.finished || o === 'FLESH_UP') {
-    const spr = stageSpr(`pure_fillet_${fam}`);
-    if (spr) return { spr, mirrorX: !state.finished && state.stageId === 'pin_b' };
+    const own = speciesFilletSprite(speciesId, 'pure');
+    const spr = own ?? stageSpr(`pure_fillet_${fam}`);
+    if (spr) return { spr, mirrorX: !state.finished && state.stageId === 'pin_b', native: !!own };
     return null;
   }
   if (o === 'BELLY_UP' && (state.stageId === 'gut_open' || state.stageId === 'gut_scoop')) {
@@ -396,7 +479,10 @@ function drawPeelTop(
 ): void {
   const fam = sprites.familyKey;
   // 박피 대상 = **껍질이 붙어있는 필렛**(skinned_pillet 실사 픽셀화). 없으면 순수 필렛 폴백.
-  const flesh = stageSpr(`skin_fillet_${fam}`) ?? stageSpr(`pure_fillet_${fam}`) ?? sprites.fillet;
+  //  316 — 어종 껍질 붙은 필렛 그림(Gemini)이 있으면 그것(제 색 — 틴트 없음)
+  const own = speciesFilletSprite(sprites.speciesId, 'skin');
+  const flesh = own ?? stageSpr(`skin_fillet_${fam}`) ?? stageSpr(`pure_fillet_${fam}`) ?? sprites.fillet;
+  if (own) tint = null;
   const frame = computeFishFrame(flesh, geom);
   const prog = Math.max(0, Math.min(1, state.peelProgress ?? 0));
   const pulling = state.stageId === 'peel_pull';
@@ -437,8 +523,15 @@ function drawPeelTop(
   drawSprite(g, flesh, geom, false, false, sprites.nativeColor ? null : tint, 0.18, { frame });
   if (state.peelGripDone) {
     g.lineStyle(2.5, 0x2b1a1c, 0.9);
-    const gx = frame.ox + frame.dw * 0.09;
-    g.lineBetween(gx, frame.oy + frame.dh * 0.32, gx - frame.dw * 0.04, frame.oy + frame.dh * 0.58);
+    // 316 — 칼집 자국은 실제로 그은 유도선 자리(어종 필렛 그림이면 그 그림 꼬리 쪽 — 도마 rect 정규화)
+    const pl = state.peelGripLine;
+    if (pl && pl.length >= 2) {
+      const P = (q: { x: number; y: number }): [number, number] => [geom.x + q.x * geom.w, geom.y + q.y * geom.h];
+      for (let i = 1; i < pl.length; i++) g.lineBetween(...P(pl[i - 1]), ...P(pl[i]));
+    } else {
+      const gx = frame.ox + frame.dw * 0.09;
+      g.lineBetween(gx, frame.oy + frame.dh * 0.32, gx - frame.dw * 0.04, frame.oy + frame.dh * 0.58);
+    }
   }
 }
 
@@ -476,6 +569,8 @@ export interface PixelFishState {
   peelSawPhase?: number;
   /** 박피 ① 꼬리 손잡이 칼집 완료 */
   peelGripDone?: boolean;
+  /** 316 — 박피 ① 칼집 선(도마 rect 정규화 — 그 단계 유도선). 없으면 그림 rect의 고정 자리 */
+  peelGripLine?: Array<{ x: number; y: number }>;
   /**
    * 장뜨기 벌어짐 강제 표시 — 칼질 성공 직후 스테이지가 넘어가도 마지막 벌어짐을
    * 연출 동안 유지하기 위한 오버라이드 (ButcheryPanel가 액션 애니 중에만 설정).
@@ -938,10 +1033,10 @@ export function drawPixelButcherFish(
   }
 
   // ── 손질 단계 스프라이트 (복면 뷰 / 체강 탑뷰 / 장뜨기 길내기 1~3) — 있으면 우선 사용 ──
-  const stagePick = pickStageSprite(sprites.familyKey, state);
+  const stagePick = pickStageSprite(sprites.familyKey, state, sprites.speciesId);
   if (stagePick) {
     const dr = drawSprite(g, stagePick.spr, geom, stagePick.mirrorX, false,
-      sprites.nativeColor ? null : tint, 0.22);
+      sprites.nativeColor || stagePick.native ? null : tint, 0.22);
     // 복면 뷰 — 개복 전에는 정중선을 따라 아직 부푼 배(내장) 음영, 개복 후엔 붉은 내장 노출
     if (stagePick.view === 'ventral' && !state.gutted && state.stageId === 'gut_scoop') {
       // 가른 정중선 사이로 드러난 내장 덩어리 (간·위·장) — 좁고 길게

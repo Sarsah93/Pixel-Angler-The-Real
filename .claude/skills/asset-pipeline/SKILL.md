@@ -378,3 +378,24 @@ node tools/face_layers_qa.mjs <폴더>                               # 게임 �
   입 4 · 볼 홍조는 코드(269 — `mouthFromLabels` → `applyMouth` · `applyBlush`). 수염 층이 없으면 수염을 골라도 민낯이다(수염 층 3장은 271(2)에 설치). 뒤에 뽑는 판(수염)은 틀에 안 넣는다 — 틀은 기본 · 머리 판으로만.
 - **화풍 · 밀도 앵커 한 장은 필수**(268) — 앵커 없이는 128칸급 · 32칸급 밀도가 섞인다.
 - 값(269 · 271 실측): 한 장 ≈ 60원. 271 층 원판 25장(수염 3 포함) ≈ 1,500원. 결제가 비면 HTTP 402 — 충전 뒤 같은 명령(이미 뽑은 것은 건너뛴다).
+
+## ⑩ 어종별 필렛 그림 — Gemini 세 장 · 도마 스프라이트 · 회썰기 (316차)
+
+배를 가른 뒤 도마 · 가방 · 회썰기에 나오는 필렛 그림(둥근 생선 27종 × 순수 · 껍질 붙은 · 갈빗대 붙은).
+
+```bash
+NODE_USE_ENV_PROXY=1 node tools/gemini_fillet_art.cjs --out <폴더> [--only sea_bass] [--kinds pure,skin,ribs] [--jobs 5] [--force]
+node tools/gemini_fillet_art.cjs --out <폴더> --sheet <시트.png>     # 검수(한 줄 = 어종 · 순수 · 껍질 · 갈빗대)
+node tools/gemini_fillet_art.cjs --out <폴더> --install [--force]    # → food assets/trimmings/species/<어종>_<종류>.png(긴 변 192칸 × 4px)
+node tools/gemini_fillet_art.cjs --bake                               # → client data/PixelFilletSpecies.ts(도마 · 아이콘 — 긴 변 128칸)
+node tools/gen_sashimi_fillet.cjs --species                           # → public/sashimi/sp/<어종>_{top,side,piece}.png + SashimiSpeciesProfiles.ts
+node tools/gemini_fillet_art.cjs --wiki-sheets                        # → tools/wiki_img/butchery/fillets_<갈래>.webp(위키 「어종 손질」)
+```
+
+- **세 장은 서로 기대어 그린다** — ① 순수(화풍 = 잿방어 로인 + 그 어종 온마리 · 꼬리 왼쪽) → ② 껍질 붙은 = **①을 고쳐서**(실루엣 IoU ≥ 0.85) →
+  ③ 갈빗대 붙은 = **공용 갈빗대 그림 구도**(`skinned_pillet_with_ribs.png`) + ①의 화풍(IoU ≥ 0.93). ①을 다시 뽑으면 ② · ③도 다시 뽑는다.
+- 어종 표 `SPECIES`(온마리 원본 파일 · 살 · 껍질 · 모양). `keep` = 원래 군 그림이 그 어종(잿방어 · 감성돔 — 갈빗대만 그린다) · `alias` = 같은 생물종(참돔 야간).
+- 갈빗대 그림에 「가늘고 길게」 같은 모양 지시를 주지 않는다 — 뱃살 날개 · 갈빗대가 사라졌다(316 눈퉁멸 · 보리멸 1차).
+- 게임은 PNG를 싣지 않는다 — 도마 · 아이콘은 `PixelFilletSpecies` 스프라이트(아이콘 = 캔버스 굽기 `trimsp_<종류>_<어종>`), 회썰기 한 점만 부팅에 · 탑뷰 · 측면은 창 열 때.
+- 그림 비율 · 모양이 바뀌면 필렛 뷰 유도선이 따라 옮겨지는지(`filletFrames` 열 실루엣) 실렌더로 본다 — 27종 × 6뷰 표본 「살 위」 비율(316 최저 0.88).
+- 값(316 실측): 74장 + 다시 4장 ≈ 2.5달러 · 장당 약 15초 · 동시 5.

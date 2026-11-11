@@ -26,7 +26,7 @@ import {
   WHOLE_FISH_SECTIONS, sectionsForSpecies, resolveButcherySections, ButcherySectionDef, ButcherySectionYield,
   primitiveInput, CEPH_BYPRODUCTS, cephByproductIcon, CephByproductId, getCephalopodProfile,
   GRADE_XP_MULT, BUTCHERY_NATIVE_ART_SPECIES,
-  isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE,
+  isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE, stageGuideRemap, filletGuideView, invertGuideRemap,
 } from '@tra/core';
 import type { ButcheryGuideOverride, GuideFrameRemap } from '@tra/core';
 import { devGuideOverrides, loadDevGuideOverrides, postDevGuideOverride } from './DevGuideCaptures.js';
@@ -39,7 +39,8 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame } from './PixelButcherFish.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames } from './PixelButcherFish.js';
+import { speciesFilletIconKey } from './FilletSpeciesIcons.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 import {
   drawCephalopodFish, CephFishState, CEPH_VIEW_LABEL, cephStageSprite, cephFitRect,
@@ -263,6 +264,8 @@ export class ButcheryPanel extends DraggablePanel {
   private guideSpeciesOk = false;
   /** 313 — 어종군 대표 그림 rect → 이 어종 그림 rect(측면 유도선 옮기기) · 315 [군 확정]이 거꾸로 옮길 때도 쓴다 */
   private guideFrame: GuideFrameRemap | undefined;
+  /** 316 — 필렛 뷰(갈빗대 · 지아이뼈 · 박피) 유도선을 어종 필렛 그림 자리로(core `filletFrames`) */
+  private filletFrames: ReturnType<typeof butcherFilletFrames>;
   private sheetViewer?: Phaser.GameObjects.Container;
 
   // ── 가이드/액션 애니메이션 (2026-07-29 — 2s 기본, TUNING.butchery.*AnimMs로 조율) ──
@@ -355,8 +358,11 @@ export class ButcheryPanel extends DraggablePanel {
     // 313 — 도마가 어종 실사 그림을 그리면 측면 유도선을 그 그림 자리로 옮긴다(core `guideFrame`)
     this.guideFrame = butcherGuideFrame(speciesId, { lengthCm: source.lengthCm, sex: source.sex },
       ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
+    // 316 — 어종 필렛 그림(Gemini)이 있으면 갈빗대 · 지아이뼈 · 박피 선도 그 그림 자리로
+    this.filletFrames = butcherFilletFrames(speciesId, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
     this.process = new ButcheryProcess(getButcheryProfile(speciesId), this.freshnessFactor(source), {
       guideFrame: this.guideFrame,
+      filletFrames: this.filletFrames,
       // 315 — dev F9 [확정] 좌표(이 판에서 확정한 것까지). 배포본은 core에 저장된 표만 쓴다
       guideOverrides: import.meta.env.DEV ? devGuideOverrides : undefined,
     });
@@ -1119,7 +1125,7 @@ export class ButcheryPanel extends DraggablePanel {
           break;
         case 'filletA':
         case 'filletB':
-          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`, icon: '', iconTexture: 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
+          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`, icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'ribs') ?? 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
           break;
         case 'spine':
           // 315 — 장어 중골은 「뼈」(뼈튀김 · 육수) · 그림은 그 장어의 뼈 층
@@ -1156,7 +1162,7 @@ export class ButcheryPanel extends DraggablePanel {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletskin_${speciesId}_${seq}`,
               name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${sw}g`,
-              icon: '', iconTexture: `trim_fillet_skinonly_${fam}`,
+              icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'skin') ?? `trim_fillet_skinonly_${fam}`,
               basePrice: price,
               speciesId, weightG: sw, lengthCm: this.source.lengthCm,
             },
@@ -1248,7 +1254,7 @@ export class ButcheryPanel extends DraggablePanel {
       if (!item) continue;
       const w = Math.max(1, Math.round((item.weightG ?? 100) - (this.bypWeights().ribG / 2)));
       item.name = `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`;
-      item.iconTexture = 'trim_fillet_skin';
+      item.iconTexture = speciesFilletIconKey(this.scene, this.process.profile.speciesId, 'skin') ?? 'trim_fillet_skin';
       item.weightG = w;
     }
     // ── 재장착 세션 — 필렛이 grantedLog가 아니라 **원물(source)** 이다 (사용자 리포트 2026-08-04:
@@ -1261,7 +1267,7 @@ export class ButcheryPanel extends DraggablePanel {
       const tpl = {
         id: `inv_filletpin_${speciesId}_${InventoryStore.nextCatchSeq()}`,
         name: `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`,
-        icon: '', iconTexture: 'trim_fillet_skin',
+        icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'skin') ?? 'trim_fillet_skin',
         category: 'food' as const, subCategory: '손질 필렛',
         basePrice: Math.max(500, Math.round(this.source.basePrice)),
         condition: 'live' as const, conditionSinceMs: Date.now(),
@@ -2325,6 +2331,7 @@ export class ButcheryPanel extends DraggablePanel {
       peelProgress: this.process.stage?.id === 'peel_pull'
         ? Math.min(1, this.process.currentFill / (this.process.stage.fillTarget ?? 0.9)) : 0,
       peelGripDone: this.doneStages.has('peel_grip'),
+      peelGripLine: this.process.stageList.find((st) => st.id === 'peel_grip')?.cut?.guidePath,
       peelSawPhase: this.peelSawPhase,
       // 칼질 성공 연출 중에만 — 스테이지가 넘어가도 마지막 벌어짐을 유지
       openOverride: this.filletOpen ?? undefined,
@@ -3086,9 +3093,10 @@ export class ButcheryPanel extends DraggablePanel {
     const sp = this.process.profile.speciesId;
     const key = scope === 'species' ? sp : butcheryGuideFamilyKey(sp, this.process.cephalopod);
     if (!key) { this.flash('두족류는 어종마다 확정합니다', false); return; }
-    const familyFrame = scope === 'family' && isBodyGuideStage(stage.id);
-    const inv: GuideFrameRemap | undefined = familyFrame && this.guideFrame
-      ? { from: this.guideFrame.to, to: this.guideFrame.from } : undefined;
+    // 316 — 필렛 뷰(갈빗대 · 지아이뼈 · 박피)도 어종 그림 자리 ↔ 어종군 그림 자리(`filletFrames`)
+    const familyFrame = scope === 'family' && (isBodyGuideStage(stage.id) || !!filletGuideView(stage.id));
+    const fm = familyFrame ? stageGuideRemap(stage.id, { guideFrame: this.guideFrame, filletFrames: this.filletFrames }) : undefined;
+    const inv: GuideFrameRemap | undefined = fm ? invertGuideRemap(fm) : undefined;
     const mv = (p: CutPoint): CutPoint => (inv ? remapGuidePoint(p, inv)
       : { x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000 });
     const ov: ButcheryGuideOverride = {};
@@ -4228,6 +4236,9 @@ export class ButcheryPanel extends DraggablePanel {
 
   /** 어종별 순수 필렛 아이콘 키 — 어종군 로인 사진 (방어류 실색 / 돔류는 은은한 어종 색) */
   private trimFilletKey(speciesId: string): string {
+    // 316 — 어종 필렛 그림(Gemini)이 있으면 그것
+    const own = speciesFilletIconKey(this.scene, speciesId, 'pure');
+    if (own) return own;
     const fam = this.trimFamily(speciesId);
     // 넙치류 — 순수 필렛 전용 에셋 미제작: 엔가와 제거 필렛(껍질 면이 안 보이는 탑뷰)으로 대용
     if (fam === 'halibut') return 'trim_fillet_skinonly_halibut';

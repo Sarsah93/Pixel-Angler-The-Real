@@ -784,6 +784,17 @@ const rules = [
     ],
   },
   {
+    id: 'fillet_species_art_316', round: 316, hidden: false, title: '어종별 필렛 그림 — 배를 가른 뒤에도 그 어종',
+    lede: '배를 가른 뒤 도마 · 가방 · 회썰기에 나오는 필렛 그림이 어종마다 따로 생겼다(둥근 생선 27종 · 순수 · 껍질 붙은 · 갈빗대 붙은 세 가지). 그전에는 잿방어 · 감성돔 필렛에 어종 색을 약하게 입힌 그림이었다.',
+    rows: [
+      ['도마', '갈빗대 제거 = 그 어종의 갈빗대 붙은 필렛 · 지아이뼈 = 순수 필렛 · 박피 = 껍질 붙은 필렛(껍질 띠가 그 어종 몸 색 — 돌돔은 검은 줄무늬 · 고등어는 청록 물결 · 우럭은 짙은 회갈색). 꼬리가 왼쪽, 두툼하게 비스듬히 잘린 머리 쪽이 오른쪽'],
+      ['유도선', '갈빗대 · 지아이뼈 · 박피 선은 어종 그림을 따라간다 — 그림 자리뿐 아니라 열마다 살의 위 · 아래 끝에 맞춰 옮겨, 꼬리가 뾰족한 필렛에서도 박피 손잡이 · 당기기 선이 살 밖으로 나가지 않는다'],
+      ['가방', '「껍질과 갈빗대가 붙어있는 필렛」 · 「껍질이 붙어있는 (순살) 필렛」 · 손질을 마친 필렛 아이콘이 그 어종 그림'],
+      ['회썰기', '일반 회뜨기 탑뷰 · 고급 사시미 측면 · 한 점 그림이 그 어종 필렛에서 나온다 — 컷 유도선도 그 필렛 윤곽으로 자리 잡는다. 회 조각 아이콘도 그 어종 한 점'],
+      ['그대로인 것', '잿방어 · 감성돔의 순수 · 껍질 붙은 필렛은 원래 그림(그 어종이 원본이다 — 갈빗대 붙은 필렛만 새 그림). 참돔(야간)은 참돔 그림. 넙치류 · 두족류 · 장어류는 전용 그림 그대로'],
+    ],
+  },
+  {
     id: 'wild_greens_tab_314', round: 314, hidden: false, title: '「농작물」 탭 · 산나물은 산나물끼리',
     lede: '산자락에서 캐는 산나물이 어종 · 수산생물 사이에 섞여 있던 것을 갈랐다. 위키는 「농사」 탭이 「농작물」이 되고 그 안에서 작물 · 산나물로 나뉜다. 게임 도감(N)에도 「산나물」 탭이 생겼다.',
     rows: [
@@ -1852,6 +1863,11 @@ const butchery = {
       return m ? { id: fid, sp: m.sp, title: `${fishName(m.sp)} — ${m.steps.length}단계`, img: m.file, tileW: m.tileW, tileH: m.tileH, steps: m.steps }
         : { id: fid, sp: '', title: '그림 준비 중', img: null, tileW: 300, tileH: 170, steps: [] };
     }),
+    // 316차 — 어종별 필렛 그림(Gemini) 시트: 한 줄 = 어종 하나 · 칸 = 순수 · 껍질 붙은 · 갈빗대 붙은(`gemini_fillet_art.cjs --wiki-sheets`)
+    fillets: bkMan.fillets?.[c.id] ? {
+      img: bkMan.fillets[c.id].file, tileW: bkMan.fillets[c.id].tileW, tileH: bkMan.fillets[c.id].tileH, kinds: bkMan.fillets[c.id].kinds,
+      rows: bkMan.fillets[c.id].rows.map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
+    } : null,
   })),
 };
 
@@ -1922,6 +1938,7 @@ for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
 for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
 for (const c of butchery.cats) for (const f of c.flows) if (f.img) used.add(f.img);   // 315차 — 어종 손질 공정 시트
+for (const c of butchery.cats) if (c.fillets?.img) used.add(c.fillets.img);   // 316차 — 어종별 필렛 그림 시트
 for (const ic of maps.icons) used.add(ic.img);   // 264차 — 지도 탭 핀 아이콘(16px — 전부 HTML 안)
 for (const m of maps.list) for (const n of m.npcs ?? []) if (n.img) used.add(n.img);   // 268차 — 인물 얼굴(192px · 20KB 아래면 HTML 안)
 // 249차 — 아티팩트 한 판에는 파일이 511개까지만 들어간다(위키가 쓰는 그림 512장 + index.html — 그 전까지 코드 그림 141장이 빠진 채였다).

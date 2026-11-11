@@ -22,6 +22,7 @@ import { TACKLE_IMAGE_FILES } from '../data/TackleTextures.js';
 import { ITEM_IMAGE_FILES } from '../data/ItemImages.js';
 import { FACE_PORTRAITS } from '../data/FacePortraits.js';
 import { FACE_LAYERS } from '../data/FaceLayers.js';
+import { preloadSashimiSpeciesPieces } from '../ui/SashimiSpeciesArt.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -182,6 +183,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('sashimi_piece_bream', 'sashimi/piece_bream.png');
     this.load.image('sashimi_piece_amberjack', 'sashimi/piece_amberjack.png');
     this.load.image('sashimi_piece_halibut', 'sashimi/piece_halibut.png');
+    // 316 — 어종별 회 한 점(작다 — 회 조각 아이콘이 세이브에 남는다). 탑뷰 · 측면은 회썰기 창을 열 때 그 어종 것만(SashimiSpeciesArt)
+    preloadSashimiSpeciesPieces(this.load);
     // (252차 — 메인 메뉴 타이틀 로고는 그림 파일 없이 ui/TitleLogo.ts가 굽는다)
     // trimmings/: 손질 부산물 아이콘 (회뜨기 산출 — 머리/중골/내장/껍질/필렛).
     // 머리는 감성돔 기준 원본 → 타 돔류는 런타임 색 변형(참돔 붉게·돌돔 아가미 줄무늬 등, ButcheryPanel.trimHeadKey).

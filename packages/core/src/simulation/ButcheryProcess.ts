@@ -228,6 +228,14 @@ export interface ButcheryStageOptions {
    */
   guideFrame?: GuideFrameRemap;
   /**
+   * 316 — **필렛 뷰 유도선을 어종 필렛 그림 자리로**. 갈빗대 · 지아이뼈 · 박피 선은 어종군 공용 필렛 그림
+   * (공용 갈빗대 사진 · 잿방어 로인 · 감성돔 필렛) 위에서 잰 값이다. 도마가 어종 필렛 그림(Gemini — `PixelFilletSpecies`)을
+   * 그리면 종횡비가 달라 그림이 도마의 다른 자리에 놓이므로, 뷰마다 rect 대 rect로 옮긴다(`guideFrame`과 같은 식).
+   *  - `ribs` = 갈빗대 제거(rib_a · rib_b) · `pure` = 지아이뼈(pin_a · pin_b — 작은 생선 핀셋 포함) · `skin` = 박피 ① · ③
+   *  - 박피 ② 칼 넣기(측면 단면)는 어종 그림이 없다 — 옮기지 않는다.
+   */
+  filletFrames?: Partial<Record<FilletGuideView, GuideFrameRemap>>;
+  /**
    * 315 — dev F9 [확정] 좌표(dev 서버에서 받아 둔 것). 저장된 표(`BUTCHERY_GUIDE_OVERRIDES`)보다 먼저 쓴다.
    * 확정 직후 다시 연 손질 창에도 그 좌표가 보이게 하려는 것 — 배포본은 넘기지 않는다(저장된 표만).
    */
@@ -236,17 +244,54 @@ export interface ButcheryStageOptions {
 
 /** 313 — 도마 정규화(0~1) rect */
 export interface GuideNormRect { x: number; y: number; w: number; h: number; }
-/** 313 — 어종군 대표 그림 rect → 어종 그림 rect */
-export interface GuideFrameRemap { from: GuideNormRect; to: GuideNormRect; }
+/**
+ * 316 — 그림 rect 안 **열마다 살의 위 · 아래 끝**(rect 높이에 대한 0~1). 열은 rect 가로를 균등하게 나눈 표본이다.
+ * 살이 없는 열은 top ≥ bot.
+ */
+export interface GuideColumnProfile { top: number[]; bot: number[]; }
+/**
+ * 313 — 어종군 대표 그림 rect → 어종 그림 rect.
+ * 316 — 두 그림의 열 실루엣(`fromCols` · `toCols`)이 있으면 세로는 **살 높이 비례**로 옮긴다:
+ *  어종군 그림 그 열에서 살 높이의 몇 % 자리였는지를 어종 그림 같은 열 살 높이의 같은 %로.
+ *  rect 비례만 쓰면 꼬리가 뾰족한 어종 필렛에서 꼬리 쪽 선(박피 손잡이 · 당기기)이 살 밖으로 나갔다(316 참돔 46%).
+ *  살 높이 비율은 0~100%로 묶는다(살 밖 점은 살 경계로) — 열 실루엣은 이웃 열과 묶어 둥근 끝 열에서 튀지 않게(client `columnProfile`).
+ */
+export interface GuideFrameRemap { from: GuideNormRect; to: GuideNormRect; fromCols?: GuideColumnProfile; toCols?: GuideColumnProfile; }
 
-/** 313 — 점 하나를 그림 rect 대 rect 비례로 옮긴다 */
+/** 316 — 열 실루엣 보간(u = rect 가로 0~1) — 살이 없는 열이면 undefined */
+function colSpan(c: GuideColumnProfile, u: number): { t: number; b: number } | undefined {
+  const n = c.top.length;
+  if (!n) return undefined;
+  const f = Math.min(n - 1, Math.max(0, u * n - 0.5));
+  const i = Math.floor(f), k = Math.min(n - 1, i + 1), w = f - i;
+  const t = c.top[i] + (c.top[k] - c.top[i]) * w, b = c.bot[i] + (c.bot[k] - c.bot[i]) * w;
+  return b - t > 1e-3 ? { t, b } : undefined;
+}
+
+/** 313 — 점 하나를 그림 rect 대 rect 비례로 옮긴다(316 — 열 실루엣이 있으면 세로는 살 높이 비례) */
 export function remapGuidePoint(p: CutPoint, m: GuideFrameRemap | undefined): CutPoint {
   if (!m || m.from.w <= 0 || m.from.h <= 0) return p;
   const r = (v: number): number => Math.round(v * 1000) / 1000;
-  return {
-    x: r(m.to.x + ((p.x - m.from.x) / m.from.w) * m.to.w),
-    y: r(m.to.y + ((p.y - m.from.y) / m.from.h) * m.to.h),
-  };
+  const u = (p.x - m.from.x) / m.from.w;
+  let v = (p.y - m.from.y) / m.from.h;
+  if (m.fromCols && m.toCols) {
+    const a = colSpan(m.fromCols, u), b = colSpan(m.toCols, u);
+    // 살 높이의 0~100% 안으로 — 필렛 뷰 선은 살 위(경계 포함)에 둔다(어종군 그림 끝 열의 둥근 모서리 밖 점이 튀어 나갔다)
+    if (a && b) v = b.t + Math.min(1, Math.max(0, (v - a.t) / (a.b - a.t))) * (b.b - b.t);
+  }
+  return { x: r(m.to.x + u * m.to.w), y: r(m.to.y + v * m.to.h) };
+}
+
+/** 316 — 거꾸로 옮기기(어종 그림 자리 → 어종군 그림 자리 — F9 「군 확정」 저장) */
+export function invertGuideRemap(m: GuideFrameRemap): GuideFrameRemap {
+  return { from: m.to, to: m.from, fromCols: m.toCols, toCols: m.fromCols };
+}
+
+/** 316 — 좌우로 뒤집어 그린 뷰(필렛 B — rib_b · pin_b)는 열 실루엣도 뒤집는다(rect는 가운데 대칭이라 그대로) */
+function mirrorGuideRemap(m: GuideFrameRemap): GuideFrameRemap {
+  const flip = (c?: GuideColumnProfile): GuideColumnProfile | undefined =>
+    c && { top: [...c.top].reverse(), bot: [...c.bot].reverse() };
+  return { ...m, fromCols: flip(m.fromCols), toCols: flip(m.toCols) };
 }
 const remapPath = (path: CutPoint[], m: GuideFrameRemap | undefined): CutPoint[] =>
   m ? path.map((p) => remapGuidePoint(p, m)) : path;
@@ -254,7 +299,8 @@ const remapPath = (path: CutPoint[], m: GuideFrameRemap | undefined): CutPoint[]
 /**
  * 315 — **온마리 그림 위 유도선** 스테이지(어종 그림 자리로 옮겨 그리는 선 — `resolveGuideSet` · `resolveFlatGuide`).
  * 「군 전체 확정」 좌표는 어종군 대표 그림 자리에 저장되므로, 이 스테이지들만 어종 그림 자리로 옮겨 쓴다.
- * 개복 뒤 뷰(복면 · 체강 · 장뜨기 · 필렛 · 두족류)는 어종군 공용 그림이라 잰 좌표 그대로다.
+ * 개복 뒤 뷰(복면 · 체강 · 장뜨기 · 두족류)는 어종군 공용 그림이라 잰 좌표 그대로다.
+ * 필렛 뷰(갈빗대 · 지아이뼈 · 박피)는 316부터 어종 필렛 그림 자리로 옮긴다(`FILLET_VIEW_STAGES` · `filletFrames`).
  */
 const BODY_GUIDE_STAGES: ReadonlySet<string> = new Set([
   'ikejime', 'bleed_cut', 'scale_base', 'scale_flip', 'head_base', 'head_flip', 'finectomy', 'tail_grip', 'tail_grip_b',
@@ -266,6 +312,52 @@ const BODY_GUIDE_STAGES: ReadonlySet<string> = new Set([
 /** 315 — 이 스테이지의 유도선이 온마리 그림 위 선인가(「군 전체 확정」을 어종 그림 자리로 옮겨 쓰는 대상) */
 export function isBodyGuideStage(stageId: string): boolean {
   return BODY_GUIDE_STAGES.has(stageId);
+}
+
+/** 316 — 필렛 뷰 종류(도마가 그 단계에 그리는 필렛 그림) */
+export type FilletGuideView = 'ribs' | 'pure' | 'skin';
+const FILLET_VIEW_STAGES: Readonly<Record<string, FilletGuideView>> = {
+  rib_a: 'ribs', rib_b: 'ribs', pin_a: 'pure', pin_b: 'pure', peel_grip: 'skin', peel_pull: 'skin',
+};
+/** 316 — 도마가 필렛 그림을 좌우로 뒤집어 그리는 단계(필렛 B) */
+const FILLET_MIRRORED_STAGES: ReadonlySet<string> = new Set(['rib_b', 'pin_b']);
+/** 316 — 이 스테이지가 그리는 필렛 뷰(없으면 undefined — 온마리 · 장뜨기 · 박피 ② 단면 등) */
+export function filletGuideView(stageId: string): FilletGuideView | undefined {
+  return FILLET_VIEW_STAGES[stageId];
+}
+/**
+ * 316 — 이 스테이지의 유도선을 옮기는 그림 rect 대응: 온마리 선 = `guideFrame`(313) · 필렛 뷰 = `filletFrames[뷰]`(316) · 그 밖 = 없음.
+ * 「군 전체 확정」 좌표도 같은 대응으로 옮긴다(`applyGuideOverrides` · client F9 역변환).
+ */
+export function stageGuideRemap(
+  stageId: string, opts?: Pick<ButcheryStageOptions, 'guideFrame' | 'filletFrames'>,
+): GuideFrameRemap | undefined {
+  if (BODY_GUIDE_STAGES.has(stageId)) return opts?.guideFrame;
+  const v = FILLET_VIEW_STAGES[stageId];
+  const m = v ? opts?.filletFrames?.[v] : undefined;
+  return m && FILLET_MIRRORED_STAGES.has(stageId) ? mirrorGuideRemap(m) : m;
+}
+
+/** 316 — 스테이지 하나의 유도선 · 스윕 · 탭 점을 옮긴 사본(공용 스테이지 표를 건드리지 않는다) */
+function remapStageGuides(st: ButcheryStage, m: GuideFrameRemap): ButcheryStage {
+  const next: ButcheryStage = { ...st };
+  if (st.tapPoint) next.tapPoint = remapGuidePoint(st.tapPoint, m);
+  if (st.sweepPath) next.sweepPath = remapPath(st.sweepPath, m);
+  if (st.cut) {
+    const c: CutSpec = { ...st.cut, guidePath: remapPath(st.cut.guidePath, m) };
+    if (st.cut.guidePaths) c.guidePaths = st.cut.guidePaths.map((l) => remapPath(l, m));
+    next.cut = c;
+  }
+  return next;
+}
+
+/** 316 — 필렛 뷰 스테이지들을 어종 필렛 그림 자리로 옮긴다(그림이 없는 뷰는 그대로) */
+function applyFilletFrames(stages: ButcheryStage[], frames: ButcheryStageOptions['filletFrames']): ButcheryStage[] {
+  if (!frames) return stages;
+  return stages.map((st) => {
+    const m = FILLET_VIEW_STAGES[st.id] ? stageGuideRemap(st.id, { filletFrames: frames }) : undefined;
+    return m ? remapStageGuides(st, m) : st;
+  });
 }
 
 /** 315 — 「군 전체 확정」 키(`@amberjack` · `@bream` · `@halibut`). 두족류 · 장어류는 어종마다 그림이 달라 군 키가 없다(null) */
@@ -282,6 +374,7 @@ export function butcheryGuideFamilyKey(speciesId: string, cephalopod: boolean): 
 export function applyGuideOverrides(
   stages: ButcheryStage[], speciesId: string, cephalopod: boolean,
   m: GuideFrameRemap | undefined, live?: ButcheryGuideOverrideTable,
+  filletFrames?: ButcheryStageOptions['filletFrames'],
 ): ButcheryStage[] {
   const fam = butcheryGuideFamilyKey(speciesId, cephalopod);
   const pick = (id: string): ButcheryGuideOverride | undefined =>
@@ -290,8 +383,10 @@ export function applyGuideOverrides(
   return stages.map((st) => {
     const o = pick(st.id);
     if (!o) return st;
-    const mv = o.familyFrame && BODY_GUIDE_STAGES.has(st.id)
-      ? (p: CutPoint): CutPoint => remapGuidePoint(p, m)
+    // 「군 전체 확정」(familyFrame) 좌표는 어종군 그림 자리 — 온마리 선 · 필렛 뷰(316)를 이 어종 그림 자리로 옮긴다
+    const fm = o.familyFrame ? stageGuideRemap(st.id, { guideFrame: m, filletFrames }) : undefined;
+    const mv = fm
+      ? (p: CutPoint): CutPoint => remapGuidePoint(p, fm)
       : (p: CutPoint): CutPoint => ({ x: p.x, y: p.y });
     const next: ButcheryStage = { ...st };
     if (o.tapPoint && st.primitive === 'tap') next.tapPoint = mv(o.tapPoint);
@@ -964,7 +1059,8 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     ],
   });
 
-  return profile.tree === 'small' ? toSmallFishStages(stages) : stages;
+  // 316 — 어종 필렛 그림이 있으면 갈빗대 · 지아이뼈 · 박피 선을 그 그림 자리로(작은 생선 핀셋 스윕도 같은 뷰)
+  return applyFilletFrames(profile.tree === 'small' ? toSmallFishStages(stages) : stages, opts?.filletFrames);
 }
 
 /**
@@ -1076,7 +1172,7 @@ export class ButcheryProcess {
     this.cephalopod = !!ceph;
     this.stages = ceph ?? buildButcheryStages(profile, opts);
     // 315 — dev F9 [확정] 좌표(저장된 표 + dev 서버에서 받아 둔 것)를 좌표만 바꿔 끼운다
-    this.stages = applyGuideOverrides(this.stages, profile.speciesId, !!ceph, opts?.guideFrame, opts?.guideOverrides);
+    this.stages = applyGuideOverrides(this.stages, profile.speciesId, !!ceph, opts?.guideFrame, opts?.guideOverrides, opts?.filletFrames);
     if (ceph) this.orientation = ceph[0].orientation;
     // 313 — 작은 생선 공정은 시메 · 방혈이 없다(공정에 없는 것은 「해당 없음」 — 등급을 깎지 않는다)
     //  315 — 장어류도 같다(송곳 고정은 즉살이 아니다 · 방혈 단계가 공정에 없다)

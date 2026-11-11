@@ -310,7 +310,7 @@ npx pnpm --filter @tra/client-pc run dev
 ## 9. 빌드 상태 · 최근 변경
 
 ```
-npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 315차 · map-builder 워크스페이스 제외)
+npx pnpm run build → ✅ 3/3 패키지 성공 (2026-11-11 316차 · map-builder 워크스페이스 제외)
 npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 ```
 
@@ -319,7 +319,14 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 > 새 차수를 넣으면 가장 오래된 항목 하나를 지운다(워크로그에 이미 있다).
 > 작업 방법·함정은 히스토리가 아니라 **`.claude/skills/` 12종**을 먼저 본다.
 
-**최근 변경 (2026-11-11 315차) — 장어류 손질 · F9 [확정] 단추 · 위키 「어종 손질」 탭 · 도감 산나물 그림**
+**최근 변경 (2026-11-11 316차) — 어종별 필렛 그림(Gemini) · 배를 가른 뒤에도 그 어종 · main 반영 · 114차 배포**
+
+- 사용자 「어종별 필렛 그림 Gemini로 전부 진행해줘 · main & gh-pages 재배포까지 · 실검증은 집 pc에서 dev로」.
+- 둥근 생선 27종 × 순수 · 껍질 붙은 · 갈빗대 붙은 74장(`tools/gemini_fillet_art.cjs` — 껍질 = 순수를 고쳐서 · 갈빗대 = 공용 그림 구도 · 실루엣 IoU로 다시 뽑기) → 도마 `PixelFilletSpecies` · 가방 아이콘(스프라이트 굽기 `trimsp_*`) · 회썰기 3뷰(`public/sashimi/sp/` — 창 열 때 싣기).
+- 필렛 뷰 유도선은 어종 그림의 열 실루엣을 따라 옮긴다(core `filletFrames` · `GuideColumnProfile` — 꼬리가 뾰족한 필렛에서 박피 선이 살 밖으로 나갔다) · 위키 「어종 손질」 어종별 필렛 그림.
+- 검증: core 572 · r316 8/8 · 위키 6/6 · 빌드 3/3 · 루트 typecheck 4/4. 상세: [316차 워크로그](../docs/wiki/03-WORKLOG/2026-11-11-316-fillet-species-art.md).
+
+**이전 변경 (2026-11-11 315차) — 장어류 손질 · F9 [확정] 단추 · 위키 「어종 손질」 탭 · 도감 산나물 그림**
 
 - 사용자 지시 여섯(도감 산나물 그림 · 위키 어종 손질 탭 · 어종별 개복 뒤 그림 · 장어 손질 구현 + SVG · 대방어 해체 · F9 확정 단추).
 - 장어류 손질(`tree: 'eel'` — 붕장어 등 가르기 · 갯장어 배 가르기 + 뼈끊기 · 먹장어 껍질 통째로) · 곧게 편 장어 그림과 유도선을 한 몸 윤곽에서(`gen_eel_views.cjs`) · 전용 렌더러 `EelBoard` · 뒤집기 없음.
@@ -332,14 +339,6 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 채집 생물 표(`SHORE_CREATURE_DATABASE` — 갯것 + 산나물)를 통째로 바다 생물로 그렸다 → 보이는 곳만 `isWildGreen`으로 가름: 위키 「농작물 › 산나물」(`farming.wild` · 윗단 갈래 줄 `#kinds`) · 게임 도감 「산나물」 탭(`renderWildGreens` · `LOG_TABS`).
 - 작물 ↔ 산나물 서로 잇기(거두는 물건이 같다) · 작물 갈래 「텃밭 산나물」 · 도감 가이드 테두리 폭을 탭 표에서 잼(옛 손 계산 20px 김).
 - 검증: 위키 헤드리스 9/9 · r314 5/5 · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0. 상세: [314차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-314-wild-greens-tab-farm-crops-wiki.md).
-
-**이전 변경 (2026-11-10 313차) — 손질 어종 넓히기 · 어종마다 제 그림 · 유도선 옮기기 · 요리 도구 파는 곳**
-
-- 사용자 지시(「농어 · 우럭 · 숭어 · 볼락류 … 이미지는 각자 어종」 · 「개서대는 광어 트리 · 꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑은 비늘 → 머리 · 내장 → 검은 막 · 혈합육 → 삼장 뜨기 → 갈비뼈 / 잔뼈(핀셋)」 ·
-  「망상어 · 용치놀래기는 돔류」 · 「구현된 어종도 각자 이미지」 · 「갑오징어는 무늬오징어와 같은 손질」 · 「사이소 · 편의점에서도 판다」).
-- 손질 31종(+15) · 작은 생선 공정(`SMALL_FISH_SECTIONS` · `toSmallFishStages` — 잔뼈 = 핀셋 훑기) · 갑오징어 = 무늬오징어 공정 · 도마 온마리 28 + 넙치류 5(`gen_species_sprites` · `gen_flatfish_sprites`).
-- 어종 그림은 도마의 다른 자리에 선다 → client `butcherGuideFrame`이 그림 rect를 넘기고 core가 측면 유도선만 옮긴다(`guideFrame` · 어종 F9 실측 = `SPECIES_GUIDE_COORDS` · `FLAT_SPECIES_GUIDE`) · 어종군 표 core `butcheryArtFamily` 한 곳.
-- 검증: core 558 · r313(28종 그림) · r313d 4/4 · 빌드 3/3 · 루트 typecheck 4/4 · pageerror 0. 상세: [313차 워크로그](../docs/wiki/03-WORKLOG/2026-11-10-313-butchery-species-own-art-cook-shops.md).
 
 ---
 
