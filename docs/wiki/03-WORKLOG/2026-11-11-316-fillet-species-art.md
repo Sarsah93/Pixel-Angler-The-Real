@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-11 |
 | **시스템** | `손질` · `회썰기` · `에셋` · `위키` |
 | **트리거** | 사용자 지시(315 보고 뒤) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` · main 빨리 감기 · gh-pages 114차(사용자 지시 「main & gh-pages 재배포까지」) |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `5fc9b77` · main 빨리 감기 `5fc9b77` · gh-pages 114차 `0e55556`(Actions 「테스트 배포」 #43 — 사용자 지시 「main & gh-pages 재배포까지」) |
 | **빌드·타입체크** | 3/3 · 루트 typecheck 4/4 · core 572 · r316 8/8 · 위키 6/6 · pageerror 0 |
 
 ---
@@ -80,6 +80,10 @@
 | 빌드 | `npx pnpm run build` · 루트 typecheck · core vitest | 3/3 · 4/4 · 61 파일 572건 |
 
 재현: dev 서버 → `node $SP/r316.cjs $SP/r316/`(scratchpad — 구조는 315 r315eel과 같다).
+
+**배포본(114차)** — gh-pages를 로컬(4173)로 띄워 확인(컨테이너에서 라이브 주소는 닿지 않는다):
+기동 8.3초 · 로컬 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 · 소스맵 0 · 정적 2,237 · `sashimi/sp/` 72(탑뷰 · 측면 200) ·
+한 점 텍스처는 부팅에 실리고 탑뷰는 안 실림 · 번들에 어종 필렛 스프라이트 키 · `trimsp_` · `sashimi_sp_` · `filletFrames`.
 
 ## 6. 잔여 — 이번에 안 한 것
 
