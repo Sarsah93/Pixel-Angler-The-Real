@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-11 |
 | **시스템** | `손질` · `회썰기` · `캐릭터` · `에셋` · `dev 도구` |
 | **트리거** | 사용자 지시 둘 + 집 PC 실검증 리포트 넷(진행 중에 받은 것) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — (1) `866bc73` · (2) `4e31864` · (3) `bf96d78` 해체 본편 |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — (1) `866bc73` · (2) `4e31864` · (3) `bf96d78` 해체 본편 · main `015eaa6` · gh-pages `a0d0f97`(115차 배포) |
 | **빌드·타입체크** | §5 |
 
 ---
@@ -129,3 +129,7 @@
   - 구현 라이브러리 https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5 — **Version 67**(새 항목 「4덩어리 해체」 · 「지느러미는 그은 칼선대로」 · 손질 어종 35 · 캐릭터 만들기 초상 상의 색)
   - 채비 모딩 순서도 https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1 — **Version 60**(「317차 기준」 줄만 — 채비 문법 그대로)
 - 스킬: `f9-guide-coords` 함정 6 ~ 8(지느러미 = 칼선 · 편집기 단일 선 · 해체 측면 선은 표에 없음) · `asset-pipeline`(참다랑어 도마 그림 · 해체 그림은 코드).
+- **main 반영 · 115차 배포**(사용자 「main & gh-pages 재배포까지 해줘」 — 집 PC dev로 실검증 · 손질 가이드 조정):
+  - main을 작업 브랜치 `015eaa6`으로 빨리 감기 · Actions 「테스트 배포」(ref `main`) → gh-pages `a0d0f97` 「Deploy: 115차 테스트 빌드 (2026-11-11) — main@015eaa6 · 317 …」.
+  - 점검(gh-pages 트리를 로컬 하위 경로 4173으로): 기동 7.9초 · 내부 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 지난 배포와 같다) · pageerror 0 · 소스맵 0 · 파일 2,237 ·
+    `public/` 2,234개 바이트 같음(다름 0 · 빠짐 0) · 번들에 `trimloin_` · `sakuart_` · `inv_loinskin_` · `sec_loin_trim` · 「덩어리 다듬기 완료」 · 상의 색.
