@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-11 |
 | **시스템** | `UI` · `프롤로그` · `손질` |
 | **트리거** | 사용자 리포트 둘(집 PC dev 실검증 중) |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — §8 |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` `81b7a2d` · main 같음 · gh-pages `8e95526`(116차 배포) |
 | **빌드·타입체크** | §5 |
 
 ---
@@ -69,3 +69,5 @@
 - 시스템 페이지 `butchery.md` §6 50 · 백로그 DQ ⑥.
 - AGENTS §9 · PLAN · CLAUDE.md.
 - 아티팩트 4개(절대 규칙 15) — 위키 **Version 121**(시스템 318) · 남은 과업 설계 **69** · 구현 라이브러리 **68**(새 항목 「활용 창은 집 안에서도」) · 채비 모딩 순서도 **61**(기준 줄).
+- **main 반영 · 116차 배포**(사용자 「수정하고 main 반영 및 gh-pages 재배포까지 해줘」): main 빨리 감기 `81b7a2d` · Actions 「테스트 배포」 → gh-pages `8e95526`.
+  점검(로컬 하위 경로 4173): 기동 7.6초 · 내부 4xx 0(바깥 1 = KAMIS 스냅샷 — 이전과 같다) · pageerror 0 · 소스맵 0 · `public/` 2,234개 바이트 같음.
