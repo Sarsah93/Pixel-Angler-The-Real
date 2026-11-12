@@ -24,6 +24,7 @@
 
 - **보고서** — `harmony/reports/<날짜>.md` (찾은 버그 · 재현 · 수정 PR · 밸런스 제안)
 - **수정안** — `harmony/<날짜>-…` 브랜치의 풀 리퀘스트. 병합할지는 사용자가 정한다.
+  열린 PR이 상한(3건)이면 검증된 수정안은 `harmony/drafts/<날짜>-<이름>.patch`로 기다렸다가, 자리가 나면 먼저 올라간다.
 - **점수** — `harmony/scores/latest.json` · `history.jsonl` (보조 지표)
 
 ## 어디를 보면 되나

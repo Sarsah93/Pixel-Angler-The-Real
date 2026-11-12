@@ -483,12 +483,14 @@
    "title": "지역 가공품 상세 설명 바로잡기",
    "pr": 18,
    "branch": "harmony/2026-11-03-processed-desc",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-11-12",
    "findings": [
     "F-0104"
    ],
-   "lane": "q2-art-data"
+   "lane": "q2-art-data",
+   "merged_commit": "8d80778",
+   "note": "main 위 재검증(build 3/3 · 루트 typecheck 4/4 · core 581/581) 뒤 squash 병합"
   },
   {
    "id": "P-0029",
@@ -528,12 +530,14 @@
    "title": "도면 종이를 채비 부품으로 보던 것 막기",
    "pr": 20,
    "branch": "harmony/2026-11-09-blueprint-not-rigpart",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-11-12",
    "findings": [
     "F-0103"
    ],
-   "lane": "q1-items"
+   "lane": "q1-items",
+   "merged_commit": "f08f09f",
+   "note": "main 위 재검증 뒤 squash 병합"
   },
   {
    "id": "P-0031",
@@ -543,27 +547,30 @@
    "title": "도움말 가게 영업시간 · 종류 수 바로잡기 + 빠진 영어 번역 6건",
    "pr": 21,
    "branch": "harmony/2026-11-10-shop-hours-help",
-   "status": "열림",
-   "decided_at": null,
+   "status": "병합",
+   "decided_at": "2026-11-12",
    "findings": [
     "F-0108",
     "F-0109"
    ],
-   "lane": "q2-art-data"
+   "lane": "q2-art-data",
+   "merged_commit": "8b67c90",
+   "note": "병합 전 사용자 세션이 main 받기 + 보정 커밋 388aa9f 추가 — 311차 철물점이 빠진 가게 종류(「11종」이라 쓰고 12곳 나열 → 13종 · 철물점 8 ~ 20시) · en_help 충돌(산나물 문단은 main 311차 번역). squash 병합"
   },
   {
    "id": "P-0032",
    "lane": "q3-flow",
-   "kind": "제안",
+   "kind": "적용",
    "pr": null,
-   "status": "제안",
+   "status": "대기(상한)",
    "date": "2026-11-11",
    "title": "어획 사건 · 통발 판정의 달 · 날을 KST로(kstParts) — 2파일 5줄",
    "findings": [
     "F-0110"
    ],
    "patch": "harmony/drafts/2026-11-11-kst-month.patch",
-   "note": "열린 하모니 PR 3건(#18 · #20 · #21)으로 상한 — 하나가 병합 · 닫히면 올린다. 하네스 고치기 전 FAIL → 고친 뒤 PASS · verify 3/3"
+   "note": "2026-11-12 열린 하모니 PR 0건(#18 · #20 · #21 병합) — 다음 실행에서 PROTOCOL §2.5 「대기 패치」 절차로 먼저 올린다. 2026-11-12 main 8b67c90에 git apply --check 통과",
+   "base": "1f3f806"
   }
  ]
 }

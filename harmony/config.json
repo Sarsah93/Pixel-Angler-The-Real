@@ -31,7 +31,9 @@
     "md_line_chars": 200,
     "run_budget_pct": 4,
     "max_scenarios_per_run": 4,
-    "harness_minutes_max": 40
+    "harness_minutes_max": 40,
+    "max_waiting_drafts": 3,
+    "draft_stale_days": 14
   },
   "scoring": {
     "penalties": {
