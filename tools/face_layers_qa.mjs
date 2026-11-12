@@ -9,7 +9,10 @@
  *    mix                               남 짧은 머리 계란형 — 머리 10 × 피부 5 = 50칸
  *    mouth                             입 4 × 홍조 2 × 성별 2 — 2배
  *    mask                              기본판 6 · 라벨 마스크 겹침(피부 청록 · 눈썹 주황 · 눈 초록 · 입술 분홍 · 흰자 흰색) — 2배
- *  세트를 안 주면 boxed · mix · mouth · all:7:4:2:7 · all:0:0:2:0 · all:3:2:3:5 · mask를 만든다.
+ *    leak                              312 — 머리 층을 머리에 맞추기(`fitHairToHead`) 표(성별 × 얼굴형 × 머리 모양 — 비운 정수리 두피 · 메운 구멍) +
+ *                                      둥근형의 전(자홍 = 비움 · 청록 = 메움) · 뒤 몽타주 — 2배. 새 머리 · 기본판을 설치하면 이 표부터 본다
+ *    shirt                             317 — 상의 색(CLOTH_COLORS 10) × 성별 2 × 얼굴형 3(긴 머리 · 수염 — 어깨를 덮는 층과 함께) — 1배
+ *  세트를 안 주면 boxed · mix · mouth · all:7:4:2:7 · all:0:0:2:0 · all:3:2:3:5 · mask · leak · shirt를 만든다.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -69,7 +72,7 @@ function maskOverlay(baseKey) {
 }
 
 const args = process.argv.slice(3);
-const sets = args.length ? args : ['boxed', 'mix', 'mouth', 'all:7:4:2:7', 'all:0:0:2:0', 'all:3:2:3:5', 'mask'];
+const sets = args.length ? args : ['boxed', 'mix', 'mouth', 'all:7:4:2:7', 'all:0:0:2:0', 'all:3:2:3:5', 'mask', 'leak', 'shirt'];
 for (const set of sets) {
   if (set === 'boxed') {
     const cells = [
@@ -77,6 +80,8 @@ for (const set of sets) {
       cfgOf('m', 'short', { hair: 0 }), cfgOf('f', 'bob', { hair: 0 }),
       cfgOf('m', 'long', { beard: 5, hair: 0 }), cfgOf('m', 'topknot', { beard: 6, hair: 6, skin: 3, eye: 4 }),
       cfgOf('m', 'short'), cfgOf('f', 'short'),
+      // 312 사용자 리포트 — 여 · 둥근형 · 상투 · 흰 머리(정수리 두피가 피부색 호로 비쳤다) · 남 상투 흰 머리
+      cfgOf('f', 'topknot', { faceShape: 'round', hair: 7, skin: 1, eye: 3, mouth: 'smile', blush: true }), cfgOf('m', 'topknot', { faceShape: 'round', hair: 7, skin: 1, eye: 3 }),
     ];
     montage(cells.map(render), 4, path.join(OUT, 'boxed.png'), 2);
   } else if (set === 'mix') {
@@ -85,9 +90,36 @@ for (const set of sets) {
   } else if (set === 'mouth') {
     const cells = []; for (const sex of ['m', 'f']) for (const blush of [false, true]) for (const mouth of ['neutral', 'smile', 'small', 'open']) cells.push(cfgOf(sex, sex === 'm' ? 'short' : 'bob', { mouth, blush, skin: blush ? 3 : 1 }));
     montage(cells.map(render), 4, path.join(OUT, 'mouth.png'), 2);
+  } else if (set === 'shirt') {
+    // 317 — 상의 색이 초상 옷에 칠해지는지(옷 입은 설정 — 티셔츠 + 상의 색)
+    const cells = [];
+    for (const sex of ['m', 'f']) for (const shape of core.FACE_SHAPES) for (const col of core.CLOTH_COLORS) {
+      const c = cfgOf(sex, sex === 'm' ? (shape === 'square' ? 'long' : 'short') : (shape === 'round' ? 'long' : 'bob'), { faceShape: shape, beard: sex === 'm' && shape === 'round' ? 0 : -1 });
+      c.outfit = { ...core.starterOutfit(sex), shirtColor: col };
+      cells.push(c);
+    }
+    montage(cells.map(render), 10, path.join(OUT, 'shirt.png'));
   } else if (set === 'mask') {
     const keys = fs.readdirSync(dir).filter((f) => /^base_[mf]_[a-z]+\.png$/.test(f)).map((f) => f.slice(0, -4)).sort();
     montage(keys.map(maskOverlay), 3, path.join(OUT, 'mask.png'), 2);
+  } else if (set === 'leak') {
+    // 312 — 머리 층을 머리에 맞추기(게임과 같은 fitHairToHead) — 흰 머리 · 밝은 피부(살색 점이 가장 잘 보이는 조합)
+    const rows = [], cells = [];
+    for (const sex of ['m', 'f']) for (const shape of core.FACE_SHAPES) for (const style of core.HAIR_STYLES) {
+      const base = layer(`base_${sex}_${shape}`), mask = layer(`base_${sex}_${shape}_mask`), hair = layer(`hair_${sex}_${style}`);
+      if (!base || !mask || !hair) continue;
+      const fit = M.fitHairToHead(base.data, hair.data, M.decodeMask(mask.data, base.w * base.h), base.w, base.h);
+      rows.push(`${sex} ${shape.padEnd(6)} ${style.padEnd(8)} 비움 ${String(fit.cutCount).padStart(4)} · 메움 ${String(fit.holeCount).padStart(3)}`);
+      if (!fit.cutCount && !fit.holeCount) continue;
+      if (shape !== 'round') continue;   // 몽타주는 얼굴형 하나만(두피 윗부분은 얼굴형마다 같다)
+      const c = cfgOf(sex, style, { faceShape: shape, hair: 7, skin: 1, eye: 3, mouth: 'smile', blush: true });
+      const after = render(c), before = { w: after.w, h: after.h, data: new Uint8ClampedArray(after.data) };
+      const mark = (m, rgb) => { if (m) for (let i = 0; i < m.length; i++) if (m[i]) { const o = i * 4; before.data[o] = rgb[0]; before.data[o + 1] = rgb[1]; before.data[o + 2] = rgb[2]; before.data[o + 3] = 255; } };
+      mark(fit.cut, [255, 0, 255]); mark(fit.holes, [0, 255, 255]);
+      cells.push(before, after);
+    }
+    console.log('머리 층을 머리에 맞추기(비움 = 머리칼 밖 정수리 두피 · 메움 = 머리칼 안 두피 구멍 — 몽타주 자홍 = 비움 · 청록 = 메움)\n' + rows.join('\n'));
+    if (cells.length) montage(cells, 4, path.join(OUT, 'leak.png'), 2);
   } else if (set.startsWith('all:')) {
     const [, h, s, e, b] = set.split(':').map(Number);
     const cells = [];

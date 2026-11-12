@@ -20,6 +20,7 @@ export const EN_GEAR: Record<string, string> = {
   '백래시!': 'backlash!',
   '여유줄': 'Slack',
   '팽팽': 'Taut',
+  '닿음': 'touching',   // 312차 — 수심 정보 「바닥 1.1m · 닿음」(봉돌 채비가 바닥에 닿았다)
   '방출': 'Payout',
   '페더링': 'Feathering',
   '채비 흘리는 중 — 우클릭 챔질 · R 줄 주기 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트': 'Drifting — right-click to set the hook · R to give line · ←/→ to move the rig · H to hold · C for chum · ↑ to lift',

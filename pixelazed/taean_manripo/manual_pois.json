@@ -8,5 +8,15 @@
   "ty": 376,
   "osmId": -9005,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "만리포철물",
+  "nameEn": "Manripo Hardware",
+  "tx": 537,
+  "ty": 370,
+  "osmId": -9044,
+  "src": "manual"
  }
 ]

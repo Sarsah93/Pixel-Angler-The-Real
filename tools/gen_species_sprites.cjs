@@ -21,6 +21,7 @@ const path = require('path');
 // playwright 해석 — 로컬 설치 → npx 캐시(_npx 하위 node_modules) 순 (사용자 계정 무관)
 function resolvePlaywright() {
   try { return require('playwright'); } catch { /* npx 캐시 탐색 */ }
+  try { return require('/opt/node-tools/node_modules/playwright'); } catch { /* 원격 컨테이너 사전 설치본 */ }
   const base = path.join(process.env.LOCALAPPDATA || '', 'npm-cache', '_npx');
   for (const d of fs.existsSync(base) ? fs.readdirSync(base) : []) {
     const p = path.join(base, d, 'node_modules', 'playwright');
@@ -39,7 +40,7 @@ const MAX_COLORS = 44;
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 /**
- * 손질 지원 어종(BUTCHERY_IMPLEMENTED_SPECIES 중 돔류 7 + 방어류 3) → 소스 PNG.
+ * 손질 지원 어종(BUTCHERY_IMPLEMENTED_SPECIES — 넙치류 제외, 넙치류는 gen_flatfish_sprites.cjs) → 소스 PNG.
  *  `const` = 생성 TS의 심볼명 · `mirror` = 원본이 머리 오른쪽이라 반전 필요
  *  참돔 야간(night_seabream)은 같은 생물종이라 참돔 이미지를 공유한다(별도 굽기 없음).
  */
@@ -47,8 +48,8 @@ const SPECIES = [
   { id: 'black_seabream',      sym: 'BLACK_SEABREAM',      file: 'black_sea_bream.png',       ko: '감성돔',       mirror: false },
   { id: 'red_seabream',        sym: 'RED_SEABREAM',        file: 'red_sea_bream.png',         ko: '참돔',         mirror: false },
   { id: 'largescale_blackfish',sym: 'LARGESCALE_BLACKFISH',file: 'large_scale_blackfish.png', ko: '벵에돔',       mirror: false },
-  // 긴꼬리벵에돔 원본만 머리 오른쪽 — 도마 규약(머리 왼쪽)에 맞춰 반전해 굽는다
-  { id: 'longtail_blackfish',  sym: 'LONGTAIL_BLACKFISH',  file: 'small_scale_blackfish.png', ko: '긴꼬리벵에돔', mirror: true },
+  // 긴꼬리벵에돔 — 옛 원본은 머리 오른쪽이라 반전했지만, 지금 원본(어획 카드와 같은 그림)은 머리 왼쪽이다(313 확인)
+  { id: 'longtail_blackfish',  sym: 'LONGTAIL_BLACKFISH',  file: 'small_scale_blackfish.png', ko: '긴꼬리벵에돔', mirror: false },
   // 돌돔은 40cm↑ 수컷만 줄무늬가 사라진다 — 암/수 2장을 굽고 렌더가 개체로 고른다
   { id: 'stone_beakperch',      sym: 'STONE_BEAKPERCH',      file: 'barred_knifejaw_female.png', ko: '돌돔(암)', mirror: false },
   { id: 'stone_beakperch_male', sym: 'STONE_BEAKPERCH_MALE', file: 'barred_knifejaw_male.png',   ko: '돌돔(수)', mirror: false },
@@ -56,6 +57,30 @@ const SPECIES = [
   { id: 'yellowtail',          sym: 'YELLOWTAIL',          file: 'yellowtail_fish.png',       ko: '방어',         mirror: false },
   { id: 'amberjack',           sym: 'AMBERJACK',           file: 'yellowtail_amberjack.png',  ko: '부시리',       mirror: false },
   { id: 'greater_amberjack',   sym: 'GREATER_AMBERJACK',   file: 'greater_amberjack.png',     ko: '잿방어',       mirror: false },
+  // 313 — 이미 열린 방어류 흐름 셋도 각자 그림(사용자 「지금 구현된 손질 가능 어종들도 각자 이미지」)
+  { id: 'chub_mackerel',       sym: 'CHUB_MACKEREL',       file: 'mackerel.png',              ko: '고등어',       mirror: false },
+  { id: 'horse_mackerel',      sym: 'HORSE_MACKEREL',      file: 'jack_mackerel.png',         ko: '전갱이',       mirror: false },
+  { id: 'spanish_mackerel',    sym: 'SPANISH_MACKEREL',    file: 'spanish_mackerel.png',      ko: '삼치',         mirror: false },
+  // 313 — 몸통이 둥근 어종(방어류 흐름)
+  { id: 'sea_bass',            sym: 'SEA_BASS',            file: 'sea_bass.png',              ko: '농어',         mirror: false },
+  { id: 'black_rockfish',      sym: 'BLACK_ROCKFISH',      file: 'black_rockfish.png',        ko: '우럭',         mirror: false },
+  { id: 'blue_rockfish',       sym: 'BLUE_ROCKFISH',       file: 'dark-banded_rockfish.png',  ko: '청볼락',       mirror: false },
+  { id: 'golden_rockfish',     sym: 'GOLDEN_ROCKFISH',     file: 'owstons_rockfish.png',      ko: '황볼락',       mirror: false },
+  { id: 'red_snapper_rockfish',sym: 'RED_SNAPPER_ROCKFISH',file: 'red_snapper_rockfish.png',  ko: '열기',         mirror: false },
+  { id: 'striped_mullet',      sym: 'STRIPED_MULLET',      file: 'flathead_grey_mullet.png',  ko: '숭어',         mirror: false },
+  { id: 'redlip_mullet',       sym: 'REDLIP_MULLET',       file: 'so-iuy_mullet.png',         ko: '가숭어',       mirror: false },
+  // 313 — 돔류 트리(망상어 · 용치놀래기 — 용치놀래기는 암수 색이 달라 두 장 · 렌더가 개체 성별로 고른다)
+  { id: 'surfperch',           sym: 'SURFPERCH',           file: 'surf_perch.png',            ko: '망상어',       mirror: false },
+  { id: 'rainbow_wrasse',      sym: 'RAINBOW_WRASSE',      file: 'multicolorfin_rainbowfish_female.png', ko: '용치놀래기(암)', mirror: false },
+  { id: 'rainbow_wrasse_male', sym: 'RAINBOW_WRASSE_MALE', file: 'multicolorfin_rainbowfish_male.png',   ko: '용치놀래기(수)', mirror: false },
+  // 313 — 작은 생선 공정
+  { id: 'pacific_saury',       sym: 'PACIFIC_SAURY',       file: 'saury.png',                 ko: '꽁치',         mirror: false },
+  { id: 'halfbeak',            sym: 'HALFBEAK',            file: 'halfbeak.png',              ko: '학꽁치',       mirror: false },
+  { id: 'round_herring',       sym: 'ROUND_HERRING',       file: 'round_herring.png',         ko: '눈퉁멸',       mirror: false },
+  { id: 'northern_whiting',    sym: 'NORTHERN_WHITING',    file: 'northern_whiting.png',      ko: '보리멸',       mirror: false },
+  { id: 'yellowfin_goby',      sym: 'YELLOWFIN_GOBY',      file: 'yellowfin_goby.png',        ko: '문절망둑',     mirror: false },
+  // 317 — 4덩어리 해체(참다랑어 — 방어류 앞 단계 + 해체)
+  { id: 'bluefin_tuna',        sym: 'BLUEFIN_TUNA',        file: 'pacific_bluefin_tuna.png',  ko: '참다랑어',     mirror: false },
 ];
 
 /** 픽셀 격자 추출 — bbox 크롭 + 박스평균 다운샘플 (브라우저 컨텍스트에서 실행) */
@@ -144,7 +169,8 @@ function quantize(cells) {
   const previewArg = process.argv.indexOf('--preview');
   const previewPath = previewArg > 0 ? process.argv[previewArg + 1] : null;
 
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  // 설치된 Chrome 우선 — 없으면(원격 컨테이너) 사전 설치 Chromium
+  const browser = await chromium.launch({ channel: 'chrome', headless: true }).catch(() => chromium.launch({ headless: true }));
   const page = await browser.newPage();
 
   const baked = [];

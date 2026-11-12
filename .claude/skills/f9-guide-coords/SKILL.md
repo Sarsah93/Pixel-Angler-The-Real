@@ -7,7 +7,22 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 
 ## 흐름
 
-사용자가 dev(F9) 편집기에서 선을 조정 → [복사] 스니펫 전달 → **core 데이터에 반영** → core 리빌드 → 판정 검증. F9 편집은 런타임 전용이라 코드 반영 없이는 휘발된다.
+**315차부터 기본은 [확정] 단추**(사용자 지시 — 「좌표값을 일일이 복사 붙여넣기 하지 않아도 확정」):
+
+1. 사용자가 dev 서버 위 게임에서 F9로 선을 맞추고 **[확정]**(이 어종) 또는 **[군 확정]**(어종군 전체 — 두족류 · 장어류는 없음)을 누른다.
+2. dev 서버(`vite.config.ts` `devButcheryGuidePlugin`)가 `tools/f9_captures/captures.json`(정본)에 합치고 `log.jsonl`에 한 줄을 남긴 뒤
+   `node tools/apply_f9_captures.cjs`로 core 표 `ButcheryGuideOverrides.ts`(자동 생성)를 굽는다.
+3. 에이전트는 `log.jsonl` 새 줄을 읽고 → `npx pnpm --filter @tra/core run build` → 아래 「검증」(가이드 그대로 그으면 cov 1.00) → 커밋.
+   - 컨테이너 dev 서버로 확정했으면 파일이 이 컨테이너에 바로 생긴다. 실시간으로 받으려면 백그라운드로 `log.jsonl` 줄 수를 지켜본다
+     (`until [ $(wc -l < tools/f9_captures/log.jsonl) -gt N ]; do sleep 5; done` — 끝나면 에이전트가 다시 깨어난다).
+   - 사용자 PC dev 서버로 확정했으면 그 PC 저장소에 생긴다 — 사용자가 커밋 · 푸시한 뒤 읽는다.
+- 확정 표는 **좌표만** 바꿔 끼운다(`applyGuideOverrides` — 스테이지를 다 지은 뒤) — 판정 옵션(strong · tolerance · guidePaths 수)은 core 스테이지 그대로라 아래 함정 1이 없다.
+- 찾는 순서: dev 서버에서 받아 둔 어종 → 저장 어종 → dev 군 → 저장 군. 군 좌표(`familyFrame: true`)는 온마리 선(`isBodyGuideStage`) · **316부터 필렛 뷰**(갈빗대 · 지아이 · 박피 ① · ③ — `filletGuideView`)를 어종 그림 자리로 옮긴다(`stageGuideRemap`).
+  필렛 뷰는 어종 필렛 그림의 **열 실루엣**까지 따라 옮긴다(세로 = 살 높이 비례 · 0~100%로 묶음) — 「군 확정」은 그 역변환(`invertGuideRemap`)으로 군 그림 자리에 저장한다. 어종 그림 위에서 맞춘 값은 [확정](어종)이 정확하다.
+- 확정 표는 dev 서버가 지켜보지 않는다(`server.watch.ignored` — 굽는 순간 화면이 새로 고쳐져 손질이 끊긴다). 같은 판에서 다시 연 창은 서버 정본(GET)을 받아 쓴다.
+- 손으로 다듬은 값을 기존 표(`GUIDE_COORDS` 등)로 옮겨 굳히고 싶을 때만 아래 옛 흐름을 쓴다.
+
+옛 흐름: 사용자가 dev(F9) 편집기에서 선을 조정 → [복사] 스니펫 전달 → **core 데이터에 반영** → core 리빌드 → 판정 검증. F9 편집은 런타임 전용이라 코드 반영 없이는 휘발된다.
 
 ## 반영 위치 (전부 `packages/core/src/simulation/ButcheryProcess.ts`)
 
@@ -16,6 +31,17 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 | 돔류/방어류 가이드 좌표 | `GUIDE_COORDS: Record<'bream'|'amberjack', GuideCoordSet>` — 시메 tapPoint·방혈·머리 앞/뒤·비늘 스윕·지느러미 3선·꼬리 등 9세트 |
 | 넙치류(광어) | `FLAT_GUIDE` — 시메·방혈·머리 S커브(7점)·비늘 스윕·꼬리·중앙선·상/하 경계 칼길·포 뜨기·내장·엔가와 |
 | 개별 스테이지 컷 | `cut('id', 'ORIENT', [{x,y},…], opts)` 헬퍼 / `tapPoint` / `sweepPath` |
+| **[확정] 표**(315 — 자동 생성) | `packages/core/src/db-schema/ButcheryGuideOverrides.ts` ← `tools/f9_captures/captures.json` — 손으로 고치지 않는다 |
+| **장어류**(315) | `EelGuideGeometry.ts`(자동 생성 — `tools/gen_eel_views.cjs`가 그림과 같은 몸 윤곽에서) — 실측은 [확정]으로(생성기를 다시 돌리면 덮인다) |
+| **어종별 실측**(313) | `SPECIES_GUIDE_COORDS[어종]`(측면 9항목 — 어종군 세트를 덮는다) · 넙치류 `FLAT_SPECIES_GUIDE[어종]` — **그 어종 그림 위에서 잰 값 그대로**(옮기지 않는다) |
+
+### 313 — 어종 그림 자리로 옮긴 선
+- 도마는 어종 실사 온마리(`SPECIES_WHOLE` 28 · 넙치 `FLAT_SPECIES_SPRITES` 5)를 그리고, 그림은 종횡비대로 도마의 다른 자리에 선다.
+  그래서 측면(넙치는 탑뷰 몸통) 유도선은 **어종군 대표 그림 rect → 어종 그림 rect 비례로 옮겨** 그린다(client `butcherGuideFrame` → core `guideFrame`).
+- 사용자가 어떤 어종에서 F9로 선을 고쳐 보내면 그 값은 **이미 그 어종 그림 위 좌표**다 → `GUIDE_COORDS`(어종군 세트)가 아니라
+  `SPECIES_GUIDE_COORDS[그 어종]`의 같은 항목(`ikejime` · `bleed` · `headBase` · `headFlip` · `scaleBase` · `scaleFlip` · `finectomy` · `tailA` · `tailB`)에 넣는다.
+  어종군 세트를 고치면 그 군 모든 어종이 함께 움직인다(대표 그림 — 감성돔 · 잿방어 · 광어 — 위에서 잰 값일 때만 어종군 세트).
+- 개복 뒤 전용 뷰(복면 · 체강 · 장뜨기 · 필렛 · 엔가와 · 박피) 좌표는 옮기지 않는다 — 어종 실측 표도 없다(어종군 공용 그림).
 
 ## ⚠ 함정 (반복 발생)
 
@@ -23,7 +49,17 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 2. **core 리빌드 필수**: 반영 후 `npx pnpm --filter @tra/core run build` — 하지 않으면 client가 stale dist의 옛 좌표를 봄 (31·32차 패턴).
 3. 좌표는 **도마 rect 정규화 (0~1)** — 측정 시점의 뷰/방향(BASE/FLIP/BELLY_UP…)과 스테이지 orientation이 일치해야 한다. 개복 이후 전용 뷰(복면/체강)는 **그 뷰 안에서만** 유효한 좌표.
 4. 55차 원형 틀 고정(computeFishFrame) 이후 개복 전 측면 뷰 좌표는 스프라이트 교체와 무관하게 유효 — 재측정 불요. 단 **뷰 자체가 바뀌면**(신규 전용 뷰 도입) 그 구간은 재측정.
+   316 — 필렛 뷰(갈빗대 · 지아이 · 박피)는 어종 필렛 그림(`PixelFilletSpecies`)이 생겨 어종마다 그림이 다르다 — 군 좌표는 열 실루엣으로 옮겨지지만 해부 위치(갈빗대 끝 · 지아이 줄)는 어종 [확정]으로 다듬는다.
 5. 머리 절단선은 삭제 영역(headErasePoly)도 자동으로 따라온다 — 선만 반영하면 됨.
+6. **지느러미 잘린 모양도 칼선을 따른다**(317) — 지느러미 단계 선이 몸 위 가장자리면 선 위쪽, 아래 가장자리면 아래쪽을 지운다(`finErasePolys`).
+   확정 선이 몸 안쪽으로 들어가면 몸이 그만큼 파인다 — 지느러미와 몸의 경계를 따라 긋는다. 짧고 가파른 가슴지느러미 선은 지우지 않는다.
+7. **편집기는 단일 선 단계를 다중 유도선으로 바꾸지 않는다**(317) — 옛 편집기는 열기만 해도 `guidePaths = [선]`을 박아
+   같은 선을 여러 번 긋는 칼집(`strokesRequired 3` — 1면 뜨기)이 「선마다 한 번」으로 바뀌어 둘째 칼부터 막혔다.
+   지금은 [+ 선]을 누를 때만 목록이 생긴다 — 같은 선 여러 번 칼집에는 누르지 않는다. core도 선 1개 목록은 단일 선으로 본다.
+9. **그림이 바뀌면 그 뷰의 어종 확정 좌표는 낡는다**(319) — 어종 [확정] 좌표는 옮기지 않고 그대로 쓴다(어종군 선만 `filletFrames`로 옮겨진다).
+   필렛 그림(순수 · 껍질)을 바꾸면 그 어종의 지아이 · 박피 확정은 `captures.json`에서 빼고(기록 `log.jsonl`은 남김) 사용자에게 다시 확정을 청한다.
+   사용자 PC의 확정 데이터는 `tools/f9_captures/captures.json`(정본) · `log.jsonl` — 첨부로 받으면 그 자리에 두고 `node tools/apply_f9_captures.cjs`.
+8. **해체(참다랑어 · 대방어급) 측면 선은 표에 없다**(317) — 몸통 열 실루엣에서 굽는다(`LoinArt.loinSideGeometry`). 머리 · 지느러미 [확정] 선을 따라 몸통 열이 바뀌면 측면 선도 같이 옮겨진다.
 
 ## 다중 선·스윕 규칙
 

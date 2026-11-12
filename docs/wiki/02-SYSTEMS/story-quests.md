@@ -143,7 +143,7 @@ STORY_ARCS ────┘     traineeDay (D-180)                └─ RegionHu
 | **획득 인지** — 우측 토스트(`InventoryStore.onGained` · `StoryStore.onCoins` — 품삯·선택지 재화·완료 보상) · 인벤 NEW 점·귀속 금테 | ✅ | 155 — [S5](inventory-equipment.md) |
 | **수동 custom 27개 → actionKey 6계통·3단계**(`StoryActionRegistry`) | ✅ | 164(Codex) → **165 중복 매칭 가드**(출처 지정 목표는 출처 일치 · 일반 목표는 앞선 1건) |
 | **컷씬 런타임**(`StoryCinematicPanel` — 실제 필드 위 스텝 타임라인 · 말풍선 · 배우/이름표 이동 · 카메라 팬 · 레터박스 · HUD 대사창 20px · ESC = 건너뛰기) + 각본 `data/StoryCinematics.ts` 6종 | ✅ | **165** — Codex 검은 폴백 무대 폐기 · 원격지 전환은 인천 맵 대기(§5) |
-| **M1-01 컷씬 2종**(영금정 혼잣말 2줄 · 좌판 5줄 — 정옥선이 먼저 돌아본다) · **M1-02 실플레이**(수락 = 얼음 상자 지급 · 하역 표시 [F] · `afterKo` 완료 안내) | ✅ | 165 — 목표 `howToKo`·`afterKo`·`guidePlaceKey` 계약 신설 |
+| **M1-01 컷씬 2종**(영금정 혼잣말 2줄 · 좌판 5줄 — 정옥선이 먼저 돌아본다 · 312 밤 갈래 — 할머니가 좌판에 없으면(집 · 12칸 밖) 가까운 가게 문에서 나와 마주친다(`cineEntrance` · `cineM1OkseonStallLate`) · 말을 걸 때까지 밖(`holdOut`) · 건너뛰어도 걸어왔을 칸에 보임) · **M1-02 실플레이**(수락 = 얼음 상자 지급 · 하역 표시 [F] · `afterKo` 완료 안내) | ✅ | 165 — 목표 `howToKo`·`afterKo`·`guidePlaceKey` 계약 신설 |
 | **「지금 할 일」 메인/서브 2블록**(Ⓜ/Ⓢ · 메인 → 서브 · `· 고정`) + **일지 고정 첫 컬럼**(메인 1 · 서브 1 — `StoryStore.pinned`) | ✅ | 165 — 구 `tracked` 단일 추적 승계 |
 | **고정 = 실동작**(받을 수 있는 할 일도 고정 · 「지금 할 일」 갱신 · 점멸 화살표) + 일지 의뢰인 초상(무발주 = 주인공) · 진행률 바 열 폭 정합 | ✅ | **177** — 구 추적 체크박스 중복 삭제 · `setTracked` 가드 `active` → `active`+`available` |
 | **컷씬 대사 타이핑 + 클릭 스킵**(18ms/자 · 클릭 = 즉시 완성 → 다음 스텝 · 단락 끝 `▼`) | ✅ | **177** — 167차 이후 컷씬에만 없던 것 복원 · 차단막 `setScrollFactor(0)` |

@@ -252,7 +252,7 @@ const SHORE_GROUP = {
   crustacean: ['crustacean', '십각류'], shellfish: ['crustacean', '만각류'],
   cephalopod: ['cephalopod', '팔완·십완류'], echinoderm: ['other', '극피동물'],
   annelid: ['other', '갯지렁이류'],   // 224차
-  wild_green: ['other', '산나물'],   // 299차 — 산자락에서 뜯고 캐고 꺾는다
+  // 314차 — 산나물(wild_green)은 어종 · 수산생물 탭이 아니라 「농작물 › 산나물」(`wildGreens`)로 간다(사용자 지적)
 };
 // 224차 — 사는 모양 → 잡는 법(채집 손놀림 놀이)
 const BEHAVIOR_KO = {
@@ -345,8 +345,10 @@ const regionalRulesKo = (s) => Object.keys(s.regional ?? {}).map((k) => {
   if (r.minLegalSizeCm) parts.push(`${r.minLegalSizeCm} cm 이하 방류`);
   return `${label} — ${parts.join(' · ')}`;
 }).join(' / ');
+/** 314차 — 산자락 산나물(채집) — 「농작물」 탭 「산나물」 갈래. 텃밭 작물 카드와 서로 잇는다(`cropId` · 작물의 `wildId`) */
+const wildGreens = [];
 for (const s of core.SHORE_CREATURE_DATABASE) {
-  const [group, subgroup] = SHORE_GROUP[s.category] ?? ['other', s.category];
+  const [group, subgroup] = s.category === 'wild_green' ? ['wild', '산나물'] : (SHORE_GROUP[s.category] ?? ['other', s.category]);
   // 170차 — 같은 생물이 어종 DB와 채집 DB에 둘 다 있으면(돌문어) **카드를 두 장 만들지 않는다**.
   //   학명으로 붙여 잡는 방법만 한 줄 덧붙인다 — 사용자 지적 "두족류 분류에서 '문어'는 없애고,
   //   해루질 가능한 문어는 돌문어야".
@@ -359,10 +361,18 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
     }
     continue;
   }
-  speciesList.push({
+  const wildHow = s.category === 'wild_green' ? core.forageBehaviorOf(s) : null;
+  (wildHow ? wildGreens : speciesList).push({
     id: s.id, group, subgroup,
+    ...(wildHow ? {
+      how: wildHow, howLabel: BEHAVIOR_KO[wildHow] ?? '산나물',
+      months: core.monthRangeKo([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((m) => !(s.absentMonths ?? []).includes(m))),
+      harvestItemId: s.harvestItemId ?? null, cropId: null,
+    } : {}),
     name: s.nameKo, nameEn: s.nameEn, scientific: s.scientificName,
-    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : s.harvestItemId && imgOf(`px:${s.harvestItemId}`) ? [{ src: imgOf(`px:${s.harvestItemId}`), label: '' }] : []),   // 299차 — 산나물은 작물 초상
+    // 299차 — 산나물은 작물 초상 · 311차 — 쑥(약초)은 작물이 아니라 약초 아이템 그림(`art_herb`)
+    ...pickImgs(imgOf(`forage_${s.id}`) ? [{ src: imgOf(`forage_${s.id}`), label: '' }] : s.harvestItemId && imgOf(`px:${s.harvestItemId}`) ? [{ src: imgOf(`px:${s.harvestItemId}`), label: '' }]
+      : s.harvestItemId === 'inv_mat_herb' && imgOf('art_herb') ? [{ src: imgOf('art_herb'), label: '' }] : []),
     desc: s.description ?? '',
     source: s.category === 'wild_green' ? '채집 (산자락 — 산나물)' : '채집 (해루질)',
     valuePerKg: s.marketValuePerKg ?? 0,
@@ -383,7 +393,7 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
       ['미끼 활용', s.canBeUsedAsBait ? '가능' : '불가'],
       ['사는 모양', BEHAVIOR_KO[core.forageBehaviorOf(s)] ?? '—'],
       ...(s.regions ? [['나는 고장', s.regions.map((r) => core.getRegionById?.(r)?.shortNameKo ?? r).join(' · ')]] : []),   // 299차
-      ...(s.harvestItemId ? [['거두면', '텃밭 수확물과 같은 묶음 — 그 고장 특산이면 산지 봉인']] : []),
+      ...(s.harvestItemId ? [['거두면', s.harvestItemId === 'inv_mat_herb' ? '약초(제작 재료) — 약국에서 파는 것과 같은 물건 · 상비약 · 쑥 모기향' : '텃밭 수확물과 같은 묶음 — 그 고장 특산이면 산지 봉인']] : []),   // 311차
       ['들어가는 곳', (s.spotKinds ?? []).includes('shallows') ? ((s.spotKinds ?? []).length === 1 ? '얕은 물(장화)만' : '뭍 · 얕은 물(장화)') : '뭍(갯바위 · 안벽)'],
       ['동해(속초)', (s.eastSeaWeight ?? 1) <= 0 ? '살지 않는다' : (s.eastSeaWeight ?? 1) < 0.5 ? '드물다' : '있다'],
       ['여름잠 · 안 보이는 달', s.absentMonths?.length ? MONTHS(s.absentMonths) : '없음'],
@@ -434,7 +444,7 @@ const ITEM_SHELVES = [
     { id: 'trap', label: '통발 · 해루질 · 받침', test: (c, s) => c === 'etc' && ['통발', '해루질 도구', '낚시도구'].includes(s) },
     { id: 'care', label: '장비 관리 · 보냉', test: (c, s) => c === 'consumable' && ['스프레이/오일', '장비 수리', '보냉'].includes(s) },
   ] },
-  { id: 'food', label: '먹을거리', note: '상점에서 사는 식자재 · 양념 · 파는 음식과 잡은 고기입니다. 텃밭에서 거둔 농산물은 「농사」 탭에 있습니다.', groups: [
+  { id: 'food', label: '먹을거리', note: '상점에서 사는 식자재 · 양념 · 파는 음식과 잡은 고기입니다. 텃밭에서 거둔 농산물은 「농작물」 탭에 있습니다.', groups: [
     { id: 'ing', label: '식자재', test: (c, s) => c === 'food' && s === '식자재' },
     { id: 'season', label: '양념', test: (c, s) => c === 'consumable' && ['양념', '조미/손질'].includes(s) },
     { id: 'meal', label: '파는 음식', test: (c, s) => c === 'food' && ['가공품', '보양식'].includes(s) },
@@ -771,6 +781,123 @@ const rules = [
       ['칼', '편의점(24시간) = 막칼 · 회칼(사시미) · 생활용품점 사이소 = 보급형 야나기바(65,000원) · 장인 야나기바 + 초보 기본 채비 한 벌(목줄 2호 · 감성돔 바늘 · 고리 · 구멍봉돌 3호 · 좁쌀봉돌 · 핀 도래 · 구멍찌 0.8호) · 식자재마트(10~22시) = 막칼 · 회칼 · 장인 · 장인 단조'],
       ['생선 값', '식용 어획물은 한 마리 1,000원 밑으로 내려가지 않는다(상점에 팔 때도 — 보통 500 · 나쁨 100 · 부패 0). 꽁치 kg 단가는 원양 냉동 경락 밴드(5,000)에서 국내 생물 · 냉동 도매(8,000)로 — 25cm 꽁치 1,000원 · 45cm 약 3,000원'],
       ['참다랑어 어종군', '참다랑어는 잡어 폴백(2.2)이 아니라 전용 군 「참치류」(5.0)로 싸운다 — 방어류(5.5)와 체형은 같지만 체급이 커서 체중당 힘은 조금 낮고, 대신 오래 달린다(부분 온혈). 평균 25kg 개체가 줄에 거는 힘은 약 134kg(합사 15호급) — 가게 줄(합사 1호)로는 못 올린다. 희귀도는 우량부터'],
+    ],
+  },
+  {
+    id: 'split_fillet_art_319', round: 319, hidden: false, title: '필렛 그림은 두 덩어리 중 한 덩어리 · 벵에돔 칼선 확정',
+    lede: '지아이뼈를 가르는 돔류 · 방어류의 순수 · 껍질 붙은 필렛 그림이 반쪽 필렛 통째가 아니라, 감성돔 · 잿방어처럼 가늘고 긴 등살 한 덩어리가 됐다. 벵에돔 손질 칼선이 사용자 확정 좌표로 바뀌었고, 칼선 끝 너머 가는 목으로 붙어 남던 지느러미 끝도 지운다.',
+    rows: [
+      ['한 덩어리', '지아이뼈 분리 뒤 한 면에서 껍질 붙은 필렛이 두 장 나온다 — 그림 한 장이 그 한 덩어리다. 혈합육이 있는 어종은 가른 면을 따라 띠로 보이고, 껍질 붙은 필렛은 등 쪽 가장자리에만 껍질 띠가 있다'],
+      ['어종', '참돔 · 벵에돔 · 긴꼬리벵에돔 · 돌돔 · 강담돔 · 망상어 · 용치놀래기 · 방어 · 부시리 · 고등어 · 전갱이 · 삼치 · 농어 · 우럭 · 청볼락 · 황볼락 · 열기 · 숭어 · 가숭어(19). 감성돔 · 잿방어는 원래 그림, 꽁치 같은 작은 생선은 잔뼈를 핀셋으로 뽑아 한 덩이 그대로'],
+      ['어디에', '도마(지아이뼈 · 박피 · 손질 끝) · 가방 아이콘 · 회썰기 탑뷰 · 측면 · 한 점'],
+      ['벵에돔', '시메부터 갈빗대 제거까지 22단계 칼선이 사용자가 확정한 자리다. 지아이뼈 · 박피 칼선은 새 그림에서 다시 맞춘다'],
+      ['붙어 남은 지느러미 끝', '칼선 끝 너머 지느러미 끝이 가는 목(2 ~ 3칸)으로만 몸에 붙어 남으면 그것도 지운다. 원래부터 가는 꼬리 끝 · 가시는 그대로다. 그보다 굵게 남으면 칼선을 끝까지 그어 맞춘다'],
+    ],
+  },
+  {
+    id: 'home_u_fin_fragments_318', round: 318, hidden: false, title: '집 안에서도 U · 떠 있는 지느러미 조각은 지운다',
+    lede: '활용 창(U)이 집 안과 첫날 홈타운에서도 열린다. 지느러미를 뗀 뒤 몸통과 떨어져 떠 있던 지느러미 끝 · 점은 도마 그림에서 지운다.',
+    rows: [
+      ['집 안 U', '채비하기 · 요리(도마) · 밑밥 · 제작 — 필드와 같은 창. ESC는 손질 · 회썰기 창부터 닫고, 그다음 활용 창, 그다음 일시정지 메뉴. 가방의 채비 열기도 이 창의 채비 탭'],
+      ['첫날', '속초에 가기 전 첫날에도 U가 열린다(다른 창은 배운 만큼만 그대로). 직판장에서 팔 냉동 오징어는 도마에 올라가지 않는다'],
+      ['지느러미 조각', '칼선은 선이 닿은 만큼만 지운다 — 선 끝 너머 지느러미가 밑동을 잃고 떠서 남던 것을 지운다. 몸통에 붙은 채 남는 지느러미는 칼선을 그 밑동까지 그어야 지워진다'],
+    ],
+  },
+  {
+    id: 'loin_breakdown_317', round: 317, hidden: false, title: '4덩어리 해체 · 지느러미는 그은 칼선대로 · 초상 상의 색',
+    lede: '참다랑어와 큰 방어류는 삼면뜨기가 아니라 등살 · 뱃살 4덩어리로 해체한다 — 같은 방어라도 크기로 공정이 갈린다. 지느러미를 떼면 그림에서 그은 칼선 모양대로 잘리고, 캐릭터 만들기 초상의 티셔츠가 고른 상의 색을 따른다.',
+    rows: [
+      ['누가 해체하나', '참다랑어는 늘 · 방어 70cm · 부시리 80cm · 잿방어 100cm부터(크기 등급 「대」). 그보다 작으면 지금처럼 삼면뜨기'],
+      ['앞 공정', '시메 · 피 빼기 · 비늘(참다랑어는 없음) · 머리 · 지느러미 · 내장 · 핏줄 · 세척은 방어류와 같다. 머리를 떼면 가마살 둘이 함께 나온다'],
+      ['양면 해체', '1면 · 2면마다 옆줄 칼집 → 등살 떼기 → 뱃살 떼기 — 떼어 낼 때마다 껍질 붙은 덩어리 하나(등살 · 뱃살). 뗀 자리에는 척추와 가시가 드러난다. 그림과 유도선은 머리 · 지느러미를 지운 몸통 모양에서 한 식으로 나온다'],
+      ['중골', '양쪽을 다 떼면 뼈 사이 살을 숟가락으로 긁어 「중골 살」을 받는다. 여기서 마치면 덩어리 넷은 껍질 붙은 채 가방에 남는다'],
+      ['덩어리 다듬기', '덩어리마다 혈합육 떼기 · 껍질 벗기기 · 사쿠 나누기(순서 자유). 사쿠 수는 덩어리 무게 ÷ 400g(2 ~ 5토막). 껍질 붙은 덩어리를 나중에 다시 도마에 올리면 그 덩어리 하나만 다듬는다 — 등급은 해체할 때 그대로'],
+      ['사쿠 회썰기', '사쿠는 반듯한 살 덩어리 그림으로 일반 회뜨기(14컷) · 고급 사시미(16컷)를 탄다 — 「참다랑어 뱃살 회 조각」. 한 번에 사쿠 한 토막만 쓴다. 참다랑어는 뱃살이 등살보다 비싸다'],
+      ['지느러미', '지느러미를 떼고 나면 그림에서 지우는 자리가 그은 칼선이다 — 몸 위 가장자리 선이면 선 위쪽, 아래 가장자리 선이면 아래쪽. 짧고 가파른 가슴지느러미 선은 몸을 지우지 않는다'],
+      ['손질 창', '비늘치기 · 핏줄 긁기 게이지는 도마 아래(작업 목록 창과 겹치지 않는다) · 1면 뜨기 둘째 칼부터 막히던 것 고침'],
+      ['초상 상의 색', '캐릭터 만들기 초상의 티셔츠가 고른 상의 색을 따른다(맨몸이면 그대로)'],
+    ],
+  },
+  {
+    id: 'fillet_species_art_316', round: 316, hidden: false, title: '어종별 필렛 그림 — 배를 가른 뒤에도 그 어종',
+    lede: '배를 가른 뒤 도마 · 가방 · 회썰기에 나오는 필렛 그림이 어종마다 따로 생겼다(둥근 생선 27종 · 순수 · 껍질 붙은 · 갈빗대 붙은 세 가지). 그전에는 잿방어 · 감성돔 필렛에 어종 색을 약하게 입힌 그림이었다.',
+    rows: [
+      ['도마', '갈빗대 제거 = 그 어종의 갈빗대 붙은 필렛 · 지아이뼈 = 순수 필렛 · 박피 = 껍질 붙은 필렛(껍질 띠가 그 어종 몸 색 — 돌돔은 검은 줄무늬 · 고등어는 청록 물결 · 우럭은 짙은 회갈색). 꼬리가 왼쪽, 두툼하게 비스듬히 잘린 머리 쪽이 오른쪽'],
+      ['유도선', '갈빗대 · 지아이뼈 · 박피 선은 어종 그림을 따라간다 — 그림 자리뿐 아니라 열마다 살의 위 · 아래 끝에 맞춰 옮겨, 꼬리가 뾰족한 필렛에서도 박피 손잡이 · 당기기 선이 살 밖으로 나가지 않는다'],
+      ['가방', '「껍질과 갈빗대가 붙어있는 필렛」 · 「껍질이 붙어있는 (순살) 필렛」 · 손질을 마친 필렛 아이콘이 그 어종 그림'],
+      ['회썰기', '일반 회뜨기 탑뷰 · 고급 사시미 측면 · 한 점 그림이 그 어종 필렛에서 나온다 — 컷 유도선도 그 필렛 윤곽으로 자리 잡는다. 회 조각 아이콘도 그 어종 한 점'],
+      ['그대로인 것', '잿방어 · 감성돔의 순수 · 껍질 붙은 필렛은 원래 그림(그 어종이 원본이다 — 갈빗대 붙은 필렛만 새 그림). 참돔(야간)은 참돔 그림. 넙치류 · 두족류 · 장어류는 전용 그림 그대로'],
+    ],
+  },
+  {
+    id: 'wild_greens_tab_314', round: 314, hidden: false, title: '「농작물」 탭 · 산나물은 산나물끼리',
+    lede: '산자락에서 캐는 산나물이 어종 · 수산생물 사이에 섞여 있던 것을 갈랐다. 위키는 「농사」 탭이 「농작물」이 되고 그 안에서 작물 · 산나물로 나뉜다. 게임 도감(N)에도 「산나물」 탭이 생겼다.',
+    rows: [
+      ['위키 「농작물」', '윗단 두 갈래 — 작물(텃밭 · 집 안 선반에서 기르는 86종과 농산물 · 씨앗 · 모종 · 농자재) / 산나물(산자락에서 뜯고 캐고 꺾는 아홉 — 곰취 · 산마늘 · 눈개승마 · 부지깽이 · 어수리 · 두릅 · 곤드레 · 엄나무순 · 쑥)'],
+      ['산나물 카드', '자라는 곳 · 나는 달 · 보이는 때 · 거두는 법 · 나는 고장 · 거두면 — 금어기 · 조명 · 미끼처럼 바다 생물 줄은 없다. 텃밭에서도 기르는 여덟은 그 작물 카드로 건너가고, 작물 카드에서도 산나물로 돌아온다'],
+      ['작물 쪽 이름', '텃밭에서 기르는 산나물 갈래는 「텃밭 산나물」'],
+      ['어종 · 수산생물', '물고기 · 두족류 · 조개 · 갑각류 · 극피 · 자포동물만(86)'],
+      ['게임 도감(N)', '탭 일곱 — 어종 도감 · 해양생물 · 산나물 · 아이템 · 요리 · 특산 · 나의 조과 기록. 해양생물 탭은 바다 생물 22, 산나물 탭은 아홉(손놀림 · kg당 값 · 나는 달 · 발견 줄 · 못 본 것은 실루엣과 「주간 · 산자락」)'],
+    ],
+  },
+  {
+    id: 'butchery_species_313', round: 313, hidden: false, title: '손질 어종 넓히기 · 어종마다 제 그림 · 요리 도구 파는 곳',
+    lede: '농어 · 우럭 · 볼락 · 숭어와 작은 생선 다섯, 개서대 · 망상어 · 용치놀래기 · 갑오징어를 손질한다. 도마 위 생선은 개복하기 전까지 그 어종의 그림이다. 캠핑 요리 도구는 사이소 · 편의점이 판다.',
+    rows: [
+      ['몸통이 둥근 어종', '농어 · 우럭 · 청볼락 · 황볼락 · 열기 · 숭어 · 가숭어 — 방어류와 같은 삼면뜨기(시메 · 방혈 → 밑손질 → 배따기 … → 박피)'],
+      ['작은 생선', '꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑 — 비늘 제거 → 머리 · 내장 제거 → 검은 막 · 혈합육 세척 → 삼장뜨기(윗살 · 아랫살 · 척추뼈) → 갈비뼈 제거 → 잔뼈 뽑기(핀셋). 시메 · 방혈 · 지느러미 · 꼬리 칼집 · 박피가 없다'],
+      ['돔류 트리', '망상어 · 용치놀래기 — 감성돔과 같은 공정 · 그림은 제 것(용치놀래기는 암수 그림이 다르다)'],
+      ['광어 트리', '개서대 — 다섯장뜨기(머리 S자 절단 · 엔가와 · 박피)'],
+      ['갑오징어', '무늬오징어와 같은 손질(시메 → 개복 · 내장 → 뼈 → 껍질 → 날개 · 아가미 → 머리부 분할)'],
+      ['어종마다 제 그림', '개복하기 전 도마 위 생선(시메 · 방혈 · 비늘 · 머리 · 지느러미 · 꼬리)은 손질되는 모든 어종이 그 어종의 그림이다 — 고등어 · 전갱이 · 삼치 · 문치가자미 · 도다리 · 강도다리도. 유도선은 그 그림 위로 옮겨 그린다. 배를 가른 뒤의 장뜨기 · 필렛 그림은 어종군 공용(어종 색으로 물듦)'],
+      ['요리 도구', '생활용품점 사이소 — 휴대용 가스스토브 · 부탄 캐니스터 · 코펠 냄비 · 양념 / 편의점 — 휴대용 가스스토브 · 부탄 캐니스터 · 양념. 새 게임 가방에는 요리 도구가 없다'],
+      ['아직', '장어류(붕장어 · 갯장어 · 먹장어) · 참다랑어 · 복어는 손질 준비 중'],
+    ],
+  },
+  {
+    id: 'portrait_fest_okseon_312', round: 312, hidden: false, title: '얼굴 초상 · 축제 알림 · 밤의 정옥선 · 봉돌 채비',
+    lede: '상투처럼 당겨 묶은 머리에서 민머리 윤곽이 비치지 않는다. 첫날 축제 소식은 집을 나선 뒤에 듣는다. 밤에 좌판 거리에 닿으면 할머니가 가까운 가게에서 나온다. 원투 채비는 감아도 바닥으로 꽂히지 않는다.',
+    rows: [
+      ['얼굴 초상', '머리 모양이 민머리보다 작으면(상투) 머리칼 밖으로 비어져 나온 정수리를 그리지 않는다 — 흰 · 밝은 머리에서 보이던 피부색 호 · 머리칼 사이 살색 점이 없다. 캐릭터 만들기 · 대화창 · 일지가 같은 초상'],
+      ['첫날 축제 소식', '집 안 튜토리얼(상자 ~ 오징어 · 저장) 동안에는 알리지 않는다 — 오징어를 챙겨 집을 나서면 지역 채널에 한 줄(손목시계를 차면 알람)'],
+      ['밤의 좌판 거리', '처음 좌판 거리에 닿았을 때 정옥선 씨가 좌판에 없으면(저녁 7시 ~ 새벽 3시 — 집에 있다) 가까운 가게 문에서 나와 나와 마주친다. 말을 걸 때까지 그 자리에 있다'],
+      ['철물점 둘 더', '부산 백운포 용호동 가게 거리(용호철물) · 독도 동도 경비대 옆(독도 보급철물)'],
+      ['봉돌 채비 감기', '중층에 떠 있던 원투 채비는 감아도 바닥으로 꽂히지 않는다 — 무게대로 살짝 뜬다(무거울수록 덜). 바닥에 닿아 있던 무거운 봉돌(30g 넘게)만 바닥을 긁으며 따라오고, 내려가는 쪽은 그 봉돌이 가라앉는 빠르기로'],
+      ['봉돌 채비 바닥', '놔두면 바닥에 닿는다 — 수심 정보에 「바닥 … · 닿음」, 그림은 봉돌이 바닥에 눕고 미끼가 그 위(목줄 끝). 찌 없는 채비에는 매듭 한계선이 없다'],
+    ],
+  },
+  {
+    id: 'hardware_herb_311', round: 311, hidden: false, title: '철물점 · 쑥(약초)',
+    lede: '철사 · 목재 같은 제작 재료는 철물점이 판다. 약초는 산자락에서 쑥을 뜯어도 얻는다.',
+    rows: [
+      ['철물점', '철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑 — 8~20시. 속초 항구 앞(항구철물) · 남쪽 시내(설악철물공구) · 부산 남항(남항철물) · 여수 · 서귀포'],
+      ['다른 고장 철물점', '울산 방어진철물 · 포항 구룡포철물 · 거제 지세포철물 · 해금강철물 · 태안 안흥철물 · 만리포철물 · 제주 제주철물공구 · 모슬포철물 · 울릉 도동철물 · 인천 연안철물 · 부산 백운포 용호철물 · 독도 보급철물 — 지도에 망치 표시'],
+      ['식자재마트', '식재료 가게 — 제작 재료는 팔지 않는다(굵은소금은 판다)'],
+      ['밤에는', '생활용품점 사이소 · 수산물 직판장도 같은 재료를 판다(직판장은 철사 · 목재)'],
+      ['편의점 이름의 가게', '지도에서 생활용품점으로 잡히던 편의점 체인(속초 11곳)은 이제 편의점이다'],
+      ['쑥(약초)', '3~10월 · 낮 · 어느 고장 산자락에나 난다 — 잎을 뜯는다(1~2개). 거두면 약국에서 파는 것과 같은 약초 — 상비약 · 쑥 모기향 재료'],
+    ],
+  },
+  {
+    id: 'craft_mats_farm_intro_310', round: 310, hidden: false, title: '제작 재료 · 농사 입문',
+    lede: '철사 · 목재 같은 제작 재료는 밤에도 산다. 농사는 속초 좌판의 정옥선 씨가 처음 가르쳐 준다.',
+    rows: [
+      ['철사 · 목재', '식자재마트(10~22시) · 생활용품점 사이소 · 수산물 직판장(그물망 옆) — 사이소와 직판장은 밤에도 연다'],
+      ['에폭시 · 도료 · 무명천', '에폭시 · 도료는 식자재마트 · 사이소, 무명천은 약국 · 사이소. 굵은소금은 식자재마트 · 직판장'],
+      ['약초', '약국(10~22시)에서만 판다 — 상비약 · 쑥 모기향에 쓴다'],
+      ['광질이 필요한가', '아니다 — 도면 재료는 모두 가게 · 채집 · 손질에서 나온다. 주석 잉곳도 직판장이 판다'],
+      ['농사 입문', '「귀퉁이 바구니」 — 레벨 12가 되면 속초 좌판의 정옥선 씨가 남는 씨앗 · 모종을 나눠 준다(철마다 다르다). 두 칸 심고 처음 거두면 「첫물」로 이어진다'],
+      ['텃밭은 언제나', '입문 이야기 없이도 집 마당 텃밭 · 집 안 선반에서 기를 수 있다 — 이야기는 안내와 선물이다'],
+    ],
+  },
+  {
+    id: 'plates_beads_twitch_309', round: 309, hidden: false, title: '접시 · 반달구슬 · 트위칭',
+    lede: '밤에도 회를 접시에 담고 반유동 찌 채비를 엮을 수 있다. 트위칭한 채비는 무게대로 내려온다.',
+    rows: [
+      ['사시미 접시', '식자재마트(10~22시) · 생활용품점 사이소는 소 · 중 · 대 · 특대 넷 · 편의점(24시간)은 소 · 중. 값은 어디서나 같다'],
+      ['반달구슬 · 쿠션고무', '사이소 초보 기본 채비에도 있다(한 팩 16개 · 한 봉지 5개) — 찌 세트의 「구슬」 · 「쿠션고무」 칸에 끼운다. 직판장 · 낚시용품점도 판다'],
+      ['트위칭', '좌클릭 두 번 — 원투 · 찌 · 루어 채비 모두 「채비가 살짝 떴다 가라앉습니다」. 0.2초에 1m 빠르게 떠오른다'],
+      ['내려오는 속도', '정해진 그림이 아니라 그 채비의 무게대로다 — 가벼운 찌 채비는 천천히(0.5초에 약 0.1m), 무거운 봉돌 원투는 곧바로 바닥에 돌아온다'],
     ],
   },
   {
@@ -1217,7 +1344,7 @@ const guide = {
 // ─────────────────────────────────────────────
 const CROP_CAT_KO = {
   leaf: '잎채소', fruit: '열매채소', root: '뿌리채소', tuber: '덩이', bulb: '마늘 · 파', grain: '곡식', legume: '콩',
-  wild: '산나물', herb: '향채', mushroom: '버섯', sprout: '시루 · 새싹',
+  wild: '텃밭 산나물', herb: '향채', mushroom: '버섯', sprout: '시루 · 새싹',   // 314차 — 「산나물」은 농작물 탭 윗단(산자락 채집)이 쓴다
 };
 const CROP_RARITY_KO = { common: '흔하다', uncommon: '드물다', rare: '귀하다', very_rare: '아주 귀하다' };
 const WATER_KO = { low: '적게', mid: '보통', high: '많이' };
@@ -1452,7 +1579,20 @@ for (const sp of farmSupplies) farmByItem[sp.id] = { supply: sp.id, role: 'suppl
 for (const fc of farmCrops) if (fc.harvest.pack) for (const sfx of ['', '_sp', '_nm']) farmByItem[fc.harvest.pack.itemId + sfx] = { crop: fc.id, role: 'pack' };
 // 241차 — 조각(나눈 것)도 작물로 잇는다
 for (const fc of farmCrops) for (const r of fc.rawEat) if (r.pieces) farmByItem[r.pieces.id] = { crop: fc.id, role: 'piece' };
+// 314차 — 산나물(채집) ↔ 텃밭 산나물(작물) 서로 잇기: 거두는 물건이 같다(곰취 = `crop_gomchwi`)
+for (const w of wildGreens) {
+  const crop = w.harvestItemId ? farmCrops.find((c) => c.harvest.itemId === w.harvestItemId) : null;
+  if (!crop) continue;
+  w.cropId = crop.id; w.cropName = crop.name;
+  crop.wildId = w.id; crop.wildName = w.name;
+}
 const farming = {
+  // 314차 — 「농작물」 탭 윗단 「산나물」 — 산자락에서 뜯고 캐고 꺾는 것(캡처의 아홉)
+  wild: {
+    groups: [['leaf', '잎 뜯기'], ['root', '뿌리 캐기'], ['shoot', '새순 꺾기']]
+      .map(([id, label]) => ({ id, label, count: wildGreens.filter((w) => w.how === id).length })).filter((g) => g.count > 0),
+    list: wildGreens,
+  },
   groups: Object.entries(CROP_CAT_KO).map(([id, label]) => ({ id, label, count: farmCrops.filter((c) => c.cat === id).length })).filter((g) => g.count > 0),
   tiers: [1, 2, 3, 4].map((t) => ({ id: String(t), label: core.CROP_TIER_KO[t], level: core.FARM_TUNING.tierLevels[t - 1], license: t >= core.FARM_TUNING.certTier ? licenseKo(core.FARM_TUNING.certLicense) : '' })),
   crops: farmCrops, supplies: farmSupplies, byItem: farmByItem,
@@ -1555,7 +1695,8 @@ const regions = core.WORLD_NODE_DATABASE.map((n) => {
 const MAP_PX = 8, MAP_SHEET = 4096, MAP_OV_PX = 2;
 const mapData = readJson(path.join(ROOT, 'tools/wiki_map_data.json'))
   ?? { placements: [], places: [], triggers: [], buildingLabel: {}, buildingGoods: {}, buildingHours: {}, poiLabel: {}, hometown: null, poiKinds: {} };
-const MM_ICON = { convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food', cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery' };
+// 311차 — 낚시용품점 · 방앗간 · 가공장(빠져 있었다) · 철물점 — 게임 미니맵(`RegionFieldScene.MINI_SHOP_ICON`)과 같은 아이콘
+const MM_ICON = { convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food', cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', tackle: 'mm_tackle', mill: 'mm_mill', processor: 'mm_mill', hardware: 'mm_hardware' };
 const HOURS_KO = (h) => (!h ? '' : h === 'always' ? '24시간' : `${h.open}~${h.close}시`);
 const NPC_BEHAVIOR_KO = { stall: '좌판을 지킨다', patrol: '오가며 둘러본다', fishing: '낚시한다', wander: '서성인다' };
 const FACING_KO = { down: '정면', left: '왼쪽', right: '오른쪽', up: '뒤' };
@@ -1711,11 +1852,62 @@ for (const m of mapList) {
 }
 const maps = {
   px: MAP_PX, sheet: MAP_SHEET,
-  icons: ['mm_conv', 'mm_mart', 'mm_market', 'mm_food', 'mm_cafe', 'mm_pub', 'mm_pharm', 'mm_daily', 'mm_nursery', 'mm_poi', 'mm_npc', 'mm_quest', 'mm_ready']
+  icons: ['mm_conv', 'mm_mart', 'mm_market', 'mm_food', 'mm_cafe', 'mm_pub', 'mm_pharm', 'mm_daily', 'mm_nursery', 'mm_tackle', 'mm_mill', 'mm_hardware', 'mm_poi', 'mm_npc', 'mm_quest', 'mm_ready']
     .map((id) => ({ id, img: imgOf(`px:${id}`) })).filter((x) => x.img),
-  legend: [['mm_market', '직판장 · 위판장 · 좌판'], ['mm_tackle', '낚시용품점'], ['mm_mart', '식자재마트'], ['mm_daily', '생활용품점'], ['mm_nursery', '종묘사'], ['mm_conv', '편의점'], ['mm_pharm', '약국'],
+  legend: [['mm_market', '직판장 · 위판장 · 좌판'], ['mm_tackle', '낚시용품점'], ['mm_mart', '식자재마트'], ['mm_daily', '생활용품점'], ['mm_hardware', '철물점'], ['mm_nursery', '종묘사'], ['mm_mill', '방앗간 · 가공장'], ['mm_conv', '편의점'], ['mm_pharm', '약국'],
     ['mm_food', '음식점'], ['mm_cafe', '카페'], ['mm_pub', '주점'], ['mm_poi', '장소(거래 없음)'], ['mm_npc', '이야기 인물']],
   list: mapList, npcAt, placeAt, triggersByQuest, regionMaps,
+};
+
+// 315차 — 「어종 손질」 탭(사용자 「방어류 / 작은 생선류 / 돔류 / 광어류 / 오징어류 … 손질 공정 과정을 한 눈에 · 어종 이름 → 어종 도감」).
+//  어종 갈래는 core 손질 표(어종군 · 공정 갈래 · 체형)에서 · 공정 그림은 `tools/capture_butchery_wiki.cjs`가 게임 손질 창에서 찍은 시트.
+const bkMan = fs.existsSync(path.join(IMG_DIR, 'butchery/manifest.json'))
+  ? JSON.parse(fs.readFileSync(path.join(IMG_DIR, 'butchery/manifest.json'), 'utf8')) : {};
+const fishName = (id) => core.FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id;
+const bkProf = (id) => core.BUTCHERY_PROFILES[id];
+const finfish = [...core.BUTCHERY_IMPLEMENTED_SPECIES];
+const BK_CATS = [
+  { id: 'amberjack', label: '방어류', flows: ['amberjack'],
+    pick: finfish.filter((id) => core.butcheryArtFamily(id) === 'amberjack' && !bkProf(id)?.tree),
+    note: '방추형 몸통 — 시메 · 방혈 → 머리 · 지느러미 · 비늘 → 배따기 · 내장 → 핏줄 → 꼬리 칼집 → 삼장뜨기(등 · 배) → 갈빗대 → 지아이뼈 → 박피. 그림은 잿방어이고 어종마다 제 그림 위에서 같은 순서로 한다. 방어 70 · 부시리 80 · 잿방어 100cm부터는 「참치 · 대방어 해체」로 간다.' },
+  { id: 'small', label: '작은 생선류', flows: ['small'],
+    pick: finfish.filter((id) => bkProf(id)?.tree === 'small'),
+    note: '시메 · 방혈 · 박피가 없는 짧은 공정 — 비늘 → 머리 · 내장 → 검은 막 · 혈합육 → 삼장뜨기 → 갈비뼈 · 잔뼈(핀셋). 그림은 꽁치.' },
+  { id: 'bream', label: '돔류', flows: ['bream'],
+    pick: finfish.filter((id) => core.butcheryArtFamily(id) === 'bream' && !bkProf(id)?.tree && bkProf(id)?.bodyShape !== 'flat'),
+    note: '체고가 높은 몸통 — 방어류와 같은 삼장뜨기 순서에 비늘이 단단하다. 그림은 감성돔.' },
+  { id: 'halibut', label: '광어류', flows: ['halibut'],
+    pick: finfish.filter((id) => bkProf(id)?.bodyShape === 'flat'),
+    note: '납작한 몸 — 다섯장뜨기. 머리 S자 절단(내장 함께) → 꼬리 칼집 → 배쪽 · 등쪽 중앙선 → 위 · 아래 포 뜨기(세로로 세워 꼬리 → 머리) → 엔가와 → 박피. 그림은 광어.' },
+  { id: 'squid', label: '오징어류', flows: ['squid'],
+    pick: ['squid', 'swordtip_squid', 'flying_squid', 'cuttlefish'].filter((id) => core.isCephalopodButcherable(id)),
+    note: '몸통을 갈라 내장 · 연골을 빼고 껍질을 두 번 뜯는다. 갑오징어도 같은 공정(갑을 들어낸다). 그림은 무늬오징어.' },
+  { id: 'octopus', label: '문어류', flows: ['octopus'],
+    pick: ['octopus', 'giant_octopus'].filter((id) => core.isCephalopodButcherable(id)),
+    note: '머리(몸통)를 뒤집어 내장 · 먹물을 떼고 굵은소금으로 치대 점액을 빼 삶는다. 그림은 참문어.' },
+  // 317차 — 4덩어리 해체(사용자 「참다랑어 · 대방어급 4덩어리 해체 진행해줘」)
+  { id: 'loin', label: '참치 · 대방어 해체', flows: ['loin'],
+    pick: ['bluefin_tuna', ...Object.keys(core.LOIN_BREAKDOWN_MIN_CM)],
+    note: `큰 생선은 필렛 둘이 아니라 덩어리 넷(등살 2 · 뱃살 2 + 중골)으로 해체한다. 참다랑어는 늘, ${Object.entries(core.LOIN_BREAKDOWN_MIN_CM).map(([id, cm]) => `${fishName(id)} ${cm}cm`).join(' · ')}부터. 앞은 방어류와 같고(머리를 떼며 가마살 둘) → 옆줄 칼집 → 등살 · 뱃살 떼기(양면) → 중골 살 긁기 → 덩어리마다 혈합육 · 껍질 · 사쿠 나누기. 껍질 붙은 덩어리는 도마에 다시 올려 다듬기부터 이어 하고, 사쿠는 회썰기로 간다. 그림은 참다랑어.` },
+  { id: 'eel', label: '장어류', flows: ['eel_conger', 'eel_pike', 'eel_hag'],
+    pick: finfish.filter((id) => bkProf(id)?.tree === 'eel'),
+    note: '송곳으로 머리를 도마에 박은 채 한 자리에서 — 뒤집기가 없다. 붕장어는 등을, 갯장어 · 먹장어는 배를 가른다. 갯장어는 마지막에 뼈끊기, 먹장어는 껍질을 통째로 벗긴다(단단한 뼈가 없다).' },
+];
+const butchery = {
+  cats: BK_CATS.map((c) => ({
+    id: c.id, label: c.label, note: c.note,
+    species: c.pick.map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
+    flows: c.flows.map((fid) => {
+      const m = bkMan[fid];
+      return m ? { id: fid, sp: m.sp, title: `${fishName(m.sp)} — ${m.steps.length}단계`, img: m.file, tileW: m.tileW, tileH: m.tileH, steps: m.steps }
+        : { id: fid, sp: '', title: '그림 준비 중', img: null, tileW: 300, tileH: 170, steps: [] };
+    }),
+    // 316차 — 어종별 필렛 그림(Gemini) 시트: 한 줄 = 어종 하나 · 칸 = 순수 · 껍질 붙은 · 갈빗대 붙은(`gemini_fillet_art.cjs --wiki-sheets`)
+    fillets: bkMan.fillets?.[c.id] ? {
+      img: bkMan.fillets[c.id].file, tileW: bkMan.fillets[c.id].tileW, tileH: bkMan.fillets[c.id].tileH, kinds: bkMan.fillets[c.id].kinds,
+      rows: bkMan.fillets[c.id].rows.map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
+    } : null,
+  })),
 };
 
 const out = {
@@ -1773,16 +1965,19 @@ const out = {
   farming,
   regions,
   maps,
+  butchery,
 };
 
 // 발행용 — 카드·상세가 실제로 참조하는 그림만 추려 둔다(아티팩트 파일 수 절약)
 const used = new Set();
 for (const r of recipes) { if (r.img) used.add(r.img); for (const v of r.variants) if (v.img) used.add(v.img); }
-for (const s of speciesList) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }
+for (const s of [...speciesList, ...wildGreens]) { if (s.img) used.add(s.img); for (const v of s.imgs ?? []) if (v.src) used.add(v.src); }   // 314차 — 산나물 그림도
 for (const i of items) if (i.img) used.add(i.img);
 for (const k of skillList) if (k.img) used.add(k.img);
 for (const c of farmCrops) { if (c.img) used.add(c.img); for (const st of c.starts) if (st.img) used.add(st.img); }
 for (const sp of farmSupplies) if (sp.img) used.add(sp.img);
+for (const c of butchery.cats) for (const f of c.flows) if (f.img) used.add(f.img);   // 315차 — 어종 손질 공정 시트
+for (const c of butchery.cats) if (c.fillets?.img) used.add(c.fillets.img);   // 316차 — 어종별 필렛 그림 시트
 for (const ic of maps.icons) used.add(ic.img);   // 264차 — 지도 탭 핀 아이콘(16px — 전부 HTML 안)
 for (const m of maps.list) for (const n of m.npcs ?? []) if (n.img) used.add(n.img);   // 268차 — 인물 얼굴(192px · 20KB 아래면 HTML 안)
 // 249차 — 아티팩트 한 판에는 파일이 511개까지만 들어간다(위키가 쓰는 그림 512장 + index.html — 그 전까지 코드 그림 141장이 빠진 채였다).

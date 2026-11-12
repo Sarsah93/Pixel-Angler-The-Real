@@ -206,7 +206,12 @@ export function syncPrologue(): void {
   }
 }
 
-/** 이 단계를 닫아야 열리는 단축키 — 표에 없는 패널 키는 속초에 도착한 뒤에 열린다 */
+/**
+ * 이 단계를 닫아야 열리는 단축키 — 표에 없는 패널 키는 속초에 도착한 뒤에 열린다.
+ * 318차 — U(활용 창)는 이 잠금에서 뺐다. 사용자 리포트 「홈타운과 집 내부에서는 왜 U키를 누를 수 없도록 되어 있을까?
+ *   칼 장착하고 회뜨려고 하는데 아예 안먹히네?」 — 첫날 집 · 홈타운에서도 손질 · 회썰기 · 채비 · 제작을 막을 까닭이 없다.
+ *   판매 체험용 오징어는 도마가 받지 않는다(`UtilizationPanel.dropFishOnBoard` → `prologueProtects`).
+ */
 const KEY_AFTER: Record<string, PrologueKey> = {
   KeyI: 'box', KeyE: 'rod', KeyJ: 'photo', KeyS: 'well', KeyM: 'status',
 };
@@ -217,6 +222,7 @@ const KEY_AFTER: Record<string, PrologueKey> = {
  *   앞 목표(상자 · 대 · 사진 …)를 그곳에서 닫을 길이 없어 `prologueRunning()`이 영영 참이었다(사용자 리포트 — U 채비하기가 막힘).
  */
 export function prologueKeyAllowed(code: string): boolean {
+  if (code === 'KeyU') return true;   // 318차 — 활용 창(채비 · 도마 손질 · 회썰기 · 제작)은 첫날에도 열린다(아래 주석)
   if (!prologueRunning()) return true;
   if (GameState.currentRegionId !== 'hometown') return true;
   const need = KEY_AFTER[code];

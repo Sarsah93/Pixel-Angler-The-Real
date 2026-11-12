@@ -1072,5 +1072,15 @@
   "ty": 406,
   "osmId": -9034,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "제주철물공구",
+  "nameEn": "Jeju Hardware & Tools",
+  "tx": 581,
+  "ty": 366,
+  "osmId": -9045,
+  "src": "manual"
  }
 ]

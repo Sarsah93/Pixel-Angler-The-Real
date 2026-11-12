@@ -51,7 +51,9 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 
 ## 부가 배선 (해당 시)
 
-- **손질 편입은 별도 단계**: `BUTCHERY_IMPLEMENTED_SPECIES`(ButcheryProfiles.ts) + `BUTCHERY_PROFILES` 프로필 + `getButcheryFamily` 분기 + 어종군 렌더(`butcherFamilyOf`/trimmings). 등록만으로는 손질 불가(unsupported 안내)가 정상.
+- **장어형 몸(315)**은 `tree: 'eel'` — `tools/gen_eel_views.cjs`의 `SPECIES`에 몸 윤곽 · 색 · 가르는 쪽(`open`) · 뼈끊기 · 껍질 벗기기를 한 줄 더해 그림과 유도선을 같이 굽고, 프로필 `filletCount: 1` + `BUTCHERY_IMPLEMENTED_SPECIES`에 넣는다(섹션은 `EEL_SECTIONS`가 단계로 줄인다).
+- **손질 편입은 별도 단계**: `BUTCHERY_IMPLEMENTED_SPECIES`(ButcheryProfiles.ts) + `BUTCHERY_PROFILES` 프로필(작은 생선은 `tree: 'small'`) + **어종군 표 `butcheryArtFamily`**(313 — 유도선 · 도마 그림 · 부산물 아이콘 단일 출처, client `butcherFamilyOf`는 이것을 읽는다) +
+  도마 온마리 그림(`tools/gen_species_sprites.cjs` 표 · 넙치는 `gen_flatfish_sprites.cjs`) + `ButcheryPanel.guessSpecies` 이름 폴백. 등록만으로는 손질 불가(unsupported 안내)가 정상.
 - **dev 테스트 지급**: 손질/UI 검증 대상이면 `createDevFishDefs`(InventoryStore)에 추가 — 기존 세이브도 재로드 시 주입됨.
 - 크기 등급 어종이면 `SIZE_TIER_BOUNDS`(SizeTierRules.ts), 스폰 바인딩 루어면 LuresCatalogDB `spawnBinding`.
 - **core 새 파일을 만들었으면 `core/src/index.ts` export 필수.**

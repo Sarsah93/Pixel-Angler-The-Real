@@ -20,7 +20,7 @@ import {
 import { recipeKnown } from '../data/RecipeUnlock.js';   // 295차
 import { isAllRegionsOpen } from '../dev/DevMode.js';   // 295차 — 특산 탭도 dev 모든 지역 열기
 import type { ShoreCreatureCategory, DiscoveryKind, ShoreCreature, DishVariantKind, RegionalSpecialtyDef as SpecialtyDefT } from '@tra/core';
-import { isWildGreen, getCreatureById } from '@tra/core';   // 300차 — 실루엣 그림 고르기
+import { isWildGreen, getCreatureById, forageBehaviorOf, monthRangeKo } from '@tra/core';   // 300차 — 실루엣 그림 고르기 · 314차 산나물 탭
 import { TideLoreStore } from '../store/TideLoreStore.js';
 import { DiscoveryStore } from '../store/DiscoveryStore.js';
 import { GuideTour, maybeStartTour, type TourOptions } from '../ui/GuideTour.js';
@@ -30,14 +30,33 @@ import { itemWikiByCategory, type WikiItemEntry } from '../data/WikiCatalog.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
 import { restoreHandCursor } from '../ui/DraggablePanel.js';
 import type { InvItem } from '../store/InventoryStore.js';
-import { createItemIcon } from '../ui/ItemIcon.js';
+import { createItemIcon, itemArtKeyOf, itemImageKeyOf } from '../ui/ItemIcon.js';
 import { CATEGORY_LABEL } from '../store/InventoryStore.js';
 import type { InvCategory } from '../store/InventoryStore.js';
 import { clampTextWidth } from '../ui/TextFit.js';
 import { fadeOutThen } from './SceneFade.js';
 import { ensureForageDotTextures, forageSpotTexKey, forageTexKey } from './field/ForageSystem.js';
 
-type LogTab = 'encyclopedia' | 'creatures' | 'items' | 'dishes' | 'specialty' | 'history';   // 295차 — 특산
+type LogTab = 'encyclopedia' | 'creatures' | 'wildgreens' | 'items' | 'dishes' | 'specialty' | 'history';   // 295차 — 특산 · 314차 — 산나물
+
+/**
+ * 도감 탭 줄 — 탭 버튼과 첫 열기 가이드가 같은 표를 쓴다.
+ * 314차 — 산나물을 「해양생물」에서 갈라 「산나물」 탭으로(사용자 지적 「어종 카테고리에 왜 산나물이 같이 있는 건지」).
+ */
+const LOG_TABS: { key: LogTab; label: string; w: number }[] = [
+  { key: 'encyclopedia', label: '어종 도감',     w: 140 },
+  { key: 'creatures',    label: '해양생물',      w: 130 },
+  { key: 'wildgreens',   label: '산나물',        w: 100 },   // 314차 — 산자락에서 뜯고 캐고 꺾는 것
+  { key: 'items',        label: '아이템',        w: 120 },   // 300차 — 「아이템 위키」 → 「아이템」(사용자 지시)
+  { key: 'dishes',       label: '요리',          w: 100 },
+  { key: 'specialty',    label: '특산',          w: 90 },   // 295차 — 지역 특산(얻어 본 것)
+  { key: 'history',      label: '나의 조과 기록', w: 160 },
+];
+const LOG_TAB_X0 = 60;
+const LOG_TAB_GAP = 10;
+
+/** 314차 — 산나물 거두는 손놀림(도감 카드 한 줄) */
+const WILD_GREEN_HOW_KO: Record<string, string> = { leaf: '잎을 뜯는다', root: '뿌리를 캔다', shoot: '새순을 꺾는다' };
 
 /** 255차 — 요리 도감: 변형 레시피의 주재료 갈래별 목록 부제 · 미발견 힌트 (조개탕에 「다른 어종을」은 틀린 말이다) */
 const DISH_KIND_SUB: Record<DishVariantKind, string> = {
@@ -140,16 +159,8 @@ export class AnglerLogScene extends Phaser.Scene {
     // [UI] 탭 버튼 영역 (배열 기반 4탭)
     // ─────────────────────────────────────────────
     const tabY = 110;
-    const TABS: { key: LogTab; label: string; w: number }[] = [
-      { key: 'encyclopedia', label: '어종 도감',     w: 140 },
-      { key: 'creatures',    label: '해양생물',      w: 130 },
-      { key: 'items',        label: '아이템',        w: 120 },   // 300차 — 「아이템 위키」 → 「아이템」(사용자 지시)
-      { key: 'dishes',       label: '요리',          w: 100 },
-      { key: 'specialty',    label: '특산',          w: 90 },   // 295차 — 지역 특산(얻어 본 것)
-      { key: 'history',      label: '나의 조과 기록', w: 160 },
-    ];
-    let tabX = 60;
-    for (const tab of TABS) {
+    let tabX = LOG_TAB_X0;
+    for (const tab of LOG_TABS) {
       const cx = tabX + tab.w / 2;
       const btn = this.add.container(cx, tabY).setInteractive(
         new Phaser.Geom.Rectangle(-tab.w / 2, -16, tab.w, 32),
@@ -165,7 +176,7 @@ export class AnglerLogScene extends Phaser.Scene {
       btn.add([bg, txt]);
       btn.on('pointerdown', () => this.switchTab(tab.key));
       this.tabBtnBgs[tab.key] = bg;
-      tabX += tab.w + 10;
+      tabX += tab.w + LOG_TAB_GAP;
     }
 
     // ESC 설정
@@ -193,9 +204,11 @@ export class AnglerLogScene extends Phaser.Scene {
   // ─────────────────────────────────────────────
   private buildTour(): TourOptions {
     const { width, height } = this.scale;
-    const tabsW = 140 + 130 + 140 + 100 + 90 + 160 + 5 * 10;   // 295차 — 특산 탭
-    const tabs = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(60, 110 - 16, tabsW, 32);
-    const historyTab = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(60 + tabsW - 160, 110 - 16, 160, 32);
+    // 314차 — 탭 표(LOG_TABS)에서 잰다(옛 손 계산은 아이템 탭 폭 140으로 20px 길었다)
+    const tabsW = LOG_TABS.reduce((n, t) => n + t.w, 0) + (LOG_TABS.length - 1) * LOG_TAB_GAP;
+    const histW = LOG_TABS[LOG_TABS.length - 1].w;
+    const tabs = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(LOG_TAB_X0, 110 - 16, tabsW, 32);
+    const historyTab = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(LOG_TAB_X0 + tabsW - histW, 110 - 16, histW, 32);
     const body = (): Phaser.Geom.Rectangle => new Phaser.Geom.Rectangle(30, 140, width - 60, height - 200);
     return {
       id: 'codex',
@@ -203,7 +216,7 @@ export class AnglerLogScene extends Phaser.Scene {
       alive: () => this.sys.isActive(),
       steps: [
         {
-          text: '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 아이템 · 요리 · 특산 · 내 조과 기록을 넘겨 본다.',
+          text: '잡거나 만난 것은 모두 이 도감에 남는다. 위 탭으로 어종 · 해양생물 · 산나물 · 아이템 · 요리 · 특산 · 내 조과 기록을 넘겨 본다.',
           target: tabs,
         },
         {
@@ -277,6 +290,7 @@ export class AnglerLogScene extends Phaser.Scene {
     switch (this.currentTab) {
       case 'encyclopedia': this.renderEncyclopedia(); break;
       case 'creatures':    this.renderCreatures();    break;
+      case 'wildgreens':   this.renderWildGreens();   break;   // 314차
       case 'items':        this.renderItems();        break;
       case 'dishes':       this.renderDishes();       break;
       case 'specialty':    this.renderSpecialty();    break;   // 295차
@@ -291,6 +305,13 @@ export class AnglerLogScene extends Phaser.Scene {
    */
   private creaturePic(cr: ShoreCreature, x: number, y: number, box: number): Phaser.GameObjects.Image {
     ensureForageDotTextures(this);
+    // 315차 — 산나물은 거두는 물건의 그림(작물 초상 · 약초 — 위키와 같은 생성 그림)이 먼저다.
+    //   필드 포기 도트는 칸 모서리 배지(`addFieldDotBadge`)로 따로 붙인다(사용자 지적 「도감 한 칸 우측 하단에」).
+    const art = this.wildGreenArtKey(cr);
+    if (art) {
+      const fit = fitFishTexture(this.textures, art, box, box);
+      return this.add.image(x, y, fit.key).setOrigin(0.5).setDisplaySize(Math.round(fit.w), Math.round(fit.h));
+    }
     const photo = forageTexKey(cr);
     if (this.textures.exists(photo)) {
       // 248차 — 카드(300×160 안) · 64px 아이콘 중 상자에 맞는 판(`fitFishTexture` — 72px 이하면 아이콘)
@@ -358,9 +379,46 @@ export class AnglerLogScene extends Phaser.Scene {
     return obj;
   }
 
+  /**
+   * 315차 — 산나물 그림 키: 거두는 물건(`harvestItemId`)의 생성 그림. 작물이면 작물 초상 카드(`cropimg_` —
+   * 위키 `px_crop_*`와 같은 그림), 약초(쑥)면 아이템 그림(`art_herb`). 산나물이 아니거나 그림이 없으면 null.
+   */
+  private wildGreenArtKey(cr: ShoreCreature): string | null {
+    if (!isWildGreen(cr) || !cr.harvestItemId) return null;
+    const id = cr.harvestItemId;
+    if (id.startsWith('crop_')) {
+      for (const k of [`cropimg_${id}`, `cropicon_${id}`]) if (this.textures.exists(k)) return k;
+      return null;
+    }
+    for (const k of [itemImageKeyOf(this, { id }), itemArtKeyOf({ id })]) if (k && this.textures.exists(k)) return k;
+    return null;
+  }
+
+  /**
+   * 315차 — 필드에서 보이는 모습(갯것 점 · 산나물 포기 도트)을 칸 오른쪽 아래 작은 판에 붙인다.
+   * 큰 그림이 이미 그 도트면(사진 없는 갯것) 붙이지 않는다. 돌려주는 값 = 판의 왼쪽 · 위(글 줄이 피할 경계) — 없으면 null.
+   */
+  private addFieldDotBadge(cr: ShoreCreature, right: number, bottom: number, mainKey: string | null): { left: number; top: number } | null {
+    const dot = forageSpotTexKey(cr);
+    if (!this.textures.exists(dot) || dot === mainKey) return null;
+    const S = 30;                                   // 판 한 변
+    const bx = right - S, by = bottom - S;
+    const g = this.add.graphics();
+    g.fillStyle(0x24301f, 0.95); g.fillRoundedRect(bx, by, S, S, 3);   // 흙빛 바탕 — 필드 땅 위에 선 모습
+    g.lineStyle(1, 0x5a7a48, 0.9); g.strokeRoundedRect(bx, by, S, S, 3);
+    const img = this.add.image(bx + S / 2, by + S / 2, dot).setOrigin(0.5);
+    const raw = Math.max(1, img.width, img.height);
+    img.setScale(Math.max(1, Math.floor((S - 6) / raw)));   // 도트는 정수 배율(§8)
+    if (raw > S - 6) img.setScale((S - 6) / raw);            // 판보다 큰 도트만 줄인다
+    this.tabContainer?.add([g, img]);
+    return { left: bx, top: by };
+  }
+
   /** 300차 — 갯것 · 산나물 그림 키: 사진 카드가 있으면 그것, 없으면 필드 자리 그림(점 · 포기) */
   private creaturePicKey(cr: ShoreCreature): string | null {
     ensureForageDotTextures(this);
+    const art = this.wildGreenArtKey(cr);   // 315차 — 산나물은 거두는 물건 그림
+    if (art) return art;
     const photo = forageTexKey(cr);
     if (this.textures.exists(photo)) return photo;
     const spot = forageSpotTexKey(cr);
@@ -518,9 +576,37 @@ export class AnglerLogScene extends Phaser.Scene {
   }
 
   // ─────────────────────────────────────────────
-  // 1b. 해양생물 도감 탭 (해루질·통발 생물)
+  // 1b. 해양생물 도감 탭 (해루질·통발 생물) · 1c. 산나물 탭(314차 — 같은 카드 · 다른 줄)
   // ─────────────────────────────────────────────
   private renderCreatures(): void {
+    // 314차 — 산나물은 바다 생물이 아니다 — 「산나물」 탭이 맡는다
+    this.renderShoreCards(SHORE_CREATURE_DATABASE.filter((c) => !isWildGreen(c)), (cr) => {
+      // 227차 — 금어기는 날짜 구간으로(참문어 5.16~6.30) · 지금 지역 규정(제주) 반영
+      const legal = resolveLegal(cr, GameState.currentRegionId);
+      const closed = legal.closedSeasons.length > 0 ? `금어기 ${formatSeasons(legal.closedSeasons)}` : '금어기 없음';
+      return [
+        [CREATURE_CAT_LABEL[cr.category] ?? cr.category, '#8faabf'],
+        [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
+        [closed, legal.closedSeasons.length > 0 ? '#d47a6a' : '#607b8e'],
+      ];
+    });
+  }
+
+  /** 314차 — 산나물 탭: 산자락에서 뜯고 캐고 꺾는 아홉(곰취 · 산마늘 · … · 쑥) — 손놀림 · 값 · 나는 달 */
+  private renderWildGreens(): void {
+    this.renderShoreCards(SHORE_CREATURE_DATABASE.filter((c) => isWildGreen(c)), (cr) => {
+      const absent = new Set(cr.absentMonths ?? []);
+      const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((m) => !absent.has(m));
+      return [
+        [WILD_GREEN_HOW_KO[forageBehaviorOf(cr)] ?? '산나물', '#8faabf'],
+        [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
+        [`나는 달 ${monthRangeKo(months)}`, '#7fae7a'],
+      ];
+    });
+  }
+
+  /** 해양생물 · 산나물 카드 격자(발견 = 이름 · 학명 · 그림 · 줄들 + 발견 줄 / 미발견 = 실루엣 · 때 · 자리) */
+  private renderShoreCards(all: readonly ShoreCreature[], rowsOf: (cr: ShoreCreature) => [string, string][]): void {
     const { width, height } = this.scale;
     const startX = 40;
     const startY = 160;
@@ -530,7 +616,6 @@ export class AnglerLogScene extends Phaser.Scene {
     const GAP = 20;
     const rowsPerPage = Math.max(1, Math.floor((height - 45 - 24 - startY + GAP) / (itemH + GAP)));
     const perPage = rowsPerPage * colCount;
-    const all = SHORE_CREATURE_DATABASE;
     const maxPage = Math.max(0, Math.ceil(all.length / perPage) - 1);
     this.currentPage = Math.min(this.currentPage, maxPage);
 
@@ -565,23 +650,20 @@ export class AnglerLogScene extends Phaser.Scene {
         // 생물 그림 — 실사 도트(아이템 아이콘)가 있으면 그것, 없으면 필드 스팟 도트 (188차 — 이모지 대체)
         const pic = this.creaturePic(cr, x + 44, y + 84, 64);
         this.tabContainer?.add([nameText, sciText, pic]);
+        // 315차 — 필드에서 보이는 모습은 오른쪽 아래 작은 판(큰 그림은 생성 그림 · 사진)
+        const badge = this.addFieldDotBadge(cr, x + itemW - 6, y + itemH - 6, this.creaturePicKey(cr));
 
         const SX = x + 92;
         const SW = itemW - 92 - 12;
-        // 227차 — 금어기는 날짜 구간으로(참문어 5.16~6.30) · 지금 지역 규정(제주) 반영
-        const legal = resolveLegal(cr, GameState.currentRegionId);
-        const closed = legal.closedSeasons.length > 0 ? `금어기 ${formatSeasons(legal.closedSeasons)}` : '금어기 없음';
         const discLine = this.discoveryLine('creature', cr.id);
-        const rows: [string, string][] = [
-          [CREATURE_CAT_LABEL[cr.category] ?? cr.category, '#8faabf'],
-          [`kg당 ${cr.marketValuePerKg.toLocaleString()}원`, '#c8a060'],
-          [closed, legal.closedSeasons.length > 0 ? '#d47a6a' : '#607b8e'],
-          [discLine ?? '발견', '#8fd4b8'],
-        ];
+        const rows: [string, string][] = [...rowsOf(cr), [discLine ?? '발견', '#8fd4b8']];
         rows.forEach(([label, color], i) => {
-          const t = clampTextWidth(this.add.text(SX, y + 54 + i * 19, label, {
+          const ty = y + 54 + i * 19;
+          // 판과 같은 높이에 걸치는 줄은 판 왼쪽에서 끊는다(겹침 0)
+          const w = badge && ty + 16 > badge.top ? Math.min(SW, badge.left - 6 - SX) : SW;
+          const t = clampTextWidth(this.add.text(SX, ty, label, {
             fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color,
-          }), SW);
+          }), w);
           this.tabContainer?.add(t);
         });
       } else {

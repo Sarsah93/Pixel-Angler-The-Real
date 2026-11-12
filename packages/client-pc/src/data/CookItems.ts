@@ -137,6 +137,16 @@ export const COOK_CORNER = [
 ] as const;
 
 /**
+ * 313차 — 요리 코너를 다른 가게도 나눠 판다(사용자 「스토브, 캐니스터, 코펠 냄비, 양념은 사이소에서도 살 수 있어야 해(실제로 다 팔아).
+ *  그리고 편의점에서도 스토브, 캐니스터, 양념은 팔아」). 같은 객체를 진열한다(정의는 `COOK_CORNER` 하나).
+ *  양념 = 요리 코너의 1큰술 양념 — 방앗간 것(들기름 · 들깨가루 · 깨소금)은 빼고. 채소 · 양수 냄비 · 프라이팬 · 석쇠는 식자재마트만.
+ */
+const MILL_SEASONINGS = new Set(['cook_perilla_oil', 'cook_perilla_powder', 'cook_sesame_salt']);
+export const COOK_SEASONINGS = COOK_CORNER.filter((e) => e.subCategory === '양념' && !MILL_SEASONINGS.has(e.id));
+export const COOK_STOVE_KIT = COOK_CORNER.filter((e) => e.id === 'cook_stove_portable' || e.id === 'cook_butane_can');
+export const COOK_POT_CAMP = COOK_CORNER.filter((e) => e.id === 'cook_pot_camp');
+
+/**
  * 284차 — 식자재마트 요리 코너 물건의 가방 모양(값 · 진열 수 · 설명 제외). 없으면 null.
  * 기름병을 따면 나오는 1큰술(`cook_sesame_oil` · `cook_perilla_oil`)처럼 가게 밖에서 생기는 길이 쓴다.
  */

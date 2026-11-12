@@ -239,6 +239,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .chip[aria-pressed=true]{background:var(--sea); color:#fff; border-color:var(--sea)}
 .chip[aria-pressed=true] b{color:rgba(255,255,255,.75)}
 .chips.sub .chip{font-size:12px; padding:4px 10px; border-radius:4px}
+/* 314차 — 탭 안 윗단 갈래(농작물 › 작물 · 산나물) — 분류 줄보다 한 단계 위라 굵고 크게 */
+.chips.kind{margin-top:12px; gap:8px}
+.chips.kind .chip{font-size:15px; font-weight:700; padding:7px 18px}
+.chips.kind:empty{display:none}
 .gnote{margin:10px 0 0; color:var(--muted); font-size:13px}
 .count{margin:14px 0 0; font-size:12px; color:var(--muted); font-family:'IBM Plex Mono',monospace}
 
@@ -255,6 +259,29 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .icard .nm{font-size:14px; font-weight:600; color:var(--ink); line-height:1.4; overflow-wrap:anywhere}
 .icard .mt{font-size:11.5px; color:var(--muted); margin-top:3px; overflow-wrap:anywhere}
 .icard .pr{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); margin-top:5px}
+/* 315차 — 어종 손질 탭: 맨 위 어종 이름(어종 도감으로) · 작업마다 도마 그림(게임 손질 창에서 찍은 것) */
+.bview{margin-top:12px}
+.bk-sp{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; padding:12px 14px;
+  background:var(--card); border:1px solid var(--rule); border-radius:6px}
+.bk-sp .lbl{font-size:12px; color:var(--muted); letter-spacing:.02em; margin-right:4px}
+.bk-sp .xl{font-size:15px}
+.bk-sp .nolink{font-size:15px; color:var(--ink2)}
+.bk-note{margin:10px 2px 0; color:var(--ink2); font-size:13.5px; line-height:1.65; max-width:76ch}
+.bk-flow{margin-top:22px}
+.bk-flow h3{font-family:'Hahmlet',serif; font-size:17px; margin:0 0 10px; color:var(--ink)}
+.bk-steps{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px}
+.bk-steps li{background:var(--card); border:1px solid var(--rule); border-radius:6px; overflow:hidden; display:flex; flex-direction:column}
+.bk-steps .bimg{width:100%; aspect-ratio:300/170; background-repeat:no-repeat; background-color:#0c1622}
+.bk-steps .cap{padding:9px 11px 11px; display:grid; grid-template-columns:auto 1fr; gap:2px 8px; align-items:baseline}
+.bk-steps .n{grid-row:span 3; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); min-width:1.6em}
+.bk-steps b{font-size:14px; color:var(--ink)}
+.bk-steps .sec{font-size:11.5px; color:var(--muted)}
+.bk-steps .g{font-size:12.5px; color:var(--ink2); line-height:1.5}
+.bk-fl{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px}
+.bk-fl li{background:var(--card); border:1px solid var(--rule); border-radius:6px; padding:8px 10px 10px}
+.bk-fl .nm{font-size:14px; margin-bottom:6px; display:block}
+.bk-fl .row{width:100%; aspect-ratio:720/96; background-repeat:no-repeat; background-color:#0c1622; border-radius:4px}
+.bk-fl .ks{display:grid; grid-template-columns:repeat(3,1fr); margin-top:4px; font-size:11.5px; color:var(--muted); text-align:center}
 
 /* 상세 시트 */
 .sheet{position:fixed; inset:0; z-index:60; background:rgba(12,14,18,.55); display:flex;
@@ -368,7 +395,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   <header class="mast">
     <div class="kicker">Pixel Angler The Real · Wiki</div>
     <h1>Pixel Angler The Real Wiki</h1>
-    <p class="lead">조행록(할 일 <span id="fq0"></span>편)에서 시작해 요리·어종·아이템·농사·스킬·시스템까지 묶은 게임 전체 안내서입니다.
+    <p class="lead">조행록(할 일 <span id="fq0"></span>편)에서 시작해 요리·어종·아이템·농작물·스킬·시스템까지 묶은 게임 전체 안내서입니다.
       조행록 탭에서 할 일 하나를 고르면 의뢰인의 말, 목표, <b>실제로 재생되는 장면</b>, 받는 것이 한 장으로 펼쳐지고,
       나머지 탭은 <b>분류 버튼</b>으로 모아 본 뒤 카드를 눌러 그림과 상세를 엽니다.</p>
     <div class="tally" id="tally"></div>
@@ -378,11 +405,12 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     <button data-tab="quests" aria-pressed="true">조행록</button>
     <button data-tab="cooking" aria-pressed="false">요리</button>
     <button data-tab="species" aria-pressed="false">어종·수산생물</button>
+    <button data-tab="butchery" aria-pressed="false">어종 손질</button>
     <button data-tab="it_gear" aria-pressed="false">낚시 장비</button>
     <button data-tab="it_food" aria-pressed="false">먹을거리</button>
     <button data-tab="it_life" aria-pressed="false">생활 · 도구</button>
     <button data-tab="it_home" aria-pressed="false">설치 · 가구</button>
-    <button data-tab="farming" aria-pressed="false">농사</button>
+    <button data-tab="farming" aria-pressed="false">농작물</button>
     <button data-tab="skills" aria-pressed="false">스킬</button>
     <button data-tab="regions" aria-pressed="false">출조 지역</button>
     <button data-tab="maps" aria-pressed="false" id="tabmaps">지도</button>
@@ -408,6 +436,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   </div>
   <div id="tab-cat" class="hidden">
     <div class="bar"><input type="search" id="cq" placeholder="이름·설명으로 찾기" aria-label="검색"></div>
+    <div class="chips kind" id="kinds" role="group" aria-label="갈래"></div>
     <div class="chips" id="groups" role="group" aria-label="분류"></div>
     <div class="chips sub" id="subs" role="group" aria-label="세부 분류"></div>
     <p class="gnote" id="gnote"></p>
@@ -1366,7 +1395,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 
 
   // ── 도감 탭 (169차 — 분류 버튼 · 썸네일 · 상세) ─────────────
-  let tab = 'quests', cterm = '', group = '', sub = '';
+  let tab = 'quests', cterm = '', group = '', sub = '', kind = '';   // 314차 — kind = 탭 안 윗단 갈래(농작물 › 작물 · 산나물)
   const nfw = n => nf(Math.round(n)) + '원';
   // 264차 — 작은 그림은 `G.inl[파일명]`(data URI · 한 번만 실림)에서, 나머지는 img/ 파일에서
   const imgSrc = file => (G.inl && G.inl[file]) ? G.inl[file] : (String(file).startsWith('data:') ? file : 'img/' + file);
@@ -1401,17 +1430,32 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
         .filter(s => !sub || s.subgroup === sub)
         .map(toSpeciesCard),
     },
+    // 315차 — 어종 손질: 갈래(어종군)를 고르면 맨 위에 그 공정으로 손질하는 어종(이름 → 어종 도감) · 아래에 작업마다 도마 그림
+    butchery: {
+      note: '게임 손질 창에서 실제로 하는 공정입니다. 갈래를 고르면 맨 위에 그 공정으로 손질하는 어종이 모이고(이름을 누르면 어종 도감 카드로 건너갑니다), 아래에 작업마다 도마 위 모습과 그을 선이 차례로 나옵니다.',
+      noAll: true,
+      groups: () => ((G.butchery && G.butchery.cats) || []).map(c => ({ id: c.id, label: c.label, count: c.species.length })),
+      list: () => [],
+      render: () => bkRender(),
+    },
     farming: {
+      // 314차 — 「농사」 → 「농작물」 · 윗단 「작물」(텃밭 · 집 안 선반) / 「산나물」(산자락 채집 — 어종 탭에 섞여 있던 아홉)
+      kinds: () => [{ id: 'crop', label: '작물', count: G.farming.crops.length }, { id: 'wild', label: '산나물', count: G.farming.wild.list.length }],
       note: '텃밭 · 집 안 선반에서 기르는 작물과 거둔 농산물 · 씨앗 · 모종 · 농자재입니다. 갈래 버튼으로 모아 보고 난이도로 좁힌 뒤, 카드를 누르면 심는 법 · 거두기 · 손이 가는 일 · 병 · 값 · 쓰이는 곳이 한 장으로 펼쳐집니다. 밑줄 친 이름을 누르면 그 물건 · 요리 · 할 일로 건너갑니다.',
-      groups: () => [{ id: '', label: '전체', count: G.farming.crops.length }]
+      wildNote: '산자락(마을 뒤 숲 · 풀밭 안쪽)에서 뜯고 캐고 꺾는 산나물입니다. 낮에만 보이고 종마다 나는 달과 고장이 다릅니다. 거두면 텃밭 수확물과 같은 묶음으로 들어오고(쑥은 약초), 텃밭에서도 기를 수 있는 것은 카드에서 그 작물로 건너갑니다.',
+      groups: () => kind === 'wild'
+        ? [{ id: '', label: '전체', count: G.farming.wild.list.length }].concat(G.farming.wild.groups)
+        : [{ id: '', label: '전체', count: G.farming.crops.length }]
         .concat(G.farming.groups.map(g => ({ id: g.id, label: g.label, count: g.count })))
         .concat([{ id: '_produce', label: '농산물', count: farmItems('produce').length }, { id: '_start', label: '씨앗 · 모종', count: farmItems('start').length },
           { id: '_sup', label: '농자재', count: G.farming.supplies.length }]),
-      subs: () => group === '_sup' ? []
+      subs: () => kind === 'wild' ? []
+        : group === '_sup' ? []
         : (group === '_produce' || group === '_start') ? uniqSubs(farmItems(group.slice(1)).map(i => i.sub))
         : [{ id: '', label: '난이도 전부', count: G.farming.crops.filter(c => !group || c.cat === group).length }]
           .concat(G.farming.tiers.map(t => ({ id: t.id, label: t.label, count: G.farming.crops.filter(c => (!group || c.cat === group) && String(c.tier) === t.id).length })).filter(t => t.count > 0)),
-      list: () => group === '_sup' ? G.farming.supplies.map(toSupplyCard)
+      list: () => kind === 'wild' ? G.farming.wild.list.filter(w => !group || w.how === group).map(toWildCard)
+        : group === '_sup' ? G.farming.supplies.map(toSupplyCard)
         : (group === '_produce' || group === '_start') ? farmItems(group.slice(1)).filter(i => !sub || i.sub === sub).map(toItemCard)
         : G.farming.crops.filter(c => !group || c.cat === group).filter(c => !sub || String(c.tier) === sub).map(toCropCard),
     },
@@ -1659,6 +1703,33 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
       }),
     };
   }
+  /** 314차 — 거두는 손놀림 짧은 말(갈래 버튼과 같은 말 — 잎 뜯기 · 뿌리 캐기 · 새순 꺾기) */
+  const wildHowShort = id => ((G.farming.wild.groups.find(g => g.id === id) || {}).label || '산나물');
+  /** 314차 — 산나물(산자락 채집) 카드 — 농작물 탭 「산나물」 갈래. 텃밭에서도 기르는 것은 그 작물 카드로 잇는다 */
+  function toWildCard(w){
+    return {
+      key: 'wild:' + w.id, name: w.name, meta: wildHowShort(w.how) + ' · ' + w.months, img: w.img,
+      price: w.valuePerKg ? nfw(w.valuePerKg) + '/kg' : '',
+      search: [w.name, w.nameEn, w.scientific, w.desc, w.howLabel, '산나물', w.cropName || ''].join(' '),
+      detail: () => ({
+        title: w.name, sub: w.scientific + (w.nameEn ? ' · ' + w.nameEn : ''),
+        lede: w.desc, img: w.img,
+        tags: ['산나물', wildHowShort(w.how), '산자락 채집'],
+        body: '<div class="ssec"><h3>가치</h3>' + kvRows([
+            ['kg당 값', w.valuePerKg ? '<b>' + nfw(w.valuePerKg) + '</b> <span class="dim">(1x 기준)</span>' : '판매 대상 아님'],
+          ]) + '</div>' +
+          // 바다 생물 줄(금어기 · 조명 · 미끼 · 물때)은 빼고 나물에 맞는 줄만 — 이름도 나물 말로
+          '<div class="ssec"><h3>산자락에서</h3>' + kvRows([['자라는 곳', '서식'], ['나는 달', null], ['보이는 때', '채집 시간대'], ['거두는 법', '사는 모양'], ['크기', '크기'], ['나는 고장', '나는 고장'], ['거두면', '거두면']]
+            .map(([label, src]) => {
+              const v = src ? (w.traits.find(t => t[0] === src) || [])[1] : w.months;
+              return [label, v && v !== '—' ? esc(v) : null];
+            })) + '</div>' +
+          (w.cropId ? '<div class="ssec"><h3>텃밭에서도</h3>' + kvRows([
+            ['기르는 작물', xl('farming', w.cropId, w.cropName) + ' <span class="dim">— 씨앗 · 모종을 심어 텃밭에서 기른다(거두는 물건이 같다)</span>'],
+          ]) + '</div>' : ''),
+      }),
+    };
+  }
   // ── 240차 — 교차 링크: 상세 안의 밑줄 이름을 누르면 그 탭의 카드로 건너간다 ──
   const xl = (tab, key, label) => '<a class="xl" data-open="' + esc(tab) + ':' + esc(key) + '">' + esc(label) + '</a>';
   const xlist = arr => arr.length ? '<div class="xlist">' + arr.join('') + '</div>' : '<span class="dim">없음</span>';
@@ -1764,7 +1835,11 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
           ['기준값', '<b>' + nfw(c.price.base) + '</b> <span class="dim">— 상 등급 · 달 지수 · 주간 출렁임(±' + Math.round(c.price.volatility * 100) + '%) 전</span>'],
           ['실제 시세', c.price.kamis ? '하루 한 번 실제 소매가를 받아 「오늘 ÷ 평년」으로 움직인다' : '달 지수 + 주간 출렁임'],
         ]) + '<h4 style="margin:12px 0 2px">달별 값 지수 <span class="dim">(연평균 1.00 · 초록 = 귀한 철 · 빨강 = 흔한 철)</span></h4>' + monthBar(c.price.season) + '</div>' +
-        '<div class="ssec"><h3>쓰이는 곳</h3>' + kvRows(useRows) + '</div>',
+        '<div class="ssec"><h3>쓰이는 곳</h3>' + kvRows(useRows) + '</div>' +
+        // 314차 — 같은 나물이 산자락에도 난다(농작물 › 산나물)
+        (c.wildId ? '<div class="ssec"><h3>산자락에서도</h3>' + kvRows([
+          ['산나물', xl('farming', 'wild:' + c.wildId, c.wildName) + ' <span class="dim">— 산자락에서 뜯고 캐고 꺾는다(거두는 물건이 같다)</span>'],
+        ]) + '</div>' : ''),
     };
   }
   function toCropCard(c){
@@ -1968,9 +2043,44 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 
   // ── 목록 렌더 ────────────────────────────────
   let cards = [];
+  /** 315차 — 어종 손질 갈래 한 장: 어종 이름 줄 → 공정 설명 → 공정마다 작업 그림 칸(시트 한 장을 칸마다 잘라 보인다) */
+  function bkRender(){
+    const c = ((G.butchery && G.butchery.cats) || []).find(x => x.id === group);
+    if (!c) return '<p class="empty">갈래를 고르세요.</p>';
+    let h = '<div class="bk-sp"><span class="lbl">이 공정으로 손질하는 어종</span>' +
+      c.species.map(sp => sp.inWiki ? xl('species', sp.id, sp.name) : '<span class="nolink">' + esc(sp.name) + '</span>').join('') + '</div>';
+    if (c.note) h += '<p class="bk-note">' + esc(c.note) + '</p>';
+    // 316차 — 어종별 필렛 그림(배를 가른 뒤 도마 · 가방 · 회썰기에 그 어종 그림이 나온다)
+    if (c.fillets && c.fillets.img && c.fillets.rows.length) {
+      const F = c.fillets, n = F.rows.length;
+      h += '<section class="bk-flow"><h3>어종별 필렛 그림</h3><ul class="bk-fl">' + F.rows.map((sp, i) =>
+        '<li><span class="nm">' + (sp.inWiki ? xl('species', sp.id, sp.name) : esc(sp.name)) + '</span>' +
+        '<div class="row" role="img" aria-label="' + esc(sp.name) + ' 필렛 그림" style="background-image:url(\'' + imgSrc(F.img) + '\');background-size:100% ' + (n * 100) + '%;background-position:0 ' + (n > 1 ? (i / (n - 1) * 100).toFixed(4) : 0) + '%"></div>' +
+        '<div class="ks">' + F.kinds.map(k => '<span>' + esc(k) + '</span>').join('') + '</div></li>').join('') + '</ul></section>';
+    }
+    for (const f of c.flows) {
+      h += '<section class="bk-flow"><h3>' + esc(f.title) + '</h3>';
+      if (!f.img || !f.steps.length) { h += '<p class="dim">그림 준비 중</p></section>'; continue; }
+      const n = f.steps.length;
+      h += '<ol class="bk-steps">' + f.steps.map((st, i) =>
+        '<li><div class="bimg" role="img" aria-label="' + esc(st.stage) + '" style="background-image:url(\'' + imgSrc(f.img) + '\');background-size:100% ' + (n * 100) + '%;background-position:0 ' + (n > 1 ? (i / (n - 1) * 100).toFixed(4) : 0) + '%"></div>' +
+        '<div class="cap"><span class="n">' + (i + 1) + '</span><b>' + esc(st.task) + '</b><span class="sec">' + esc(st.sec) + (st.stage !== st.task ? ' · ' + esc(st.stage) : '') + '</span><span class="g">' + esc(st.guide) + '</span></div></li>').join('') +
+        '</ol></section>';
+    }
+    return h;
+  }
+
   function renderCat(){
     const def = TABS[tab]; if (!def) return;
+    // 314차 — 윗단 갈래(있는 탭만) — 처음 · 모르는 값이면 첫 갈래
+    const ks = def.kinds ? def.kinds() : [];
+    if (ks.length && !ks.some(k => k.id === kind)) kind = ks[0].id;
+    document.getElementById('kinds').innerHTML = ks.map(k =>
+      '<button class="chip" data-k="' + esc(k.id) + '" aria-pressed="' + (kind === k.id) + '">' +
+      esc(k.label) + '<b>' + k.count + '</b></button>').join('');
     const gs = def.groups();
+    // 315차 — 「전체」가 없는 탭(어종 손질)은 처음 · 모르는 값이면 첫 갈래
+    if (def.noAll && gs.length && !gs.some(g => g.id === group)) group = gs[0].id;
     document.getElementById('groups').innerHTML = gs.map(g =>
       '<button class="chip" data-g="' + esc(g.id) + '" aria-pressed="' + (group === g.id) + '">' +
       esc(g.label) + '<b>' + g.count + '</b></button>').join('');
@@ -1979,8 +2089,19 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     subEl.innerHTML = subs.length > 2 ? subs.map(x =>
       '<button class="chip" data-s="' + esc(x.id) + '" aria-pressed="' + (sub === x.id) + '">' +
       esc(x.label) + '<b>' + x.count + '</b></button>').join('') : '';
-    document.getElementById('gnote').textContent = def.note;
+    document.getElementById('gnote').textContent = (kind === 'wild' && def.wildNote) ? def.wildNote : def.note;
 
+    // 315차 — 카드 대신 한 장으로 그리는 탭(어종 손질)
+    const gridEl = document.getElementById('grid');
+    if (def.render) {
+      cards = [];
+      gridEl.className = 'bview';
+      gridEl.innerHTML = def.render();
+      const c0 = ((G.butchery && G.butchery.cats) || []).find(x => x.id === group);
+      document.getElementById('ccount').textContent = c0 ? c0.species.length + '종 · ' + c0.flows.reduce((n, f) => n + f.steps.length, 0) + '단계' : '';
+      return;
+    }
+    gridEl.className = 'grid';
     cards = def.list();
     const t = cterm.toLowerCase();
     const shown = t ? cards.filter(c => (c.search || c.name).toLowerCase().includes(t)) : cards;
@@ -2016,7 +2137,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   }
   /** 240차 — 교차 링크: 탭을 바꾸고(분류 초기화) 그 키의 카드를 연다. 조행록은 go(id). */
   function setTab(next){
-    tab = next; group = ''; sub = ''; cterm = '';
+    tab = next; group = ''; sub = ''; cterm = ''; kind = '';
     const cq = document.getElementById('cq'); if (cq) cq.value = '';
     for (const x of document.querySelectorAll('#tabs button')) x.setAttribute('aria-pressed', String(x.dataset.tab === tab));
     document.getElementById('tab-quests').classList.toggle('hidden', tab !== 'quests');
@@ -2041,6 +2162,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     }
     if (!TABS[t]) return;
     setTab(t);
+    if (t === 'farming' && key.startsWith('wild:')) { kind = 'wild'; renderCat(); }   // 314차 — 농작물 › 산나물 카드
     if (presetGroup) { group = presetGroup; renderCat(); }
     const i = cards.findIndex(c => c.key === key);
     if (i >= 0) { openSheet(i); return; }
@@ -2058,7 +2180,14 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
   });
   document.getElementById('grid').addEventListener('click', e => {
+    // 315차 — 어종 손질 탭의 어종 이름(어종 도감 카드로)
+    const a = e.target.closest('a.xl[data-open]');
+    if (a) { e.preventDefault(); const [t, ...rest] = a.dataset.open.split(':'); openByKey(t, rest.join(':')); return; }
     const b = e.target.closest('.icard'); if (b) openSheet(Number(b.dataset.i));
+  });
+  document.getElementById('kinds').addEventListener('click', e => {
+    const b = e.target.closest('[data-k]'); if (!b) return;
+    kind = b.dataset.k; group = ''; sub = ''; renderCat();
   });
   document.getElementById('groups').addEventListener('click', e => {
     const b = e.target.closest('[data-g]'); if (!b) return;

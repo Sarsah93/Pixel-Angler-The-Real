@@ -8,5 +8,25 @@
   "ty": 122,
   "osmId": -9008,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "항구철물",
+  "nameEn": "Port Hardware",
+  "tx": 547,
+  "ty": 127,
+  "osmId": -9036,
+  "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "설악철물공구",
+  "nameEn": "Seorak Hardware & Tools",
+  "tx": 469,
+  "ty": 622,
+  "osmId": -9037,
+  "src": "manual"
  }
 ]

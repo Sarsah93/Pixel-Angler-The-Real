@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "모슬포철물",
+  "nameEn": "Moseulpo Hardware",
+  "tx": 527,
+  "ty": 248,
+  "osmId": -9046,
+  "src": "manual"
+ }
+]

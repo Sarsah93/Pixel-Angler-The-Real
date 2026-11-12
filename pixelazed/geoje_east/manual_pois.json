@@ -8,5 +8,15 @@
   "ty": 385,
   "osmId": -9009,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "지세포철물",
+  "nameEn": "Jisepo Hardware",
+  "tx": 621,
+  "ty": 461,
+  "osmId": -9041,
+  "src": "manual"
  }
 ]

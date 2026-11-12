@@ -1783,5 +1783,15 @@
   "ty": 614,
   "osmId": -9031,
   "src": "manual"
+ },
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "남항철물",
+  "nameEn": "Namhang Hardware",
+  "tx": 973,
+  "ty": 39,
+  "osmId": -9038,
+  "src": "manual"
  }
 ]

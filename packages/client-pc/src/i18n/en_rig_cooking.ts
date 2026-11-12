@@ -118,8 +118,8 @@ export const EN_RIG_COOKING: Record<string, string> = {
   // ═══════════════════════════════════════════════
   '· 생선을 도마에 올리고 [손질 시작]으로 회를 뜹니다 (넣기·빼기·교환 = 드래그)':
     '· Put a fish on the board and press [Start Dressing] to fillet it (drag to add, remove or swap).',
-  '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리 = 다섯장뜨기(4~5필렛)':
-    '· Round fish = three-piece fillet (2 fillets) / flatfish = five-piece fillet (4-5 fillets).',
+  '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리·개서대 = 다섯장뜨기(4~5필렛) / 꽁치 같은 작은 생선 = 비늘 → 머리·내장 → 삼장뜨기 → 잔뼈(핀셋)':
+    '· Round fish = three-piece fillet (2 fillets) / flounder, halibut, tonguefish = five-piece fillet (4–5 fillets) / small fish such as saury = scales → head & guts → three-piece fillet → pin bones (tweezers)',
   '· 순수 필렛을 올리면 [일반 회뜨기]/[고급 사시미 뜨기(야나기바)]로 회를 썹니다':
     '· Put a clean fillet on the board to slice it with [Basic Sashimi] / [Fine Sashimi (yanagiba)].',
   '· 썰어진 회 조각은 아래 [사시미 만들기] 접시에 담아 완성 (모듬/단품)':

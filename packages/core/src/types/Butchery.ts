@@ -34,6 +34,32 @@ export type ButcheryTool = 'knife' | 'hand' | 'scaler';
 /** 정규화(0~1) 좌표점 — 오리엔티드 뷰(현재 방향 기준) 생선 바운딩박스 좌표계 */
 export interface CutPoint { x: number; y: number; }
 
+/**
+ * 315차 — dev F9 편집기에서 **[확정]**으로 저장한 유도선 좌표(스테이지 하나).
+ * 좌표만 들고 판정 옵션(strong · tolerance · strokesRequired …)은 들지 않는다 — 스테이지를 다 지은 뒤 좌표만 바꿔 끼운다.
+ * 원본은 `tools/f9_captures/captures.json`(dev 서버가 쓴다) → `tools/apply_f9_captures.cjs`가 core 표를 굽는다.
+ */
+export interface ButcheryGuideOverride {
+  /** 칼선(단일) */
+  guidePath?: CutPoint[];
+  /** 칼선 여러 개(지느러미 3곳 등) — 있으면 `guidePath`는 첫 선 */
+  guidePaths?: CutPoint[][];
+  /** 문지르기 · 박피 스윕선 */
+  sweepPath?: CutPoint[];
+  /** 탭 지점(시메) */
+  tapPoint?: CutPoint;
+  /**
+   * true = 어종군 대표 그림 자리 좌표(「군 전체 확정」) — 온마리 그림 위 선이면 어종 그림 자리로 옮겨 쓴다.
+   * false · 없음 = 잰 그림 위 좌표 그대로(어종 확정 · 개복 뒤 공용 뷰).
+   */
+  familyFrame?: boolean;
+  /** 확정한 때(ISO 문자열) — 기록용 */
+  at?: string;
+}
+
+/** 315차 — 어종 id 또는 `@<어종군>`(`@amberjack` · `@bream` · `@halibut`) → 스테이지 id → 확정 좌표 */
+export type ButcheryGuideOverrideTable = Record<string, Record<string, ButcheryGuideOverride>>;
+
 /** 가이드 경로를 따라 긋는 컷 1건 */
 export interface CutSpec {
   id: string;
@@ -86,7 +112,7 @@ export interface ButcheryProfile {
   /** 방혈/머리따기 연출량 (0~1) */
   bloodAmount: number;
   /** round=2, flat(광어)=4 (엔가와 포함), 대형 광어=5장뜨기(computeFilletYield에서 분기) */
-  filletCount: 2 | 4 | 5;
+  filletCount: 1 | 2 | 4 | 5;   // 1 = 장어류 펼친 포 한 장(315)
 
   // ── 수율·형상 (SASHIMI_YIELD_SPEC 2026-07) ──
   /** 살수율 (가식부 비율) — 총 회 살 질량 ≈ weightGram × baseYieldRate × 도구 × 스킬 × 신선도 */
@@ -99,6 +125,64 @@ export interface ButcheryProfile {
   bodyRatio: number;
   /** 필렛 형상 (아이콘/렌더 분기) */
   filletShape: FilletShape;
+  /**
+   * 313 — 손질 공정 갈래. 없으면 체형(`bodyShape`) 기본 공정이다.
+   *  - `'small'` = 작은 생선(꽁치 · 학꽁치 · 눈퉁멸 · 보리멸 · 문절망둑 — 사용자 지시):
+   *    비늘 제거 → 머리 · 내장 제거 → 검은 막 · 혈합육 세척 → 삼장뜨기 → 갈비뼈 제거 · 잔뼈 뽑기(핀셋).
+   *    시메 · 방혈 · 지느러미 · 꼬리 칼집 · 박피가 없다.
+   *  - `'eel'`(315) = 장어류(붕장어 · 갯장어 · 먹장어): 송곳 고정 → 점액 → 가르기 · 펼치기 → 내장 → 중골 · 지느러미 → 머리
+   *    (+ 갯장어 뼈끊기 · 먹장어 목 칼집과 껍질 벗기기). 펼친 포 한 장이 나온다.
+   *  - `'loin'`(317) = **4덩어리 해체**(참다랑어 · 대방어급 — 사용자 「참치처럼 해체 공정(4개의 덩어리로)」):
+   *    시메 · 방혈 → 머리(+ 가마) · 지느러미 → 내장 → 옆줄 칼집 → 등살 · 뱃살 떼기(양면) → 중골 살 긁기 →
+   *    덩어리마다 혈합육 · 껍질 · 사쿠 나누기. 참다랑어는 프로필이 늘 이 갈래이고, 방어류 셋은 대 등급부터
+   *    (`butcheryProfileFor` — 방어 70 · 부시리 80 · 잿방어 100cm)이다.
+   */
+  tree?: 'small' | 'eel' | 'loin';
+}
+
+/** 317 — 4덩어리 해체의 덩어리 부위(등살 · 뱃살) · 면(1면 = BASE · 2면 = FLIP) */
+export type LoinPart = 'back' | 'belly';
+export type LoinSide = 'a' | 'b';
+
+/**
+ * 317 — 해체 측면 유도선 한 벌(도마 생선 틀 정규화). 면마다 따로 준다 — 2면(FLIP)은 그림이 좌우로 뒤집혀 있다.
+ *  - `mid` = 옆줄 칼집(머리 쪽 절단면 → 꼬리자루) · `back` = 등 가장자리(등살을 뗄 선) · `belly` = 배 가장자리(뱃살을 뗄 선)
+ * client가 어종 그림 실루엣에서 구워 넘긴다(`ButcheryStageOptions.loin.side`) — 없으면 core 기본값(잿방어 대표 그림 근사).
+ */
+export interface LoinSideLines { mid: CutPoint[]; back: CutPoint[]; belly: CutPoint[] }
+export interface LoinSideGeometry {
+  a: LoinSideLines;
+  b: LoinSideLines;
+  /** 중골 살 긁기 — 2면(FLIP) 뷰의 뼈대를 훑는 지그재그 */
+  nakaochi: CutPoint[];
+}
+
+/**
+ * 315차 — 장어류 손질 유도선 한 벌(도마 생선 틀 정규화 · 머리 왼쪽). `tools/gen_eel_views.cjs`가 그림과 같은 몸 윤곽에서 굽는다.
+ * 붕장어 = 등 가르기 · 갯장어 = 배 가르기 + 뼈끊기 · 먹장어 = 목 칼집 + 껍질 벗기기 + 배 가르기.
+ */
+export interface EelGuideSet {
+  /** 가르는 쪽 — 'back' = 등(붕장어) · 'belly' = 배(갯장어 · 먹장어) */
+  open: 'back' | 'belly';
+  /** 뼈끊기 단계가 있는가(갯장어 — 잔뼈를 껍질 앞까지 촘촘히 끊는다 · 선은 `honekiri`) */
+  boneCut: boolean;
+  /** 껍질 통째로 벗기기(먹장어) */
+  skinPeel: boolean;
+  pin: CutPoint;
+  slime: CutPoint[];
+  backCut: CutPoint[];
+  bellyCut: CutPoint[];
+  spread: CutPoint[];
+  gutOut: CutPoint[];
+  spine: CutPoint[];
+  finTop: CutPoint[];
+  finBot: CutPoint[];
+  head: CutPoint[];
+  neck: CutPoint[];
+  peelGrip: CutPoint;
+  peel: CutPoint[];
+  /** 뼈끊기 짧은 세로 칼집 여덟 줄 */
+  honekiri: CutPoint[][];
 }
 
 /** 회칼 등급 스펙 (인벤토리 '기타' 아이템 — id는 인벤토리 아이템 id와 동일) */

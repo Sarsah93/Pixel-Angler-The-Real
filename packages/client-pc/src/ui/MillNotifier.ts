@@ -15,12 +15,14 @@
  * 게임을 끈 사이에 다 된 일은 다음에 켰을 때 처음 도는 씬이 알린다.
  * 285차 — 텃밭 걸대 · 장독의 갈무리(`CureQueue`)도 같은 길로 알린다(채널 「[갈무리]」 · 시계 알람). 텃밭 창 설비 칩에는 초록 점.
  * 296차 — 집 우편함에 편지가 오면(`MailboxStore`) 같은 길(채널 「[우편]」 · 시계 알람). 우편함 깃발 · 미니맵은 홈타운 필드가 그린다.
+ * 312차 — 축제 알림은 프롤로그 집 안 단계가 끝난 뒤(집을 나설 때)부터 낸다(`festivalNoticesDue`).
  */
 
 import Phaser from 'phaser';
 import { millService, cureRecipe, CURE_STATION_LABEL, FESTIVALS, festivalPhase, festivalPeriodLabel, kstYmdOf, isRegionOpenAtChapter, REGIONAL_SPECIALTIES, particle, type FestivalDef } from '@tra/core';
 import { festivalNow } from '../data/FestivalClock.js';   // 298차
 import { StoryStore } from '../store/StoryStore.js';
+import { prologueStepDone } from '../store/Prologue.js';   // 312차 — 집 안 튜토리얼 동안 축제 알림 미룸
 import { isAllRegionsOpen } from '../dev/DevMode.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { MillQueue, type MillOrder } from '../store/MillQueue.js';
@@ -78,8 +80,14 @@ export function cureReadyLine(b: CureBatch): string {
 }
 
 /** 손목시계를 찼는가(장비 「시계」 칸) */
-/** 298차 — 축제 절정 첫 알림(열린 지역 · 해마다 한 번 — 세이브 플래그 `fest.<id>.<해>`) */
+/**
+ * 298차 — 축제 절정 첫 알림(열린 지역 · 해마다 한 번 — 세이브 플래그 `fest.<id>.<해>`).
+ * 312차 — 프롤로그 집 안 단계(상자 · 대 · 릴 · 사진 · 일지 · 오징어 · 저장)에는 내지 않는다
+ *  (사용자 리포트 「튜토리얼 중에, 시즌 축제에 대한 고지가 떠버리고 있어 … 집에서 나갈 때(오징어 챙겨서 나갈 때), 뜨게」).
+ *  플래그를 켜지 않고 미뤘다가 집을 나서면(`leave`) 마당의 첫 펌프가 낸다 — 지역 채널 한 줄(+ 손목시계 알람).
+ */
 export function festivalNoticesDue(): { def: FestivalDef; key: string }[] {
+  if (StoryStore.isActive('M1-01') && !prologueStepDone('leave')) return [];
   const now = festivalNow();
   const { y } = kstYmdOf(now);
   const ch = StoryStore.currentChapter();
@@ -208,6 +216,6 @@ export function showWatchAlarm(scene: Phaser.Scene, lines: readonly string[]): P
 if (import.meta.env.DEV) {
   (globalThis as unknown as { __MILLNOTE: unknown }).__MILLNOTE = {
     pump: (s: Phaser.Scene) => { lastPollMs = 0; pumpMillReady(s); },
-    showWatchAlarm, millReadyLine, cureReadyLine, wearingWatch,
+    showWatchAlarm, millReadyLine, cureReadyLine, wearingWatch, festivalNoticesDue,   // 312차 — 프롤로그 축제 알림 미룸 검증
   };
 }

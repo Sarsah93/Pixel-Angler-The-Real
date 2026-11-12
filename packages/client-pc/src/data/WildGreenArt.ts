@@ -5,7 +5,7 @@
  *  299차는 자리 표식에 수확한 묶음 그림(작물 아이콘)을 그대로 올려놓았다 — 사용자 지적
  *  (「심어져 있는 그림처럼 해놔야지 … 스타듀밸리처럼 타일 위에 야생 산나물 자체가 심어져 있는 것처럼」).
  *  그래서 종마다 **자라는 모습**을 찍는다 — 곰취 둥근 잎 로제트 · 산마늘 넓은 두 잎 · 눈개승마 깃꼴 잎 · 부지깽이 떨기 ·
- *  어수리 손바닥 잎 · 두릅 가시 줄기 끝 순 · 곤드레 가시 잎 로제트 · 엄나무 가시 줄기 끝 순.
+ *  어수리 손바닥 잎 · 두릅 가시 줄기 끝 순 · 곤드레 가시 잎 로제트 · 엄나무 가시 줄기 끝 순 · (311) 쑥 갈라진 잎 떨기.
  *  한 칸(글자) = 입자 하나. 굽는 쪽(`scenes/field/WildGreenSprites.ts`)이 입자 크기(필드 2px)로 늘린다.
  *  밑동 = 아래 줄 가운데. 아래 줄의 `g`(풀 포기) · `e`(흙)는 땅에 박힌 느낌을 준다.
  *
@@ -164,6 +164,26 @@ export const WILD_GREEN_ART: Record<string, WildGreenArtDef> = {
       '.DlDDlLlLlDDlD.',
       '..DlDlLlLlDlD..',
       '...DDlDlDlDD...',
+      '....DsDsDsD....',
+      '.....DsssD.....',
+      '....g.DsD.g....',
+    ],
+  },
+  // 311차 — 쑥(약초) — 깊게 갈라진 잎이 겹겹이 선 떨기 · 회녹색에 잎 뒤 은빛이 조금 비친다(약쑥)
+  green_herb: {
+    palette: { D: 0x2a4a2e, l: 0x5f8c54, L: 0x92b884, y: 0xc8dcc0, s: 0x5a6a3e },
+    rows: [
+      '......DlD......',
+      '...DD.DlD.DD...',
+      '..DlLDDlDDLlD..',
+      '.DlLlDlLlDlLlD.',
+      '.DlLlDlylDlLlD.',
+      '..DlLlLlLlLlD..',
+      '.DDlLlDlDlLlDD.',
+      'DlLlDlLlLlDlLlD',
+      'DlLyLlDlDlLyLlD',
+      '.DlLlLlLlLlLlD.',
+      '..DDlLlLlLlDD..',
       '....DsDsDsD....',
       '.....DsssD.....',
       '....g.DsD.g....',

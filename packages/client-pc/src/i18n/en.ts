@@ -135,7 +135,9 @@ const EN_BASE: Record<string, string> = {
   '미끼 · 채비 · 줄 · 잡은 고기 매입': 'Bait · rigs · line · buys your catch',
   '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러': 'Groceries · seasoning · cookware · chum · coolers',
   '낚싯대 · 릴 · 원줄 · 손도구 · 가구': 'Rods · reels · main line · hand tools · furniture',
+  '낚싯대 · 릴 · 원줄 · 손도구 · 가구 · 캠핑 요리 도구 · 양념': 'Rods · reels · main line · hand tools · furniture · camp cooking gear · seasonings',   // 313차
   '간식 · 생수 · 각얼음 · 상비약': 'Snacks · water · ice · basic medicine',
+  '간식 · 생수 · 각얼음 · 상비약 · 휴대용 스토브 · 부탄 · 양념': 'Snacks · water · ice · basic medicine · portable stove · butane · seasonings',   // 313차
   '붕대 · 구급품 · 약': 'Bandages · first aid · medicine',
   '식사 · 매운탕 · 회': 'Meals · spicy fish stew · sashimi',
   '커피 · 음료': 'Coffee · drinks',
@@ -151,6 +153,10 @@ const EN_BASE: Record<string, string> = {
   '거래하기': 'Trade', '편의점': 'Convenience Store', '식자재마트': 'Grocery Mart', '직판장': 'Fish Market', '음식점': 'Restaurant', '카페': 'Cafe', '주점': 'Pub',
   '낚시용품점': 'Tackle Shop', '미끼 · 루어 · 에기 · 원줄 · 입문 대 · 릴 · 헤드랜턴': 'Bait, lures, egi, line, starter rods, reels, headlamps',
   '밤낚시 가세요? 미끼는 새벽에 들어온 겁니다.': 'Night fishing? The bait came in this morning.',
+  // 311차 — 철물점
+  '철물점': 'Hardware Store', '철사 · 목재 · 에폭시 · 도료 · 무명천 · 목장갑': 'Wire, wood, epoxy, paint, cotton cloth, work gloves',
+  '뭐 만드시게요? 철사 · 목재는 안쪽, 도료는 계산대 옆이에요.': 'Making something? Wire and wood are in the back, paint by the counter.',
+  '뭐 만드시게요? 철사 · 목재는 안쪽이에요.': 'Making something? Wire and wood are in the back.',
   '종묘사': 'Seed & Seedling Shop', '모종 · 씨앗 · 종구 · 지주대 · 비료 · 농약': 'Seedlings, seeds, sets, stakes, fertilizer, pesticides',
   '모종은 철 봐 가며 들여요. 고추는 늦서리 지나고 심으세요.': 'Seedlings come in by the season. Plant chili after the last frost.',
   '모종은 철 봐 가며 들여요. 뭐 찾으세요?': 'Seedlings come in by the season. What are you after?',
@@ -261,7 +267,7 @@ const EN_BASE: Record<string, string> = {
   '쿨러(어창) 열기': 'Open cooler', '능력치(스탯) 패널': 'Stats panel', '활용 (요리·채비 조립)': 'Utilization (cooking · rigging)', '인벤토리 토글': 'Toggle inventory', '면허 패널 토글': 'Toggle licenses',
   '퀘스트 저널 토글': 'Toggle quest journal', '미니맵 크기 순환': 'Cycle minimap size', '조류/수심 오버레이 토글': 'Toggle current/depth overlay', '퀵슬롯 선택': 'Select quickslot',
   '팝업 닫기(LIFO) / 일시정지 메뉴': 'Close popup (LIFO) / pause menu', '1인칭 낚시 (채비 흘림)': 'First-person fishing (drift)', '우클릭': 'RMB', '챔질 (3단계에 성공률 최고)': 'Hookset (best at stage 3)',
-  '릴링 (발앞까지 감으면 채비 회수)': 'Reel (retrieve when reeled to your feet)', '좌클릭 탭': 'LMB tap', '호핑 (루어 머리 들기)': 'Hop (lift lure head)', '좌클릭 더블탭': 'LMB double-tap', '트위칭 / 저킹': 'Twitch / jerk',
+  '릴링 (발앞까지 감으면 채비 회수)': 'Reel (retrieve when reeled to your feet)', '좌클릭 탭': 'LMB tap', '호핑 (채비 살짝 들기)': 'Hop (lift the rig slightly)', '좌클릭 더블탭': 'LMB double-tap', '트위칭 / 저킹': 'Twitch / jerk',
   '채비 횡 이동 (조류 방향·세기 연동)': 'Move rig sideways (follows current)', '↑ (유지)': '↑ (hold)', '리프트 (채비 수심 상승)': 'Lift (raise rig)', '뒷줄견제 (그 지점 홀드)': 'Line hold (hold in place)',
   '밑밥 투척 (동조율)': 'Throw chum (sync)', '다시 캐스팅 (결과 화면)': 'Cast again (result screen)', '도움말 가이드': 'Help guide', '종료 (인벤→쿨러→나가기 LIFO)': 'Exit (inventory → cooler → leave)',
   '1인칭 파이팅': 'First-person fight', '릴링 (거리 좁힘)': 'Reel (close distance)', '로드 스티어 (+릴링 = 물고기 횡 견인)': 'Rod steer (+reel = pull fish sideways)', '버티기 (홀드 — 구 H)': 'Hold (was H)',
@@ -441,7 +447,7 @@ const EN_BASE: Record<string, string> = {
   '우클릭 챔질 · 좌클릭 릴링 · ←/→ 채비 횡이동(조류 연동) · ↑ 리프트 · H 뒷줄견제 · C 밑밥 · I 인벤 · F1 도움말': 'RMB hookset · LMB reel · ←/→ move rig (current) · ↑ lift · H line hold · C chum · I inventory · F1 help',
   '가이드': 'Guide', '챔질 실패': 'Hookset failed', '지금 챔질! (우클릭)': 'Set the hook! (RMB)', '미끼를 건드립니다… (1단계)': 'Nibbling… (stage 1)', '부분 섭취 중! (2단계)': 'Taking the bait! (stage 2)',
   '챔질 성공! 좌클릭 릴링 · ←/→ 로드 스티어(+릴링=견인) · ↑ 버티기 — 텐션 30~80!': 'Hooked! LMB reel · ←/→ rod steer (+reel = pull) · ↑ hold — tension 30–80!',
-  '트위칭! 루어가 튀어오릅니다': 'Twitch! The lure darts up', '제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요': 'Subdued! Reel the tired fish to your feet',
+  '트위칭! 채비가 살짝 떴다 가라앉습니다': 'Twitch! The rig hops up and settles back down', '제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요': 'Subdued! Reel the tired fish to your feet',
   '◀  ← 키 + 릴링': '◀  ← key + reel', '→ 키 + 릴링  ▶': '→ key + reel  ▶', '▲ 릴링 유지': '▲ keep reeling', '구멍찌': 'Hole float', '수평뷰 (위에서 본 평면)': 'Plan view (from above)',
   '채비 흘리는 중 — 우클릭 챔질 · ←/→ 채비이동 · H 뒷줄견제 · C 밑밥 · ↑ 리프트': 'Drifting — RMB hookset · ←/→ move rig · H line hold · C chum · ↑ lift', '수심 정보': 'Depth Info', '그만하기': 'Stop',
   '어창 (클릭해서 열기)': 'Fish hold (click to open)', '어창': 'Fish hold', '0마리': '0 fish', '밑밥 (C)': 'Chum (C)', '쿨러 없음': 'No cooler', '사용 불가': 'Unavailable', '비어있음': 'Empty',
@@ -481,7 +487,7 @@ const EN_BASE: Record<string, string> = {
   '손질 시작': 'Start Butchery', '내리기': 'Take off', '도마 — 우측 인벤토리의 생선을 드래그해서 올리세요': 'Board — drag a fish from the inventory on the right', '교환됨': 'Swapped',
   '진행 중인 회썰기를 취소하고 교체할까요? (필렛은 보존)': 'Cancel the current slicing and swap? (fillet kept)', '진행 중인 손질을 취소하고 생선을 교체할까요?': 'Cancel the current butchery and swap the fish?',
   '특대': 'XL', '대': 'L', '중': 'M', '소': 'S', '도마 사용법': 'Using the board', '헤더를 끌어 이동 · ✕ 또는 ESC로 닫기': 'Drag the header to move · ✕ or ESC to close', '사시미 만들기': 'Make Sashimi',
-  '접시에 회 조각을 담아 완성': 'Plate sashimi pieces to finish', '(접시 필요 — 식자재마트 판매)': '(needs a plate — sold at the grocery mart)', '사시미 접시가 필요합니다 — 식자재마트에서 판매합니다': 'Needs a sashimi plate — sold at the grocery mart',
+  '접시에 회 조각을 담아 완성': 'Plate sashimi pieces to finish', '(접시 필요 — 식자재마트 · 사이소 · 편의점)': '(needs a plate — grocery mart · Saiso · convenience store)', '사시미 접시가 필요합니다 — 식자재마트 · 사이소 · 편의점에서 팝니다': 'Needs a sashimi plate — sold at the grocery mart, Saiso and the convenience store',
   '불을 이용한 요리 만들기': 'Fire Cooking', '(화구와 그릇이 필요합니다)': '(needs a burner and cookware)', '불을 쓰는 요리는 아직 할 수 없습니다. 화구와 담을 그릇이 필요합니다.': 'Fire cooking needs a burner and cookware.',
   '요 리': 'Cook', '[접기]': '[Collapse]', '사시미 접시를 이곳에 드래그\n(인벤토리 · 기타 탭)': 'Drag a sashimi plate here\n(Inventory · Misc tab)', '접시 돌리기': 'Rotate plate', '사시미 완성': 'Finish Sashimi', '[접시 빼기]': '[Remove plate]',
   '해당 방위는 가득 찼습니다 — 접시를 돌리세요': 'That side is full — rotate the plate', '이미 접시가 놓여 있습니다 — [접시 빼기] 후 교체하세요': 'A plate is already placed — remove it first', '먼저 사시미 접시를 놓으세요': 'Place a sashimi plate first',
@@ -508,6 +514,7 @@ const EN_BASE: Record<string, string> = {
 
   // ── 도감 ──
   '나가기': 'Exit', '어종 도감': 'Fish Codex', '아이템 위키': 'Item Wiki', '특산': 'Specialties', '나의 조과 기록': 'My Catch Log', '이미지 없음': 'No image', '제철 연중': 'In season all year', '낚시 기록 없음': 'No catch record', '표층': 'Surface',
+  '잎을 뜯는다': 'Pluck the leaves', '뿌리를 캔다': 'Dig up the root', '새순을 꺾는다': 'Snap off the shoots',   // 314차
   '금어기 없음': 'No closed season', '주야': 'Day/Night', '출조지 필터:': 'Spot filter:', '전체': 'All', '정렬 방식:': 'Sort:', '최신순': 'Newest', '최대어순': 'Largest', '무게순': 'Heaviest', '기록된 조과 정보가 없습니다.': 'No catches recorded.',
   '이 카테고리에 등록된 품목이 없습니다.': 'No items in this category.', '조개류': 'Shellfish', '갑각류': 'Crustaceans', '극피동물': 'Echinoderms', '이매패류': 'Bivalves', '복족류': 'Gastropods',
   '도감 & 조과첩 (Angler\'s Log)': "Codex & Angler's Log", 'ESC 키 또는 상단 [나가기] 버튼을 누르면 월드로 귀환합니다.': 'Press ESC or [Exit] to return.',
@@ -591,10 +598,9 @@ const EN_EXTRA: Record<string, string> = {
   '집 앞바다': 'The sea by home',
   '저장되지 않은 진행이 있습니다 — ESC를 한 번 더 누르면 타이틀로 나갑니다':
     'You have unsaved progress — press ESC again to go to the title screen',
-  '· 오징어·한치·문어도 도마에서 손질합니다 — 복어(자격·독)와 갑오징어는 준비 중입니다':
-    '· Squid, swordtip squid and octopus can be dressed on the board too — pufferfish (licence and toxin) and cuttlefish are still in progress.',
-  '갑오징어 손질은 준비 중입니다 (무늬오징어·한치·문어·대문어는 손질할 수 있습니다)':
-    'Cuttlefish dressing is still in progress (bigfin reef squid, swordtip squid, octopus and giant octopus can be dressed)',
+  '· 오징어·한치·갑오징어·문어·장어류도 도마에서 손질합니다 — 참다랑어와 큰 방어류는 등살 · 뱃살 4덩어리로 해체합니다 · 복어(자격·독)는 준비 중입니다':
+    '· Squid, swordtip squid, cuttlefish, octopus and eels can be dressed on the board too — bluefin tuna and large amberjacks are broken down into four loins (back and belly) · pufferfish (licence and toxin) is still in progress.',
+  '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)': 'Butchering this cephalopod is coming soon (bigfin reef squid, swordtip squid, flying squid, cuttlefish, common and giant octopus can be butchered)',
   '불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': 'You warmed up by the fire — the chills have passed',
   '[상태] 불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': '[Status] You warmed up by the fire — the chills have passed',
   '새 지역': 'a new region',
@@ -1409,6 +1415,7 @@ export const EN_RULES: Rule[] = [
   [/^(.+) 선택$/, 'Select $1'], [/^추천 \((.+)\): (.+)$/, (m, tr) => `Pick (${m[1].split('·').map((x) => tr(x)).join(' · ')}): ${m[2].split(' · ').map((x) => tr(x)).join(' · ')}`], [/^조법 (.+)$/, (m, tr) => `Method ${tr(m[1])}`], [/^찌 (.+)호$/, 'Float #$1'], [/^미끼 (.+)$/, (m, tr) => `Bait ${m[1].split('·').map((x) => tr(x)).join(' · ')}`],
   [/^배합 완료 — 남은 밑밥 (\d+) \/ (\d+) \(1인칭 C 투척 1회당 (\d+) 소모\)$/, 'Mixed — chum left $1 / $2 (C throw uses $3)'],
   [/^발견 (\d+) \/ (\d+)종$/, 'Found $1 / $2 species'], [/^제철 (.+)월$/, 'Season: months $1'], [/^최대어 (.+) cm$/, 'Record $1 cm'], [/^누적 (\d+) 수$/, 'Total $1'], [/^kg당 (.+)원$/, '₩$1/kg'],
+  [/^나는 달 (.+)$/, 'In season: $1'],   // 314차 — 도감 산나물 탭
   [/^금어기 ([\d.~ ·]+)$/, 'Closed $1'], [/^금지체중 (\d+)g 이하$/, 'At or under the $1 g legal weight limit'],
   [/^금어기 (.+)월$/, 'Closed: months $1'], [/^(.+)월$/, 'months $1'], [/^(.+)에서 구매$/, 'Sold at $1'], [/^(.+) — 플레이로 입수$/, '$1 — obtained in play'],
   [/^발견 (\d+) \/ (\d+) — 취득하면 등록$/, 'Found $1 / $2 — registers when obtained'], [/^발견 (\d+) \/ (\d+)종 — 해루질·통발로 채집해 발견$/, 'Found $1 / $2 — discover by gathering/traps'],

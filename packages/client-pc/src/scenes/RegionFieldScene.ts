@@ -186,7 +186,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { RegionHud } from '../ui/RegionHud.js';
 import type { ReservedRect } from '../ui/ScreenReserve.js';
 import { StoryCinematicPanel, type CineActor, type CineDir, type CineScript } from '../ui/StoryCinematicPanel.js';
-import { CINE_M1_ICE_DROP, CINE_M1_OKSEON_STALL, CINE_M1_YEONGGEUMJEONG, CINE_N186_LEDGER, CINE_N186_REPORT, CINE_N186_WATCH } from '../data/StoryCinematics.js';
+import { CINE_M1_ICE_DROP, CINE_M1_OKSEON_STALL, CINE_M1_YEONGGEUMJEONG, CINE_N186_LEDGER, CINE_N186_REPORT, CINE_N186_WATCH, cineM1OkseonStallLate } from '../data/StoryCinematics.js';
 import { FieldEventManager } from '../ui/FieldEventManager.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
@@ -1887,6 +1887,12 @@ export class RegionFieldScene extends Phaser.Scene {
       if (/공동어시장|수협|위판|어판장|공판장|활어\s*센터/.test(poi.name ?? '')) return 'market';
       const k = poi.shopKind ?? '';
       if (k === 'convenience') return 'convenience';
+      // 311차 — 편의점 체인(게임 상호 GX24 · QU · 세븐나인 · 미니스톱)이 OSM에서 shop=general로 올라온 곳은 생활용품점이 아니라 편의점이다
+      //   (속초 general 12곳 중 11곳 — 사이소 물건(대 · 릴)을 파는 「GX24」가 생겼다)
+      if (/^(GX24|QU|세븐나인|미니스톱|이마트24|CU|GS25|세븐일레븐)/.test(poi.name ?? '')) return 'convenience';
+      // 311차 — 철물점(OSM shop=hardware · doityourself · paint · trade · 이름에 철물 · 공구 · 건재) — 전에는 생활용품점으로 묶었다
+      if (k === 'hardware' || k === 'doityourself' || k === 'paint' || k === 'trade' || k === 'building_materials'
+        || /철물|철몰|공구|건재|페인트/.test(poi.name ?? '')) return 'hardware';
       if (k === 'supermarket' || k === 'grocery' || k === 'greengrocer') return 'mart';
       // 292차 — 낚시용품점(OSM shop=fishing · 「낚시」가 든 outdoor · 게임 캡처 tackle). 전에는 fishing이 직판장이었다
       if (k === 'fishing' || k === 'tackle' || (k === 'outdoor' && /낚시|낚스|피싱|fishing|tackle/i.test(poi.name ?? ''))) return 'tackle';
@@ -1894,7 +1900,7 @@ export class RegionFieldScene extends Phaser.Scene {
       if (k === 'alcohol' || k === 'beverages' || k === 'pub') return 'pub';
       if (k === 'chemist' || k === 'medical_supply' || k === 'herbalist') return 'pharmacy';
       // 135차 — 생활용품점(사이소): Ch1 저가 장비 한 벌. 속초 실데이터 general 12 · variety_store 5
-      if (k === 'general' || k === 'variety_store' || k === 'houseware' || k === 'hardware'
+      if (k === 'general' || k === 'variety_store' || k === 'houseware'
         || k === 'department_store' || k === 'kiosk') return 'daily';
       // 238차 — 종묘사 · 화원 · 농자재(OSM shop=garden_centre · florist · agrarian · farm): 모종 · 씨앗 · 농약
       // 300차 — 손 POI `shopKind: 'nursery'`(빌릴 밭이 있는 고장의 종묘사)
@@ -1996,7 +2002,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (bk === 'market' && interiorTemplateOf('market', name) === 'auction') return { w: 4, h: 3, kind: 'industrial', levels: 1 };
     const size: Record<BuildingKind, [number, number]> = {
       convenience: [2, 2], mart: [3, 2], market: [3, 2], restaurant: [3, 2], cafe: [2, 2], pub: [2, 2], pharmacy: [2, 2], daily: [3, 2], nursery: [3, 2],
-      mill: [2, 2], tackle: [3, 2], processor: [3, 2],
+      mill: [2, 2], tackle: [3, 2], processor: [3, 2], hardware: [2, 2],
     };
     const [w, hh] = size[bk];
     return { w, h: hh, kind: 'commercial', levels: bk === 'mart' || bk === 'daily' || bk === 'pharmacy' ? 2 : (h < 0.5 ? 1 : 2) };
@@ -2522,7 +2528,7 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!this.textures.exists(base)) {
       const col: Record<BuildingKind, number> = {
         convenience: 0x2f8a57, mart: 0xc8662a, market: 0x2a6aa8, restaurant: 0xa8402a,
-        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a, tackle: 0x2a7ab8, processor: 0x9a6a3a,
+        cafe: 0x6a4a2a, pub: 0x7a2a3a, pharmacy: 0x2a8a7a, daily: 0xb83a4a, nursery: 0x4a8a3a, mill: 0x8a5a2a, tackle: 0x2a7ab8, processor: 0x9a6a3a, hardware: 0x5a6a7a,
       };
       const g = this.add.graphics();
       g.fillStyle(0x3a2616, 1); g.fillRect(10, 18, 4, 12);            // 기둥
@@ -6010,6 +6016,11 @@ export class RegionFieldScene extends Phaser.Scene {
     shifting?: boolean;
     /** 291차 — 출장 나온 사람(이 지역 이야기 때문에 와 있다 — 부른 편 id). 이야기가 끝나면 돌아간다 */
     guest?: string;
+    /**
+     * 312차 — 장면이 밖으로 불러낸 사람을 일과가 다시 들여보내지 않는 동안 참(밤에 가게 문에서 나와 나를 마주친 정옥선 —
+     * 그 자리에서 말을 걸 때까지 밖에 있다). 거짓이 되면 지우고 평소 일과로 돌아간다.
+     */
+    holdOut?: () => boolean;
   }[] = [];
   /** 214차 — 일과 재평가 누적(ms) */
   private routineAt = 0;
@@ -6203,12 +6214,110 @@ export class RegionFieldScene extends Phaser.Scene {
   /** M1-01 — 장소에 도착한 뒤 실제 속초 필드에서 재생되는 개인 독백 연출. */
   private startSokchoArrivalCinematic(placeKey: string): void {
     if (!StoryStore.isActive('M1-01')) return;
-    const script = placeKey === 'poi:yeonggeumjeong' ? CINE_M1_YEONGGEUMJEONG : CINE_M1_OKSEON_STALL;
-    this.playCinematic(script, { player: 'player', okseon: 'okseon' }, () => {
+    const done = (): void => {
       this.hud?.pushLog(placeKey === 'poi:yeonggeumjeong'
         ? '[할 일] 동명항 방파제 쪽 좌판 거리로 이동한다'
         : '[할 일] 정옥선 씨에게 말을 건다');
-    });
+    };
+    if (placeKey === 'poi:yeonggeumjeong') { this.playCinematic(CINE_M1_YEONGGEUMJEONG, { player: 'player' }, done); return; }
+    // 312차 — 할머니가 좌판에 없으면(밤 · 일과 밖 — 집이 200m 넘게 떨어져 있다) 가까운 가게 문에서 나와 나를 마주친다
+    //   (사용자 「200m도 더 멀리있는 정옥선이 '나를 지켜보고 있다'는 말이 안되지 … 근처 건물에서 나와서 마주친 후 처다보는 것으로」)
+    const late = this.cineEntrance('okseon');
+    if (late) {
+      const actor = this.cineActor('okseon');
+      if (actor) {
+        actor.keepPosition = true;   // 나와서 선 자리가 진짜다(장면이 끝나도 문 앞으로 되돌리지 않는다)
+        const settle = (): void => {
+          // ESC로 건너뛰면 나오기 · 걷기 단계가 돌지 않는다 — 걸어왔을 자리에 보이게 세운다(투명한 채 문 앞에 남지 않게)
+          const n = this.storyNpcs.find((s) => s.def.npcId === 'okseon');
+          if (n) {
+            const end = late.walk[late.walk.length - 1];
+            if (end && n.ai && (n.ai.walker.col !== end.tx || n.ai.walker.row !== end.ty)) n.ai.relocate(end.tx, end.ty);
+            n.x = n.ai?.x ?? n.x; n.y = n.ai?.y ?? n.y;
+            n.actor.setVisible(true).setAlpha(1);
+            n.label.setVisible(true).setAlpha(1).setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP);
+            this.placeNpcMark(n);
+          }
+          done();
+        };
+        if (this.playCinematic(cineM1OkseonStallLate(late.walk), { player: 'player' }, settle, { okseon: actor })) return;
+        settle();   // 장면을 못 열었으면(다른 장면 중) 그 자리에 바로 세운다
+        return;
+      }
+    }
+    this.playCinematic(CINE_M1_OKSEON_STALL, { player: 'player', okseon: 'okseon' }, done);
+  }
+
+  /** 312차 — 장면 인물이 「그 자리」에 있다고 보는 거리(타일 · 화면 반 너비 남짓) */
+  private static readonly CINE_PRESENT_TILES = 12;
+
+  /**
+   * 312차 — 장면이 부른 인물이 자리에 없을 때(집 · 일과 밖 · 화면 밖 멀리) 가까운 가게 문 앞에 세우고, 나에게 두 칸 앞까지 걸어올 길을 돌려준다.
+   * 인물은 투명하게 문 앞에 서고(각본의 `fade`가 「문을 열고 나온다」) 일과가 장면 뒤 다시 들여보내지 않는다(`holdOut` — 그 이야기가 이어지는 동안).
+   * 자리에 있으면(가까이 · 밖) null — 원래 각본 그대로. 가까운 문(걸음 3 ~ 22칸)이 없으면 null(원래 각본 — 문 앞 214차 방식).
+   * 길 = 내 칸에서 넓이 우선(±16칸 · 걸을 수 있는 칸)으로 잰 뒤 문에서 거슬러 와 나와 체비쇼프 2칸이 되는 곳에서 멈춘다 — 꺾이는 칸만(`moveTo`는 한 축씩 걷는다).
+   */
+  private cineEntrance(npcId: string): { walk: { tx: number; ty: number }[] } | null {
+    const n = this.storyNpcs.find((s) => s.def.npcId === npcId);
+    if (!n) return null;
+    const px = this.playerBody.x, py = this.playerBody.y + this.PLAYER_FOOT_OFFSET;
+    if (!n.atHome && !n.shifting && Math.hypot(n.x - px, n.y - py) <= RegionFieldScene.CINE_PRESENT_TILES * TR) return null;
+    const pc = Math.floor(px / TR), pr = Math.floor(py / TR);
+    const R = 16, W = R * 2 + 1;
+    const idx = (c: number, r: number): number => (r - pr + R) * W + (c - pc + R);
+    const inBox = (c: number, r: number): boolean => Math.abs(c - pc) <= R && Math.abs(r - pr) <= R;
+    const ok = (c: number, r: number): boolean => c >= 1 && r >= 1 && c <= this.cols - 2 && r <= this.rows - 2 && this.isWalkable(c, r);
+    const dist = new Int16Array(W * W).fill(-1), parent = new Int32Array(W * W).fill(-1);
+    if (!ok(pc, pr)) return null;
+    dist[idx(pc, pr)] = 0;
+    const q: [number, number][] = [[pc, pr]];
+    for (let h = 0; h < q.length; h++) {
+      const [c, r] = q[h];
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nc = c + dc, nr = r + dr;
+        if (!inBox(nc, nr) || dist[idx(nc, nr)] >= 0 || !ok(nc, nr)) continue;
+        dist[idx(nc, nr)] = dist[idx(c, r)] + 1; parent[idx(nc, nr)] = idx(c, r);
+        q.push([nc, nr]);
+      }
+    }
+    let best: { c: number; r: number; d: number } | null = null;
+    for (const b of this.buildings) {
+      if (b.stall) continue;   // 노천 좌판은 건물이 아니다
+      const s = this.nearestStandable(Math.floor(b.x / TR), Math.floor((b.y - 1) / TR));
+      if (!inBox(s.col, s.row)) continue;
+      const d = dist[idx(s.col, s.row)];
+      if (d < 3 || d > 22) continue;
+      if (!best || d < best.d) best = { c: s.col, r: s.row, d };
+    }
+    if (!best) return null;
+    // 문 → 나: 부모를 따라 걷다 나와 2칸(체비쇼프)이 되면 멈춘다
+    const tiles: { c: number; r: number }[] = [];
+    let k = idx(best.c, best.r);
+    for (;;) {
+      const c = (k % W) + pc - R, r = Math.floor(k / W) + pr - R;
+      tiles.push({ c, r });
+      if (Math.max(Math.abs(c - pc), Math.abs(r - pr)) <= 2) break;
+      k = parent[k];
+      if (k < 0) break;
+    }
+    const walk: { tx: number; ty: number }[] = [];
+    for (let i = 1; i < tiles.length; i++) {
+      const a = tiles[i - 1], b = tiles[i], c = tiles[i + 1];
+      const turn = !c || (c.c - b.c) !== (b.c - a.c) || (c.r - b.r) !== (b.r - a.r);
+      if (turn) walk.push({ tx: b.c, ty: b.r });
+    }
+    // 문 앞에 세운다 — 집에 있었으면 밖으로(창빛 끔) · 보이지 않게(각본이 문을 열고 나오게 한다)
+    n.atHome = false;
+    n.shifting = false;
+    n.doorLight?.setVisible(false);
+    n.ai?.relocate(best.c, best.r);
+    n.x = n.ai?.x ?? best.c * TR + TR / 2; n.y = n.ai?.y ?? best.r * TR + TR;
+    n.actor.setVisible(true).setAlpha(0);
+    n.label.setVisible(true).setAlpha(0).setPosition(n.x, n.y + this.charTopFromFeet - RegionFieldScene.LABEL_GAP);
+    this.placeNpcMark(n);
+    const qid = StoryStore.isActive('M1-01') ? 'M1-01' : null;
+    n.holdOut = () => !!qid && StoryStore.isActive(qid) && this.region === 'gangwon_sokcho';
+    return { walk };
   }
 
   private startStoryTrigger(t: StoryFieldTrigger): void {
@@ -6610,6 +6719,7 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const n of this.storyNpcs) {
       if (!n.door || !n.ai || n.shifting) continue;
       if (this.interiorAt?.npcId === n.def.npcId) continue;   // 216차 — 손님이 집 안에 있는 동안은 집에 머문다
+      if (n.holdOut) { if (n.holdOut()) continue; n.holdOut = undefined; }   // 312차 — 장면이 불러낸 사람(말을 걸 때까지 밖에)
       const w = npcWhereabouts(routineOfNpc(n.def.npcId), min, wd);
       const home = w.where === 'home';
       n.homeReason = w.reason;
@@ -6731,7 +6841,9 @@ export class RegionFieldScene extends Phaser.Scene {
     for (const n of this.storyNpcs) {
       if (!n.ai || n.atHome) continue;
       if (n.def.npcId === stagePartner) continue;   // 286차 — 대본 장면 중인 상대는 무대가 움직인다(돌아서기 · 끄덕이기)
-      const hold = !this.cinematicActive && (this.nearNpc === n.def || (this.popupStack.length > 0 && Math.hypot(n.x - px, n.y - 12 - py) < 64));
+      const hold = !this.cinematicActive && (this.nearNpc === n.def || (this.popupStack.length > 0 && Math.hypot(n.x - px, n.y - 12 - py) < 64)
+        // 312차 — 장면이 불러낸 사람은 마주친 자리에 서서 나를 본다(4칸 안 — 멀어지면 평소대로 좌판으로)
+        || (!!n.holdOut && Math.hypot(n.x - px, n.y - 12 - py) < 4 * TR));
       n.ai.update(delta, { paused: this.cinematicActive, hold, playerX: px, playerY: py });
       if (this.cinematicActive) continue;   // 컷씬이 이미지·이름표를 직접 옮긴다
       if (n.x === n.ai.x && n.y === n.ai.y) continue;
@@ -6746,7 +6858,7 @@ export class RegionFieldScene extends Phaser.Scene {
   /** 상점 카테고리 → 미니맵 아이콘 키 */
   private static readonly MINI_SHOP_ICON: Record<BuildingKind, string> = {
     convenience: 'mm_conv', mart: 'mm_mart', market: 'mm_market', restaurant: 'mm_food',
-    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill', tackle: 'mm_tackle', processor: 'mm_mill',
+    cafe: 'mm_cafe', pub: 'mm_pub', pharmacy: 'mm_pharm', daily: 'mm_daily', nursery: 'mm_nursery', mill: 'mm_mill', tackle: 'mm_tackle', processor: 'mm_mill', hardware: 'mm_hardware',
   };
 
   /** 상점 POI 마커 (create 1회 — 위치·종류가 고정) */

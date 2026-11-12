@@ -29,6 +29,7 @@ import {
   isBaitItem, isLureItem, isWeightSinker, isInstanceItem,
   PlateWipData, plateWipProgress, worstCondition, refreshCondition,
 } from '../store/InventoryStore.js';
+import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { partKindOf, baitKeyOf, isPackItem } from '../store/RigParts.js';
 import { clampTextWidth, fitTextHeight } from './TextFit.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
@@ -47,6 +48,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { CONDITION_MARK, cv, drawMark, shapeCuesOn } from './ColorAssist.js';
 import { ButcheryPanel } from './ButcheryPanel.js';
 import { SashimiPanel } from './SashimiPanel.js';
+import { ensureSashimiSpeciesArt, sashimiSpeciesPieceKey } from './SashimiSpeciesArt.js';
 import { GuidePanel } from './GuidePanel.js';
 import { ConfirmDialog } from './Dialogs.js';
 import { makeFishPreview } from './FishTemplateRenderer.js';
@@ -157,6 +159,8 @@ export class UtilizationPanel extends DraggablePanel {
   /** 회 뜨기 손질 자식 팝업 */
   private butcheryPanel?: ButcheryPanel;
   private sashimiPanel?: SashimiPanel;
+  /** 316 — 어종 회썰기 그림을 싣는 중(두 번 눌러 창이 둘 열리지 않게) */
+  private sashimiLoading = false;
 
   // ── 사시미 만들기 (접시 플레이팅 — 2026-08-03 사용자 도식) ──
   /** 도마 아래 서브 영역 상태 — 'sashimi' = 사시미 만들기 확장 */
@@ -1305,8 +1309,14 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_engwskin_');
   }
 
+  /** 317 — 껍질 붙은 해체 덩어리(참다랑어 · 대방어급 등살 · 뱃살) — 도마에 올리면 **그 덩어리 다듬기부터** */
+  private isLoinBlock(item: InvItem): boolean {
+    return item.subCategory === '손질 필렛' && item.id.startsWith('inv_loinskin_');
+  }
+
   /** 도마 재장착 가능한 중간 산출물 → 시작 섹션 */
   private resumeSectionOf(item: InvItem): string | undefined {
+    if (this.isLoinBlock(item)) return 'sec_loin_trim';
     if (this.isRibFillet(item)) return 'sec_rib';
     if (this.isPinFillet(item)) return 'sec_pin';
     if (this.isEngwFillet(item)) return 'sec_engawa';
@@ -1349,6 +1359,8 @@ export class UtilizationPanel extends DraggablePanel {
   }
 
   private dropFishOnBoard(item: InvItem): void {
+    // 318차 — 첫날 판매 체험용 오징어(속초 직판장에서 팔 것)는 도마에 올리지 않는다(U가 첫날에도 열린다)
+    if (prologueProtects(item.id)) { this.flashBoardToast(PROLOGUE_PROTECT_MSG, true); return; }
     // 회 조각 = 도마 스테이징 (썰린 조각 진열 — 접시 드래그의 출발점)
     if (this.isSashimiPiece(item)) {
       playSfx('item_move');
@@ -1501,11 +1513,11 @@ export class UtilizationPanel extends DraggablePanel {
     });
     const body = this.scene.add.text(18, 52, [
       '· 생선을 도마에 올리고 [손질 시작]으로 회를 뜹니다 (넣기·빼기·교환 = 드래그)',
-      '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리 = 다섯장뜨기(4~5필렛)',
+      '· 원형어 = 삼면뜨기(양살 2필렛) / 광어·도다리·개서대 = 다섯장뜨기(4~5필렛) / 꽁치 같은 작은 생선 = 비늘 → 머리·내장 → 삼장뜨기 → 잔뼈(핀셋)',
       '· 순수 필렛을 올리면 [일반 회뜨기]/[고급 사시미 뜨기(야나기바)]로 회를 썹니다',
       '· 썰어진 회 조각은 아래 [사시미 만들기] 접시에 담아 완성 (모듬/단품)',
-      // 188차 — 오징어·한치·문어 손질은 090~098차에 들어왔다. 아직 안 된 것은 복어와 갑오징어뿐(AG ⑤f)
-      '· 오징어·한치·문어도 도마에서 손질합니다 — 복어(자격·독)와 갑오징어는 준비 중입니다',
+      // 188차 — 오징어·한치·문어 손질은 090~098차에 들어왔다 · 313 — 갑오징어 · 315 장어류 · 317 참다랑어 · 큰 방어류 해체 · 아직 = 복어
+      '· 오징어·한치·갑오징어·문어·장어류도 도마에서 손질합니다 — 참다랑어와 큰 방어류는 등살 · 뱃살 4덩어리로 해체합니다 · 복어(자격·독)는 준비 중입니다',
       '· 신선도가 높을수록 회 등급이 오릅니다 (활어회는 활어 상태에서만 특 가능)',
     ].join('\n'), {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#9fc0d4',
@@ -1566,9 +1578,9 @@ export class UtilizationPanel extends DraggablePanel {
       hit.on('pointerdown', onClick);
       this.bodyContainer.add([g, t1, t2, hit]);
     };
-    mkBox(bx, halfW, '사시미 만들기', hasPlate ? '접시에 회 조각을 담아 완성' : '(접시 필요 — 식자재마트 판매)', hasPlate,
+    mkBox(bx, halfW, '사시미 만들기', hasPlate ? '접시에 회 조각을 담아 완성' : '(접시 필요 — 식자재마트 · 사이소 · 편의점)', hasPlate,
       () => {
-        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트에서 판매합니다', true); return; }
+        if (!hasPlate) { this.flashBoardToast('사시미 접시가 필요합니다 — 식자재마트 · 사이소 · 편의점에서 팝니다', true); return; }
         this.animateSashimiExpand(bx, by, bw, bh, halfW);
       });
     // 154차 — 불요리는 화구 앞에서 한다(설치한 화구 [F] · 집 주방 [F]). 이 박스는 안내만.
@@ -2002,7 +2014,7 @@ export class UtilizationPanel extends DraggablePanel {
     const fam = butcherFamilyOf(item.speciesId ?? '');
     // 문어 숙회 한 점은 전용 실사 조각 (098차) — 어류 fam 폴백(bream 슬라이스)을 타면 안 된다
     const texKey = item.speciesId === 'octopus' || item.speciesId === 'giant_octopus'
-      ? 'sashimi_piece_octopus' : `sashimi_piece_${fam}`;
+      ? 'sashimi_piece_octopus' : sashimiSpeciesPieceKey(this.scene, item.speciesId) ?? `sashimi_piece_${fam}`;
     const hasTex = this.scene.textures.exists(texKey);
     const n = Math.min(item.qty, 16);
     const cols = 8;
@@ -2169,6 +2181,7 @@ export class UtilizationPanel extends DraggablePanel {
         : selItem && this.resumeSectionOf(selItem) ? (this.isRibFillet(selItem) ? '갈빗대 제거부터 이어서 손질'
           : this.isPinFillet(selItem) ? '지아이뼈 분리부터 이어서 손질'
           : this.isEngwFillet(selItem) ? '엔가와 분리부터 이어서 손질'
+          : this.isLoinBlock(selItem) ? '혈합육 · 껍질 · 사쿠 나누기부터 이어서 손질'
           : '박피부터 이어서 손질')
         : selFam === 'finfish' || selFam === 'cephalopod'
           ? '도마에 올려 손질할 수 있다'
@@ -2668,6 +2681,17 @@ export class UtilizationPanel extends DraggablePanel {
 
   /** 회썰기(사시미) 미니게임 열기 — 순수 필렛 + 모드 (버튼 게이트는 renderCooking이 담당) */
   private openSashimi(fillet: InvItem, mode: SashimiMode): void {
+    if (this.sashimiPanel || this.butcheryPanel || this.sashimiLoading) return;
+    // 316 — 어종 회썰기 그림(탑뷰 · 측면)을 먼저 싣는다(부팅에 싣지 않는다 · 못 실으면 어종군 그림으로 연다)
+    this.sashimiLoading = true;
+    void ensureSashimiSpeciesArt(this.scene, fillet.speciesId).then(() => {
+      this.sashimiLoading = false;
+      if (!this.scene || !this.active) return;   // 싣는 사이에 창이 닫혔다
+      this.openSashimiNow(fillet, mode);
+    });
+  }
+
+  private openSashimiNow(fillet: InvItem, mode: SashimiMode): void {
     if (this.sashimiPanel || this.butcheryPanel) return;
     this.sashimiPanel = new SashimiPanel(this.scene, fillet, mode, {
       onClose: () => {

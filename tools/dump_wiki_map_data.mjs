@@ -50,12 +50,19 @@ const kindOf = (poi) => {
     if (/공동어시장|수협|위판|어판장|공판장|활어\\s*센터/.test(poi.name ?? '')) return 'market';
     const k = poi.shopKind ?? '';
     if (k === 'convenience') return 'convenience';
+    // 311차 — 씬(RegionFieldScene.poiBuildingKind)과 맞춤: 편의점 체인 · 철물점 · 낚시용품점(292) · 종묘사 손 POI(300) · 가공장(295) · 방앗간(284)
+    if (/^(GX24|QU|세븐나인|미니스톱|이마트24|CU|GS25|세븐일레븐)/.test(poi.name ?? '')) return 'convenience';
+    if (k === 'hardware' || k === 'doityourself' || k === 'paint' || k === 'trade' || k === 'building_materials'
+      || /철물|철몰|공구|건재|페인트/.test(poi.name ?? '')) return 'hardware';
     if (k === 'supermarket' || k === 'grocery' || k === 'greengrocer') return 'mart';
-    if (k === 'seafood' || k === 'fishery' || k === 'fishing') return 'market';
+    if (k === 'fishing' || k === 'tackle' || (k === 'outdoor' && /낚시|낚스|피싱|fishing|tackle/i.test(poi.name ?? ''))) return 'tackle';
+    if (k === 'seafood' || k === 'fishery') return 'market';
     if (k === 'alcohol' || k === 'beverages' || k === 'pub') return 'pub';
     if (k === 'chemist' || k === 'medical_supply' || k === 'herbalist') return 'pharmacy';
-    if (k === 'general' || k === 'variety_store' || k === 'houseware' || k === 'hardware' || k === 'department_store' || k === 'kiosk') return 'daily';
-    if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm') return 'nursery';
+    if (k === 'general' || k === 'variety_store' || k === 'houseware' || k === 'department_store' || k === 'kiosk') return 'daily';
+    if (k === 'garden_centre' || k === 'florist' || k === 'agrarian' || k === 'farm' || k === 'nursery') return 'nursery';
+    if (k === 'processor' || /덕장|가공장|장아찌|순대집|건조장/.test(poi.name ?? '')) return 'processor';
+    if (k === 'mill' || /방앗간|기름집/.test(poi.name ?? '')) return 'mill';
     return null;
   }
   return null;

@@ -1,0 +1,12 @@
+[
+ {
+  "type": "shop",
+  "shopKind": "hardware",
+  "name": "용호철물",
+  "nameEn": "Yongho Hardware",
+  "tx": 371,
+  "ty": 258,
+  "osmId": -9049,
+  "src": "manual"
+ }
+]
