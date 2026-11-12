@@ -5,7 +5,7 @@
 | **날짜** | 2026-11-12 |
 | **시스템** | `손질` · `낚시` · `경제 데이터` · `도감 · 위키` · `에셋` |
 | **트리거** | 사용자 첨부(`captures.json` · `log.jsonl`) + 요구 둘 |
-| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — `7afe3a4`(확정 3종) · 나머지는 §8 |
+| **커밋** | 작업 브랜치 `claude/project-review-task-planning-yopbck` — `7afe3a4`(확정 3종) · `ed4979b`(모비늘 · 새 어종 · 문서) |
 | **빌드·타입체크** | §5 |
 
 ---
@@ -121,4 +121,6 @@
 - [x] 스킬 `add-species`(그림 대기 · 드문 어종 · 금어기 지역 예외) · `f9-guide-coords`(받은 확정분 합치기 · 모비늘 선)
 - [x] 아티팩트 4개 — 남은 과업 설계 [Version 73](https://claude.ai/artifact/9o9DgLfRi7q1USjMDoBWh4) · 구현 라이브러리 [72](https://claude.ai/artifact/1UqPfahu3yZZ7ByDbZdge5) ·
   채비 모딩 순서도 [65](https://claude.ai/artifact/GGaW2dw9JsrxhDqrhDhLK1)(「322차 기준」 줄만) · 위키 [125](https://claude.ai/artifact/LjRbKC298biFPzgZdfXB3c)(헤드리스 10 / 10 · 공정 시트 3장)
-- [x] main 반영 · 118차 배포
+- [x] main 반영 `ed4979b`(빨리 감기) · **118차 배포** gh-pages `2a64dd7`(Actions 「테스트 배포」 47번째 실행 — 320 ~ 322 포함)
+  - 배포본 점검(gh-pages를 로컬 4173으로): 기동 11.4초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 소스맵 0 · 정적 2,237 · `public/` 2,234개 바이트 같음
+  - 번들: `scute_base` · `scute_flip` · 「모비늘 제거」 · `gizzard_shad` · `sawedged_perch` · 확정 시각 둘(전갱이 · 감성돔) · `trimsp_side_` · `closedSeasonExemptRegions`
