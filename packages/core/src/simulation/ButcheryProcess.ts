@@ -318,7 +318,7 @@ const remapPath = (path: CutPoint[], m: GuideFrameRemap | undefined): CutPoint[]
  * 필렛 뷰(갈빗대 · 지아이뼈 · 박피)는 316부터 어종 필렛 그림 자리로 옮긴다(`FILLET_VIEW_STAGES` · `filletFrames`).
  */
 const BODY_GUIDE_STAGES: ReadonlySet<string> = new Set([
-  'ikejime', 'bleed_cut', 'scale_base', 'scale_flip', 'head_base', 'head_flip', 'finectomy', 'tail_grip', 'tail_grip_b',
+  'ikejime', 'bleed_cut', 'scale_base', 'scale_flip', 'scute_base', 'scute_flip', 'head_base', 'head_flip', 'finectomy', 'tail_grip', 'tail_grip_b',
   'flat_head_scut', 'flat_belly_center', 'flat_back_center',
   ...(['belly', 'back'] as const).flatMap((sd) => (['up', 'dn'] as const).flatMap((h) =>
     ['score', 'sep1', 'sep2'].map((k) => `flat_${sd}_${h}_${k}`))),
@@ -407,7 +407,7 @@ export function applyGuideOverrides(
   const pick = (id: string): ButcheryGuideOverride | undefined =>
     live?.[speciesId]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[speciesId]?.[id]
     ?? (fam ? live?.[fam]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[fam]?.[id] : undefined);
-  return stages.map((st) => {
+  const out = stages.map((st) => {
     const o = pick(st.id);
     if (!o) return st;
     // 「군 전체 확정」(familyFrame) 좌표는 어종군 그림 자리 — 온마리 선 · 필렛 뷰(316)를 이 어종 그림 자리로 옮긴다
@@ -432,6 +432,14 @@ export function applyGuideOverrides(
     }
     return next;
   });
+  // 322 — 모비늘 **뒷면** 선을 따로 확정하지 않았으면 확정한 앞면 선의 좌우 대칭을 쓴다(앞면만 맞추면 뒷면이 따라온다)
+  if (pick('scute_base') && !pick('scute_flip')) {
+    const a = out.find((st) => st.id === 'scute_base')?.cut?.guidePath;
+    const bi = out.findIndex((st) => st.id === 'scute_flip');
+    const b = bi >= 0 ? out[bi] : undefined;
+    if (a && b?.cut) out[bi] = { ...b, cut: { ...b.cut, guidePath: mirrorPathX(a) } };
+  }
+  return out;
 }
 
 /** 어종군별 가이드 좌표 세트 (전부 dev F9 실측 — 도마 rect 정규화) */
@@ -446,6 +454,12 @@ interface GuideCoordSet {
   finectomy: [CutPoint[], CutPoint[], CutPoint[]];
   tailA: CutPoint[];
   tailB: CutPoint[];
+  /**
+   * 322 — 모비늘 제거 선(앞면 — 꼬리 자루에서 머리 쪽으로 옆줄을 따라). 뒷면은 좌우 대칭(`scuteFlip`이 없으면).
+   * 모비늘이 있는 어종(`hasScutes`)에서만 쓴다 — 어종군 세트에 없으면 방어류 세트의 선을 옮겨 쓴다.
+   */
+  scuteBase?: CutPoint[];
+  scuteFlip?: CutPoint[];
 }
 
 const GUIDE_COORDS: Record<'bream' | 'amberjack', GuideCoordSet> = {
@@ -510,8 +524,19 @@ const GUIDE_COORDS: Record<'bream' | 'amberjack', GuideCoordSet> = {
     ],
     tailA: [{ x: 0.756, y: 0.489 }, { x: 0.755, y: 0.643 }],
     tailB: [{ x: 0.247, y: 0.464 }, { x: 0.245, y: 0.651 }],
+    // 322 — 모비늘 줄(전갱이 그림에서 잰 옆줄 뒤쪽 — 꼬리 자루 → 몸 가운데를 지나 옆줄이 휘어 오르는 데까지).
+    //  전갱이 그림 rect 정규화 (0.855, 0.492) → (0.40, 0.385)를 어종군 대표 그림(잿방어) 자리로 옮긴 값이라
+    //  `guideFrame`으로 옮기면 전갱이 그림의 그 자리로 돌아간다. 다듬기는 F9 [확정].
+    scuteBase: [
+      { x: 0.825, y: 0.493 }, { x: 0.756, y: 0.485 }, { x: 0.683, y: 0.477 }, { x: 0.610, y: 0.465 },
+      { x: 0.546, y: 0.446 }, { x: 0.473, y: 0.420 }, { x: 0.409, y: 0.404 },
+    ],
   },
 };
+
+/** 322 — 뒷면(FLIP) 선 = 앞면 선의 좌우 대칭(그림 rect가 도마 가운데 대칭이라 도마 좌표에서 1 − x) */
+const mirrorPathX = (path: CutPoint[]): CutPoint[] =>
+  path.map((p) => ({ x: Math.round((1 - p.x) * 1000) / 1000, y: p.y }));
 
 /**
  * 313 — **어종별 유도선 실측**(dev F9 — 그 어종 그림 위에서 잰 도마 정규화 좌표).
@@ -539,6 +564,11 @@ function resolveGuideSet(speciesId: string, m: GuideFrameRemap | undefined): Gui
     ],
     tailA: own.tailA ?? remapPath(base.tailA, m),
     tailB: own.tailB ?? remapPath(base.tailB, m),
+    ...(() => {
+      // 322 — 모비늘 선: 어종 실측 → 어종군 세트(없으면 방어류 세트)를 그림 자리로 · 뒷면은 앞면의 좌우 대칭
+      const sb = own.scuteBase ?? remapPath(base.scuteBase ?? GUIDE_COORDS.amberjack.scuteBase ?? [], m);
+      return { scuteBase: sb, scuteFlip: own.scuteFlip ?? mirrorPathX(sb) };
+    })(),
   };
 }
 
@@ -871,6 +901,22 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     stages.push({
       id: 'scale_wash', label: '세척', orientation: 'FLIP', primitive: 'wash',
       guide: '비늘 부스러기를 씻어내세요',
+    });
+  }
+
+  // 3b. 322 — **모비늘 제거**(전갱이류 `hasScutes` — 사용자 「밑손질 단계에서 모비늘 제거 과정을 하나 더」).
+  //  옆줄 뒤쪽의 딱딱한 방패비늘 줄은 비늘치기로 안 벗겨진다 — 칼을 눕혀 꼬리 자루에서 머리 쪽으로 얇게 저민다(양면 한 번씩).
+  //  비늘이 없는 전갱이류가 생겨도 이 단계는 따로다(`hasScales`와 무관).
+  if (profile.hasScutes && G.scuteBase && G.scuteBase.length >= 2 && G.scuteFlip) {
+    stages.push({
+      id: 'scute_base', label: '모비늘 제거 (앞면)', orientation: 'BASE', primitive: 'guided_cut',
+      guide: '칼을 눕혀 꼬리 자루에서 머리 쪽으로, 옆줄의 딱딱한 모비늘을 얇게 저며 내세요',
+      cut: cut('scute_base', 'BASE', G.scuteBase, { tolerance: 0.07 }),
+    });
+    stages.push({
+      id: 'scute_flip', label: '모비늘 제거 (뒷면)', orientation: 'FLIP', primitive: 'guided_cut',
+      guide: '뒤집어 반대면의 모비늘도 꼬리 자루에서 머리 쪽으로 저며 내세요',
+      cut: cut('scute_flip', 'FLIP', G.scuteFlip, { tolerance: 0.07 }),
     });
   }
 

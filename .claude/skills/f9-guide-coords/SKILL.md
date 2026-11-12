@@ -68,6 +68,12 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 12. **다른 PC의 확정분을 main과 합칠 때**(321) — dev 서버 [확정]은 `captures.json` · `log.jsonl` · `ButcheryGuideOverrides.ts`를 고친다(커밋 전 변경).
    그대로 `git pull`하면 멈춘다 → `git stash` → `git pull origin main` → `git stash pop` → `node tools/apply_f9_captures.cjs`(표 다시 굽기).
    `ButcheryGuideOverrides.ts`에 충돌 표시가 남아도 마지막 명령이 통째로 다시 쓴다. `captures.json`이 충돌하면 그 파일을 사용자에게서 받아 손으로 합친다.
+13. **첨부로 받은 확정분은 `node tools/f9_merge_captures.cjs <captures.json> [log.jsonl]`로 합친다**(322) — 손으로 덮어쓰지 않는다.
+   단계마다 늦은 시각이 이기고, 군 공통값(`@bream` · `@amberjack`)은 그대로 두며, **그림이 바뀌기 전에 그은 선은 버린다**(`STALE` 표 — 단계 id → 그림이 바뀐 커밋 시각).
+   사용자 PC의 [확정]은 그 PC가 받아 둔 코드의 화면에서 그은 선이다 — 기록 시각(`at`)과 그 뷰의 그림을 바꾼 커밋 시각을 먼저 견준다(322 — 13:28 ~ 13:54Z 확정 · 321 커밋 14:51Z → 지아이뼈 선 6개 버림).
+   그림을 바꾸는 차수에는 `STALE` 표에 한 줄을 더한다. 합친 뒤 `ButcheryFlow322.test.ts`(확정 표의 어종마다 확정 선 그대로 완주)를 돌린다.
+14. **모비늘 선**(322 — 전갱이류 `scute_base` · `scute_flip`) — 온마리 그림 위 선이라 「군 확정」은 어종 그림 자리로 옮겨진다. 앞면만 확정하면 뒷면은 그 좌우 대칭이다(뒷면을 따로 확정하면 그 값).
+   저민 뒤 벗겨지는 띠도 확정한 선을 따른다.
 8. **해체(참다랑어 · 대방어급) 측면 선은 표에 없다**(317) — 몸통 열 실루엣에서 굽는다(`LoinArt.loinSideGeometry`). 머리 · 지느러미 [확정] 선을 따라 몸통 열이 바뀌면 측면 선도 같이 옮겨진다.
 
 ## 다중 선·스윕 규칙

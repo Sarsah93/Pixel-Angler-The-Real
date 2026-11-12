@@ -84,8 +84,9 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     scaleToughness: 0.2, anusRatio: 0.5, skinToughness: 0.4, bloodAmount: 0.8, filletCount: 2,
     baseYieldRate: 0.50, sliceGramBase: 12, minFilletLengthCm: 25, bodyRatio: 0.30, filletShape: 'loin_thick',
   },
+  // 322 — 전갱이류는 옆줄에 모비늘이 있다(`hasScutes` — 밑손질 「모비늘 제거」). 새 전갱이류(줄전갱이 · 갈전갱이 · 가라지)도 같은 표시를 단다
   horse_mackerel: {
-    speciesId: 'horse_mackerel', bodyShape: 'round', hasScales: true,
+    speciesId: 'horse_mackerel', bodyShape: 'round', hasScales: true, hasScutes: true,
     scaleToughness: 0.35, anusRatio: 0.5, skinToughness: 0.42, bloodAmount: 0.7, filletCount: 2,
     baseYieldRate: 0.42, sliceGramBase: 9, minFilletLengthCm: 15, bodyRatio: 0.32, filletShape: 'small',
   },
@@ -151,6 +152,59 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     scaleToughness: 0.25, anusRatio: 0.48, skinToughness: 0.32, bloodAmount: 0.4, filletCount: 2,
     baseYieldRate: 0.36, sliceGramBase: 6, minFilletLengthCm: 12, bodyRatio: 0.20, filletShape: 'small',
   },
+  // ── 322 청어과 셋도 작은 생선 공정(비늘 → 머리 · 내장 → 검은 막 → 삼장뜨기 → 갈비뼈 · 잔뼈) ──
+  //  전어 = 뼈째 썰기도 하지만 포를 뜨면 잔가시가 많다 · 청어 = 잔가시가 아주 많다 · 멸치 = 큰 것(대멸)만 포를 뜬다
+  gizzard_shad: {
+    speciesId: 'gizzard_shad', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.3, anusRatio: 0.58, skinToughness: 0.3, bloodAmount: 0.55, filletCount: 2,
+    baseYieldRate: 0.44, sliceGramBase: 6, minFilletLengthCm: 15, bodyRatio: 0.30, filletShape: 'small',
+  },
+  pacific_herring: {
+    speciesId: 'pacific_herring', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.2, anusRatio: 0.6, skinToughness: 0.3, bloodAmount: 0.6, filletCount: 2,
+    baseYieldRate: 0.46, sliceGramBase: 7, minFilletLengthCm: 20, bodyRatio: 0.22, filletShape: 'small',
+  },
+  anchovy: {
+    speciesId: 'anchovy', bodyShape: 'round', hasScales: true, tree: 'small',
+    scaleToughness: 0.1, anusRatio: 0.6, skinToughness: 0.25, bloodAmount: 0.5, filletCount: 2,
+    baseYieldRate: 0.45, sliceGramBase: 3, minFilletLengthCm: 10, bodyRatio: 0.16, filletShape: 'small',
+  },
+
+  // ── 322 조기류 — 몸이 길쭉해 방어류 흐름(농어 · 숭어와 같은 삼장뜨기 · 각자 그림) ──
+  yellow_croaker: {
+    speciesId: 'yellow_croaker', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.4, anusRatio: 0.52, skinToughness: 0.4, bloodAmount: 0.45, filletCount: 2,
+    baseYieldRate: 0.40, sliceGramBase: 8, minFilletLengthCm: 20, bodyRatio: 0.27, filletShape: 'small',
+  },
+  white_croaker: {
+    speciesId: 'white_croaker', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.4, anusRatio: 0.52, skinToughness: 0.4, bloodAmount: 0.45, filletCount: 2,
+    baseYieldRate: 0.40, sliceGramBase: 9, minFilletLengthCm: 22, bodyRatio: 0.30, filletShape: 'small',
+  },
+
+  // ── 322 바리류 — 우럭 · 농어처럼 몸통이 둥근 방어류 흐름(삼장뜨기) · 큰 개체(80cm↑)는 4덩어리 해체(`LOIN_BREAKDOWN_MIN_CM`) ──
+  //  잔비늘이 살에 박혀 있고 껍질이 두껍다(껍질은 데쳐 숙회로 쓴다 — 박피 난이도 높음)
+  redspotted_grouper: {
+    speciesId: 'redspotted_grouper', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.45, anusRatio: 0.55, skinToughness: 0.6, bloodAmount: 0.55, filletCount: 2,
+    baseYieldRate: 0.40, sliceGramBase: 11, minFilletLengthCm: 25, bodyRatio: 0.33, filletShape: 'loin_thick',
+  },
+  longtooth_grouper: {
+    speciesId: 'longtooth_grouper', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.5, anusRatio: 0.55, skinToughness: 0.7, bloodAmount: 0.65, filletCount: 2,
+    baseYieldRate: 0.42, sliceGramBase: 13, minFilletLengthCm: 40, bodyRatio: 0.32, filletShape: 'loin_thick',
+  },
+  sawedged_perch: {
+    speciesId: 'sawedged_perch', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.45, anusRatio: 0.55, skinToughness: 0.6, bloodAmount: 0.6, filletCount: 2,
+    baseYieldRate: 0.44, sliceGramBase: 13, minFilletLengthCm: 40, bodyRatio: 0.30, filletShape: 'loin_thick',
+  },
+  sevenband_grouper: {
+    speciesId: 'sevenband_grouper', bodyShape: 'round', hasScales: true,
+    scaleToughness: 0.5, anusRatio: 0.55, skinToughness: 0.65, bloodAmount: 0.6, filletCount: 2,
+    baseYieldRate: 0.41, sliceGramBase: 12, minFilletLengthCm: 30, bodyRatio: 0.36, filletShape: 'loin_thick',
+  },
+
   filefish: {
     speciesId: 'filefish', bodyShape: 'round', hasScales: false,
     scaleToughness: 0.1, anusRatio: 0.55, skinToughness: 0.85, bloodAmount: 0.35, filletCount: 2,
@@ -250,11 +304,16 @@ export function getButcheryProfile(speciesId: string): ButcheryProfile {
 /**
  * 317 — **4덩어리 해체로 가는 방어류의 체장 기준**(cm 이상). 크기 등급 「대」의 아래 끝(`SIZE_TIER_BOUNDS` 둘째 값)과 같다 —
  * 방어 70(대방어 5kg+) · 부시리 80 · 잿방어 100. 그보다 작으면 지금 삼장뜨기(필렛 둘)다. 참다랑어는 프로필이 늘 해체다.
+ * 322 — 자바리 · 다금바리 · 능성어 80cm부터(크기 등급 표에 없는 어종이라 값을 바로 적는다).
  */
 export const LOIN_BREAKDOWN_MIN_CM: Readonly<Record<string, number>> = {
   yellowtail: SIZE_TIER_BOUNDS.yellowtail?.[1] ?? 70,
   amberjack: SIZE_TIER_BOUNDS.amberjack?.[1] ?? 80,
   greater_amberjack: SIZE_TIER_BOUNDS.greater_amberjack?.[1] ?? 100,
+  // 322 — 큰 바리류(10kg 안팎부터)는 반쪽을 등살 · 뱃살로 갈라 다룬다(일본 「쿠에」 · 「아라」 해체와 같다). 붉바리는 그만큼 크지 않는다
+  longtooth_grouper: 80,
+  sawedged_perch: 80,
+  sevenband_grouper: 80,
 };
 
 /** 317 — 이 개체는 4덩어리 해체인가(참다랑어 · 대방어급) */
@@ -285,9 +344,23 @@ export function butcheryProfileFor(speciesId: string, lengthCm?: number): Butche
  *  - 넙치류(flat): 광어·도다리류 — **다섯장뜨기** 전용 트리 (2026-08-05 개방) · 313 개서대
  *  - 장어류(315 · `tree: 'eel'`): 붕장어 · 갯장어 · 먹장어 — 송곳 고정 → 점액 · 껍질 → 가르기 · 펼치기 → 내장 → 중골 · 지느러미 → 머리
  *  - 4덩어리 해체(317 · `tree: 'loin'`): 참다랑어(늘) · 방어 70 · 부시리 80 · 잿방어 100cm 이상(`butcheryProfileFor`)
+ *    322 — 자바리 · 다금바리 · 능성어 80cm 이상
+ *  - 322 — 전어 · 청어 · 멸치(작은 생선 공정) · 참조기 · 백조기 · 붉바리 · 자바리 · 다금바리 · 능성어(방어류 흐름)는
+ *    배선만 하고 그림 대기(`BUTCHERY_ART_PENDING_SPECIES`) — 그림이 생기면 열린다
  * 그 외 finfish(쥐치 · 대구 · 갈치 등)·복어는 미구현(banned) — 추후 별도 구현.
  */
-export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>([
+/**
+ * 322 — **공정 · 프로필 · 어종군까지 배선했지만 도마 그림(어종 온마리)이 아직 없어 닫아 둔 어종.**
+ * 손질 옆면은 언제나 그 어종의 그림이어야 한다(320 — 다른 어종 그림으로 대신 그리지 않는다). 그림을 구우면
+ * (`gemini_fish_art.cjs` → `fish_cards.cjs` → `gen_species_sprites.cjs`) 이 목록에서 빼는 것으로 열린다.
+ */
+export const BUTCHERY_ART_PENDING_SPECIES: ReadonlySet<string> = new Set<string>([
+  'gizzard_shad', 'pacific_herring', 'anchovy', 'yellow_croaker', 'white_croaker',
+  'redspotted_grouper', 'longtooth_grouper', 'sawedged_perch', 'sevenband_grouper',
+]);
+
+/** 322 — 공정이 배선된 어종 전부(그림 대기 포함) — 분류 · 시험 · 위키용. 실제로 열린 것은 `BUTCHERY_IMPLEMENTED_SPECIES` */
+export const BUTCHERY_WIRED_SPECIES: ReadonlySet<string> = new Set<string>([
   // 돔류
   'black_seabream', 'red_seabream', 'night_seabream',
   'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw',
@@ -308,7 +381,15 @@ export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
   'tonguefish',   // 313 — 개서대(광어 트리)
+  // 322 — 청어과 셋(작은 생선 공정) · 조기류 둘 · 바리류 넷(방어류 흐름 — 큰 바리는 4덩어리 해체)
+  'gizzard_shad', 'pacific_herring', 'anchovy',
+  'yellow_croaker', 'white_croaker',
+  'redspotted_grouper', 'longtooth_grouper', 'sawedged_perch', 'sevenband_grouper',
 ]);
+
+export const BUTCHERY_IMPLEMENTED_SPECIES: ReadonlySet<string> = new Set<string>(
+  [...BUTCHERY_WIRED_SPECIES].filter((id) => !BUTCHERY_ART_PENDING_SPECIES.has(id)),
+);
 
 /**
  * 313 — 손질 도마 **어종군**(유도선 좌표 세트 · 개복 뒤 공용 그림 · 부산물 아이콘) 단일 출처.
@@ -326,6 +407,9 @@ const AMBERJACK_ART_SPECIES: ReadonlySet<string> = new Set<string>([
   'striped_mullet', 'redlip_mullet',
   'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
   'bluefin_tuna',   // 317 — 방추형(앞 단계 유도선 · 복면 · 체강 공용 그림은 방어류)
+  // 322 — 청어과(작은 생선) · 조기류 · 바리류: 체고가 몸길이의 3분의 1 안팎이라 방추형 쪽(우럭 · 농어와 같다)
+  'gizzard_shad', 'pacific_herring', 'anchovy', 'yellow_croaker', 'white_croaker',
+  'redspotted_grouper', 'longtooth_grouper', 'sawedged_perch', 'sevenband_grouper',
 ]);
 
 export function butcheryArtFamily(speciesId: string): ButcheryArtFamily {
@@ -360,7 +444,7 @@ export const BUTCHERY_FAMILY_NOTICE: Record<Exclude<ButcheryFamily, 'finfish'>, 
   //   313 — 갑오징어도 무늬오징어 공정으로 열려 지금 이 안내가 뜨는 두족류는 없다(새 두족류가 생기면 쓴다).
   cephalopod: '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)',
   pufferfish: '복어는 자격증(독 제거)이 필요합니다 — 준비 중입니다',
-  unsupported: '아직 손질할 수 없는 어종입니다 (쥐치류 · 대구 · 갈치 등은 추후 구현)',
+  unsupported: '아직 손질할 수 없는 어종입니다 (쥐치류 · 대구 · 갈치 등과 그림을 준비 중인 어종은 추후 구현)',
 };
 
 /**

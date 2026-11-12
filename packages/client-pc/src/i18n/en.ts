@@ -600,6 +600,8 @@ const EN_EXTRA: Record<string, string> = {
     'You have unsaved progress — press ESC again to go to the title screen',
   '· 오징어·한치·갑오징어·문어·장어류도 도마에서 손질합니다 — 참다랑어와 큰 방어류는 등살 · 뱃살 4덩어리로 해체합니다 · 복어(자격·독)는 준비 중입니다':
     '· Squid, swordtip squid, cuttlefish, octopus and eels can be dressed on the board too — bluefin tuna and large amberjacks are broken down into four loins (back and belly) · pufferfish (licence and toxin) is still in progress.',
+  '아직 손질할 수 없는 어종입니다 (쥐치류 · 대구 · 갈치 등과 그림을 준비 중인 어종은 추후 구현)':
+    'This species cannot be dressed yet (filefish, cod, hairtail and species whose art is still being prepared will come later)',
   '이 두족류 손질은 준비 중입니다 (무늬오징어·한치·살오징어·갑오징어·문어·대문어는 손질할 수 있습니다)': 'Butchering this cephalopod is coming soon (bigfin reef squid, swordtip squid, flying squid, cuttlefish, common and giant octopus can be butchered)',
   '불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': 'You warmed up by the fire — the chills have passed',
   '[상태] 불을 쬐어 몸이 녹았습니다 — 오한이 가라앉았습니다': '[Status] You warmed up by the fire — the chills have passed',

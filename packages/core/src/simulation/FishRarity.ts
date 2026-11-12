@@ -36,7 +36,9 @@ const AMBERJACK = new Set(['yellowtail', 'amberjack', 'greater_amberjack']);
 //   방어류(전갱이과)와 다랑어류(고등어과)는 속이 다르지만 체형(방추형 · 횡 러닝)이 같아 **전용 군**으로 두고
 //   배수는 방어류 5.5에 체급 보정(근력 ∝ L² · 체중 ∝ L³ → 평균 체장 95 : 110 ≈ 0.86)을 한 5.0 — `TUNING.fightPhys.burst.tuna`.
 const TUNA = new Set(['bluefin_tuna']);
-const MACKEREL = new Set(['chub_mackerel', 'horse_mackerel', 'spanish_mackerel', 'pacific_saury', 'halfbeak']);
+// 322차 — 청어과 셋(전어 · 청어 · 멸치)도 빠르고 짧게 달리는 작은 표층어다
+const MACKEREL = new Set(['chub_mackerel', 'horse_mackerel', 'spanish_mackerel', 'pacific_saury', 'halfbeak',
+  'gizzard_shad', 'pacific_herring', 'anchovy']);
 const FLATFISH = new Set(['flatfish', 'flounder', 'frog_flounder', 'starry_flounder', 'tonguefish']);
 const CEPH = new Set(['squid', 'cuttlefish', 'octopus', 'giant_octopus', 'swordtip_squid', 'flying_squid']);
 
@@ -48,7 +50,8 @@ export function fightGroupOf(speciesId: string): FightGroup {
   if (FLATFISH.has(speciesId)) return 'flatfish';
   if (CEPH.has(speciesId)) return 'cephalopod';
   if (speciesId === 'sea_bass') return 'seabass';
-  if (/rockfish|snapper|scorpion|greenling/.test(speciesId)) return 'rockfish';
+  // 322차 — 바리류(붉바리 · 자바리 · 능성어 · 다금바리)도 굴로 처박는 짧은 다이브다(힘은 `basePower` · 체중이 받친다)
+  if (/rockfish|snapper|scorpion|greenling|grouper|sawedged/.test(speciesId)) return 'rockfish';
   return 'other';
 }
 

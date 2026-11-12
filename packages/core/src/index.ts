@@ -200,6 +200,7 @@ export {
 export {
   BUTCHERY_PROFILES, DEFAULT_BUTCHERY_PROFILE, getButcheryProfile,
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES, canButcherSpecies,
+  BUTCHERY_WIRED_SPECIES, BUTCHERY_ART_PENDING_SPECIES,
   butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES,   // 313 — 도마 어종군 단일 출처
   LOIN_BREAKDOWN_MIN_CM, isLoinBreakdown, butcheryProfileFor,   // 317 — 대방어급 · 참다랑어 = 4덩어리 해체
 } from './db-schema/ButcheryProfiles.js';
@@ -526,7 +527,7 @@ export type {
   FishMasterSpec, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
 export {
-  ORACLE_FISH_DB, spawnFish, classifyLayer, getBaitAffinity, candidateCount, speciesBiteShare, speciesBiteReadiness,
+  ORACLE_FISH_DB, isClosedSeasonExempt, spawnFish, classifyLayer, getBaitAffinity, candidateCount, speciesBiteShare, speciesBiteReadiness,
   standardWeightG, speciesStandardWeightG, conditionFactorFor, baitPrefOf, presenceBiteRate,
 } from './simulation/FishSpawningOracle.js';
 // 289차 — 어종 존재 가중(바다 · 계절 · 수온 — D1 · D2 · D5 · D6)

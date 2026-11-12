@@ -114,12 +114,23 @@ export interface FishMasterSpec {
   closedMonths?: number[];
   /** 227차 — 금어기 날짜 구간(참문어 5.16~6.30) */
   closedSeasons?: ClosedSeason[];
+  /**
+   * 322차 — **금어기가 걸리지 않는 지역**(지역 id에 이 말이 들어 있으면 금어기 아님).
+   * 전어 5.1~7.15는 「강원 · 경북 제외」다(수산자원관리법 시행령 별표 — 속초 · 포항 · 울릉은 여름에도 잡는다).
+   */
+  closedSeasonExemptRegions?: readonly string[];
   /** 227차 — 금지체중(g) — 대문어 600g(2021 개정 400 → 600) */
   legalMinWeightG?: number;
   /** 1~15물때 활성도 (0~1) */
   tideActivity: number[];
   /** 야간 활성 배율 (기본 1.0, 2.0 = 야간 어종) */
   nightBonus?: number;
+  /**
+   * 322차 — **개체 수 자체가 적은 어종의 스폰 가중 배수**(0~1 · 없으면 1).
+   * 바다 · 철 · 수심 · 미끼가 다 맞아도 드문 고기가 있다(자바리는 「가끔」 · 다금바리는 「평생 한 번」).
+   * 그 자리에 사는 다른 어종이 적으면 가중이 낮아도 몫이 커지므로, 드문 어종은 이 값으로 눌러 둔다.
+   */
+  abundance?: number;
   /** 에기 전용 두족류 — 스폰 필터(speciesFilter)에 포함될 때만 후보에 오른다 */
   egiOnly?: boolean;
   fight: FightProfile;
@@ -158,7 +169,7 @@ function sariPeak(base: number, peak: number): number[] {
 }
 
 /**
- * 어종 마스터 DB (56종 — 사용자 제공 실측 데이터 기반. 구 주석 "49종"은 실제 수와 어긋나 있었음)
+ * 어종 마스터 DB (322차 기준 69종 — 사용자 제공 실측 데이터 기반)
  * 추후 API 연동 매칭 예정.
  */
 export const ORACLE_FISH_DB: FishMasterSpec[] = [
@@ -810,7 +821,120 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     nightBonus: 0.6, tideActivity: sariPeak(0.5, 0.9),
     fight: { basePower: 1.5, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 0.55, mouthFragility: 0.05 },
   },
+  // ── 322차 — 사용자 요청 9종: 청어과 셋(전어 · 청어 · 멸치) · 조기류 둘(참조기 · 백조기) · 바리류 넷(붉바리 · 자바리 · 다금바리 · 능성어) ──
+  {
+    speciesId: 'gizzard_shad', nameKo: '전어', nameEn: 'Dotted Gizzard Shad',
+    // 내만 · 강어귀 표층~중층에 떼로 다닌다 — 가을(9~11월) 연안 방파제. 금어기 5.1~7.15(강원 · 경북 제외)
+    habitat: ['sand', 'mud', 'open'], minDepthM: 0, maxDepthM: 30, preferredLayers: ['surface', 'mid'],
+    baitPreference: { krill: 60, lure: 30, bread: 20, worm_blue: 10 },
+    minCm: 12, maxCm: 32, meanCm: 21, sdCm: 3.5, lwrA: 0.0085, lwrB: 3.05, bodyForm: 'deepBody', maleRatio: 0.5,
+    sexNote: '아가미 뒤에 검은 점 하나, 등지느러미 끝 줄기가 실처럼 길다 — 가을에 기름이 올라 구우면 고소하다',
+    closedMonths: [5, 6, 7], closedSeasons: [{ from: [5, 1], to: [7, 15] }],
+    closedSeasonExemptRegions: ['gangwon', 'sokcho', 'gangneung', 'donghae', 'samcheok', 'hometown', 'gyeongbuk', 'pohang', 'uljin', 'ulleung', 'dokdo'],
+    // 주행성 — 낮에 떼로 표층을 돈다
+    nightBonus: 0.6, tideActivity: sariPeak(0.5, 0.85),
+    fight: { basePower: 0.12, patternWeights: { jump: 0.3, dive: 0.1, lateral: 0.6 }, intervalMult: 1.3, mouthFragility: 0.5 },
+  },
+  {
+    speciesId: 'pacific_herring', nameKo: '청어', nameEn: 'Pacific Herring',
+    // 찬물 고기 — 겨울(12~3월) 동해 연안 방파제에 떼로 붙는다(포항 · 영덕 · 속초). 금지체장 20cm 이하
+    habitat: ['open', 'sand', 'structure'], minDepthM: 0, maxDepthM: 150, preferredLayers: ['surface', 'mid'],
+    baitPreference: { krill: 60, lure: 40, worm_blue: 15, fishcut: 10 },
+    minCm: 15, maxCm: 40, meanCm: 27, sdCm: 4, lwrA: 0.006, lwrB: 3.1, bodyForm: 'fusiform', maleRatio: 0.5,
+    sexNote: '등은 짙은 청록, 배는 은백 — 과메기의 본래 재료다. 겨울 알배기는 소금구이가 으뜸',
+    legalMinCm: 20, nightBonus: 1.3, tideActivity: flatTide(0.65),
+    fight: { basePower: 0.16, patternWeights: { jump: 0.25, dive: 0.1, lateral: 0.65 }, intervalMult: 1.2, mouthFragility: 0.55 },
+  },
+  {
+    speciesId: 'anchovy', nameKo: '멸치', nameEn: 'Japanese Anchovy',
+    // 연안 표층을 큰 떼로 돈다 — 봄(기장 대멸) · 가을. 작은 바늘 여러 개(카드 채비)에 줄줄이 문다. 큰 고기의 먹이
+    habitat: ['open', 'sand'], minDepthM: 0, maxDepthM: 60, preferredLayers: ['surface'],
+    baitPreference: { krill: 45, lure: 35 },
+    minCm: 5, maxCm: 17, meanCm: 10, sdCm: 2.2, lwrA: 0.0048, lwrB: 3.1, bodyForm: 'elongated', maleRatio: 0.5,
+    sexNote: '물 위로 멸치 떼가 튀면 밑에 삼치 · 방어가 있다 — 성질이 급해 올리자마자 죽는다',
+    // 밤에 불빛으로 모인다
+    nightBonus: 1.4, tideActivity: flatTide(0.7),
+    fight: { basePower: 0.1, patternWeights: { jump: 0.3, dive: 0.05, lateral: 0.65 }, intervalMult: 1.4, mouthFragility: 0.7 },
+  },
+  {
+    speciesId: 'yellow_croaker', nameKo: '참조기', nameEn: 'Small Yellow Croaker',
+    // 서해 · 남해 서쪽 모래 · 펄 바닥 20~160m — 추자도 · 흑산도 선상 외줄. 금지체장 15cm 이하 · 금어기 7.1~7.31
+    habitat: ['sand', 'mud'], minDepthM: 20, maxDepthM: 160, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 55, worm_king: 40, krill: 35, fishcut: 30, shellfish: 20 },
+    minCm: 12, maxCm: 40, meanCm: 24, sdCm: 4.5, lwrA: 0.0105, lwrB: 3.0, bodyForm: 'roundish', maleRatio: 0.5,
+    sexNote: '배가 황금빛이고 부레로 「구구」 운다 — 소금에 절여 말리면 굴비',
+    legalMinCm: 15, closedMonths: [7], closedSeasons: [{ from: [7, 1], to: [7, 31] }],
+    // 사리 무렵 물이 셀 때 떼가 움직인다
+    nightBonus: 1.2, tideActivity: sariPeak(0.5, 0.9),
+    fight: { basePower: 0.3, patternWeights: { jump: 0.05, dive: 0.55, lateral: 0.4 }, intervalMult: 1.1, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'white_croaker', nameKo: '백조기', nameEn: 'White Croaker',
+    // 표준명 보구치 — 서해 · 남해 여름(6~9월) 선상 대표 어종. 모래 · 펄 바닥 10~100m
+    habitat: ['sand', 'mud'], minDepthM: 10, maxDepthM: 100, preferredLayers: ['bottom'],
+    baitPreference: { worm_blue: 60, worm_king: 40, krill: 30, fishcut: 25, shellfish: 20 },
+    minCm: 15, maxCm: 50, meanCm: 28, sdCm: 5, lwrA: 0.0098, lwrB: 3.03, bodyForm: 'roundish', maleRatio: 0.5,
+    sexNote: '표준명은 보구치 — 몸이 은백색이라 낚시꾼은 백조기라 부른다. 올리면 부레로 「뽀드득」 운다',
+    nightBonus: 0.9, tideActivity: sariPeak(0.5, 0.85),
+    fight: { basePower: 0.35, patternWeights: { jump: 0.05, dive: 0.55, lateral: 0.4 }, intervalMult: 1.05, mouthFragility: 0.3 },
+  },
+  {
+    speciesId: 'redspotted_grouper', nameKo: '붉바리', nameEn: 'Red-spotted Grouper',
+    // 남해 · 제주 얕은 암초 5~60m — 여름(6~9월). 낮에는 굴에 박혀 있다가 해 질 녘에 나온다
+    habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 60, preferredLayers: ['bottom'],
+    baitPreference: { livefish: 50, lure: 40, fishcut: 40, krill: 30, worm_king: 30, crab: 20 },
+    minCm: 18, maxCm: 58, meanCm: 33, sdCm: 6.5, lwrA: 0.0125, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.3,
+    // 바리류는 암컷으로 자라 크면 수컷으로 바뀐다
+    sexRule: (len) => (len > 40 ? 0.75 : len > 32 ? 0.3 : 0.05),
+    sexNote: '갈색 몸에 붉은 점이 빽빽하다 — 암컷으로 자라 40cm 무렵 수컷으로 바뀐다. 여름 횟감의 으뜸',
+    nightBonus: 1.4, tideActivity: twinPeak(0.45, 0.85, 0.55),
+    abundance: 0.45,   // 자원이 줄어 귀하다(방류로 받치는 어종)
+    fight: { basePower: 0.7, patternWeights: { jump: 0.02, dive: 0.8, lateral: 0.18 }, intervalMult: 0.95, mouthFragility: 0.12 },
+  },
+  {
+    speciesId: 'longtooth_grouper', nameKo: '자바리', nameEn: 'Longtooth Grouper',
+    // 제주에서 「다금바리」라 부르는 그 고기(표준명 자바리). 암초 굴 15~200m — 밤에 나오는 큰 바리. 가끔 낚인다
+    habitat: ['reef', 'structure'], minDepthM: 15, maxDepthM: 200, preferredLayers: ['bottom'],
+    baitPreference: { livefish: 60, fishcut: 50, lure: 25, crab: 15 },
+    minCm: 30, maxCm: 136, meanCm: 62, sdCm: 16, lwrA: 0.0122, lwrB: 3.07, bodyForm: 'roundish', maleRatio: 0.3,
+    sexRule: (len) => (len > 90 ? 0.8 : len > 70 ? 0.35 : 0.05),
+    sexNote: '제주에서는 다금바리라 부른다 — 비스듬한 짙은 띠 여섯 줄, 굴에 박히면 꺼내기 어렵다. 돌돔보다 귀한 횟감',
+    nightBonus: 1.7, tideActivity: twinPeak(0.4, 0.85, 0.5),
+    abundance: 0.08,   // 제주에서도 가끔
+    fight: { basePower: 1.05, patternWeights: { jump: 0, dive: 0.85, lateral: 0.15 }, intervalMult: 0.85, mouthFragility: 0.06 },
+  },
+  {
+    speciesId: 'sawedged_perch', nameKo: '다금바리', nameEn: 'Saw-edged Perch',
+    // 표준명 다금바리 — 깊은 암초 80~260m. 서태평양 분포의 끝자락이라 아주 드물다(5~8월에 가끔 · 1m 안팎)
+    habitat: ['reef', 'mixed'], minDepthM: 80, maxDepthM: 260, preferredLayers: ['bottom'],
+    baitPreference: { fishcut: 55, livefish: 55, lure: 30 },
+    minCm: 40, maxCm: 130, meanCm: 82, sdCm: 16, lwrA: 0.0105, lwrB: 3.05, bodyForm: 'fusiform', maleRatio: 0.5,
+    sexNote: '아가미뚜껑에 굵은 가시가 있고 주둥이가 뾰족하다 — 제주 다금바리(자바리)와는 다른 고기. 평생 한 번 보기 어렵다',
+    nightBonus: 1.0, tideActivity: flatTide(0.6),
+    abundance: 0.035,   // 분포의 끝자락 — 아주 드물다
+    fight: { basePower: 0.95, patternWeights: { jump: 0, dive: 0.75, lateral: 0.25 }, intervalMult: 0.9, mouthFragility: 0.08 },
+  },
+  {
+    speciesId: 'sevenband_grouper', nameKo: '능성어', nameEn: 'Sevenband Grouper',
+    // 남해 · 제주 말로 구문쟁이 — 암초 5~150m. 일곱 줄 가로띠는 클수록 흐려진다
+    habitat: ['reef', 'structure'], minDepthM: 5, maxDepthM: 150, preferredLayers: ['bottom'],
+    baitPreference: { livefish: 55, fishcut: 45, lure: 35, crab: 20, krill: 15 },
+    minCm: 25, maxCm: 110, meanCm: 50, sdCm: 13, lwrA: 0.0135, lwrB: 3.05, bodyForm: 'roundish', maleRatio: 0.3,
+    sexRule: (len) => (len > 80 ? 0.8 : len > 60 ? 0.35 : 0.05),
+    sexNote: '구문쟁이라고도 한다 — 몸에 짙은 가로띠 일곱 줄. 살이 단단하고 달아 자바리 못지않다',
+    nightBonus: 1.3, tideActivity: twinPeak(0.45, 0.85, 0.55),
+    abundance: 0.5,   // 암초에 드문드문
+    fight: { basePower: 0.9, patternWeights: { jump: 0, dive: 0.8, lateral: 0.2 }, intervalMult: 0.9, mouthFragility: 0.08 },
+  },
 ];
+
+/** 322차 — 이 지역에서는 이 어종의 금어기가 걸리지 않는가(전어 — 강원 · 경북 제외) */
+export function isClosedSeasonExempt(
+  spec: Pick<FishMasterSpec, 'closedSeasonExemptRegions'>, regionId: string | undefined | null,
+): boolean {
+  const r = regionId ?? '';
+  return !!r && !!spec.closedSeasonExemptRegions?.some((k) => r.includes(k));
+}
 
 /** 스폰/입질 컨텍스트 */
 export interface SpawnContext {
@@ -1004,7 +1128,8 @@ function intrinsicWeight(spec: FishMasterSpec, ctx: SpawnContext): number {
   const phaseW = ctx.flowPhase
     ? speciesTidePhaseMult(spec.speciesId, ctx.flowPhase, ctx.tideStrength01 ?? 0.5, ctx.tideRegionK ?? 1)
     : 1;
-  return layerW * depthW * terrW * baitW * tideW * dayNightW * phaseW;
+  // 322차 — 개체 수가 적은 어종(자바리 · 다금바리 …)은 조건이 다 맞아도 드물다
+  return layerW * depthW * terrW * baitW * tideW * dayNightW * phaseW * (spec.abundance ?? 1);
 }
 
 /** 후보 어종 + 가중치 계산 (스폰/미끼 친화도 공용) */
@@ -1164,9 +1289,11 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
   const isUndersized = (picked.legalMinCm !== undefined && lengthCm <= picked.legalMinCm) || underWeight;
   // 188차 — 강원 조례: 산란기 8kg 이상 대문어는 방생 대상(금어기와 같은 경로로 처리)
   const octoProtected = isGiantOctopusSpawnProtected(picked.speciesId, weightG, ctx.month, ctx.region);
-  const isClosedSeason = (picked.closedSeasons && picked.closedSeasons.length > 0
+  // 322차 — 금어기가 걸리지 않는 지역(전어 — 강원 · 경북 제외)
+  const closedHere = !isClosedSeasonExempt(picked, ctx.region);
+  const isClosedSeason = (closedHere && (picked.closedSeasons && picked.closedSeasons.length > 0
     ? isClosedOn(picked.closedSeasons, ctx.month, ctx.day)
-    : (picked.closedMonths?.includes(ctx.month) ?? false)) || octoProtected;
+    : (picked.closedMonths?.includes(ctx.month) ?? false))) || octoProtected;
   // 힘 계수: 어종 기본 힘 × 크기 비율 보정
   const powerFactor = Math.min(1.15, Math.max(0.12,
     picked.fight.basePower * (0.55 + 0.65 * (lengthCm / picked.maxCm)),

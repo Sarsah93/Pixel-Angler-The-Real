@@ -81,6 +81,16 @@ const SPECIES = [
   { id: 'yellowfin_goby',      sym: 'YELLOWFIN_GOBY',      file: 'yellowfin_goby.png',        ko: '문절망둑',     mirror: false },
   // 317 — 4덩어리 해체(참다랑어 — 방어류 앞 단계 + 해체)
   { id: 'bluefin_tuna',        sym: 'BLUEFIN_TUNA',        file: 'pacific_bluefin_tuna.png',  ko: '참다랑어',     mirror: false },
+  // 322 — 9종(원본이 생기면 굽는다 — 없으면 건너뛴다. 구운 뒤 core `BUTCHERY_ART_PENDING_SPECIES`에서 뺀다)
+  { id: 'gizzard_shad',        sym: 'GIZZARD_SHAD',        file: 'dotted_gizzard_shad.png',   ko: '전어',         mirror: false },
+  { id: 'pacific_herring',     sym: 'PACIFIC_HERRING',     file: 'pacific_herring.png',       ko: '청어',         mirror: false },
+  { id: 'anchovy',             sym: 'ANCHOVY',             file: 'japanese_anchovy.png',      ko: '멸치',         mirror: false },
+  { id: 'yellow_croaker',      sym: 'YELLOW_CROAKER',      file: 'small_yellow_croaker.png',  ko: '참조기',       mirror: false },
+  { id: 'white_croaker',       sym: 'WHITE_CROAKER',       file: 'white_croaker.png',         ko: '백조기',       mirror: false },
+  { id: 'redspotted_grouper',  sym: 'REDSPOTTED_GROUPER',  file: 'redspotted_grouper.png',    ko: '붉바리',       mirror: false },
+  { id: 'longtooth_grouper',   sym: 'LONGTOOTH_GROUPER',   file: 'longtooth_grouper.png',     ko: '자바리',       mirror: false },
+  { id: 'sawedged_perch',      sym: 'SAWEDGED_PERCH',      file: 'sawedged_perch.png',        ko: '다금바리',     mirror: false },
+  { id: 'sevenband_grouper',   sym: 'SEVENBAND_GROUPER',   file: 'sevenband_grouper.png',     ko: '능성어',       mirror: false },
 ];
 
 /** 픽셀 격자 추출 — bbox 크롭 + 박스평균 다운샘플 (브라우저 컨텍스트에서 실행) */

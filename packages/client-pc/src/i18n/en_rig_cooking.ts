@@ -284,6 +284,15 @@ export const EN_RIG_COOKING: Record<string, string> = {
   '머리 제거': 'Remove the head',
   '지느러미 제거': 'Remove the fins',
   '비늘치기': 'Scaling',
+  // 322 — 전갱이류 모비늘(방패비늘)
+  '모비늘 제거': 'Remove the scutes',
+  '모비늘 저며 내기': 'Shave off the scutes',
+  '모비늘 제거 (앞면)': 'Scutes (front side)',
+  '모비늘 제거 (뒷면)': 'Scutes (back side)',
+  '칼을 눕혀 꼬리 자루에서 머리 쪽으로, 옆줄의 딱딱한 모비늘을 얇게 저며 내세요':
+    'Lay the knife flat and shave the hard scutes off the lateral line, from the tail stem toward the head.',
+  '뒤집어 반대면의 모비늘도 꼬리 자루에서 머리 쪽으로 저며 내세요':
+    'Flip it over and shave the scutes off the other side, tail stem toward the head.',
   '비늘치기 (앞면)': 'Scaling (front side)',
   '비늘치기 (뒷면)': 'Scaling (back side)',
   '비늘치기 (등면)': 'Scaling (dark side)',

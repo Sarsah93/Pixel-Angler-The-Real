@@ -103,6 +103,12 @@ export interface ButcheryProfile {
   bodyShape: 'round' | 'flat';
   /** 비늘치기 필요 여부 (가죽류·두족류 false) */
   hasScales: boolean;
+  /**
+   * 322 — **모비늘**(방패비늘 · 일본 ぜいご)이 있는가. 전갱이류만 가진다(고등어 · 다랑어 · 방어류에는 없다).
+   * 옆줄 뒤쪽 절반(꼬리 자루 → 몸 가운데)을 따라 선 딱딱한 가시 비늘 줄이라 일반 비늘치기로는 벗겨지지 않는다 —
+   * 칼을 눕혀 꼬리에서 머리 쪽으로 얇게 저며 낸다(양면). true면 밑손질에 「모비늘 제거」 작업(`scute_base` · `scute_flip`)이 생긴다.
+   */
+  hasScutes?: boolean;
   /** 0~1 — 비늘치기 스트로크 요구량 */
   scaleToughness: number;
   /** 머리(0)~꼬리(1) 배쪽 항문 위치 — 개복 시작점 */

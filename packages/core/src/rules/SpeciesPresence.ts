@@ -103,6 +103,16 @@ export const SPECIES_SEA_WEIGHT: Readonly<Record<string, Readonly<Record<SeaKey,
   bulgyhead_wrasse: { east: 0.3, south: 0.6, west: 0.05, jeju: 1, ulleung: 0.9 },        // 혹돔 — 울릉 · 제주 암초
   red_tilefish: { east: 0.1, south: 0.4, west: 0.05, jeju: 1, ulleung: 0.2 },            // 옥돔 — 제주 깊은 바다
   bluefin_tuna: { east: 0.5, south: 0.7, west: 0.05, jeju: 1, ulleung: 0.9 },            // 참다랑어 — 동해 먼바다 · 제주 남쪽
+  // 322차 — 9종(국립수산과학원 어종 정보 · 해역별 어획 · 낚시 조황 근사)
+  gizzard_shad: { east: 0.35, south: 1, west: 1, jeju: 0.2, ulleung: 0.03 },              // 전어 — 서해 · 남해 내만
+  pacific_herring: { east: 1, south: 0.35, west: 0.3, jeju: 0.02, ulleung: 0.5 },         // 청어 — 겨울 동해
+  anchovy: { east: 0.6, south: 1, west: 0.7, jeju: 0.8, ulleung: 0.4 },                   // 멸치 — 남해가 주 어장
+  yellow_croaker: { east: 0.03, south: 0.6, west: 1, jeju: 0.8, ulleung: 0.02 },          // 참조기 — 서해 · 추자도
+  white_croaker: { east: 0.05, south: 0.8, west: 1, jeju: 0.3, ulleung: 0.02 },           // 백조기(보구치) — 여름 서해 · 남해
+  redspotted_grouper: { east: 0.05, south: 0.7, west: 0.08, jeju: 1, ulleung: 0.15 },     // 붉바리 — 제주 · 남해 암초
+  longtooth_grouper: { east: 0.03, south: 0.3, west: 0.02, jeju: 0.6, ulleung: 0.12 },    // 자바리 — 제주에서도 가끔
+  sawedged_perch: { east: 0.08, south: 0.2, west: 0.01, jeju: 0.25, ulleung: 0.15 },      // 다금바리(표준명) — 어디서나 드물다
+  sevenband_grouper: { east: 0.1, south: 0.7, west: 0.05, jeju: 1, ulleung: 0.3 },        // 능성어 — 제주 · 남해
 };
 
 /**

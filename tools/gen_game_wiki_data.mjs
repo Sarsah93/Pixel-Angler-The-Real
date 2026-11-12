@@ -784,6 +784,20 @@ const rules = [
     ],
   },
   {
+    id: 'scute_new_species_322', round: 322, hidden: false, title: '전갱이 모비늘 제거 · 새 어종 9 · 확정 유도선 4종',
+    lede: '전갱이류는 밑손질에서 옆줄의 딱딱한 모비늘을 칼로 저며 낸다. 전어 · 청어 · 멸치 · 참조기 · 백조기 · 붉바리 · 자바리 · 다금바리 · 능성어가 바다에 들어왔다.',
+    rows: [
+      ['모비늘 제거', '전갱이류만 가진 옆줄 뒤쪽의 가시 비늘 줄 — 비늘치기로는 안 벗겨진다. 밑손질 작업 목록에 「모비늘 제거」가 하나 더 생기고(머리 · 지느러미 · 비늘과 순서 자유), 칼을 눕혀 꼬리 자루에서 머리 쪽으로 앞면 · 뒷면 한 번씩 저민다. 저민 면은 누런 빗살 줄이 벗겨져 옅은 띠가 남는다. 고등어 · 방어 · 다랑어에는 없다'],
+      ['청어과 셋', '전어(가을 · 서해 · 남해 내만 · 금어기 5.1~7.15 — 강원 · 경북은 빠진다) · 청어(겨울 동해 · 20cm 이하 방생) · 멸치(봄 · 가을 표층 떼). 작은 바늘 여러 개 채비와 크릴에 문다'],
+      ['조기류 둘', '참조기(서해 · 추자도 바닥 · 15cm 이하 방생 · 7월 금어기) · 백조기(표준명 보구치 · 여름 서해 · 남해 선상). 갯지렁이에 잘 문다'],
+      ['바리류 넷', '붉바리(남해 · 제주 얕은 암초 · 여름) · 능성어(구문쟁이 · 암초) · 자바리(제주에서 다금바리라 부르는 큰 바리 · 가끔) · 다금바리(표준명 · 깊은 바다 · 5~8월에 아주 드물게 · 1m 안팎). 생미끼 · 생선살 · 루어. 물면 굴로 처박는다'],
+      ['드문 어종', '자바리 · 다금바리는 바다 · 철 · 수심 · 미끼가 다 맞는 자리에서도 드물다 — 가장 알맞은 자리에서 자바리는 스무 번에 한 번, 다금바리는 백 번에 한 번꼴'],
+      ['손질 갈래', '전어 · 청어 · 멸치 = 작은 생선 공정 / 참조기 · 백조기 · 붉바리 = 방어류 흐름 삼장뜨기 / 자바리 · 다금바리 · 능성어 = 같은 삼장뜨기, 80cm부터는 4덩어리 해체. 도마 그림을 준비하는 동안은 손질이 닫혀 있다'],
+      ['값', '참조기 kg 30,000 · 붉바리 90,000 · 능성어 65,000 · 자바리 150,000 · 다금바리 170,000원(기본값 — 위판 시세가 잡히면 그 값). 전어 12,000 · 청어 6,000 · 멸치 5,000 · 백조기 10,000원'],
+      ['확정 유도선', '벵에돔에 이어 전갱이 · 긴꼬리벵에돔 · 감성돔의 손질 유도선을 실측값으로 바꿨다(시메부터 박피까지 — 지아이뼈 선은 그림의 혈합육 줄을 따른다)'],
+    ],
+  },
+  {
     id: 'pin_stage_whole_side_321', round: 321, hidden: false, title: '지아이뼈는 한 면 필렛에서 가른다 · 1면 · 2면 뜨기 선 공통',
     lede: '갈빗대를 떼어 낸 다음 화면은 등살과 뱃살이 붙은 한 면 필렛이다. 가운데 지아이뼈 줄을 두 번 그어 가른 뒤부터 한 덩어리 필렛 그림이 나온다.',
     rows: [
@@ -1887,11 +1901,13 @@ const bkMan = fs.existsSync(path.join(IMG_DIR, 'butchery/manifest.json'))
   ? JSON.parse(fs.readFileSync(path.join(IMG_DIR, 'butchery/manifest.json'), 'utf8')) : {};
 const fishName = (id) => core.FISH_DATABASE.find((f) => f.id === id)?.nameKo ?? id;
 const bkProf = (id) => core.BUTCHERY_PROFILES[id];
-const finfish = [...core.BUTCHERY_IMPLEMENTED_SPECIES];
+// 322차 — 공정이 배선된 어종 전부로 갈래를 가르고, 그림 대기(`BUTCHERY_ART_PENDING_SPECIES`)는 「그림 준비 중」 줄로 따로 보인다
+const finfish = [...(core.BUTCHERY_WIRED_SPECIES ?? core.BUTCHERY_IMPLEMENTED_SPECIES)];
+const bkPending = (id) => !!core.BUTCHERY_ART_PENDING_SPECIES?.has(id);
 const BK_CATS = [
-  { id: 'amberjack', label: '방어류', flows: ['amberjack'],
+  { id: 'amberjack', label: '방어류', flows: ['amberjack', 'jack'],
     pick: finfish.filter((id) => core.butcheryArtFamily(id) === 'amberjack' && !bkProf(id)?.tree),
-    note: '방추형 몸통 — 시메 · 방혈 → 머리 · 지느러미 · 비늘 → 배따기 · 내장 → 핏줄 → 꼬리 칼집 → 삼장뜨기(등 · 배) → 갈빗대 → 지아이뼈 → 박피. 그림은 잿방어이고 어종마다 제 그림 위에서 같은 순서로 한다. 방어 70 · 부시리 80 · 잿방어 100cm부터는 「참치 · 대방어 해체」로 간다.' },
+    note: '방추형 몸통 — 시메 · 방혈 → 머리 · 지느러미 · 비늘 → 배따기 · 내장 → 핏줄 → 꼬리 칼집 → 삼장뜨기(등 · 배) → 갈빗대 → 지아이뼈 → 박피. 그림은 잿방어이고 어종마다 제 그림 위에서 같은 순서로 한다. 방어 70 · 부시리 80 · 잿방어 100cm부터는 「참치 · 대방어 해체」로 간다. 전갱이류는 밑손질에 모비늘 제거(옆줄의 딱딱한 비늘 줄을 칼을 눕혀 저며 낸다)가 하나 더 있다 — 아래 둘째 그림.' },
   { id: 'small', label: '작은 생선류', flows: ['small'],
     pick: finfish.filter((id) => bkProf(id)?.tree === 'small'),
     note: '시메 · 방혈 · 박피가 없는 짧은 공정 — 비늘 → 머리 · 내장 → 검은 막 · 혈합육 → 삼장뜨기 → 갈비뼈 · 잔뼈(핀셋). 그림은 꽁치.' },
@@ -1918,7 +1934,8 @@ const BK_CATS = [
 const butchery = {
   cats: BK_CATS.map((c) => ({
     id: c.id, label: c.label, note: c.note,
-    species: c.pick.map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
+    species: c.pick.filter((id) => !bkPending(id)).map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
+    pending: c.pick.filter(bkPending).map((id) => ({ id, name: fishName(id), inWiki: speciesList.some((s) => s.id === id) })),
     flows: c.flows.map((fid) => {
       const m = bkMan[fid];
       return m ? { id: fid, sp: m.sp, title: `${fishName(m.sp)} — ${m.steps.length}단계`, img: m.file, tileW: m.tileW, tileH: m.tileH, steps: m.steps }

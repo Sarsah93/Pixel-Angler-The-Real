@@ -100,6 +100,18 @@ const REGION_TO_SIDO: Record<string, string[]> = {
 const KOSIS_SPECIES_MATCH: { keywords: string[]; speciesIds: string[] }[] = [
   { keywords: ['감성돔'], speciesIds: ['black_seabream'] },
   { keywords: ['옥돔'], speciesIds: ['red_tilefish'] },   // 295차 — 섬 어종 넷
+  // 322차 — 9종. 「참조기」 · 「보구치」를 포괄 「조기」보다 앞에, 종 이름을 포괄 「바리」보다 앞에(선착순)
+  { keywords: ['전어'], speciesIds: ['gizzard_shad'] },
+  { keywords: ['청어'], speciesIds: ['pacific_herring'] },
+  { keywords: ['멸치'], speciesIds: ['anchovy'] },
+  { keywords: ['참조기'], speciesIds: ['yellow_croaker'] },
+  { keywords: ['보구치', '백조기'], speciesIds: ['white_croaker'] },
+  { keywords: ['조기'], speciesIds: ['yellow_croaker', 'white_croaker'] },
+  { keywords: ['붉바리'], speciesIds: ['redspotted_grouper'] },
+  { keywords: ['자바리'], speciesIds: ['longtooth_grouper'] },
+  { keywords: ['다금바리'], speciesIds: ['sawedged_perch'] },
+  { keywords: ['능성어'], speciesIds: ['sevenband_grouper'] },
+  { keywords: ['바리'], speciesIds: ['redspotted_grouper', 'sevenband_grouper', 'longtooth_grouper'] },
   { keywords: ['자리돔'], speciesIds: ['pearl_spot_chromis'] },
   { keywords: ['혹돔'], speciesIds: ['bulgyhead_wrasse'] },
   { keywords: ['참다랑어'], speciesIds: ['bluefin_tuna'] },

@@ -717,6 +717,11 @@ export interface PixelFishState {
    * 없으면(undefined) 구 어종군 영역(`finsOff`일 때) — 빈 배열이면 아직 지운 지느러미가 없다.
    */
   finCutPaths?: FishPoly[];
+  /**
+   * 322 — **지금 보이는 면에서 이미 저며 낸 모비늘 선**(그려진 생선 rect 정규화 — 화면 기준 · 꼬리 자루 → 머리 쪽).
+   * 있으면 그 선을 따라 얇은 띠를 속살 빛으로 다시 칠한다(전갱이류 — `hasScutes`). 없으면 그림 그대로(모비늘 줄이 남아 있다).
+   */
+  scuteCutPath?: FishPoly;
   gutted: boolean;
   scaledSides: number;
   hasScales: boolean;
@@ -1098,7 +1103,7 @@ function tintColor(color: number, tint: number, k: number): number {
 function drawSprite(
   g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, geom: PixelFishGeom,
   mirrorX: boolean, mirrorY: boolean, tint: number | null, tintK: number,
-  opts?: { frame?: PixelFishFrame; erase?: FishPoly[]; cell?: number },
+  opts?: { frame?: PixelFishFrame; erase?: FishPoly[]; cell?: number; strip?: FishPoly },
 ): PixelFishGeom {
   // 프레임이 주어지면 그 셀 크기를 그대로 쓴다 = 스테이지가 바뀌어도 확대/축소 없음.
   //  `cell` 직접 지정 = **정확 맞춤**(정수 반올림 없음) — 세로로 긴 뷰가 도마 밖으로
@@ -1153,7 +1158,55 @@ function drawSprite(
       c += run;
     }
   }
+  if (opts?.strip && opts.strip.length >= 2) paintScuteStrip(g, spr, opts.strip, { ox, oy, cell, mirrorX, mirrorY }, pal, keepMask);
   return { x: ox, y: oy, w: dw, h: dh };
+}
+
+/** 322 — 모비늘을 저며 낸 자리의 속살 빛(은빛 도는 옅은 살색) · 띠 반폭(그림 칸 — 꼬리 쪽 → 머리 쪽) */
+const SCUTE_FLESH = 0xe9d2c6;
+const SCUTE_HALF_TAIL = 1.6, SCUTE_HALF_HEAD = 0.9;
+
+/**
+ * 322 — **모비늘 저민 자리**(전갱이류). 저민 선을 따라 얇은 띠를 속살 빛으로 다시 칠한다 — 그림의 모비늘 줄(누런 빗살)이 사라지고
+ * 옅은 홈이 남는다. 띠는 꼬리 자루 쪽(선의 시작)이 굵고 머리 쪽(끝)이 가늘다(모비늘이 꼬리 쪽에서 크다).
+ * 선은 화면 기준 그림 rect 정규화다 — 그림 칸(열 · 행)으로 바꿔 가까운 칸만 칠한다. 지운 칸(머리 · 지느러미) · 빈 칸은 건너뛴다.
+ */
+function paintScuteStrip(
+  g: Phaser.GameObjects.Graphics, spr: PixelFishSprite, strip: FishPoly,
+  f: { ox: number; oy: number; cell: number; mirrorX: boolean; mirrorY: boolean },
+  pal: number[], keepMask: Uint8Array | null,
+): void {
+  const pts = strip.map((p) => ({ x: p.x * spr.w, y: p.y * spr.h }));   // 화면 칸 좌표(미러 뒤)
+  const seg: number[] = [0];
+  for (let i = 1; i < pts.length; i++) seg.push(seg[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  const total = seg[seg.length - 1];
+  if (total <= 0) return;
+  const x0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p.x)) - 3));
+  const x1 = Math.min(spr.w - 1, Math.ceil(Math.max(...pts.map((p) => p.x)) + 3));
+  const y0 = Math.max(0, Math.floor(Math.min(...pts.map((p) => p.y)) - 3));
+  const y1 = Math.min(spr.h - 1, Math.ceil(Math.max(...pts.map((p) => p.y)) + 3));
+  for (let sr = y0; sr <= y1; sr++) {
+    for (let sc = x0; sc <= x1; sc++) {
+      const cx = sc + 0.5, cy = sr + 0.5;
+      let best = Infinity, bestT = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        const vx = b.x - a.x, vy = b.y - a.y, L2 = vx * vx + vy * vy;
+        const u = L2 > 0 ? Math.max(0, Math.min(1, ((cx - a.x) * vx + (cy - a.y) * vy) / L2)) : 0;
+        const d = Math.hypot(cx - (a.x + vx * u), cy - (a.y + vy * u));
+        if (d < best) { best = d; bestT = (seg[i - 1] + (seg[i] - seg[i - 1]) * u) / total; }
+      }
+      const half = SCUTE_HALF_TAIL + (SCUTE_HALF_HEAD - SCUTE_HALF_TAIL) * bestT;
+      if (best > half) continue;
+      const c = f.mirrorX ? spr.w - 1 - sc : sc, r = f.mirrorY ? spr.h - 1 - sr : sr;
+      const ch = spr.rows[r][c];
+      if (ch === '.' || (keepMask && keepMask[r * spr.w + c] !== 1)) continue;
+      // 가운데는 속살 빛이 짙고 가장자리는 원래 색이 비친다(저민 홈의 둥근 단면)
+      const k = best <= half - 0.9 ? 0.86 : 0.55;
+      g.fillStyle(tintColor(pal[AB.indexOf(ch)] ?? 0x000000, SCUTE_FLESH, k), 1);
+      g.fillRect(f.ox + sc * f.cell, f.oy + sr * f.cell, f.cell, f.cell);
+    }
+  }
 }
 
 /**
@@ -1252,8 +1305,9 @@ export function drawPixelButcherFish(
   const bodyTint = (!filletView && (sprites.wholeNative || sprites.nativeColor)) ? null : tint;
   // ⚠ 상하 미러 금지 — **뱃살은 항상 아래쪽**에 오도록 배치한다 (사용자 지시 2026-07-30).
   //  "배 위로(BELLY_UP)"는 미러가 아니라 전용 복면 뷰 스프라이트로 표현한다.
+  // 322 — 모비늘을 저며 낸 면이면 그 선을 따라 띠를 다시 칠한다(전갱이류)
   const drawn = drawSprite(g, spr, geom, mirrorX, false, bodyTint, 0.22,
-    frame ? { frame, erase } : undefined);
+    frame ? { frame, erase, strip: state.scuteCutPath } : undefined);
 
   if (filletView) {
     // 박피 단계 — 구 오버레이(회색 껍질층 바 + 갈색 꼬리 손잡이 블럭)는 제거

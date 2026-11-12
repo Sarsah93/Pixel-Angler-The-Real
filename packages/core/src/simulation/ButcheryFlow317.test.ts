@@ -24,7 +24,10 @@ const trace = (path: readonly CutPoint[]): CutPoint[] => {
 
 describe('317 — 4덩어리 해체 갈래', () => {
   it('참다랑어는 늘 · 방어 70 · 부시리 80 · 잿방어 100cm부터 해체 — 그보다 작으면 삼장뜨기', () => {
-    expect(LOIN_BREAKDOWN_MIN_CM).toEqual({ yellowtail: 70, amberjack: 80, greater_amberjack: 100 });
+    // 322 — 큰 바리류(자바리 · 다금바리 · 능성어)도 80cm부터 해체
+    expect(LOIN_BREAKDOWN_MIN_CM).toEqual({
+      yellowtail: 70, amberjack: 80, greater_amberjack: 100, longtooth_grouper: 80, sawedged_perch: 80, sevenband_grouper: 80,
+    });
     expect(butcheryProfileFor('bluefin_tuna', 55).tree).toBe('loin');
     expect(butcheryProfileFor('yellowtail', 69).tree).toBeUndefined();
     expect(butcheryProfileFor('yellowtail', 70).tree).toBe('loin');

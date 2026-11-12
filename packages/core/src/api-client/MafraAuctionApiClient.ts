@@ -83,6 +83,22 @@ const DATASET_LAST_YEAR = 2023;
 export const MAFRA_ITEM_TO_SPECIES: { item: string; variety?: string; speciesId: string }[] = [
   { item: '감성돔', speciesId: 'black_seabream' },
   // 295차 — 섬 어종 넷: 「돔」 포괄 품목보다 앞에(옥돔 · 자리돔 · 혹돔 ⊃ 돔) · 참다랑어는 다랑어류 앞에
+  // 322차 — 9종. 「조기」는 품종으로 가른다(참조기 · 백조기/보구치) — 품종 없는 「조기」는 참조기로 본다
+  { item: '참조기', speciesId: 'yellow_croaker' },
+  { item: '보구치', speciesId: 'white_croaker' },
+  { item: '백조기', speciesId: 'white_croaker' },
+  { item: '조기', variety: '참조기', speciesId: 'yellow_croaker' },
+  { item: '조기', variety: '보구치', speciesId: 'white_croaker' },
+  { item: '조기', variety: '백조기', speciesId: 'white_croaker' },
+  { item: '조기', speciesId: 'yellow_croaker' },
+  { item: '전어', speciesId: 'gizzard_shad' },
+  { item: '청어', speciesId: 'pacific_herring' },
+  { item: '멸치', speciesId: 'anchovy' },
+  { item: '붉바리', speciesId: 'redspotted_grouper' },
+  { item: '자바리', speciesId: 'longtooth_grouper' },
+  { item: '다금바리', speciesId: 'sawedged_perch' },
+  { item: '능성어', speciesId: 'sevenband_grouper' },
+  { item: '구문쟁이', speciesId: 'sevenband_grouper' },
   { item: '옥돔', speciesId: 'red_tilefish' },
   { item: '돔', variety: '옥돔', speciesId: 'red_tilefish' },
   { item: '자리돔', speciesId: 'pearl_spot_chromis' },

@@ -49,6 +49,24 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 - 그림이 없으면 `NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <폴더> --only <id>`(`LOOKS`에 한 줄 · **core를 먼저 빌드** — 도구가 dist에서 어종을 찾는다)
   → `--install` → `FishTextures.ts` 두 표(`FISH_TEXTURE` · `FISH_IMAGE_FILES`) → `node tools/fish_cards.cjs --only <파일>` → 위키 `python3.13 tools/gen_wiki_images.py`.
 
+### 5. 그 밖의 층 (322차 — 9종을 넣으며 확인한 것)
+
+- `rules/SpeciesPresence.ts` `SPECIES_SEA_WEIGHT` — 바다별 가중(동 · 남 · 서 · 제주 · 울릉). 없으면 1(막지 않는다)이라 **모든 바다에 흔하게 나온다**.
+- `db-schema/FishCookingProfiles.ts` — 조리 프로필 한 줄(`P(...)` 열두 값).
+- `simulation/FishRarity.ts` `fightGroupOf` — 파이팅 어종군(작은 표층어 = `mackerel` · 바리류 · 볼락류 = `rockfish`). 없으면 `other`.
+- `ui/FishTemplateRenderer.ts` `FISH_COLORS` — 그림이 없을 때의 대체 그림 · 도마 공용 그림 물들이기 색.
+- **드문 어종은 `abundance`(0~1)** — 바다 · 철 · 수심 · 미끼가 다 맞는 자리에 사는 다른 어종이 적으면 가중이 낮아도 몫이 커진다(자바리 28%가 나왔다).
+  넣은 뒤 가장 알맞은 문맥에서 `speciesBiteShare`로 재 본다(「가끔」 = 5% 안팎 · 「아주 드물게」 = 1% 아래).
+- **금어기에 지역 예외가 있으면 `closedSeasonExemptRegions`**(전어 — 강원 · 경북 제외). `closedMonths`는 금어기 판정에도 쓰인다 — 금어기 없는 어종에 산란기 표시로 넣지 않는다.
+- 시험: `ButcheryFlow322.test.ts`의 「새 어종 9」 묶음이 층 정합(이름 · 규제 · 체장-체중 · 품목 매핑 · 존재 · 손질 분류)을 본다 — 새 어종을 넣으면 목록에 더한다.
+
+### 6. 그림이 아직 없을 때 (322차)
+
+- 그림 없이 등록할 수 있다 — `FISH_TEXTURE` · `FISH_IMAGE_FILES`에 **줄을 넣지 않는다**(없는 파일을 적으면 부팅 404 · `fish_cards.cjs` 실패). 도감 칸은 「이미지 없음」, 가방은 대체 그림.
+- 손질은 열지 않는다: 프로필 · 어종군까지 배선하고 `BUTCHERY_WIRED_SPECIES` + **`BUTCHERY_ART_PENDING_SPECIES`**에 넣는다(옆면은 그 어종 그림이어야 한다 — 다른 어종 그림으로 대신 열지 않는다).
+- 그림이 생기면: ① `tools/gemini_fish_art.cjs`(생김새 `LOOKS`) → `--install` ② `FishTextures.ts` 두 표에 한 줄씩 → `node tools/fish_cards.cjs`
+  ③ `tools/gen_species_sprites.cjs` 표(이미 있으면 그대로) 실행 ④ `BUTCHERY_ART_PENDING_SPECIES`에서 빼기 ⑤ 필렛 그림(`gemini_fillet_art.cjs` 또는 `FILLET_SPECIES_ALIAS`) ⑥ 위키 그림.
+
 ## 부가 배선 (해당 시)
 
 - **장어형 몸(315)**은 `tree: 'eel'` — `tools/gen_eel_views.cjs`의 `SPECIES`에 몸 윤곽 · 색 · 가르는 쪽(`open`) · 뼈끊기 · 껍질 벗기기를 한 줄 더해 그림과 유도선을 같이 굽고, 프로필 `filletCount: 1` + `BUTCHERY_IMPLEMENTED_SPECIES`에 넣는다(섹션은 `EEL_SECTIONS`가 단계로 줄인다).

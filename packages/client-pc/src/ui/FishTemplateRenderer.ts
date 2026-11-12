@@ -40,6 +40,16 @@ export const FISH_COLORS: Record<string, { body: number; belly: number; fin: num
   hairtail: { body: 0xb8bcc4, belly: 0xe8ecf2, fin: 0x8a8e96 },
   striped_mullet: { body: 0x5e6a6e, belly: 0xccd2d4, fin: 0x40484c },
   redlip_mullet: { body: 0x64706a, belly: 0xcfd6cc, fin: 0x444c46 },
+  // 322차 — 9종
+  gizzard_shad: { body: 0x5c6f78, belly: 0xd6dde0, fin: 0x8a8050 },
+  pacific_herring: { body: 0x3c5a66, belly: 0xd4dce0, fin: 0x4a5c62 },
+  anchovy: { body: 0x3e5668, belly: 0xdfe5e8, fin: 0x6a7880 },
+  yellow_croaker: { body: 0x9a8a5a, belly: 0xe6cf7a, fin: 0xb89a3e },
+  white_croaker: { body: 0x8e979c, belly: 0xe2e6e8, fin: 0x6a7378 },
+  redspotted_grouper: { body: 0x8a5a44, belly: 0xd8b8a0, fin: 0x6a3e30 },
+  longtooth_grouper: { body: 0x5e5246, belly: 0xb8ac9c, fin: 0x3c342c },
+  sawedged_perch: { body: 0x6a5e52, belly: 0xc8beb0, fin: 0x40382f },
+  sevenband_grouper: { body: 0x56504a, belly: 0xb4aca2, fin: 0x34302c },
 };
 export const DEFAULT_FISH_COLORS = { body: 0x50606c, belly: 0xbcc6cc, fin: 0x38444e };
 

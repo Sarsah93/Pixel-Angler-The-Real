@@ -99,12 +99,24 @@ describe('304 — 손질 흐름 전수 점검', () => {
     expect(WHOLE_FISH_SECTIONS.find((s) => s.id === 'sec_prep')!.tasks.map((t) => t.id)).toContain('t_descale');
   });
 
-  it('비늘 있는 어종은 트리가 그대로(같은 객체)', () => {
-    const prof = getButcheryProfile('red_seabream');
+  it('트리의 모든 단계가 공정에 있는 어종은 트리가 그대로(같은 객체)', () => {
+    // 322 — 트리에 「모비늘 제거」가 들어와 비늘 · 모비늘이 다 있는 전갱이가 「전부 있는」 어종이다
+    const prof = getButcheryProfile('horse_mackerel');
     const ids = buildButcheryStages(prof).map((s) => s.id);
     const r = resolveButcherySections(WHOLE_FISH_SECTIONS, ids);
     expect(r.length).toBe(WHOLE_FISH_SECTIONS.length);
     r.forEach((s, i) => expect(s).toBe(WHOLE_FISH_SECTIONS[i]));
+  });
+
+  it('비늘 있는 어종(모비늘 없음)은 밑손질에서 「모비늘 제거」만 빠지고 나머지 섹션은 같은 객체', () => {
+    const prof = getButcheryProfile('red_seabream');
+    const ids = buildButcheryStages(prof).map((s) => s.id);
+    const r = resolveButcherySections(WHOLE_FISH_SECTIONS, ids);
+    expect(r.length).toBe(WHOLE_FISH_SECTIONS.length);
+    r.forEach((s, i) => {
+      if (s.id === 'sec_prep') expect(s.tasks.map((t) => t.id)).toEqual(['t_head', 't_fins', 't_descale']);
+      else expect(s).toBe(WHOLE_FISH_SECTIONS[i]);
+    });
   });
 
   it('손질되는 어종 목록은 전부 어류 손질(finfish)로 열린다', () => {

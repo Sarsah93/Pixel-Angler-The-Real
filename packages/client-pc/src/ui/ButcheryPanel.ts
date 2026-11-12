@@ -2552,6 +2552,8 @@ export class ButcheryPanel extends DraggablePanel {
       finsOff,
       // 317 — 지느러미는 그은 칼선을 따라 지운다(선 하나 끝낼 때마다 그 지느러미)
       finCutPaths: this.finCutPathsForFrame(geom, sprites),
+      // 322 — 모비늘(전갱이류)은 저민 면만 그 선을 따라 띠가 벗겨진다
+      scuteCutPath: this.scuteCutPathForFrame(geom, sprites),
       scaledSides: this.scaledSides,
       gutted,
       hasScales: this.process.profile.hasScales,
@@ -2662,6 +2664,25 @@ export class ButcheryPanel extends DraggablePanel {
         x: (geom.x + p.x * geom.w - f.ox) / f.dw,
         y: (geom.y + p.y * geom.h - f.oy) / f.dh,
       })));
+  }
+
+  /**
+   * 322 — **지금 보이는 면에서 저며 낸 모비늘 선**을 그려진 생선 rect 정규화로(전갱이류 — `hasScutes`).
+   * 앞면(BASE · 뒤집기 전 자세의 옆면)은 `scute_base`, 뒷면(FLIP)은 `scute_flip` — 그 단계를 끝낸 면만 돌려준다.
+   * 머리 절단선과 같은 환산이다(유도선 = 도마 rect · 그림 = 생선 rect). F9로 선을 옮기면 벗겨진 띠도 따라온다.
+   */
+  private scuteCutPathForFrame(geom: { x: number; y: number; w: number; h: number },
+    sprites: ReturnType<typeof butcherSpritesFor>): { x: number; y: number }[] | undefined {
+    if (!this.process.profile.hasScutes) return undefined;
+    const id = this.renderedOrientation === 'FLIP' ? 'scute_flip' : 'scute_base';
+    if (!this.doneStages.has(id)) return undefined;
+    const path = this.process.stageList.find((s) => s.id === id)?.cut?.guidePath;
+    if (!path || path.length < 2) return undefined;
+    const f = computeFishFrame(sprites.whole, geom);
+    return path.map((p) => ({
+      x: (geom.x + p.x * geom.w - f.ox) / f.dw,
+      y: (geom.y + p.y * geom.h - f.oy) / f.dh,
+    }));
   }
 
   /**

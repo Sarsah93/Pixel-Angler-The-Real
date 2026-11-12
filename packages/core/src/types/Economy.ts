@@ -337,6 +337,17 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   bulgyhead_wrasse: { itemCode: '100410', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.1, weightExp: 0.6 },   // 혹돔(대형 — 마리당 평탄)
   red_tilefish: { itemCode: '100406', defaultPricePerKg: 45000, sizeFactorMultiplier: 1.2 },        // 옥돔(제주 — 비싼 생선)
   bluefin_tuna: { itemCode: '101501', defaultPricePerKg: 30000, sizeFactorMultiplier: 1.0, weightExp: 0.5 },   // 참다랑어(초대형 — kg^0.5)
+  // 322차 — 9종(품목 코드는 추정 — 실 시세는 품목명 매핑이 잡는다).
+  //  바리류는 클수록 kg 값이 오르지만 10kg급에서 값이 터지지 않게 무게 지수를 0.8로 둔다(자연산 자바리 kg 15~20만 원)
+  gizzard_shad: { itemCode: '100206', defaultPricePerKg: 12000, sizeFactorMultiplier: 0.9 },          // 전어(가을 활전어)
+  pacific_herring: { itemCode: '100207', defaultPricePerKg: 6000, sizeFactorMultiplier: 0.9 },        // 청어
+  anchovy: { itemCode: '100208', defaultPricePerKg: 5000, sizeFactorMultiplier: 0.8 },                // 멸치(생멸치)
+  yellow_croaker: { itemCode: '100501', defaultPricePerKg: 30000, sizeFactorMultiplier: 1.3 },        // 참조기(굴비감 — 클수록 비싸다)
+  white_croaker: { itemCode: '100502', defaultPricePerKg: 10000, sizeFactorMultiplier: 1.0 },         // 백조기(보구치)
+  redspotted_grouper: { itemCode: '100601', defaultPricePerKg: 90000, sizeFactorMultiplier: 1.2 },    // 붉바리
+  longtooth_grouper: { itemCode: '100602', defaultPricePerKg: 150000, sizeFactorMultiplier: 1.2, weightExp: 0.8 },   // 자바리(제주 다금바리)
+  sawedged_perch: { itemCode: '100603', defaultPricePerKg: 170000, sizeFactorMultiplier: 1.2, weightExp: 0.8 },      // 다금바리(표준명)
+  sevenband_grouper: { itemCode: '100604', defaultPricePerKg: 65000, sizeFactorMultiplier: 1.15, weightExp: 0.8 },   // 능성어
   // 302차 — 표에 없던 여섯(사용자 「너무 낮은 가격대인 생선들이 없는지 … 정보를 더 모아보고 반영」). 없으면 `evaluateFishSellPrice`가
   //   「g당 10원」 폴백(kg 10,000 · 등급 · 크기 보정 없음)을 썼다. 품목 코드 1005xx = 볼락류 · 1016xx = 연안 잡어(추정 — 실 시세는 품목명 매핑이 잡는다)
   // 열기(불볼락) — 소매 kg 31,900원(8~9미 · 오아시스) · 도매는 그 6할 남짓

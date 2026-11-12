@@ -23,6 +23,7 @@ const ONLY = (process.argv.find((a, i) => i >= 2 && !a.startsWith('http')) || ''
 /** 공정 = 대표 어종 한 마리 (어종군 → 위키 갈래) */
 const FLOWS = [
   { id: 'amberjack', sp: 'greater_amberjack', len: 80, wg: 4000 },
+  { id: 'jack', sp: 'horse_mackerel', len: 35, wg: 540 },   // 322 — 전갱이류(밑손질에 모비늘 제거가 하나 더)
   { id: 'small', sp: 'pacific_saury', len: 32, wg: 150 },
   { id: 'bream', sp: 'black_seabream', len: 40, wg: 1200 },
   { id: 'halibut', sp: 'flatfish', len: 50, wg: 1600 },

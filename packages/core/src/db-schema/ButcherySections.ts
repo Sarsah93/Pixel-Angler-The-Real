@@ -74,7 +74,7 @@ export interface ButcherySectionDef {
 
 /**
  * 원물(round) 자유 손질 섹션 트리 — 사용자 지정 순서도 (2026-07-30):
- *  1 시메·방혈 → 2 밑손질(머리/지느러미/비늘 자유) → 3 배따기·내장 → 4 핏줄 →
+ *  1 시메·방혈 → 2 밑손질(머리/지느러미/비늘 자유 · 322 전갱이류는 모비늘 제거도) → 3 배따기·내장 → 4 핏줄 →
  *  5 세척 → 6 꼬리 칼집(앞/뒤) → 7 1면 뜨기(등/배 자유) → 8 2면 뜨기(등/배 자유)
  *  [→ 여기서 종료 가능 = 필렛 저장] → 9 갈빗대 → 10 지아이뼈 → 11 박피 (완료).
  */
@@ -93,6 +93,8 @@ export const WHOLE_FISH_SECTIONS: ButcherySectionDef[] = [
       { id: 't_head', label: '머리 제거', stageIds: ['head_base', 'head_flip'], yields: ['head'] },
       { id: 't_fins', label: '지느러미 제거', stageIds: ['finectomy'] },
       { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
+      // 322 — 전갱이류(`hasScutes`)만 — 공정에 단계가 없는 어종은 `resolveButcherySections`가 이 작업을 뺀다
+      { id: 't_scute', label: '모비늘 제거', stageIds: ['scute_base', 'scute_flip'] },
     ],
   },
   {
@@ -180,6 +182,7 @@ export const SMALL_FISH_SECTIONS: ButcherySectionDef[] = [
     id: 'sec_prep', label: '비늘 제거', anyOrder: false,
     tasks: [
       { id: 't_descale', label: '비늘 긁어내기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
+      { id: 't_scute', label: '모비늘 저며 내기', stageIds: ['scute_base', 'scute_flip'] },   // 322 — 작은 전갱이류(`hasScutes`)
     ],
   },
   {
@@ -511,6 +514,8 @@ export const LOIN_SECTIONS: ButcherySectionDef[] = [
       { id: 't_head', label: '머리 · 가마 떼기', stageIds: ['head_base', 'head_flip'], yields: ['head', 'kama'] },
       { id: 't_fins', label: '지느러미 제거', stageIds: ['finectomy'] },
       { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
+      // 322 — 전갱이류(`hasScutes`)만 — 공정에 단계가 없는 어종은 `resolveButcherySections`가 이 작업을 뺀다
+      { id: 't_scute', label: '모비늘 제거', stageIds: ['scute_base', 'scute_flip'] },
     ],
   },
   WHOLE_FISH_SECTIONS[2], WHOLE_FISH_SECTIONS[3], WHOLE_FISH_SECTIONS[4],
