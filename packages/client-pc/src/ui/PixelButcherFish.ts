@@ -23,10 +23,15 @@ import { SPECIES_WHOLE } from '../data/PixelFishSpecies.js';
 import { isStripelessMale } from '../data/FishTextures.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
 import { FISH_VIEW_SPRITES } from '../data/PixelFishViews.js';
-import { FILLET_SPECIES_SPRITES, FILLET_SPECIES_ALIAS } from '../data/PixelFilletSpecies.js';
+import { FILLET_SPECIES_SPRITES, FILLET_SPECIES_ALIAS, FILLET_SIDE_PIN_LINE } from '../data/PixelFilletSpecies.js';
 
-/** 316 — 어종 필렛 그림 종류(순수 · 껍질 붙은 · 갈빗대 붙은) */
-export type SpeciesFilletKind = 'pure' | 'skin' | 'ribs';
+/**
+ * 316 — 어종 필렛 그림 종류(순수 · 껍질 붙은 · 갈빗대 붙은).
+ * 321 — `side` = **갈빗대만 뗀 한 면 필렛**(지아이뼈 분리 전 — 등살 · 뱃살 두 덩어리가 붙은 모습 · 머리 왼쪽).
+ *  `pure` · `skin`은 지아이뼈로 가른 **뒤**의 한 덩어리다 — 지아이뼈 분리 단계에 쓰지 않는다
+ *  (사용자 「지아이를 분리하고 나서 이 필렛 그림이 나와야지 … 갈빗대만 제거했을 뿐인데」).
+ */
+export type SpeciesFilletKind = 'pure' | 'skin' | 'ribs' | 'side';
 
 /**
  * 316 — **어종별 필렛 도마 스프라이트**(Gemini 그림 · `PixelFilletSpecies`). 없으면 undefined → 어종군 공용 그림.
@@ -36,6 +41,18 @@ export function speciesFilletSprite(speciesId: string | undefined, kind: Species
   if (!speciesId) return undefined;
   const sp = FILLET_SPECIES_ALIAS[speciesId] ?? speciesId;
   return FILLET_SPECIES_SPRITES[`${sp}_${kind}`];
+}
+
+/**
+ * 321 — **지아이뼈 분리 단계에 그리는 필렛 그림**: 그 어종의 한 면 필렛(`side`)이 있으면 그것,
+ * 없으면 그 어종의 순수 필렛(작은 생선 — 잔뼈를 핀셋으로 뽑아 한 덩이 그대로라 순수 필렛이 곧 한 면이다). 둘 다 없으면 undefined(어종군 공용 그림).
+ * `whole` = 한 면 필렛 그림인가(머리 왼쪽 · 혈합육 줄이 있다).
+ */
+export function pinStageFilletSprite(speciesId: string | undefined): { spr: PixelFishSprite; whole: boolean } | undefined {
+  const side = speciesFilletSprite(speciesId, 'side');
+  if (side) return { spr: side, whole: true };
+  const pure = speciesFilletSprite(speciesId, 'pure');
+  return pure ? { spr: pure, whole: false } : undefined;
 }
 
 /** 단계 스프라이트 조회 — 실사 사진 레지스트리 우선, 없으면 파라메트릭 뷰 폴백 */
@@ -233,6 +250,8 @@ export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual):
 /** 316 — 필렛 뷰마다 어종군 공용 그림(유도선을 잰 그림) */
 function familyFilletSprite(fam: 'amberjack' | 'bream' | 'halibut', kind: SpeciesFilletKind): PixelFishSprite | undefined {
   if (kind === 'ribs') return stageSpr('fillet_ribs');
+  // 321 — 지아이뼈 단계의 어종군 그림 = 대표 어종(잿방어 · 감성돔)의 한 면 필렛. 「군 확정」 좌표는 이 그림 자리에 저장된다
+  if (kind === 'side') return speciesFilletSprite(fam === 'amberjack' ? 'greater_amberjack' : fam === 'bream' ? 'black_seabream' : undefined, 'side');
   if (kind === 'skin') return stageSpr(`skin_fillet_${fam}`) ?? stageSpr(`pure_fillet_${fam}`);
   return stageSpr(`pure_fillet_${fam}`);
 }
@@ -276,22 +295,39 @@ function columnProfile(spr: PixelFishSprite, n = 48, k = 2): GuideColumnProfile 
  */
 export function butcherFilletFrames(
   speciesId: string, boardW: number, boardH: number,
-): Partial<Record<SpeciesFilletKind, GuideFrameRemap>> | undefined {
+): Partial<Record<'ribs' | 'side' | 'skin', GuideFrameRemap>> | undefined {
   const fam = butcherFamilyOf(speciesId);
   if (fam === 'halibut') return undefined;   // 넙치류 필렛 뷰는 다섯장뜨기 전용 그림(어종 그림 없음)
   const geom = { x: 0, y: 0, w: boardW, h: boardH };
   const norm = (f: PixelFishFrame): { x: number; y: number; w: number; h: number } => ({
     x: f.ox / boardW, y: f.oy / boardH, w: f.dw / boardW, h: f.dh / boardH,
   });
-  const out: Partial<Record<SpeciesFilletKind, GuideFrameRemap>> = {};
-  for (const kind of ['ribs', 'pure', 'skin'] as const) {
-    const own = speciesFilletSprite(speciesId, kind);
-    const ref = familyFilletSprite(fam, kind);
-    if (!own || !ref) continue;
+  const out: Partial<Record<'ribs' | 'side' | 'skin', GuideFrameRemap>> = {};
+  for (const kind of ['ribs', 'side', 'skin'] as const) {
+    // 321 — 지아이뼈 뷰(`side`): 한 면 필렛 그림이 있으면 대표 어종의 한 면 필렛 ↔ 이 어종의 한 면 필렛,
+    //  없으면(작은 생선 핀셋 — 순수 필렛이 한 덩이) 전처럼 어종군 순수 필렛 ↔ 이 어종 순수 필렛
+    const pin = kind === 'side' ? pinStageFilletSprite(speciesId) : undefined;
+    const own = kind === 'side' ? pin?.spr : speciesFilletSprite(speciesId, kind);
+    const ref = kind === 'side' && !pin?.whole ? familyFilletSprite(fam, 'pure') : familyFilletSprite(fam, kind);
+    if (!own || !ref || own === ref) continue;
     const a = computeFishFrame(ref, geom), b = computeFishFrame(own, geom);
     out[kind] = { from: norm(a), to: norm(b), fromCols: columnProfile(ref), toCols: columnProfile(own) };
   }
   return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * 321 — **지아이뼈 분리 선 = 한 면 필렛 그림의 혈합육(지아이뼈) 줄**(core `ButcheryStageOptions.pinLine` — 도마 정규화 · 필렛 A).
+ * 그림에서 잰 줄(`FILLET_SIDE_PIN_LINE` — 그림 rect 정규화)을 도마가 그 그림을 그리는 rect(`computeFishFrame`)로 옮긴다.
+ * 한 면 필렛 그림이 없는 어종(작은 생선 · 넙치류)은 undefined — 전처럼 어종군 기본선을 옮겨 쓴다.
+ */
+export function butcherPinLine(speciesId: string, boardW: number, boardH: number): Array<{ x: number; y: number }> | undefined {
+  const spr = speciesFilletSprite(speciesId, 'side');
+  const line = FILLET_SIDE_PIN_LINE[FILLET_SPECIES_ALIAS[speciesId] ?? speciesId];
+  if (!spr || !line || line.length < 2) return undefined;
+  const f = computeFishFrame(spr, { x: 0, y: 0, w: boardW, h: boardH });
+  const r = (v: number): number => Math.round(v * 1000) / 1000;
+  return line.map(([x, y]) => ({ x: r((f.ox + x * f.dw) / boardW), y: r((f.oy + y * f.dh) / boardH) }));
 }
 
 /** 어종군 대표 온마리 — 유도선(core `GUIDE_COORDS` · `FLAT_GUIDE`)을 F9로 잰 기준 그림 */
@@ -345,6 +381,12 @@ function pickStageSprite(
   //  FISH_FILLET 폴백이 지아이 단계와 완료 안내 창 뒤에 "구 이미지"로 남아 있었다
   //  (사용자 지시 2026-08-04). 박피 단계는 전용 렌더(drawPeelTop 등)가 담당.
   if (state.finished || o === 'FLESH_UP') {
+    // 321 — **지아이뼈 분리 단계는 갈빗대만 뗀 한 면 필렛**(등살 · 뱃살이 붙은 모습 · 머리 왼쪽 — 갈빗대 단계에서 이어진다).
+    //  가운데(혈합육 줄)를 두 번 그어 가른 뒤에야 한 덩어리 그림이 된다. 필렛 B는 갈빗대 단계처럼 좌우로 뒤집는다.
+    if (!state.finished && (state.stageId === 'pin_a' || state.stageId === 'pin_b')) {
+      const pin = pinStageFilletSprite(speciesId);
+      if (pin) return { spr: pin.spr, mirrorX: state.stageId === 'pin_b', native: true };
+    }
     const own = speciesFilletSprite(speciesId, 'pure');
     const spr = own ?? stageSpr(`pure_fillet_${fam}`);
     if (spr) return { spr, mirrorX: !state.finished && state.stageId === 'pin_b', native: !!own };

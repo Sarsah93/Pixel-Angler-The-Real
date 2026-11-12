@@ -8,6 +8,74 @@
 import type { ButcheryGuideOverrideTable } from '../types/Butchery.js';
 
 export const BUTCHERY_GUIDE_OVERRIDES: ButcheryGuideOverrideTable = {
+  "@amberjack": {
+    "fillet_0_ribsever": {
+      guidePath: [{ x: 0.419, y: 0.490 }, { x: 0.182, y: 0.532 }],
+      at: "2026-11-11T15:17:54.078Z",
+    },
+    "fillet_0_score": {
+      guidePath: [{ x: 0.798, y: 0.575 }, { x: 0.197, y: 0.490 }],
+      at: "2026-11-11T15:17:12.730Z",
+    },
+    "fillet_0_sever": {
+      guidePath: [{ x: 0.796, y: 0.470 }, { x: 0.189, y: 0.470 }],
+      at: "2026-11-11T15:17:38.145Z",
+    },
+    "fillet_1_bellyribcut": {
+      guidePath: [{ x: 0.357, y: 0.687 }, { x: 0.176, y: 0.615 }],
+      at: "2026-11-11T15:19:05.159Z",
+    },
+    "fillet_1_ribcut": {
+      guidePath: [{ x: 0.639, y: 0.687 }, { x: 0.810, y: 0.620 }],
+      at: "2026-11-11T15:18:41.478Z",
+    },
+    "fillet_1_score": {
+      guidePath: [{ x: 0.804, y: 0.663 }, { x: 0.192, y: 0.666 }],
+      at: "2026-11-11T15:18:03.962Z",
+    },
+    "fillet_1_score2": {
+      guidePath: [{ x: 0.725, y: 0.646 }, { x: 0.192, y: 0.666 }],
+      at: "2026-11-11T15:18:10.078Z",
+    },
+    "fillet_1_sever": {
+      guidePath: [{ x: 0.798, y: 0.657 }, { x: 0.190, y: 0.647 }],
+      at: "2026-11-11T15:18:53.109Z",
+    },
+  },
+  "@bream": {
+    "fillet_0_ribsever": {
+      guidePath: [{ x: 0.419, y: 0.490 }, { x: 0.182, y: 0.532 }],
+      at: "2026-11-11T15:17:54.078Z",
+    },
+    "fillet_0_score": {
+      guidePath: [{ x: 0.798, y: 0.575 }, { x: 0.197, y: 0.490 }],
+      at: "2026-11-11T15:17:12.730Z",
+    },
+    "fillet_0_sever": {
+      guidePath: [{ x: 0.796, y: 0.470 }, { x: 0.189, y: 0.470 }],
+      at: "2026-11-11T15:17:38.145Z",
+    },
+    "fillet_1_bellyribcut": {
+      guidePath: [{ x: 0.357, y: 0.687 }, { x: 0.176, y: 0.615 }],
+      at: "2026-11-11T15:19:05.159Z",
+    },
+    "fillet_1_ribcut": {
+      guidePath: [{ x: 0.639, y: 0.687 }, { x: 0.810, y: 0.620 }],
+      at: "2026-11-11T15:18:41.478Z",
+    },
+    "fillet_1_score": {
+      guidePath: [{ x: 0.804, y: 0.663 }, { x: 0.192, y: 0.666 }],
+      at: "2026-11-11T15:18:03.962Z",
+    },
+    "fillet_1_score2": {
+      guidePath: [{ x: 0.725, y: 0.646 }, { x: 0.192, y: 0.666 }],
+      at: "2026-11-11T15:18:10.078Z",
+    },
+    "fillet_1_sever": {
+      guidePath: [{ x: 0.798, y: 0.657 }, { x: 0.190, y: 0.647 }],
+      at: "2026-11-11T15:18:53.109Z",
+    },
+  },
   "largescale_blackfish": {
     "bleed_cut": {
       guidePath: [{ x: 0.256, y: 0.278 }, { x: 0.278, y: 0.348 }, { x: 0.293, y: 0.421 }, { x: 0.297, y: 0.495 }, { x: 0.290, y: 0.570 }, { x: 0.269, y: 0.641 }, { x: 0.238, y: 0.708 }],

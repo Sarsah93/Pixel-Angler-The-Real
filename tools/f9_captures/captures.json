@@ -1,4 +1,232 @@
 {
+ "@amberjack": {
+  "fillet_0_score": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.798,
+     "y": 0.575
+    },
+    {
+     "x": 0.197,
+     "y": 0.49
+    }
+   ],
+   "at": "2026-11-11T15:17:12.730Z"
+  },
+  "fillet_0_sever": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.796,
+     "y": 0.47
+    },
+    {
+     "x": 0.189,
+     "y": 0.47
+    }
+   ],
+   "at": "2026-11-11T15:17:38.145Z"
+  },
+  "fillet_0_ribsever": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.419,
+     "y": 0.49
+    },
+    {
+     "x": 0.182,
+     "y": 0.532
+    }
+   ],
+   "at": "2026-11-11T15:17:54.078Z"
+  },
+  "fillet_1_score": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.804,
+     "y": 0.663
+    },
+    {
+     "x": 0.192,
+     "y": 0.666
+    }
+   ],
+   "at": "2026-11-11T15:18:03.962Z"
+  },
+  "fillet_1_score2": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.725,
+     "y": 0.646
+    },
+    {
+     "x": 0.192,
+     "y": 0.666
+    }
+   ],
+   "at": "2026-11-11T15:18:10.078Z"
+  },
+  "fillet_1_ribcut": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.639,
+     "y": 0.687
+    },
+    {
+     "x": 0.81,
+     "y": 0.62
+    }
+   ],
+   "at": "2026-11-11T15:18:41.478Z"
+  },
+  "fillet_1_sever": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.798,
+     "y": 0.657
+    },
+    {
+     "x": 0.19,
+     "y": 0.647
+    }
+   ],
+   "at": "2026-11-11T15:18:53.109Z"
+  },
+  "fillet_1_bellyribcut": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.357,
+     "y": 0.687
+    },
+    {
+     "x": 0.176,
+     "y": 0.615
+    }
+   ],
+   "at": "2026-11-11T15:19:05.159Z"
+  }
+ },
+ "@bream": {
+  "fillet_0_score": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.798,
+     "y": 0.575
+    },
+    {
+     "x": 0.197,
+     "y": 0.49
+    }
+   ],
+   "at": "2026-11-11T15:17:12.730Z"
+  },
+  "fillet_0_sever": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.796,
+     "y": 0.47
+    },
+    {
+     "x": 0.189,
+     "y": 0.47
+    }
+   ],
+   "at": "2026-11-11T15:17:38.145Z"
+  },
+  "fillet_0_ribsever": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.419,
+     "y": 0.49
+    },
+    {
+     "x": 0.182,
+     "y": 0.532
+    }
+   ],
+   "at": "2026-11-11T15:17:54.078Z"
+  },
+  "fillet_1_score": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.804,
+     "y": 0.663
+    },
+    {
+     "x": 0.192,
+     "y": 0.666
+    }
+   ],
+   "at": "2026-11-11T15:18:03.962Z"
+  },
+  "fillet_1_score2": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.725,
+     "y": 0.646
+    },
+    {
+     "x": 0.192,
+     "y": 0.666
+    }
+   ],
+   "at": "2026-11-11T15:18:10.078Z"
+  },
+  "fillet_1_ribcut": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.639,
+     "y": 0.687
+    },
+    {
+     "x": 0.81,
+     "y": 0.62
+    }
+   ],
+   "at": "2026-11-11T15:18:41.478Z"
+  },
+  "fillet_1_sever": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.798,
+     "y": 0.657
+    },
+    {
+     "x": 0.19,
+     "y": 0.647
+    }
+   ],
+   "at": "2026-11-11T15:18:53.109Z"
+  },
+  "fillet_1_bellyribcut": {
+   "from": "largescale_blackfish",
+   "guidePath": [
+    {
+     "x": 0.357,
+     "y": 0.687
+    },
+    {
+     "x": 0.176,
+     "y": 0.615
+    }
+   ],
+   "at": "2026-11-11T15:19:05.159Z"
+  }
+ },
  "largescale_blackfish": {
   "ikejime": {
    "tapPoint": {

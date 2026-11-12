@@ -277,10 +277,11 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .bk-steps b{font-size:14px; color:var(--ink)}
 .bk-steps .sec{font-size:11.5px; color:var(--muted)}
 .bk-steps .g{font-size:12.5px; color:var(--ink2); line-height:1.5}
-.bk-fl{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px}
+.bk-fl{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px}
 .bk-fl li{background:var(--card); border:1px solid var(--rule); border-radius:6px; padding:8px 10px 10px}
 .bk-fl .nm{font-size:14px; margin-bottom:6px; display:block}
 .bk-fl .row{width:100%; aspect-ratio:720/96; background-repeat:no-repeat; background-color:#0c1622; border-radius:4px}
+.bk-fl-note{margin:0 0 10px; font-size:13px; color:var(--muted); line-height:1.6; max-width:70ch}
 .bk-fl .ks{display:grid; grid-template-columns:repeat(3,1fr); margin-top:4px; font-size:11.5px; color:var(--muted); text-align:center}
 
 /* 상세 시트 */
@@ -2052,11 +2053,11 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (c.note) h += '<p class="bk-note">' + esc(c.note) + '</p>';
     // 316차 — 어종별 필렛 그림(배를 가른 뒤 도마 · 가방 · 회썰기에 그 어종 그림이 나온다)
     if (c.fillets && c.fillets.img && c.fillets.rows.length) {
-      const F = c.fillets, n = F.rows.length;
-      h += '<section class="bk-flow"><h3>어종별 필렛 그림</h3><ul class="bk-fl">' + F.rows.map((sp, i) =>
+      const F = c.fillets, n = F.rows.length, nk = F.kinds.length;
+      h += '<section class="bk-flow"><h3>어종별 필렛 그림</h3>' + (F.note ? '<p class="bk-fl-note">' + esc(F.note) + '</p>' : '') + '<ul class="bk-fl">' + F.rows.map((sp, i) =>
         '<li><span class="nm">' + (sp.inWiki ? xl('species', sp.id, sp.name) : esc(sp.name)) + '</span>' +
-        '<div class="row" role="img" aria-label="' + esc(sp.name) + ' 필렛 그림" style="background-image:url(\'' + imgSrc(F.img) + '\');background-size:100% ' + (n * 100) + '%;background-position:0 ' + (n > 1 ? (i / (n - 1) * 100).toFixed(4) : 0) + '%"></div>' +
-        '<div class="ks">' + F.kinds.map(k => '<span>' + esc(k) + '</span>').join('') + '</div></li>').join('') + '</ul></section>';
+        '<div class="row" role="img" aria-label="' + esc(sp.name) + ' 필렛 그림" style="aspect-ratio:' + (F.tileW * nk) + '/' + F.tileH + ';background-image:url(\'' + imgSrc(F.img) + '\');background-size:100% ' + (n * 100) + '%;background-position:0 ' + (n > 1 ? (i / (n - 1) * 100).toFixed(4) : 0) + '%"></div>' +
+        '<div class="ks" style="grid-template-columns:repeat(' + nk + ',1fr)">' + F.kinds.map(k => '<span>' + esc(k) + '</span>').join('') + '</div></li>').join('') + '</ul></section>';
     }
     for (const f of c.flows) {
       h += '<section class="bk-flow"><h3>' + esc(f.title) + '</h3>';

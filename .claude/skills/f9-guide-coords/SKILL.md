@@ -59,6 +59,15 @@ description: Pixel Angler 손질 가이드 좌표 F9 실측 → core 반영 워�
 9. **그림이 바뀌면 그 뷰의 어종 확정 좌표는 낡는다**(319) — 어종 [확정] 좌표는 옮기지 않고 그대로 쓴다(어종군 선만 `filletFrames`로 옮겨진다).
    필렛 그림(순수 · 껍질)을 바꾸면 그 어종의 지아이 · 박피 확정은 `captures.json`에서 빼고(기록 `log.jsonl`은 남김) 사용자에게 다시 확정을 청한다.
    사용자 PC의 확정 데이터는 `tools/f9_captures/captures.json`(정본) · `log.jsonl` — 첨부로 받으면 그 자리에 두고 `node tools/apply_f9_captures.cjs`.
+10. **지아이뼈 분리 단계의 그림은 「갈빗대만 뗀 한 면 필렛」이다**(321) — 한 덩어리 그림(순수 · 껍질)은 분리가 끝난 뒤(박피 · 손질 끝)의 것이다.
+   지아이뼈 선의 기본 자리는 그 그림의 혈합육 줄(`FILLET_SIDE_PIN_LINE` → core `pinLine` — 필렛 B는 좌우 대칭)이고, 어종 · 군 [확정]이 있으면 그것이 먼저다.
+   ⚠ 2026-11-12(321) 전에 확정한 `pin_a` · `pin_b`는 한 덩어리 그림 위에서 그은 선이다 — 받으면 `captures.json`에서 빼고 다시 확정을 청한다(박피 선은 그대로 유효).
+11. **「1면 뜨기 · 2면 뜨기」 선은 어종군 공통값이다**(321 사용자 지시 — 「거의 모든 생선이 공통이라 벵에돔 기준으로」) — 장뜨기 뷰는 어종군 공용 그림이고
+   두 군의 그림 크기 · 기본선이 같다. `node tools/f9_share_fillet_lines.cjs [--from <어종>]`가 그 어종의 8단계 확정을 `@bream` · `@amberjack`에 넣는다
+   (군 키는 `captures.json` 맨 앞 · `familyFrame` 없음). 기준 어종의 장뜨기 선을 다시 확정하면 다시 돌린다. 어종마다 따로 확정하면 그쪽이 먼저다.
+12. **다른 PC의 확정분을 main과 합칠 때**(321) — dev 서버 [확정]은 `captures.json` · `log.jsonl` · `ButcheryGuideOverrides.ts`를 고친다(커밋 전 변경).
+   그대로 `git pull`하면 멈춘다 → `git stash` → `git pull origin main` → `git stash pop` → `node tools/apply_f9_captures.cjs`(표 다시 굽기).
+   `ButcheryGuideOverrides.ts`에 충돌 표시가 남아도 마지막 명령이 통째로 다시 쓴다. `captures.json`이 충돌하면 그 파일을 사용자에게서 받아 손으로 합친다.
 8. **해체(참다랑어 · 대방어급) 측면 선은 표에 없다**(317) — 몸통 열 실루엣에서 굽는다(`LoinArt.loinSideGeometry`). 머리 · 지느러미 [확정] 선을 따라 몸통 열이 바뀌면 측면 선도 같이 옮겨진다.
 
 ## 다중 선·스윕 규칙

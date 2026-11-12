@@ -232,10 +232,19 @@ export interface ButcheryStageOptions {
    * 316 — **필렛 뷰 유도선을 어종 필렛 그림 자리로**. 갈빗대 · 지아이뼈 · 박피 선은 어종군 공용 필렛 그림
    * (공용 갈빗대 사진 · 잿방어 로인 · 감성돔 필렛) 위에서 잰 값이다. 도마가 어종 필렛 그림(Gemini — `PixelFilletSpecies`)을
    * 그리면 종횡비가 달라 그림이 도마의 다른 자리에 놓이므로, 뷰마다 rect 대 rect로 옮긴다(`guideFrame`과 같은 식).
-   *  - `ribs` = 갈빗대 제거(rib_a · rib_b) · `pure` = 지아이뼈(pin_a · pin_b — 작은 생선 핀셋 포함) · `skin` = 박피 ① · ③
+   *  - `ribs` = 갈빗대 제거(rib_a · rib_b) · `side` = 지아이뼈(pin_a · pin_b — 작은 생선 핀셋 포함) · `skin` = 박피 ① · ③
+   *  - 321 — 지아이뼈 단계의 그림은 **갈빗대만 뗀 한 면 필렛**(`side` — 두 덩어리가 붙은 모습)이다. 한 덩어리 그림(`pure`)은 분리가 끝난 뒤의 것.
+   *    작은 생선은 한 면 필렛이 따로 없어(순수 필렛이 한 덩이) client가 `side` 자리에 순수 필렛 대응을 넣는다.
    *  - 박피 ② 칼 넣기(측면 단면)는 어종 그림이 없다 — 옮기지 않는다.
    */
   filletFrames?: Partial<Record<FilletGuideView, GuideFrameRemap>>;
+  /**
+   * 321 — **지아이뼈 분리 선 = 그 어종 한 면 필렛 그림의 혈합육(지아이뼈) 줄**(도마 정규화 · 필렛 A 기준 — 왼쪽 머리 → 오른쪽 꼬리).
+   * client가 그림에서 잰 줄(`FILLET_SIDE_PIN_LINE`)을 도마 자리로 옮겨 넘긴다 — core는 그림을 모른다(317 해체 측면 선과 같은 식).
+   * 필렛 B는 좌우로 뒤집어 그리므로 x를 뒤집어 쓴다. 있으면 어종군 기본선(가운데 가로선)을 대신하고 `filletFrames`로 다시 옮기지 않는다.
+   * F9 확정 좌표(어종 · 군)가 있으면 그것이 먼저다. 작은 생선(핀셋)은 넘기지 않는다.
+   */
+  pinLine?: CutPoint[];
   /**
    * 315 — dev F9 [확정] 좌표(dev 서버에서 받아 둔 것). 저장된 표(`BUTCHERY_GUIDE_OVERRIDES`)보다 먼저 쓴다.
    * 확정 직후 다시 연 손질 창에도 그 좌표가 보이게 하려는 것 — 배포본은 넘기지 않는다(저장된 표만).
@@ -321,9 +330,10 @@ export function isBodyGuideStage(stageId: string): boolean {
 }
 
 /** 316 — 필렛 뷰 종류(도마가 그 단계에 그리는 필렛 그림) */
-export type FilletGuideView = 'ribs' | 'pure' | 'skin';
+export type FilletGuideView = 'ribs' | 'side' | 'skin';
 const FILLET_VIEW_STAGES: Readonly<Record<string, FilletGuideView>> = {
-  rib_a: 'ribs', rib_b: 'ribs', pin_a: 'pure', pin_b: 'pure', peel_grip: 'skin', peel_pull: 'skin',
+  // 321 — 지아이뼈 단계 = 갈빗대만 뗀 한 면 필렛(`side`). 한 덩어리 순수 필렛은 분리가 끝난 뒤의 그림이라 유도선 뷰가 아니다
+  rib_a: 'ribs', rib_b: 'ribs', pin_a: 'side', pin_b: 'side', peel_grip: 'skin', peel_pull: 'skin',
 };
 /** 316 — 도마가 필렛 그림을 좌우로 뒤집어 그리는 단계(필렛 B) */
 const FILLET_MIRRORED_STAGES: ReadonlySet<string> = new Set(['rib_b', 'pin_b']);
@@ -357,10 +367,21 @@ function remapStageGuides(st: ButcheryStage, m: GuideFrameRemap): ButcheryStage 
   return next;
 }
 
-/** 316 — 필렛 뷰 스테이지들을 어종 필렛 그림 자리로 옮긴다(그림이 없는 뷰는 그대로) */
-function applyFilletFrames(stages: ButcheryStage[], frames: ButcheryStageOptions['filletFrames']): ButcheryStage[] {
-  if (!frames) return stages;
+/**
+ * 316 — 필렛 뷰 스테이지들을 어종 필렛 그림 자리로 옮긴다(그림이 없는 뷰는 그대로).
+ * 321 — `pinLine`(그림에서 잰 혈합육 줄)이 있으면 지아이뼈 분리 선은 그 줄이다(필렛 B는 좌우 대칭) — 이미 그 그림 자리라 옮기지 않는다.
+ */
+function applyFilletFrames(
+  stages: ButcheryStage[], frames: ButcheryStageOptions['filletFrames'], pinLine?: CutPoint[],
+): ButcheryStage[] {
+  const pin = pinLine && pinLine.length >= 2 ? pinLine : undefined;
+  if (!frames && !pin) return stages;
   return stages.map((st) => {
+    if (pin && (st.id === 'pin_a' || st.id === 'pin_b') && st.cut) {
+      const r = (v: number): number => Math.round(v * 1000) / 1000;
+      const path = pin.map((q) => (st.id === 'pin_b' ? { x: r(1 - q.x), y: q.y } : { x: q.x, y: q.y }));
+      return { ...st, cut: { ...st.cut, guidePath: path } };
+    }
     const m = FILLET_VIEW_STAGES[st.id] ? stageGuideRemap(st.id, { filletFrames: frames }) : undefined;
     return m ? remapStageGuides(st, m) : st;
   });
@@ -1079,7 +1100,9 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
     return [...front, ...buildLoinTailStages({ side, sakuPieces: opts?.loin?.sakuPieces })];
   }
   // 316 — 어종 필렛 그림이 있으면 갈빗대 · 지아이뼈 · 박피 선을 그 그림 자리로(작은 생선 핀셋 스윕도 같은 뷰)
-  return applyFilletFrames(profile.tree === 'small' ? toSmallFishStages(stages) : stages, opts?.filletFrames);
+  // 321 — 지아이뼈 분리 선은 한 면 필렛 그림의 혈합육 줄(`pinLine` — 작은 생선 핀셋은 대상이 아니다)
+  return applyFilletFrames(profile.tree === 'small' ? toSmallFishStages(stages) : stages, opts?.filletFrames,
+    profile.tree === 'small' ? undefined : opts?.pinLine);
 }
 
 /**

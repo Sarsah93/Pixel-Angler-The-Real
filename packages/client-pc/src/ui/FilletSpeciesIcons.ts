@@ -39,7 +39,7 @@ function bakeSprite(scene: Phaser.Scene, key: string, spr: PixelFishSprite, C = 
 
 /**
  * 어종 필렛 아이콘 텍스처 키 — 그 어종 그림이 있으면 굽고 키를, 없으면 undefined(부르는 쪽이 어종군 공용 아이콘으로).
- *  pure = 순수 필렛 · skin = 껍질 붙은 필렛 · ribs = 갈빗대 붙은 필렛
+ *  pure = 순수 필렛 · skin = 껍질 붙은 필렛 · ribs = 갈빗대 붙은 필렛 · side = 갈빗대만 뗀 한 면 필렛(321 — 지아이뼈 분리 전)
  */
 export function speciesFilletIconKey(scene: Phaser.Scene, speciesId: string, kind: SpeciesFilletKind): string | undefined {
   const spr = speciesFilletSprite(speciesId, kind);
@@ -57,7 +57,7 @@ export function ensureTrimTexture(scene: Phaser.Scene, key: string | undefined):
   if (!key) return false;
   if (scene.textures.exists(key)) return true;
   if (key.startsWith(PREFIX)) {
-    const m = /^trimsp_(pure|skin|ribs)_(.+)$/.exec(key);
+    const m = /^trimsp_(pure|skin|ribs|side)_(.+)$/.exec(key);
     return !!(m && speciesFilletIconKey(scene, m[2], m[1] as SpeciesFilletKind));
   }
   // 317 — 해체 결과물(덩어리 · 사쿠 · 가마살 · 혈합육 · 중골 살) · 사쿠 회썰기 그림

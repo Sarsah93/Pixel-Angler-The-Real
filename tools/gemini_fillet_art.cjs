@@ -10,6 +10,9 @@
  *            화풍 참고 = 잿방어 순수 필렛(315 시범과 같은 식) + 그 어종 온마리
  *    skin  — 껍질이 붙어 있는 필렛 = **pure 그림을 고쳐서**(모양 · 자리 그대로 · 윤곽 둘레에 그 어종 껍질 띠) — 박피 도마 · 가방 아이콘
  *    ribs  — 갈빗대가 붙은 필렛 = **공용 갈빗대 사진의 구도**(머리 왼쪽 · 뱃살 날개 왼쪽 아래) + pure의 화풍 · 살색 — 갈빗대 제거 도마 · 가방 아이콘
+ *    side  — 321 **갈빗대만 뗀 한 면 필렛**(지아이뼈 분리 전 — 등살 · 뱃살 두 덩어리가 붙은 모습 · 가운데 혈합육 줄) · 머리 왼쪽(갈빗대 단계와 같은 방향)
+ *            지아이뼈 분리 도마 · 갈빗대 뗀 필렛 가방 아이콘. 19종은 316 반쪽 통째 그림(`split_fillet_art.cjs --side`), 감성돔 · 잿방어는 사용자 원본 사진.
+ *            Gemini로 그릴 때는 `--kinds side`(구도 참고 = 사용자 원본 사진 `skinned_pillet_without_ribs.png`) — ⚠ 321 때는 크레딧 소진(402)으로 돌려 보지 못했다.
  *  모양이 어긋나면(skin ↔ pure · ribs ↔ 구도 참고의 실루엣 IoU가 낮으면) 다시 뽑는다 — 유도선이 그림을 벗어나지 않게.
  *
  *  키는 환경의 네트워크 시크릿이 붙인다(호스트 generativelanguage.googleapis.com · 헤더 x-goog-api-key).
@@ -25,7 +28,7 @@
  *      → client `src/data/PixelFilletSpecies.ts`(도마 스프라이트 — 긴 변 128칸 · 팔레트 ≤ 48) — 게임은 이것만 싣는다
  *    그다음 `node tools/gen_sashimi_fillet.cjs`가 어종 회썰기 탑뷰 · 측면 · 한 점을 굽는다(`public/sashimi/sp/`).
  *    node tools/gemini_fillet_art.cjs --wiki-sheets
- *      → 위키 「어종 손질」 탭 어종별 필렛 그림 시트(`tools/wiki_img/butchery/fillets_<갈래>.webp` — 한 줄 = 어종 하나: 순수 · 껍질 · 갈빗대)
+ *      → 위키 「어종 손질」 탭 어종별 필렛 그림 시트(`tools/wiki_img/butchery/fillets_<갈래>.webp` — 한 줄 = 어종 하나 · 공정 순서: 갈빗대 붙은 → 갈빗대 뗀 한 면 → 껍질 붙은 → 순수)
  */
 'use strict';
 const fs = require('fs');
@@ -54,6 +57,7 @@ const SPLIT_REF = {
 const BREAM_FLOW = new Set(['black_seabream', 'red_seabream', 'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw', 'surfperch', 'rainbow_wrasse']);
 const splitFlowOf = (id, t) => (t.small ? null : BREAM_FLOW.has(id) ? 'bream' : 'amberjack');
 const RIBS_REF = path.join(TRIM, 'skinned_pillet_with_ribs.png');             // 갈빗대 필렛 구도 참고(도마 갈빗대 유도선을 잰 그림)
+const SIDE_REF = path.join(TRIM, 'skinned_pillet_without_ribs.png');          // 321 갈빗대 뗀 한 면 필렛 구도 참고(사용자 원본 — 머리 왼쪽)
 
 /**
  * 어종 → 온마리 원본 · 살 · 껍질 · 모양.
@@ -146,6 +150,8 @@ const SPECIES = {
 };
 
 const KINDS = ['pure', 'skin', 'ribs'];
+/** 321 — 설치 · 굽기가 보는 종류(side = 갈빗대 뗀 한 면 필렛 — 기본 생성 대상은 아니다) */
+const ALL_KINDS = [...KINDS, 'side'];
 const WIKI_DIR = path.join(ROOT, 'tools', 'wiki_img', 'butchery');
 
 // ── 프롬프트 ──
@@ -175,6 +181,13 @@ const ribsTask = (t) => `셋째 그림의 어종 ${t.ko}을 세장뜨기 해서 
   + `살 면이 위를 본다. 살색 · 근육결 · 혈합육은 둘째 그림과 같게(${t.flesh}). 갈빗대는 뱃살 날개 안에 가는 흰 뼈가 비스듬히 늘어선 모습이고, 척추 자리 줄을 따라 작은 뼈 끝이 점점이 보인다. `
   + '화풍은 둘째 그림처럼 진한 윤곽선 도트 · 고해상도 픽셀 아트. 머리 · 껍질 무늬 · 도마 · 그림자 · 글자 없음. 배경은 단색 흰색.';
 
+// 321 — 갈빗대만 뗀 한 면 필렛(지아이뼈 분리 전)
+const sideIntro = '첫째 그림은 「갈빗대를 뗀 한 면 필렛」의 구도 참고다 — 생선 반쪽을 통째로 떠내 갈빗대만 저며 낸 상태로, 머리 쪽이 왼쪽 · 꼬리가 오른쪽으로 가늘어지고, '
+  + '가운데를 따라 혈합육(지아이뼈) 줄이 지나며 그 위가 등살 · 아래가 뱃살이다(두 덩어리가 아직 붙어 있다). 둘째 그림은 같은 어종의 갈빗대 붙은 필렛(화풍 · 살색 참고), 셋째 그림은 그 어종의 온마리 그림이다.';
+const sideTask = (t) => `셋째 그림의 어종 ${t.ko}의, 갈빗대만 떼어 낸 한 면 필렛을 그려라. 첫째 그림과 같은 모양 · 같은 방향(머리 왼쪽) · 같은 크기 비율로, 살 면이 위를 보게 한 덩이만 그린다. `
+  + `살색 · 근육결 · 혈합육은 둘째 그림과 같게(${t.flesh}). 가운데 혈합육 줄을 따라 등살과 뱃살이 붙어 있어야 한다 — 가르지 않는다. 갈빗대 · 머리 · 껍질 무늬 · 도마 · 그림자 · 글자 없음. `
+  + '화풍은 둘째 그림처럼 진한 윤곽선 도트 · 고해상도 픽셀 아트. 배경은 단색 흰색.';
+
 // ── 공용 ──
 function parseArgs(argv) {
   const P = { out: '', only: null, kinds: KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, tries: 3, force: false, dry: false, install: false, bake: false, sheet: '' };
@@ -183,7 +196,7 @@ function parseArgs(argv) {
     const v = () => argv[++i];
     if (a === '--out') P.out = v();
     else if (a === '--only') P.only = new Set(v().split(',').map((s) => s.trim()).filter(Boolean));
-    else if (a === '--kinds') P.kinds = v().split(',').map((s) => s.trim()).filter((k) => KINDS.includes(k));
+    else if (a === '--kinds') P.kinds = v().split(',').map((s) => s.trim()).filter((k) => ALL_KINDS.includes(k));
     else if (a === '--model') P.model = v();
     else if (a === '--jobs') P.jobs = Math.max(1, +v());
     else if (a === '--tries') P.tries = Math.max(1, +v());
@@ -303,7 +316,8 @@ function tailLeft(s) {
 function targets(P) {
   return Object.entries(SPECIES)
     .filter(([id, t]) => !t.alias && (!P.only || P.only.has(id)))
-    .map(([id, t]) => ({ id, ...t, kinds: P.kinds.filter((k) => !(t.keep && k !== 'ribs')) }));
+    // 원본을 쓰는 어종(keep)은 순수 · 껍질을 그리지 않는다 · 작은 생선은 한 면 필렛이 따로 없다(순수 필렛이 곧 한 덩이)
+    .map(([id, t]) => ({ id, ...t, kinds: P.kinds.filter((k) => !(t.keep && (k === 'pure' || k === 'skin')) && !(t.small && k === 'side')) }));
 }
 
 function log(P, rec) { fs.appendFileSync(path.join(P.out, '_log.jsonl'), JSON.stringify({ ...rec, at: new Date().toISOString() }) + '\n'); }
@@ -384,6 +398,29 @@ async function genSpecies(t, P) {
       lines.push(`ribs IoU ${best.q.toFixed(2)}${best.mirrored ? ' (거울상)' : ''}`);
     }
   }
+  // ④ 갈빗대 뗀 한 면 필렛(321) — 구도 참고(사용자 원본)와 실루엣 IoU를 본다 · 화풍 · 살색은 그 어종 갈빗대 그림
+  if (t.kinds.includes('side') && (P.force || !fs.existsSync(file('side')))) {
+    const ribsFile = fs.existsSync(file('ribs')) ? file('ribs') : path.join(DEST, `${t.id}_ribs.png`);
+    if (!fs.existsSync(ribsFile)) { lines.push('side 건너뜀 — 갈빗대 그림이 없다'); return lines; }
+    const rs = await silhouette(SIDE_REF);
+    const rm = normMask(rs);
+    let best = null;
+    for (let k = 1; k <= P.tries; k++) {
+      const tmp = file('side', `.try${k}`);
+      const r = await callGemini([{ text: sideIntro }, refPart(P.out, SIDE_REF, '_side_ref.png'), refPart(P.out, ribsFile, `_ribs_${t.id}.png`), fishRef(), { text: sideTask(t) }], P, tmp);
+      if (!r.ok) { lines.push(`side 시도 ${k} 실패 ${r.err}`); continue; }
+      const s = await silhouette(tmp);
+      const qd = iou(normMask(s), rm), qm = iou(normMask(s, 96, 40, true), rm);
+      const q = Math.max(qd, qm);
+      log(P, { id: t.id, kind: 'side', try: k, ms: r.ms, iou: +qd.toFixed(3), iouMirror: +qm.toFixed(3), aspect: +aspectOf(s).toFixed(2), inTok: r.inTok, outTok: r.outTok });
+      if (!best || q > best.q) best = { tmp, q, mirrored: qm > qd };
+      if (q >= 0.85) break;
+    }
+    if (best) {
+      fs.copyFileSync(best.tmp, file('side'));
+      lines.push(`side IoU ${best.q.toFixed(2)}${best.mirrored ? ' (거울상)' : ''}`);
+    }
+  }
   return lines;
 }
 
@@ -394,8 +431,9 @@ async function install(P) {
   fs.mkdirSync(DEST, { recursive: true });
   const rs = await silhouette(RIBS_REF);
   const rm = normMask(rs);
+  const sm = normMask(await silhouette(SIDE_REF));
   let n = 0;
-  for (const t of targets({ ...P, kinds: KINDS })) {
+  for (const t of targets({ ...P, kinds: ALL_KINDS })) {
     for (const k of t.kinds) {
       const src = path.join(P.out, `${t.id}_${k}.png`);
       if (!fs.existsSync(src)) continue;
@@ -403,9 +441,10 @@ async function install(P) {
       if (fs.existsSync(dst) && !P.force) continue;
       const s = await silhouette(src);
       const pf = peelFringe(s.data, s.w, s.h);
-      // 방향: pure · skin = 꼬리 왼쪽 / ribs = 구도 참고와 같은 쪽(뱃살 날개 왼쪽 아래)
+      // 방향: pure · skin = 꼬리 왼쪽 / ribs · side = 구도 참고와 같은 쪽(머리 왼쪽 — 뱃살 날개 왼쪽 아래)
       let flip = false;
       if (k === 'ribs') flip = iou(normMask(s, 96, 40, true), rm) > iou(normMask(s), rm);
+      else if (k === 'side') flip = iou(normMask(s, 96, 40, true), sm) > iou(normMask(s), sm);
       else flip = !tailLeft(s);
       const { x0, y0, x1, y1 } = s.bbox;
       const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
@@ -431,17 +470,22 @@ const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 function bake() {
   const { decode } = require('./lib_png.cjs');
   const { areaResize, quantize } = crops();
-  const files = fs.existsSync(DEST) ? fs.readdirSync(DEST).filter((f) => /^[a-z_]+_(pure|skin|ribs)\.png$/.test(f)).sort() : [];
+  const files = fs.existsSync(DEST) ? fs.readdirSync(DEST).filter((f) => /^[a-z_]+_(pure|skin|ribs|side)\.png$/.test(f)).sort() : [];
   const entries = [];
+  // 321 — 한 면 필렛 그림의 혈합육(지아이뼈) 줄(지아이뼈 분리 유도선의 기본 자리)
+  const { bloodline } = require('./split_fillet_art.cjs');
+  const pinLines = [];
   for (const f of files) {
     const img = decode(path.join(DEST, f));
+    if (f.endsWith('_side.png')) pinLines.push([f.replace(/_side\.png$/, ''), bloodline(img)]);
     // 투명 여백을 뺀 bbox → 긴 변 128칸
     let x0 = img.w, y0 = img.h, x1 = -1, y1 = -1;
     for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) if (img.data[(y * img.w + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
     const crop = Buffer.alloc(bw * bh * 4);
     for (let y = 0; y < bh; y++) img.data.copy(crop, y * bw * 4, ((y0 + y) * img.w + x0) * 4, ((y0 + y) * img.w + x1 + 1) * 4);
-    const s = 128 / Math.max(bw, bh);
+    // 321 — 한 면 필렛은 세로 52칸 안으로(도마 560×210에서 갈빗대 단계 그림과 같은 배율 4로 그려지게 — 53칸부터 배율 3으로 떨어져 그림이 작아진다)
+    const s = Math.min(128 / Math.max(bw, bh), f.endsWith('_side.png') ? 52 / bh : Infinity);
     const dw = Math.max(1, Math.round(bw * s)), dh = Math.max(1, Math.round(bh * s));
     const small = areaResize(crop, bw, bh, dw, dh);
     for (let i = 0; i < dw * dh; i++) small[i * 4 + 3] = small[i * 4 + 3] >= 128 ? 255 : 0;
@@ -475,7 +519,8 @@ function bake() {
  * @description 316차 — 어종별 필렛 도마 스프라이트(자동 생성 — 수동 편집 금지).
  *
  * 생성: node tools/gemini_fillet_art.cjs --bake  (입력: food assets/trimmings/species/<어종>_<종류>.png — Gemini 그림을 설치한 것)
- * 키: \`<종류>_<어종>\`가 아니라 \`<어종>_<종류>\` — pure(순수 필렛) · skin(껍질 붙은 필렛) · ribs(갈빗대 붙은 필렛).
+ * 키: \`<종류>_<어종>\`가 아니라 \`<어종>_<종류>\` — pure(순수 필렛) · skin(껍질 붙은 필렛) · ribs(갈빗대 붙은 필렛) ·
+ *     side(321 — 갈빗대만 뗀 한 면 필렛 · 지아이뼈 분리 전 · 머리 왼쪽). pure · skin은 지아이뼈로 가른 뒤의 한 덩어리다(작은 생선은 한 덩이 그대로).
  * 도마(\`PixelButcherFish\`) · 가방 아이콘 · 유도선 그림 자리(\`ButcheryPanel\` filletFrames)가 이 표를 먼저 보고, 없으면 어종군 공용 그림이다.
  */
 
@@ -489,9 +534,17 @@ ${entries.map(ser).join('\n')}
 export const FILLET_SPECIES_ALIAS: Record<string, string> = {
 ${aliases.join('\n')}
 };
+
+/**
+ * 321 — 한 면 필렛 그림(\`<어종>_side\`)의 **혈합육(지아이뼈) 줄** — 그림 rect 정규화 [x, y] 점(왼쪽 = 머리 → 오른쪽 = 꼬리).
+ * 지아이뼈 분리 유도선의 기본 자리다(그림에서 잰 값 — \`split_fillet_art.cjs\` \`bloodline\`). 사용자가 F9로 확정한 어종은 그 좌표가 먼저다.
+ */
+export const FILLET_SIDE_PIN_LINE: Record<string, ReadonlyArray<readonly [number, number]>> = {
+${pinLines.map(([id, pts]) => `  ${id}: [${pts.map((q) => `[${q[0]}, ${q[1]}]`).join(', ')}],`).join('\n')}
+};
 `;
   fs.writeFileSync(OUT_TS, ts);
-  console.log(`written ${path.relative(ROOT, OUT_TS)} — ${entries.length}장 · ${(ts.length / 1024).toFixed(0)}KB`);
+  console.log(`written ${path.relative(ROOT, OUT_TS)} — ${entries.length}장 · 혈합육 줄 ${pinLines.length} · ${(ts.length / 1024).toFixed(0)}KB`);
 }
 
 // ── 검수 시트 ──
@@ -538,14 +591,23 @@ async function wikiSheets() {
     if (t.keep && k === 'skin') return t.keepSkin;
     return path.join(DEST, `${id}_${k}.png`);
   };
+  // 321 — 칸은 공정 순서: 갈빗대 붙은 → 갈빗대 뗀 한 면(지아이뼈 분리 전) → 껍질 붙은 → 순수. 작은 생선은 한 면 필렛이 따로 없다(순수가 한 덩이)
+  const LABEL = { ribs: '갈빗대 붙은 필렛', side: '갈빗대 뗀 한 면 필렛', skin: '껍질 붙은 필렛', pure: '순수 필렛' };
+  const CAT_KINDS = { amberjack: ['ribs', 'side', 'skin', 'pure'], bream: ['ribs', 'side', 'skin', 'pure'], small: ['ribs', 'skin', 'pure'] };
+  const CAT_NOTE = {
+    amberjack: '갈빗대를 떼어 낸 한 면 필렛의 가운데(지아이뼈 줄)를 두 번 그어 가르면 등살 · 뱃살 두 덩어리가 된다 — 껍질 붙은 필렛 · 순수 필렛 그림은 그 한 덩어리다.',
+    bream: '갈빗대를 떼어 낸 한 면 필렛의 가운데(지아이뼈 줄)를 두 번 그어 가르면 등살 · 뱃살 두 덩어리가 된다 — 껍질 붙은 필렛 · 순수 필렛 그림은 그 한 덩어리다.',
+    small: '작은 생선은 잔뼈를 핀셋으로 뽑아 필렛이 한 덩이 그대로 남는다.',
+  };
   fs.mkdirSync(WIKI_DIR, { recursive: true });
   const manPath = path.join(WIKI_DIR, 'manifest.json');
   const man = fs.existsSync(manPath) ? JSON.parse(fs.readFileSync(manPath, 'utf8')) : {};
   man.fillets = {};
   for (const [cat, ids] of Object.entries(CATS)) {
-    const W = TW * KINDS.length, H = TH * ids.length;
+    const kinds = CAT_KINDS[cat];
+    const W = TW * kinds.length, H = TH * ids.length;
     const sheet = Buffer.alloc(W * H * 4);
-    ids.forEach((id, row) => KINDS.forEach((k, col) => {
+    ids.forEach((id, row) => kinds.forEach((k, col) => {
       const f = fileOf(id, k);
       if (!f || !fs.existsSync(f)) return;
       const img = decode(f);
@@ -568,7 +630,7 @@ async function wikiSheets() {
     fs.rmSync(tmpPng, { force: true });
     fs.rmSync(path.join(WIKI_DIR, `fillets_${cat}.png`), { force: true });
     const bytes = fs.statSync(path.join(WIKI_DIR, `fillets_${cat}.webp`)).size;
-    man.fillets[cat] = { file, tileW: TW, tileH: TH, kinds: ['순수 필렛', '껍질 붙은 필렛', '갈빗대 붙은 필렛'], rows: ids };
+    man.fillets[cat] = { file, tileW: TW, tileH: TH, kinds: kinds.map((k) => LABEL[k]), note: CAT_NOTE[cat], rows: ids };
     console.log(`${file}: ${ids.length}종 · ${W}x${H} · ${(bytes / 1024).toFixed(0)}KB`);
   }
   fs.writeFileSync(manPath, `${JSON.stringify(man, null, 1)}\n`);
@@ -599,5 +661,5 @@ async function main() {
   console.log('끝');
 }
 
-module.exports = { SPECIES, KINDS };
+module.exports = { SPECIES, KINDS, ALL_KINDS };
 if (require.main === module) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });

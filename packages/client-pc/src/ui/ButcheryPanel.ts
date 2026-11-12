@@ -45,7 +45,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, type PixelFishState } from './PixelButcherFish.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, type PixelFishState } from './PixelButcherFish.js';
 import { speciesFilletIconKey } from './FilletSpeciesIcons.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 import {
@@ -380,12 +380,15 @@ export class ButcheryPanel extends DraggablePanel {
       ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
     // 316 — 어종 필렛 그림(Gemini)이 있으면 갈빗대 · 지아이뼈 · 박피 선도 그 그림 자리로
     this.filletFrames = butcherFilletFrames(speciesId, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
+    // 321 — 지아이뼈 분리 선은 그 어종 한 면 필렛 그림의 혈합육 줄(그림에서 잰 것 — F9 확정이 있으면 그것이 먼저)
+    const pinLine = butcherPinLine(speciesId, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
     // 317 — 손질 공정은 크기로도 갈린다(대방어급 · 참다랑어 = 4덩어리 해체 — `butcheryProfileFor`)
     const profile = butcheryProfileFor(speciesId, source.lengthCm);
     const loin = profile.tree === 'loin' ? this.buildLoinOptions(speciesId, profile, source) : undefined;
     this.process = new ButcheryProcess(profile, this.freshnessFactor(source), {
       guideFrame: this.guideFrame,
       filletFrames: this.filletFrames,
+      pinLine,
       // 315 — dev F9 [확정] 좌표(이 판에서 확정한 것까지). 배포본은 core에 저장된 표만 쓴다
       guideOverrides: import.meta.env.DEV ? devGuideOverrides : undefined,
       loin,
@@ -1339,6 +1342,16 @@ export class ButcheryPanel extends DraggablePanel {
     return rows;
   }
 
+  /**
+   * 321 — 갈빗대만 뗀 한 면 필렛(지아이뼈 분리 전) 아이콘: 그 어종의 한 면 필렛 그림,
+   * 없으면(작은 생선 — 껍질 붙은 필렛이 한 덩이 그대로) 껍질 붙은 필렛 그림, 그것도 없으면 공용 사진.
+   * 한 덩어리 그림(`skin`)은 지아이뼈를 가른 뒤(`inv_filletskin_`)의 것이라 19종 · 감성돔 · 잿방어에는 쓰지 않는다.
+   */
+  private wholeSideFilletIcon(speciesId: string): string {
+    return speciesFilletIconKey(this.scene, speciesId, 'side')
+      ?? speciesFilletIconKey(this.scene, speciesId, 'skin') ?? 'trim_fillet_skin';
+  }
+
   /** 갈빗대 제거 완료 — **이미 지급된** 갈빗대 필렛 아이템을 '껍질이 붙어있는 필렛'으로 갱신 */
   private morphPendingFilletsToSkinOnly(): void {
     const nameKo = this.speciesName();
@@ -1348,7 +1361,8 @@ export class ButcheryPanel extends DraggablePanel {
       if (!item) continue;
       const w = Math.max(1, Math.round((item.weightG ?? 100) - (this.bypWeights().ribG / 2)));
       item.name = `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`;
-      item.iconTexture = speciesFilletIconKey(this.scene, this.process.profile.speciesId, 'skin') ?? 'trim_fillet_skin';
+      // 321 — 갈빗대만 뗀 한 면 필렛(지아이뼈 분리 전)이다 — 한 덩어리 그림(`skin`)은 분리 뒤 `inv_filletskin_`의 것
+      item.iconTexture = this.wholeSideFilletIcon(this.process.profile.speciesId);
       item.weightG = w;
     }
     // ── 재장착 세션 — 필렛이 grantedLog가 아니라 **원물(source)** 이다 (사용자 리포트 2026-08-04:
@@ -1361,7 +1375,7 @@ export class ButcheryPanel extends DraggablePanel {
       const tpl = {
         id: `inv_filletpin_${speciesId}_${InventoryStore.nextCatchSeq()}`,
         name: `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`,
-        icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'skin') ?? 'trim_fillet_skin',
+        icon: '', iconTexture: this.wholeSideFilletIcon(speciesId),
         category: 'food' as const, subCategory: '손질 필렛',
         basePrice: Math.max(500, Math.round(this.source.basePrice)),
         condition: 'live' as const, conditionSinceMs: Date.now(),

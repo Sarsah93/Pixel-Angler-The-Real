@@ -31,6 +31,7 @@ import { itemBaseId, isInstanceId, makeInstanceId, instanceNumberOf } from '@tra
 import { rodSpecFor, reelSpecFor, forageBaitKeyOf, type RodItemSpec, type ReelItemSpec } from '@tra/core';
 import { specialtySellMultAt, parseProduceId as parseProduceIdCore } from '@tra/core';
 import { festivalNow } from '../data/FestivalClock.js';   // 298차 — 축제 시계
+import { FILLET_SPECIES_SPRITES } from '../data/PixelFilletSpecies.js';   // 321 — 한 면 필렛 그림이 있는 어종인가(세이브 아이콘 고침)
 import type { DishData, DishInstance } from '@tra/core';
 import { getFireRecipe, dishStarsAt, dishValueKrw, dishInstanceValueKrw, producePrice, packOfLoose, FARM_PACK_CONTAINER, bagsOfLoose, FARM_BAG_CONTAINER, oilBottleDef } from '@tra/core';
 import type { SashimiSizeTier } from '@tra/core';
@@ -612,6 +613,19 @@ function refreshDishPhoto(i: InvItem): InvItem {
   if (!i.dish || !i.iconTexture?.startsWith('px:it_dish_')) return i;
   const photo = getFireRecipe(i.dish.recipeId)?.photoKey;
   return photo ? { ...i, iconTexture: photo, icon: '' } : i;
+}
+
+/**
+ * 321 — 갈빗대만 뗀 한 면 필렛(지아이뼈 분리 전 — `inv_filletpin_` · 이름이 바뀐 `inv_filletribs_`)의 아이콘.
+ * 319 ~ 320 세이브는 지아이뼈로 가른 뒤의 한 덩어리 그림(`trimsp_skin_<어종>`)을 달고 있다 — 그 어종의 한 면 필렛 그림이 있으면 그것으로 바꾼다.
+ * 정적 표시 정보라 덮는다(수량 · 칸 · 신선도 · 무게는 그대로). 작은 생선은 한 면 필렛 그림이 따로 없어 그대로 둔다.
+ */
+function refreshWholeSideFilletIcon(i: InvItem): InvItem {
+  const m = /^trimsp_skin_(.+)$/.exec(i.iconTexture ?? '');
+  if (!m) return i;
+  const prePin = i.id.startsWith('inv_filletpin_') || (i.id.startsWith('inv_filletribs_') && i.name.startsWith('껍질이 붙어있는'));
+  if (!prePin || !FILLET_SPECIES_SPRITES[`${m[1]}_side`]) return i;
+  return { ...i, iconTexture: `trimsp_side_${m[1]}` };
 }
 
 /** 시드 정의(정적 제품 정보) — 256차 정본 id 이전이 이름 · 분류 · 값 · 그림을 여기서 가져온다(처음 쓸 때 한 번 만든다) */
@@ -1733,7 +1747,7 @@ class InventoryStoreManager {
         // 280차 — 요리의 식는 시계(조리 시각)도 게임을 끈 동안은 멈춘다(신선도와 같은 규칙 — 불 위 냄비는 이미 민다)
         dish: i.dish ? { ...i.dish, cookedAtMs: i.dish.cookedAtMs + offlineGap } : i.dish,
       };
-    }).map((i) => refreshDishPhoto(refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i)))))
+    }).map((i) => refreshWholeSideFilletIcon(refreshDishPhoto(refreshTackleArt(refreshCardRigIdentity(refreshNetIcon(i))))))
       .map((i) => applyCookItemFields(applyItemVitals(refreshNutritionVitals(i))));   // 154차 — 조리 필드도 테이블 백필 · 188차 영양표 재정합
     // 256차 — 정본 id로 바뀌어 같은 id가 둘이 된 칸은 하나로 합치고, 분류가 바뀌어 겹친 칸 번호는 빈 칸으로 옮긴다
     this._items = mergeSameIdItems(this._items);

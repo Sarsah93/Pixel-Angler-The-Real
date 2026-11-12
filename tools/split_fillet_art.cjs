@@ -12,6 +12,13 @@
  * 입력 · 출력: `food assets/trimmings/species/<id>_{pure,skin}.png`(원본은 `<폴더>/<id>_<kind>.orig.png`로 한 번만 보관 — 다시 돌려도 원본에서 가른다)
  * 실행: node tools/split_fillet_art.cjs [--only a,b] [--preview <폴더>]   (--preview = 저장소 파일을 바꾸지 않고 그 폴더에 쓴다)
  * 그다음: node tools/gemini_fillet_art.cjs --bake → node tools/gen_sashimi_fillet.cjs → node tools/gemini_fillet_art.cjs --wiki-sheets
+ *
+ * 321 — **한 덩어리 그림은 지아이뼈 분리가 끝난 뒤의 그림이다.** 분리하는 단계(갈빗대만 뗀 상태)는 두 덩어리가 붙은 한 면 필렛이어야 한다
+ * (사용자 「지아이를 분리하고 나서 이 필렛 그림이 나와야지 … 갈빗대 제거할 때 보여주는 한 면 필렛 상태에서 가운데 두 번 그어서 분리」).
+ *   node tools/split_fillet_art.cjs --side [--only a,b] [--preview <폴더>]
+ *  - `<id>_side.png` = 보관해 둔 반쪽 통째 순수 필렛(`_whole_side_316/<id>_pure.png`)을 **머리 왼쪽**으로(갈빗대 단계 그림과 같은 방향 — 그 상태가 이어진다).
+ *  - 감성돔 · 잿방어는 반쪽 통째 그림이 없다 — 사용자 원본 `skinned_pillet_without_ribs.png`(갈빗대 뗀 한 면 필렛 사진)을 같은 격자로 맞춰 쓴다.
+ *  - 혈합육(지아이뼈) 줄은 `bloodline()`이 잰다 — 굽는 도구가 지아이뼈 유도선의 기본 자리로 싣는다.
  */
 'use strict';
 const fs = require('fs');
@@ -32,10 +39,11 @@ const SPLIT = [
 
 function args() {
   const a = process.argv.slice(2);
-  const P = { only: null, preview: '' };
+  const P = { only: null, preview: '', side: false };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--only') P.only = new Set(a[++i].split(','));
     else if (a[i] === '--preview') P.preview = a[++i];
+    else if (a[i] === '--side') P.side = true;
   }
   return P;
 }
@@ -115,7 +123,7 @@ function splitRows(img) {
     const h = raw[c].b - raw[c].t + 1;
     rows[c] = Math.max(raw[c].t + Math.ceil(h * 0.35), Math.min(raw[c].t + Math.floor(h * 0.7), cut[c]));
   }
-  return { rows, useRed };
+  return { rows, useRed, line: sm, W, H };
 }
 
 /** 가르기 — 가를 줄 아래를 지우고 가른 면에 윤곽선 · 부스러기 빼기 · 여백 맞추기 */
@@ -164,8 +172,77 @@ function splitImage(img, rows) {
   return { w: OW, h: OH, data: out, cells: { w: x1 - x0 + 1, h: y1 - y0 + 1 } };
 }
 
+/** 좌우 뒤집기(그림 전체) */
+function mirrorImage(img) {
+  const out = Buffer.alloc(img.w * img.h * 4);
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) img.data.copy(out, (y * img.w + x) * 4, (y * img.w + (img.w - 1 - x)) * 4, (y * img.w + (img.w - 1 - x)) * 4 + 4);
+  return { w: img.w, h: img.h, data: out };
+}
+
+/** 321 — 감성돔 · 잿방어: 사용자 원본(갈빗대 뗀 한 면 필렛 사진 — 머리 왼쪽)을 설치 그림과 같은 격자(가로 192칸 · 칸 4px · 여백 4px)로 */
+const SIDE_PHOTO = path.join(ROOT, 'food assets', 'trimmings', 'skinned_pillet_without_ribs.png');
+const SIDE_FROM_PHOTO = ['black_seabream', 'greater_amberjack'];
+function photoSide() {
+  const { regrid } = require('./gemini_fish_art.cjs');
+  const img = decode(SIDE_PHOTO);
+  let x0 = img.w, y0 = img.h, x1 = -1, y1 = -1;
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) if (img.data[(y * img.w + x) * 4 + 3] >= 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+  const crop = Buffer.alloc(bw * bh * 4);
+  for (let y = 0; y < bh; y++) img.data.copy(crop, y * bw * 4, ((y0 + y) * img.w + x0) * 4, ((y0 + y) * img.w + x1 + 1) * 4);
+  for (let i = 0; i < bw * bh; i++) if (crop[i * 4 + 3] < 128) crop[i * 4] = crop[i * 4 + 1] = crop[i * 4 + 2] = crop[i * 4 + 3] = 0;
+  const g = regrid(crop, bw, bh, 192, CELL);
+  const PAD = CELL, pw = g.w + PAD * 2, ph = g.h + PAD * 2, out = Buffer.alloc(pw * ph * 4);
+  for (let y = 0; y < g.h; y++) g.data.copy(out, ((y + PAD) * pw + PAD) * 4, y * g.w * 4, (y + 1) * g.w * 4);
+  return { w: pw, h: ph, data: out };
+}
+
+/**
+ * 321 — 한 면 필렛 그림의 **혈합육(지아이뼈) 줄** — 그림의 불투명 bbox 정규화(x 왼쪽 0 → 오른쪽 1 · y 위 0 → 아래 1) 점 n개.
+ * 가르기와 같은 식(열마다 가장 짙붉은 칸 → 넓은 중앙값 → 3차 곡선). 혈합육이 안 보이는 흰 살은 살 높이 가운데.
+ * 지아이뼈 분리 유도선이 이 줄을 따라간다(굽는 도구 `gemini_fillet_art.cjs --bake`가 `FILLET_SIDE_PIN_LINE`으로 싣는다).
+ */
+function bloodline(img, n = 9) {
+  const { line, W, H } = splitRows(img);
+  const { at } = cells(img);
+  let c0 = W, c1 = -1, r0 = H, r1 = -1;
+  for (let c = 0; c < W; c++) for (let r = 0; r < H; r++) if (at(c, r)[3] > 128) { if (c < c0) c0 = c; if (c > c1) c1 = c; if (r < r0) r0 = r; if (r > r1) r1 = r; }
+  const bw = c1 - c0 + 1, bh = r1 - r0 + 1;
+  const pts = [];
+  // 양 끝 6%는 뺀다 — 칼이 살 안에서 시작해 살 안에서 끝난다
+  for (let i = 0; i < n; i++) {
+    const t = 0.06 + (0.88 * i) / (n - 1);
+    let c = Math.round(c0 + t * (bw - 1));
+    while (c < c1 && line[c] < 0) c++;
+    while (c > c0 && line[c] < 0) c--;
+    if (line[c] < 0) continue;
+    pts.push([Math.round(((c - c0 + 0.5) / bw) * 1000) / 1000, Math.round(((line[c] - r0 + 0.5) / bh) * 1000) / 1000]);
+  }
+  return pts;
+}
+
+/** 321 — 「갈빗대 뗀 한 면 필렛」 그림 만들기(지아이뼈 분리 전 — 두 덩어리가 붙은 모습 · 머리 왼쪽) */
+function makeSides(P) {
+  const outDir = P.preview || DIR;
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const id of [...SPLIT, ...SIDE_FROM_PHOTO]) {
+    if (P.only && !P.only.has(id)) continue;
+    let img, from;
+    if (SIDE_FROM_PHOTO.includes(id)) { img = photoSide(); from = '사용자 원본 사진'; }
+    else {
+      const kept = path.join(ORIG, `${id}_pure.png`);
+      if (!fs.existsSync(kept)) { console.warn(`[split_fillet_art] ${id} — 반쪽 통째 원본이 없다(${path.relative(ROOT, kept)})`); continue; }
+      img = mirrorImage(decode(kept)); from = '반쪽 통째 원본(좌우 뒤집음)';
+    }
+    encode(img.w, img.h, img.data, path.join(outDir, `${id}_side.png`));
+    const bl = bloodline(img);
+    console.log(`[split_fillet_art] ${id}_side — ${img.w}x${img.h} · ${from} · 혈합육 줄 y ${bl[0][1]} → ${bl[Math.floor(bl.length / 2)][1]} → ${bl[bl.length - 1][1]}`);
+  }
+}
+
 function main() {
   const P = args();
+  if (P.side) { makeSides(P); return; }
   const outDir = P.preview || DIR;
   fs.mkdirSync(outDir, { recursive: true });
   if (!P.preview) fs.mkdirSync(ORIG, { recursive: true });
@@ -187,4 +264,4 @@ function main() {
   }
 }
 if (require.main === module) main();
-module.exports = { SPLIT };
+module.exports = { SPLIT, SIDE_FROM_PHOTO, bloodline };
