@@ -15,8 +15,8 @@ import Phaser from 'phaser';
 import type { OrientationState, GuideFrameRemap, GuideColumnProfile } from '@tra/core';
 import { butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES } from '@tra/core';
 import {
-  PixelFishSprite, FISH_WHOLE, FISH_DRESSED, FISH_FILLET,
-  FISH_WHOLE_AMBERJACK, FISH_DRESSED_AMBERJACK,
+  PixelFishSprite, FISH_WHOLE, FISH_FILLET,
+  FISH_WHOLE_AMBERJACK,
 } from '../data/PixelFishSprites.js';
 import { HALIBUT_DARK, HALIBUT_WHITE, FLAT_SPECIES_SPRITES } from '../data/PixelFishFlat.js';
 import { SPECIES_WHOLE } from '../data/PixelFishSpecies.js';
@@ -153,9 +153,12 @@ function headErasePoly(path: FishPoly, headLeft: boolean): FishPoly | null {
  */
 export interface ButcherIndividual { lengthCm?: number; sex?: 'M' | 'F' }
 
-/** 도마 스프라이트 세트 (온마리/손질 몸통/필렛) + 틴트 여부 + 어종군 키 */
+/**
+ * 도마 스프라이트 세트 (온마리/필렛) + 틴트 여부 + 어종군 키.
+ * 320 — 어종군 공용 「손질 몸통」 그림(`dressed`)은 뺐다. 옆면은 언제나 `whole` + 지우기다(되살리면 옆면이 잿방어 · 감성돔으로 돌아간다).
+ */
 export interface ButcherSpriteSet {
-  whole: PixelFishSprite; dressed: PixelFishSprite; fillet: PixelFishSprite;
+  whole: PixelFishSprite; fillet: PixelFishSprite;
   /** true = 스프라이트가 어종 실색을 가짐(틴트 금지) — 방어류 전용 잿방어 스프라이트 */
   nativeColor: boolean;
   /**
@@ -196,8 +199,8 @@ function speciesWholeKey(speciesId: string, indiv?: ButcherIndividual): string {
 
 /**
  * 어종별 도마 스프라이트 세트 — 방어류 흐름은 잿방어 형태(방추형), 넙치류는 광어 탑뷰(등면/배면),
- * 그 외는 감성돔 가이드 형태. **어종 실사 온마리가 있으면 개복 전 그림은 그 어종 그림**이다(87 · 313).
- * 개복 뒤 전용 뷰(복면 · 체강 · 장뜨기 · 필렛)는 어종군 공용 그림 — 원본 어종(방어류 3 · 돔류 가이드군)이
+ * 그 외는 감성돔 가이드 형태. **어종 실사 온마리가 있으면 옆면은 언제나 그 어종 그림**이다(87 · 313 · 320 — 개복 뒤 · 뒤집기 전 자세도).
+ * 전용 뷰(복면 · 체강 · 장뜨기)는 어종군 공용 그림 — 원본 어종(방어류 3 · 돔류 가이드군)이
  * 아니면 어종 색으로 약하게 물들인다.
  */
 export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual): ButcherSpriteSet {
@@ -205,7 +208,7 @@ export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual):
   const fam = butcherFamilyOf(speciesId);
   if (fam === 'amberjack') {
     return {
-      whole: own ?? FISH_WHOLE_AMBERJACK, dressed: FISH_DRESSED_AMBERJACK, fillet: FISH_FILLET,
+      whole: own ?? FISH_WHOLE_AMBERJACK, fillet: FISH_FILLET,
       // 313 — 잿방어 공용 그림의 원본 어종(방어 · 부시리 · 잿방어)만 무틴트. 농어 · 우럭 · 숭어 · 작은 생선은 어종 색
       nativeColor: BUTCHERY_NATIVE_ART_SPECIES.has(speciesId), wholeNative: !!own, familyKey: 'amberjack', speciesId,
     };
@@ -214,7 +217,7 @@ export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual):
     // 313 — 넙치류도 어종마다 등면 · 배면을 굽는다(`FLAT_SPECIES_SPRITES` — 광어 = HALIBUT_*)
     const flat = FLAT_SPECIES_SPRITES[speciesId];
     return {
-      whole: flat?.dark ?? HALIBUT_DARK, dressed: flat?.dark ?? HALIBUT_DARK, fillet: FISH_FILLET,
+      whole: flat?.dark ?? HALIBUT_DARK, fillet: FISH_FILLET,
       // 어종 그림이 있으면 실색 그대로 / 없으면(새 넙치류) 광어 그림에 어종 색 약한 틴트
       nativeColor: !!flat || speciesId === 'flatfish',
       wholeNative: !!flat,
@@ -222,7 +225,7 @@ export function butcherSpritesFor(speciesId: string, indiv?: ButcherIndividual):
     };
   }
   return {
-    whole: own ?? FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET,
+    whole: own ?? FISH_WHOLE, fillet: FISH_FILLET,
     nativeColor: false, wholeNative: !!own, familyKey: 'bream', speciesId,
   };
 }
@@ -314,22 +317,6 @@ export function butcherGuideFrame(
     x: f.ox / boardW, y: f.oy / boardH, w: f.dw / boardW, h: f.dh / boardH,
   });
   return { from: norm(a), to: norm(b) };
-}
-
-/**
- * 진행도별 몸통 스프라이트 (사용자 리포트 2026-07-30 — "내장 제거 전인데 배가 정리돼 있고
- * 지느러미 3종이 다 없는 그림"). 구 구현은 headOff만 보고 곧장 `dressed`(본편1 = 머리·
- * 지느러미·내장 **전부** 제거 상태)를 써서 아직 안 한 작업까지 끝난 것처럼 보였다.
- *  온마리 → 머리만 제거(지느러미·내장 有) → 지느러미 제거(내장 有) → 내장 제거(dressed)
- * 어종군 전용 중간 스프라이트가 없으면(방어류 — 사진 대기) dressed로 폴백한다.
- */
-function bodySpriteFor(sprites: ButcherSpriteSet, state: PixelFishState): PixelFishSprite {
-  if (!state.headOff) return sprites.whole;
-  const S = FISH_STAGE_SPRITES;
-  const fam = sprites.familyKey;
-  if (state.gutted) return S[`${fam}_gutted`] ?? sprites.dressed;
-  if (state.finsOff) return S[`${fam}_finless`] ?? sprites.dressed;
-  return S[`${fam}_headless`] ?? sprites.dressed;
 }
 
 /**
@@ -1155,7 +1142,7 @@ export function getStageSprite(key: string): PixelFishSprite | undefined {
 export function drawPixelButcherFish(
   g: Phaser.GameObjects.Graphics, geom: PixelFishGeom,
   tint: number | null, state: PixelFishState,
-  sprites: ButcherSpriteSet = { whole: FISH_WHOLE, dressed: FISH_DRESSED, fillet: FISH_FILLET, nativeColor: false, familyKey: 'bream' },
+  sprites: ButcherSpriteSet = { whole: FISH_WHOLE, fillet: FISH_FILLET, nativeColor: false, familyKey: 'bream' },
 ): void {
   const o = state.orientation;
 
@@ -1210,15 +1197,17 @@ export function drawPixelButcherFish(
    * 그리고 **없어진 부위 영역만 지운다** → 어떤 순서로 해도 좌표가 불변.
    * 개복(gutted) 이후는 전용 뷰(복면/체강/장뜨기)가 담당하므로 기존 동작 유지.
    */
-  // 313 — 어종 실사 온마리가 있으면 개복 뒤 측면(꼬리 칼집)도 그 그림 + 지운 영역으로 그린다
-  //  (측면에서는 배 가른 자리가 안 보인다 — 어종군 공용 `{fam}_gutted`로 바꾸면 잿방어 · 감성돔으로 돌아간다)
-  const useBaseFrame = !filletView && (o === 'BASE' || o === 'FLIP') && (!state.gutted || !!sprites.wholeNative);
-  const spr = filletView ? sprites.fillet
-    : useBaseFrame ? sprites.whole : bodySpriteFor(sprites, state);
-  const frame = useBaseFrame ? computeFishFrame(sprites.whole, geom) : undefined;
-  const erase = useBaseFrame ? buildPrepErase(sprites.familyKey, state, o, sprites.whole) : undefined;
+  // 320 — **옆면은 언제나 그 어종의 원물 그림 + 지금까지 자른 머리 · 지느러미 지우기**(사용자 「10단계까지 보여지는 생선의 옆면은
+  //  당연히 지느러미 제거할 때 사용된 원물 이미지가 나와야」). 전용 뷰(복면 · 체강 · 등쪽 · 배쪽 장뜨기 · 필렛)가 없는 자리는
+  //  자세(배 위 · 등 아래 — 뒤집기 전)와 개복 여부와 상관없이 여기로 온다. 구 분기는 정자세(BASE · FLIP)가 아니면
+  //  어종군 공용 그림(`{fam}_gutted` · `_finless` · `_headless`)으로 바꿔 전갱이 꼬리 칼집이 잿방어로, 돔류는 감성돔으로 나왔다.
+  //  측면에서는 배 가른 자리가 안 보이므로 개복 뒤에도 같은 그림이다. 미러는 FLIP만(배 위 · 등 아래 옆면은 머리 왼쪽 그대로).
+  const sideO: OrientationState = o === 'FLIP' ? 'FLIP' : 'BASE';
+  const spr = filletView ? sprites.fillet : sprites.whole;
+  const frame = filletView ? undefined : computeFishFrame(sprites.whole, geom);
+  const erase = filletView ? undefined : buildPrepErase(sprites.familyKey, state, sideO, sprites.whole);
   // 어종 실사 온마리(87차)·방어류 실색 스프라이트는 틴트 금지 — 어종군 공용 도형일 때만 색을 입힌다
-  const bodyTint = (useBaseFrame && (sprites.wholeNative || sprites.nativeColor)) ? null : tint;
+  const bodyTint = (!filletView && (sprites.wholeNative || sprites.nativeColor)) ? null : tint;
   // ⚠ 상하 미러 금지 — **뱃살은 항상 아래쪽**에 오도록 배치한다 (사용자 지시 2026-07-30).
   //  "배 위로(BELLY_UP)"는 미러가 아니라 전용 복면 뷰 스프라이트로 표현한다.
   const drawn = drawSprite(g, spr, geom, mirrorX, false, bodyTint, 0.22,
@@ -1253,14 +1242,8 @@ export function drawPixelButcherFish(
     g.fillEllipse(drawn.x + drawn.w * 0.3, drawn.y + drawn.h * 0.72, drawn.w * 0.14, drawn.h * 0.12);
   }
 
-  // 항문 마커 (BACK_DOWN — 장뜨기 기준점. 배쪽 = 아래 가장자리)
-  if (o === 'BACK_DOWN') {
-    const ax = mirrorX
-      ? drawn.x + drawn.w * (1 - state.anusRatio)
-      : drawn.x + drawn.w * state.anusRatio;
-    g.fillStyle(0xffd257, 1);
-    g.fillCircle(ax, drawn.y + drawn.h * 0.9, 3.5);
-  }
+  // 320 — 옛 항문 표식(등 아래 자세의 노란 점)은 뺐다. 어종군 공용 몸통 그림의 아래 가장자리에 맞춘 자리라
+  //  어종 원물 그림에서는 배 밑 허공에 떴다. 등 아래 자세의 작업 뷰는 등쪽 장뜨기 전용 그림이고, 옆면은 뒤집기 전 대기 화면이다.
   if (o === 'BACK_DOWN' && state.stageId?.startsWith('fillet_') && (state.strokesDone ?? 0) > 0) {
     // 장뜨기 길내기 진행 — 등 경계 절개선이 점점 깊어짐 (1=가는 선 → 3=벌어진 분홍 살)
     const n = Math.min(3, (state.strokesDone ?? 0) + (state.stageId.endsWith('_sever') ? 1 : 0));
