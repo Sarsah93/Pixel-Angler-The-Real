@@ -59,6 +59,7 @@
 | 빌드 | `pnpm run build` · 루트 `typecheck` | 3/3 · 4/4 |
 | 위키 | `wikicheck322b` | 5 / 5 — 「그림 준비 중」 줄 없음 · 필렛 시트 방어류 19줄 · 작은 생선 8줄 · 어종 카드 그림 9 |
 
+- 119차 배포(gh-pages `6860a70` · main `f1946e2`): 로컬로 띄워 기동 9.6초 · 4xx 0(바깥 1 = KAMIS) · pageerror 0 · 정적 2,282 · `public/` 2,279개 바이트 같음.
 - 기존 산출물 회귀: `PixelFishSpecies.ts` · `PixelFilletSpecies.ts`는 더한 줄만(삭제 0) · `public/sashimi/sp/` 기존 파일 바뀜 0.
 - Gemini 사용: 41장(어종 9 + 다금바리 다시 2 · 필렛 30 — 전어 다시 3 포함) · 약 2,000원어치(추정 — 장당 약 0.034달러).
 
