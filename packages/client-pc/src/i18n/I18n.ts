@@ -28,7 +28,7 @@ import {
   fatnessLabel, textureLabel, fishinessLabel, flavorLabel, brothLabel,
   TITLE_DATABASE, TIDE_PHASE_PREF_GROUPS, TIDE_FLOW_LABEL_KO, TIDE_FLOW_LABEL_EN, TIDE_FLOW_NOTE_KO, TIDE_FLOW_NOTE_EN, QUEST_ITEMS,
   CROP_DATABASE, FARM_SUPPLIES, CROP_RAW_EAT, CROP_NO_RAW, carePlanSummaryKo, carePlanSummaryEn,
-  FARM_RESIDUES, OIL_BOTTLES, MILL_SERVICES, CURE_RECIPES, CURE_ITEMS, CURE_STATION_LABEL,
+  FARM_RESIDUES, OIL_BOTTLES, MILL_SERVICES, CURE_RECIPES, CURE_ITEMS, CURE_STATION_LABEL, PROCESSED_ITEMS,
 } from '@tra/core';
 import { startItemName, startItemNameEn, looseShortNamePairs, savedSeedTemplate, savedSeedNameEn } from '../data/CropItems.js';
 import { EN_PLACES } from './places.js';
@@ -124,6 +124,8 @@ function buildRuntimeDict(): void {
   for (const st of Object.values(CURE_STATION_LABEL)) put(st.ko, st.en);
   for (const r of CURE_RECIPES) { put(r.nameKo, r.nameEn); put(r.howKo, r.howEn); for (const i of r.inputs) put(i.nameKo, i.nameEn); }
   for (const c of CURE_ITEMS) { put(c.nameKo, c.nameEn); put(c.descKo, c.descEn); }
+  // 295차 — 지역 가공품 설명(이름은 en_mill.ts 사전이 맡는다)
+  for (const p of PROCESSED_ITEMS) put(p.descKo, p.descEn);
   // 241차 — 날로 먹기 메모 · 못 먹는 이유 · 조각 이름 · 개량종 다른 점
   for (const d of Object.values(CROP_RAW_EAT)) { put(d.noteKo, d.noteEn); if (d.pieces) put(d.pieces.labelKo, d.pieces.labelEn); if (d.bite) put(d.bite.labelKo, d.bite.labelEn); }
   for (const d of Object.values(CROP_NO_RAW)) put(d.whyKo, d.whyEn);

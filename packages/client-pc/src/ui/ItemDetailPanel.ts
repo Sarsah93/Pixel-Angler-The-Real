@@ -8,7 +8,7 @@
 
 import Phaser from 'phaser';
 import { ensurePixelIcon, addPixelIcon } from './PixelIcon.js';
-import { getCreatureById, isCrabCreature, specialtyOf, type RegionalSpecialtyDef, getRegionById } from '@tra/core';
+import { getCreatureById, isCrabCreature, specialtyOf, processedItem, type RegionalSpecialtyDef, getRegionById } from '@tra/core';
 import { specialtyDisplayName } from '../data/SpecialtyTag.js';
 import { getBlueprint, CRAFT_STATION_LABEL, CRAFT_GROUP_LABEL, getQuestItem } from '@tra/core';
 import { LINE_MATERIAL_TRAITS, lineMaterialOf, lineStrengthView } from '@tra/core';   // 273차 — 줄 재질 성질(내구도) · 281 세기 = 호수 표
@@ -784,6 +784,8 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
       if (!nutrition) rows.push({ label: '섭취 효과', value: '허기·수분 회복' });
       rows.push({ label: '보존성', value: '부패 없음' });
       desc = nutrition ? '한 끼는 하루 필요 열량의 3분의 1(≈800 kcal)입니다. 간식은 그보다 훨씬 적습니다.' : '오래 보관할 수 있는 비상 식량입니다.';
+      // 295차 지역 가공품(과메기 · 장아찌 …)은 데이터의 자기 설명을 보인다(통조림용 공통 문구 대신)
+      { const pd = processedItem(item.id); if (pd) desc = pd.descKo; }
       break;
     case '해파리':
     case '불가사리': {
