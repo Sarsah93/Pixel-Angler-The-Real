@@ -66,6 +66,13 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 - 손질은 열지 않는다: 프로필 · 어종군까지 배선하고 `BUTCHERY_WIRED_SPECIES` + **`BUTCHERY_ART_PENDING_SPECIES`**에 넣는다(옆면은 그 어종 그림이어야 한다 — 다른 어종 그림으로 대신 열지 않는다).
 - 그림이 생기면: ① `tools/gemini_fish_art.cjs`(생김새 `LOOKS`) → `--install` ② `FishTextures.ts` 두 표에 한 줄씩 → `node tools/fish_cards.cjs`
   ③ `tools/gen_species_sprites.cjs` 표(이미 있으면 그대로) 실행 ④ `BUTCHERY_ART_PENDING_SPECIES`에서 빼기 ⑤ 필렛 그림(`gemini_fillet_art.cjs` 또는 `FILLET_SPECIES_ALIAS`) ⑥ 위키 그림.
+- **322(2) 실측 순서**(9종 · 41장 · 약 2,000원): 어종 그림 → 검수 시트(`montage`) → `--install` → 표 두 곳 → `fish_cards.cjs` → `gen_species_sprites.cjs` →
+  필렛 `gemini_fillet_art.cjs --whole`(반쪽 통째 — 316 방식) → `--install` → `split_fillet_art.cjs --only <큰 어종>` → `--side --only …` → `--bake` →
+  `gen_sashimi_fillet.cjs --species` → 대기 목록에서 빼기 → 큰 어종이면 `LoinArt.loinLook` 살빛 → `--wiki-sheets` · `gen_wiki_images.py` · 위키.
+- **생김새 설명에 「○○처럼」을 쓰면 그 어종이 나온다** — 다금바리에 「농어처럼 길쭉하고 날씬한」이라 적어 농어가 나왔다.
+  모양이 어긋나면 실물 사진을 `--photo <파일>`로 함께 보낸다(사진은 저장소에 두지 않는다 · 「사진의 흐릿함은 따라 하지 말 것」이 지시문에 들어 있다).
+- **가는 실 · 수염 같은 한 칸 굵기 돌기는 그리게 하지 않는다** — 전어 등지느러미 마지막 줄기를 「긴 실」로 적었더니 몸에서 떠서 구불거리는 선이 나와
+  「머리카락이 남은 것 같다」는 지적을 받았다(사용자 결정 = 지운다). 필렛 살빛도 첫 판을 본다(전어가 고등어처럼 붉게 나왔다 — 「붉지 않다」를 적는다).
 
 ## 부가 배선 (해당 시)
 

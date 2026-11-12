@@ -35,6 +35,8 @@ const SPLIT = [
   'red_seabream', 'largescale_blackfish', 'longtail_blackfish', 'stone_beakperch', 'spotted_knifejaw', 'surfperch', 'rainbow_wrasse',
   'yellowtail', 'amberjack', 'chub_mackerel', 'horse_mackerel', 'spanish_mackerel', 'sea_bass',
   'black_rockfish', 'blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish', 'striped_mullet', 'redlip_mullet',
+  // 322(2) — 조기류 둘 · 바리류 넷
+  'yellow_croaker', 'white_croaker', 'redspotted_grouper', 'longtooth_grouper', 'sawedged_perch', 'sevenband_grouper',
 ];
 
 function args() {
@@ -252,6 +254,7 @@ function main() {
     for (const kind of ['pure', 'skin']) {
       const live = path.join(DIR, `${id}_${kind}.png`);
       const kept = path.join(ORIG, `${id}_${kind}.png`);
+      if (!fs.existsSync(live) && !fs.existsSync(kept)) { res.push(`${kind} 그림 없음 — 건너뜀`); continue; }
       if (!P.preview && !fs.existsSync(kept)) fs.copyFileSync(live, kept);   // 반쪽 통째 원본은 한 번만 보관
       const src = fs.existsSync(kept) ? kept : live;
       const img = decode(src);

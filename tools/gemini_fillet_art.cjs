@@ -21,6 +21,8 @@
  *  사용:
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_fillet_art.cjs --out <폴더> [--only sea_bass,red_seabream] [--kinds pure,skin,ribs] [--jobs 4] [--force] [--dry]
  *      → <폴더>/<id>_<kind>.png(PNG32) + _log.jsonl(시도 · IoU · 토큰)
+ *      `--whole` = 지아이뼈를 가르는 어종도 순수 · 껍질 필렛을 **반쪽 통째**로 그린다(316 방식) — 설치 뒤 `node tools/split_fillet_art.cjs`(가르기)
+ *        → `node tools/split_fillet_art.cjs --side`(한 면 필렛)까지 돌린다. 322(2) 새 어종 6종이 이 길이다(기존 19종과 그림 계보가 같다).
  *    node tools/gemini_fillet_art.cjs --out <폴더> --sheet <sheet.png>   검수 시트(어종마다 한 줄: 순수 · 껍질 · 갈빗대)
  *    node tools/gemini_fillet_art.cjs --out <폴더> --install [--force]    배경 벗기기 · 방향 맞추기 · 격자 정규화(긴 변 192칸 × 4px)
  *      → `food assets/trimmings/species/<id>_<kind>.png`
@@ -131,6 +133,25 @@ const SPECIES = {
   redlip_mullet: { fish: 'so-iuy_mullet.png', ko: '가숭어(참숭어)',
     flesh: '가숭어 살은 연분홍빛 흰 살이다. 가운데를 따라 붉은 혈합육 띠가 뚜렷하고, 배 쪽 가장자리에 하얀 지방층이 있다.',
     skin: '은회색, 등은 회갈색', shape: '원통형 몸이라 필렛이 길쭉하다' },
+  // 322(2) — 조기류 둘 · 바리류 넷(방어류 흐름 — 지아이뼈로 가른다)
+  yellow_croaker: { fish: 'small_yellow_croaker.png', ko: '참조기',
+    flesh: '참조기 살은 부드럽고 맑은 흰 살이다. 근육결이 가는 흰 줄이고 혈합육은 가늘고 옅은 분홍빛이다. 붉은 살이 아니다.',
+    skin: '등은 회황색 · 황갈색, 배 쪽은 황금빛 노란색', shape: '길쭉한 몸이라 필렛도 길쭉하다' },
+  white_croaker: { fish: 'white_croaker.png', ko: '백조기(보구치)',
+    flesh: '백조기 살은 부드럽고 하얀 흰 살이다. 근육결이 가는 흰 줄이고 혈합육은 가늘고 옅은 분홍빛이다. 붉은 살이 아니다.',
+    skin: '은백색, 등 쪽은 옅은 회갈색', shape: '길쭉한 몸이라 필렛도 길쭉하다' },
+  redspotted_grouper: { fish: 'redspotted_grouper.png', ko: '붉바리',
+    flesh: '붉바리 살은 단단하고 투명한 흰 살이다. 근육결이 굵고 또렷한 흰 줄로 보이고 혈합육은 옅은 분홍빛으로 가늘다. 붉은 살이 아니다.',
+    skin: '붉은 갈색 바탕에 주홍빛 둥근 점이 촘촘하다', shape: '머리가 큰 바리류라 필렛은 통통하고 짧은 편' },
+  longtooth_grouper: { fish: 'longtooth_grouper.png', ko: '자바리',
+    flesh: '자바리 살은 단단하고 투명한 흰 살에 아주 옅은 분홍빛이 돈다. 근육결이 굵고 또렷한 흰 줄로 보이고 혈합육은 옅은 분홍빛으로 가늘다. 붉은 살이 아니다.',
+    skin: '짙은 갈색 · 회갈색 바탕에 비스듬한 어두운 띠 무늬', shape: '몸통이 굵은 바리류라 필렛이 두툼하고 통통하다' },
+  sawedged_perch: { fish: 'sawedged_perch.png', ko: '다금바리',
+    flesh: '다금바리 살은 단단하고 맑은 흰 살에 옅은 분홍빛이 돈다. 근육결이 굵은 흰 줄이고 혈합육은 옅은 분홍빛으로 가늘다. 붉은 살이 아니다.',
+    skin: '자줏빛이 도는 회갈색, 옆구리에 어두운 세로띠', shape: '길쭉하고 굵은 몸이라 필렛이 두툼하고 길다' },
+  sevenband_grouper: { fish: 'sevenband_grouper.png', ko: '능성어',
+    flesh: '능성어 살은 단단하고 투명한 흰 살이다. 근육결이 굵고 또렷한 흰 줄로 보이고 혈합육은 옅은 분홍빛으로 가늘다. 붉은 살이 아니다.',
+    skin: '자줏빛 회갈색 바탕에 짙은 가로띠 일곱 줄', shape: '몸통이 굵은 바리류라 필렛이 두툼하고 통통하다' },
   // ── 작은 생선 ──
   pacific_saury: { fish: 'saury.png', ko: '꽁치', small: true,
     flesh: '꽁치 살은 붉은빛이 도는 회분홍 살로 기름져 윤기가 돈다. 가운데를 따라 짙은 적갈색 혈합육 띠가 지난다.',
@@ -147,6 +168,17 @@ const SPECIES = {
   yellowfin_goby: { fish: 'yellowfin_goby.png', ko: '문절망둑', small: true,
     flesh: '문절망둑 살은 살짝 투명한 흰 살이다. 혈합육은 거의 없다.',
     skin: '연갈색 · 황갈색 바탕에 갈색 얼룩', shape: '머리가 크고 몸이 원통형이라 필렛은 길쭉하고 꼬리 쪽이 가늘다(길이가 폭의 약 4배)' },
+  // 322(2) — 청어과 셋
+  gizzard_shad: { fish: 'dotted_gizzard_shad.png', ko: '전어', small: true,
+    // 1차는 고등어처럼 온통 붉게 나왔다 — 「뽀얀 흰 살 · 붉지 않다」를 적는다
+    flesh: '전어 살은 옅은 분홍빛이 도는 뽀얀 흰 살이고(고등어 · 방어처럼 붉은 살이 아니다) 기름져 윤기가 돈다. 가운데를 따라 붉은 갈색 혈합육 띠가 가늘고 또렷하게 지난다.',
+    skin: '은백색, 등은 청회색에 작은 검은 점이 줄지어 있다', shape: '몸이 높고 납작해 필렛이 짧고 넓적하다(길이가 폭의 약 3배)' },
+  pacific_herring: { fish: 'pacific_herring.png', ko: '청어', small: true,
+    flesh: '청어 살은 붉은빛이 도는 회분홍 살로 기름져 윤기가 돈다. 가운데를 따라 짙은 적갈색 혈합육 띠가 지난다.',
+    skin: '등은 짙은 청록 · 남색, 배는 은백색', shape: '길쭉한 몸이라 필렛도 길쭉하다(길이가 폭의 약 4배)' },
+  anchovy: { fish: 'japanese_anchovy.png', ko: '멸치', small: true,
+    flesh: '멸치 살은 살짝 투명한 회분홍 · 옅은 붉은 갈색 살이다. 가운데를 따라 가는 적갈색 혈합육 줄이 지난다.',
+    skin: '은빛, 등은 짙은 청흑색', shape: '아주 가늘고 긴 몸이라 필렛도 가늘고 길다(길이가 폭의 약 5배)' },
 };
 
 const KINDS = ['pure', 'skin', 'ribs'];
@@ -190,7 +222,7 @@ const sideTask = (t) => `셋째 그림의 어종 ${t.ko}의, 갈빗대만 떼어
 
 // ── 공용 ──
 function parseArgs(argv) {
-  const P = { out: '', only: null, kinds: KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, tries: 3, force: false, dry: false, install: false, bake: false, sheet: '' };
+  const P = { out: '', only: null, kinds: KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, tries: 3, force: false, dry: false, install: false, bake: false, sheet: '', whole: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -204,6 +236,7 @@ function parseArgs(argv) {
     else if (a === '--dry') P.dry = true;
     else if (a === '--install') P.install = true;
     else if (a === '--bake') P.bake = true;
+    else if (a === '--whole') P.whole = true;
     else if (a === '--sheet') P.sheet = v();
   }
   if (!P.out && !P.bake) { console.error('--out <폴더>가 필요하다'); process.exit(1); }
@@ -328,7 +361,8 @@ async function genSpecies(t, P) {
   const lines = [];
   // ① 순수 필렛
   const flow = splitFlowOf(t.id, t);
-  if (t.kinds.includes('pure') && (P.force || !fs.existsSync(file('pure'))) && flow) {
+  // `--whole`(322(2)) = 316 방식: 반쪽 통째로 그린 뒤 `split_fillet_art.cjs`가 가른다(한 면 필렛 `side`도 그 통째 그림에서 나온다 — 기존 19종과 같은 길)
+  if (t.kinds.includes('pure') && (P.force || !fs.existsSync(file('pure'))) && flow && !P.whole) {
     // 318(2) — 한 덩어리 구도: 그 흐름 원본과 실루엣 IoU · 종횡비를 보고 고른다(거울상도 본다 — 설치가 방향을 맞춘다)
     const ref = SPLIT_REF[flow], other = SPLIT_REF[flow === 'bream' ? 'amberjack' : 'bream'];
     const rs = await silhouette(ref), rm = normMask(rs);

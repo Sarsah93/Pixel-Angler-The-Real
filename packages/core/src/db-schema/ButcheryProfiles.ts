@@ -345,8 +345,8 @@ export function butcheryProfileFor(speciesId: string, lengthCm?: number): Butche
  *  - 장어류(315 · `tree: 'eel'`): 붕장어 · 갯장어 · 먹장어 — 송곳 고정 → 점액 · 껍질 → 가르기 · 펼치기 → 내장 → 중골 · 지느러미 → 머리
  *  - 4덩어리 해체(317 · `tree: 'loin'`): 참다랑어(늘) · 방어 70 · 부시리 80 · 잿방어 100cm 이상(`butcheryProfileFor`)
  *    322 — 자바리 · 다금바리 · 능성어 80cm 이상
- *  - 322 — 전어 · 청어 · 멸치(작은 생선 공정) · 참조기 · 백조기 · 붉바리 · 자바리 · 다금바리 · 능성어(방어류 흐름)는
- *    배선만 하고 그림 대기(`BUTCHERY_ART_PENDING_SPECIES`) — 그림이 생기면 열린다
+ *  - 322 — 전어 · 청어 · 멸치(작은 생선 공정) · 참조기 · 백조기 · 붉바리 · 자바리 · 다금바리 · 능성어(방어류 흐름) —
+ *    322에는 그림이 없어 닫아 뒀고(`BUTCHERY_ART_PENDING_SPECIES`), 322(2)에 그림을 구워 열었다
  * 그 외 finfish(쥐치 · 대구 · 갈치 등)·복어는 미구현(banned) — 추후 별도 구현.
  */
 /**
@@ -355,8 +355,7 @@ export function butcheryProfileFor(speciesId: string, lengthCm?: number): Butche
  * (`gemini_fish_art.cjs` → `fish_cards.cjs` → `gen_species_sprites.cjs`) 이 목록에서 빼는 것으로 열린다.
  */
 export const BUTCHERY_ART_PENDING_SPECIES: ReadonlySet<string> = new Set<string>([
-  'gizzard_shad', 'pacific_herring', 'anchovy', 'yellow_croaker', 'white_croaker',
-  'redspotted_grouper', 'longtooth_grouper', 'sawedged_perch', 'sevenband_grouper',
+  // 322(2) — 새 어종 9종의 그림을 구워 비웠다. 다음에 그림 없이 배선만 하는 어종이 생기면 여기에 넣는다
 ]);
 
 /** 322 — 공정이 배선된 어종 전부(그림 대기 포함) — 분류 · 시험 · 위키용. 실제로 열린 것은 `BUTCHERY_IMPLEMENTED_SPECIES` */

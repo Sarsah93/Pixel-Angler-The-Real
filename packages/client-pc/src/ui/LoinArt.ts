@@ -23,7 +23,7 @@ import {
 const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
 
 // ────────────────────────────────────────────────────────────
-// 색 — 참다랑어(짙은 붉은살 · 토로) / 방어류(분홍빛 살)
+// 색 — 참다랑어(짙은 붉은살 · 토로) / 방어류(분홍빛 살) / 큰 바리류(흰 살 — 322(2))
 // ────────────────────────────────────────────────────────────
 interface LoinLook {
   flesh: number; fleshDark: number; fleshLight: number;
@@ -46,8 +46,17 @@ const AMBERJACK: LoinLook = {
   skinBack: 0x55677a, skinBelly: 0xd6dce2,
   bone: 0xece6d6, boneDark: 0xc0b8a4, remnant: 0xb05a50,
 };
+/** 322(2) — 큰 바리류(자바리 · 다금바리 · 능성어): 단단한 흰 살 · 옅은 분홍 혈합육 · 갈색 껍질 */
+const GROUPER: LoinLook = {
+  flesh: 0xeedfd2, fleshDark: 0xd9c4b6, fleshLight: 0xf9efe7,
+  belly: 0xf4e7dd, fat: 0xfdf7f1,
+  chiai: 0xc27a74, chiaiDark: 0x9c5a56,
+  skinBack: 0x5a4a42, skinBelly: 0xcbbfb2,
+  bone: 0xece6d6, boneDark: 0xc0b8a4, remnant: 0xd0ab9c,
+};
+const GROUPER_LOIN = new Set(['longtooth_grouper', 'sawedged_perch', 'sevenband_grouper']);
 export function loinLook(speciesId: string): LoinLook {
-  return speciesId === 'bluefin_tuna' ? TUNA : AMBERJACK;
+  return speciesId === 'bluefin_tuna' ? TUNA : GROUPER_LOIN.has(speciesId) ? GROUPER : AMBERJACK;
 }
 const hex = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
 const hash = (a: number, b: number): number => ((a * 73856093) ^ (b * 19349663)) >>> 0;

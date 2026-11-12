@@ -298,6 +298,12 @@ describe('322 — 새 어종 9', () => {
     }
     // 이미 열려 있던 어종은 그대로 열려 있다
     for (const id of ['horse_mackerel', 'black_seabream', 'bluefin_tuna', 'conger_eel', 'flatfish']) expect(canButcherSpecies(id), id).toBe(true);
+    // 322(2) — 새 어종 9종은 그림을 구워 열었다(대기 목록이 비었다)
+    for (const id of ['gizzard_shad', 'pacific_herring', 'anchovy', 'yellow_croaker', 'white_croaker',
+      'redspotted_grouper', 'longtooth_grouper', 'sawedged_perch', 'sevenband_grouper']) {
+      expect(BUTCHERY_ART_PENDING_SPECIES.has(id), id).toBe(false);
+      expect(canButcherSpecies(id), id).toBe(true);
+    }
   });
 
   const run = (id: string, cm: number): ButcheryProcess => {

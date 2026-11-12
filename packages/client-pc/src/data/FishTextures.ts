@@ -85,6 +85,16 @@ export const FISH_TEXTURE: Record<string, string> = {
   red_tilefish: 'fish_red_tilefish',                 // 옥돔
   bluefin_tuna: 'fish_bluefin_tuna',                 // 참다랑어
   black_scraper: 'fish_black_scraper',               // 말쥐치
+  // 322(2) — 새 어종 9(Gemini 그림 → fish_cards)
+  gizzard_shad: 'fish_gizzard_shad',                 // 전어
+  pacific_herring: 'fish_pacific_herring',           // 청어
+  anchovy: 'fish_anchovy',                           // 멸치
+  yellow_croaker: 'fish_yellow_croaker',             // 참조기
+  white_croaker: 'fish_white_croaker',               // 백조기(보구치)
+  redspotted_grouper: 'fish_redspotted_grouper',     // 붉바리
+  longtooth_grouper: 'fish_longtooth_grouper',       // 자바리
+  sawedged_perch: 'fish_sawedged_perch',             // 다금바리
+  sevenband_grouper: 'fish_sevenband_grouper',       // 능성어
 };
 
 /**
@@ -163,6 +173,16 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
   fish_red_tilefish: 'red_tilefish.png',                  // 옥돔 (295)
   fish_bluefin_tuna: 'pacific_bluefin_tuna.png',          // 참다랑어 (295)
   fish_black_scraper: 'black_scraper.png',                // 말쥐치
+  // 322(2) — 새 어종 9
+  fish_gizzard_shad: 'dotted_gizzard_shad.png',           // 전어
+  fish_pacific_herring: 'pacific_herring.png',            // 청어
+  fish_anchovy: 'japanese_anchovy.png',                   // 멸치
+  fish_yellow_croaker: 'small_yellow_croaker.png',        // 참조기
+  fish_white_croaker: 'white_croaker.png',                // 백조기(보구치)
+  fish_redspotted_grouper: 'redspotted_grouper.png',      // 붉바리
+  fish_longtooth_grouper: 'longtooth_grouper.png',        // 자바리
+  fish_sawedged_perch: 'sawedged_perch.png',              // 다금바리
+  fish_sevenband_grouper: 'sevenband_grouper.png',        // 능성어
 };
 
 /**

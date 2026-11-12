@@ -9,6 +9,7 @@
  *  사용:
  *    NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <폴더> [--only tonguefish,sandfish]
  *        [--model gemini-nano-banana-2.1] [--jobs 2] [--tries 4] [--tag v2] [--force] [--dry]
+ *        [--photo <실물 사진>]   ← 322(2): 모양이 어긋날 때 실물 사진을 함께 보낸다(`--only` 한 종 · 사진은 저장소에 두지 않는다)
  *    결과: <폴더>/<speciesId>[.<tag>].png(PNG32) + <폴더>/_log.jsonl(모델 · 토큰 · 시간)
  *    검수 뒤 `--install`(고른 판은 `<speciesId>.png` 이름으로 둔다)이 배경을 벗겨 생성 해상도 그대로(타이트 크롭 + 투명 여백 2px)
  *    `food assets/fish/<파일>`에 넣는다. 그다음 `node tools/fish_cards.cjs`가 게임용 카드 · 아이콘을 굽는다.
@@ -93,9 +94,12 @@ const LOOKS = {
   gizzard_shad: {
     file: 'dotted_gizzard_shad.png', aspect: '21:9', refs: ['round_herring.png', 'jack_mackerel.png', 'flathead_grey_mullet.png'],
     look: '전어(Konosirus punctatus)를 옆에서 본 모습. 옆으로 납작한 긴 타원형 몸(몸높이가 몸길이의 3분의 1쯤). 등은 푸른빛 도는 청록색이고 비늘 줄을 따라 작은 검은 점이 여러 줄로 늘어서 있으며, 옆구리와 배는 은백색이다. '
-      + '아가미뚜껑 바로 뒤 어깨에 눈만 한 검은 점이 하나 있다. 등지느러미는 하나이고 맨 뒤 줄기가 실처럼 길게 뒤로 뻗어 꼬리 자루 가까이까지 닿는다. '
+      + '아가미뚜껑 바로 뒤 어깨에 눈만 한 검은 점이 하나 있다. 등지느러미는 하나이고 맨 뒤 줄기가 지느러미와 같은 누런색의 짧은 가닥으로 뒤로 뻗는다 — '
+      + '등 윤곽에 바짝 붙어 나란히 눕고 꼬리 자루의 절반쯤에서 끝난다(머리카락처럼 가늘게 떠서 구불거리면 안 된다). '
       + '입은 작고 주둥이가 둥글며 아래턱이 위턱보다 짧다. 배 가장자리는 톱니처럼 날카로운 비늘 줄. 꼬리는 깊게 갈라졌고 지느러미는 누르스름하다. '
-      + '청어 · 정어리보다 몸이 높고, 등지느러미 끝의 긴 실이 있어야 한다.',
+      + '청어 · 정어리보다 몸이 높다.',
+    // 322(2) — 1차 그림은 그 줄기가 몸에서 떠서 구불거리는 가는 선이라 「실오라기가 남은 것 같다」는 지적을 받았다(사용자).
+    //  설치본은 그 선을 지우고 등에 나란히 붙는 짧은 가닥(30칸 · 뿌리 2칸 → 1칸)으로 손으로 다시 그렸다 — 다시 뽑으면 같은 손질이 필요할 수 있다.
   },
   pacific_herring: {
     file: 'pacific_herring.png', aspect: '21:9', refs: ['round_herring.png', 'mackerel.png', 'saury.png'],
@@ -136,10 +140,13 @@ const LOOKS = {
       + '붉은 점은 없다. 등지느러미는 앞의 굵은 가시들과 뒤의 둥근 연한 부분이 하나로 이어지고, 꼬리지느러미는 끝이 둥글다. 지느러미는 짙은 갈색이고 가장자리가 옅다.',
   },
   sawedged_perch: {
-    file: 'sawedged_perch.png', aspect: '21:9', refs: ['sea_bass.png', 'black_rockfish.png', 'red_sea_bream.png'],
-    look: '다금바리(표준명 · Niphon spinosus · 일본 이름 아라)를 옆에서 본 모습. 농어처럼 길쭉하고 날씬한 방추형 몸(몸높이가 몸길이의 4분의 1쯤)에 머리가 길고 주둥이가 뾰족하며 아래턱이 앞으로 나왔다. '
-      + '아가미뚜껑 뒤쪽에 굵고 긴 가시가 하나 뒤로 뻗어 있다. 등은 회갈색 · 자줏빛 갈색, 배는 은백색 · 옅은 회색. 큰 개체라 줄무늬 없이 매끈하다(어릴 때의 세로띠는 흐릿한 자국만 남는다). '
-      + '등지느러미는 앞의 가시 부분과 뒤의 연한 부분이 깊게 파여 둘로 나뉜 듯 보이고, 꼬리지느러미는 끝이 살짝 파였으며 위아래 끝이 검다. 바리류처럼 통통하지 않고, 붉은 점 · 가로띠가 없다.',
+    // 322(2) — 1차는 「농어처럼 길쭉하고 날씬한」이라 적어 농어 같은 그림이 나왔다(사용자 「농어에 가까워 … 주둥이가 더 뾰족하고, 배와 등 쪽은 머리 쪽보다 폭이 넓어서 빵이 있는」).
+    //  실물 사진(사용자 첨부)을 `--photo`로 함께 보내 다시 그렸다 — 사진은 저장소에 두지 않는다.
+    file: 'sawedged_perch.png', aspect: '16:9', refs: ['black_rockfish.png', 'red_sea_bream.png', 'sea_bass.png'],
+    look: '다금바리(표준명 · Niphon spinosus · 일본 이름 아라)를 옆에서 본 모습. 머리는 길고 주둥이가 창끝처럼 뾰족하며 아래턱이 위턱보다 앞으로 길게 나왔다. 눈이 크다. '
+      + '몸통은 머리보다 훨씬 높다 — 등과 배가 불룩해 가슴지느러미 뒤에서 몸높이가 가장 높고(몸높이가 몸길이의 3분의 1쯤), 꼬리 자루로 가며 다시 가늘어지는 두툼한 몸이다. 농어처럼 날씬한 막대 모양이 아니다. '
+      + '아가미뚜껑 뒤쪽에 굵고 긴 가시가 하나 뒤로 뻗어 있다. 등 쪽은 짙은 회갈색 · 검은 갈색, 옆구리와 배는 은회색으로 번들거린다. 줄무늬 · 점 · 가로띠 없음. '
+      + '등지느러미는 앞의 가시 부분(굵은 가시가 톱날처럼 서 있다)과 뒤의 연한 부분이 깊게 파여 둘로 나뉜 듯 보이고, 연한 등지느러미 · 꼬리지느러미는 짙은 회색에 끝이 검다. 꼬리지느러미 끝은 거의 곧게 잘린 모양.',
   },
   sevenband_grouper: {
     file: 'sevenband_grouper.png', aspect: '16:9', refs: ['black_rockfish.png', 'barred_knifejaw_female.png', 'sea_bass.png'],
@@ -193,6 +200,17 @@ const redrawTask = (it) => `다시 그릴 것: ${it.nameKo}. ${it.note}\n`
 const STYLE_INTRO = '첨부한 그림 세 장은 화풍 참고용입니다. 이 그림들과 같은 픽셀 아트 화풍으로 물고기 한 마리를 새로 그려 주세요. '
   + '같은 도트 크기, 진한 윤곽선, 밝은 하이라이트와 어두운 그늘의 단계, 사실적인 체색과 비늘 · 지느러미 줄기 표현을 맞춥니다. '
   + '참고 그림 속 물고기는 그리지 마세요.';
+const PHOTO_INTRO = '다음 사진 한 장은 그릴 어종의 실물 사진입니다. 몸의 모양과 비율(머리 · 몸통 높이 · 꼬리 자루), 주둥이 모양, 지느러미의 자리와 모양, 체색은 이 사진을 따르세요. '
+  + '사진의 배경 · 그림자 · 흠집 · 접힌 지느러미는 따라 그리지 않고, 지느러미는 가지런히 편 모습으로 그립니다. '
+  // 1차(v2)는 작은 사진의 흐릿함을 따라 도트가 굵고 번진 그림이 나왔다 — 도트 크기 · 윤곽선은 화풍 참고를 따르라고 적는다
+  + '사진의 흐릿함 · 낮은 해상도는 따라 하지 마세요 — 도트 크기와 윤곽선의 또렷함, 비늘 한 장 한 장의 잔 도트는 앞의 참고 그림 세 장과 똑같이 잘고 선명하게 그립니다(몸길이에 도트 190칸쯤).';
+function photoPart(file) {
+  const tmp = path.join(os.tmpdir(), `gfa_photo_${process.pid}.png`);
+  execFileSync('convert', [file, '-background', 'white', '-alpha', 'remove', '-filter', 'Lanczos', '-resize', '1024x1024', `PNG24:${tmp}`]);
+  const data = fs.readFileSync(tmp).toString('base64');
+  fs.rmSync(tmp, { force: true });
+  return { inlineData: { mimeType: 'image/png', data } };
+}
 const taskText = (it) => `그릴 것: ${it.nameKo} (${it.nameEn}, ${it.sci}). ${it.look}\n`
   + '조건: 순백색 단색 배경. 물고기 한 마리만, 머리는 왼쪽 · 꼬리는 오른쪽. 화면 가운데에 크게, 지느러미 끝까지 잘리지 않게. '
   + '물 · 바닥 · 그림자 · 거품 · 글자 · 테두리 없음. 사진이 아니라 픽셀 아트.';
@@ -212,6 +230,7 @@ function parseArgs(argv) {
     else if (a === '--dry') P.dry = true;
     else if (a === '--install') P.install = true;
     else if (a === '--redraw') P.redraw = true;
+    else if (a === '--photo') P.photo = v();
     else if (a === '--grid') P.grid = Math.max(0, +v());
   }
   if (!P.out) { console.error('--out <폴더>가 필요하다'); process.exit(1); }
@@ -263,7 +282,10 @@ async function generateOne(it, P) {
   const body = {
     contents: [{ role: 'user', parts: it.redraw
       ? [{ text: REDRAW_INTRO }, ...refs, sourcePart(P.out, it.file, it.smooth), { text: redrawTask(it) }]
-      : [{ text: STYLE_INTRO }, ...refs, { text: taskText(it) }] }],
+      : P.photo
+        // 322(2) — 실물 사진 참고(`--photo <파일>` · `--only` 한 종에만 쓴다): 모양 · 비율 · 지느러미 자리 · 체색은 사진, 화풍은 앞의 그림 세 장
+        ? [{ text: STYLE_INTRO }, ...refs, { text: PHOTO_INTRO }, photoPart(P.photo), { text: taskText(it) }]
+        : [{ text: STYLE_INTRO }, ...refs, { text: taskText(it) }] }],
     generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: it.aspect } },
   };
   let last = '';
