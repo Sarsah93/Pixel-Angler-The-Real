@@ -18,7 +18,7 @@ import {
   SINKER_BASE_DRAG_CD, SINKER_BUNDLE_DRAG_CD, SINKER_HOLE_FEEDBACK_MULT,
   LURES_CATALOG_DB, JIGHEAD_WEIGHTS_G, getLureSpec, jigHeadWeightById,
   computeLureRigWeight, getLureCastCd, isKnifeItem, FISH_DATABASE, lineStrengthKg,
-  speciesStandardWeightG, SASHIMI_PLATE_SPECS, type SashimiPlateMeta, type SashimiKnifeTier,
+  speciesStandardWeightG, ORACLE_FISH_DB, SASHIMI_PLATE_SPECS, type SashimiPlateMeta, type SashimiKnifeTier,
   type GearFaultId, GEAR_FAULTS, gearUsable,
   type MpTradeItem,
   newRigTree, setRigValue, dropMissingItems, RIG_SLOTS, missingParts as treeMissingParts, summarize as treeSummarize, treeFromLegacy, migrateRigTree,
@@ -2178,7 +2178,7 @@ class InventoryStoreManager {
 
   /**
    * dev 콘솔 전용 — 임의 어종 어획물 1마리 지급 (활어·평균 밴드 랜덤 사이즈).
-   * FISH_DATABASE의 avgSizeRangeCm/avgWeightRangeG를 길이 비례 보간한다.
+   * 길이는 FISH_DATABASE의 avgSizeRangeCm 안에서 뽑고, 체중은 그 어종의 체장-체중 식(323 — 오라클에 없는 어종만 범위 보간).
    */
   devGrantFish(speciesId: string): boolean {
     if (!import.meta.env.DEV) return false;
@@ -2186,9 +2186,11 @@ class InventoryStoreManager {
     if (!f) return false;
     const [lo, hi] = f.avgSizeRangeCm;
     const lengthCm = Math.round(lo + Math.random() * (hi - lo));
+    // 323 — 체중은 그 어종의 체장-체중 식으로(도감 범위를 길이에 곧게 이으면 폭이 넓은 어종 — 참다랑어 60~200cm — 에서 가운데가 두 배로 무겁다)
     const t = hi > lo ? (lengthCm - lo) / (hi - lo) : 0.5;
     const [wLo, wHi] = f.avgWeightRangeG;
-    const weightG = Math.round(wLo + t * (wHi - wLo));
+    const lwrG = speciesStandardWeightG(speciesId, lengthCm);
+    const weightG = Math.round(ORACLE_FISH_DB.some((o) => o.speciesId === speciesId) ? lwrG : wLo + t * (wHi - wLo));
     const sex: 'M' | 'F' = Math.random() < 0.5 ? 'M' : 'F';
     const seq = this.nextCatchSeq();
     const ok = this.addItem({

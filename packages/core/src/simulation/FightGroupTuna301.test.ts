@@ -7,6 +7,7 @@ import { fightGroupOf, fightBodyFormOf, fishRarity } from './FishRarity.js';
 import { ORACLE_FISH_DB } from './FishSpawningOracle.js';
 import { staminaMaxFor } from './FishFatigueModel.js';
 import { TUNING } from '../config/tuning.js';
+import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
 
 const meanWeightKg = (id: string): number => {
   const sp = ORACLE_FISH_DB.find((s) => s.speciesId === id)!;
@@ -44,5 +45,30 @@ describe('301(2) — 참다랑어 어종군 참치류', () => {
 
   it('스태미나 — 같은 무게면 방어류보다 오래 달린다', () => {
     expect(staminaMaxFor('bluefin_tuna', 25)).toBeGreaterThan(staminaMaxFor('greater_amberjack', 25));
+  });
+
+  // 323 — 도감 크기 정보는 실제 국내 어획 크기다(옛 80~150cm · 10~80kg은 게임 스폰 분포를 옮겨 적은 것)
+  it('323 — 도감 크기: 어린 고기(30kg 미만) · 큰 고기(100~150kg) 두 무리 · 최대 3m · 450kg · 체장-체중 식과 맞는다', () => {
+    const f = FISH_DATABASE.find((x) => x.id === 'bluefin_tuna')!;
+    const o = ORACLE_FISH_DB.find((x) => x.speciesId === 'bluefin_tuna')!;
+    const kgAt = (cm: number): number => o.lwrA * Math.pow(cm, o.lwrB ?? 3) / 1000;
+    expect(f.minLegalSizeCm).toBe(0);                       // 금지체장 없음
+    expect(o.legalMinCm).toBeUndefined(); expect(o.closedMonths).toBeUndefined();   // 금어기 없음
+    expect(f.avgWeightRangeG[1]).toBeGreaterThanOrEqual(100_000);   // 여름 동해의 100kg급이 평균 범위 안
+    expect(f.maxRecordCm).toBe(300); expect(f.maxRecordKg).toBe(450);
+    expect(f.sizeGroups?.length).toBe(2);
+    const [small, large] = f.sizeGroups!;
+    expect(small.weightKg[1]).toBe(30);                     // 국제 관리 기준 「소형어」 = 30kg 미만
+    expect(large.weightKg).toEqual([100, 150]);
+    // 평균 범위 양 끝의 체중이 식과 30% 안에서 맞는다(60cm ≈ 4kg · 200cm ≈ 152kg)
+    expect(f.avgWeightRangeG[0] / 1000 / kgAt(f.avgSizeRangeCm[0])).toBeGreaterThan(0.7);
+    expect(f.avgWeightRangeG[0] / 1000 / kgAt(f.avgSizeRangeCm[0])).toBeLessThan(1.3);
+    expect(f.avgWeightRangeG[1] / 1000 / kgAt(f.avgSizeRangeCm[1])).toBeGreaterThan(0.7);
+    expect(f.avgWeightRangeG[1] / 1000 / kgAt(f.avgSizeRangeCm[1])).toBeLessThan(1.3);
+    // 어린 고기 무리의 위 끝(115cm)은 식으로도 30kg 안팎 · 큰 고기 무리의 위 끝(200cm)은 150kg 안팎
+    expect(kgAt(small.lengthCm[1])).toBeGreaterThan(25); expect(kgAt(small.lengthCm[1])).toBeLessThan(33);
+    expect(kgAt(large.lengthCm[1])).toBeGreaterThan(140); expect(kgAt(large.lengthCm[1])).toBeLessThan(165);
+    // 게임 스폰 분포는 이번에 바꾸지 않았다(100kg급은 채비 · 싸움 물리가 먼저)
+    expect(o.meanCm).toBe(110);
   });
 });

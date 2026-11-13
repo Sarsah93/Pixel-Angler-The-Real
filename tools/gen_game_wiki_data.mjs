@@ -261,11 +261,17 @@ const BEHAVIOR_KO = {
   leaf: '잎을 뜯는다 — 뜯기', root: '뿌리를 캔다 — 캐기', shoot: '새순을 꺾는다 — 꺾기',   // 299차 산나물
 };
 const CEPH_FISH = new Set(['squid', 'cuttlefish', 'swordtip_squid', 'flying_squid', 'octopus', 'giant_octopus']);
+/** 323 — 체중 범위 표기: 1kg부터는 kg(「10000~80000 g」처럼 큰 숫자를 g로 늘어놓지 않는다) */
+const weightKo = (g) => (g >= 1000 ? `${+(g / 1000).toFixed(1)} kg` : `${g} g`);
+const weightRangeKo = (a, b) => (a >= 1000 && b >= 1000 ? `${+(a / 1000).toFixed(1)}~${+(b / 1000).toFixed(1)} kg`
+  : a < 1000 && b < 1000 ? `${a}~${b} g` : `${weightKo(a)}~${weightKo(b)}`);
 const RARITY_KO = { common: '흔함', uncommon: '드묾', rare: '귀함', epic: '진귀' };
 const LAYER_KO = { surface: '표층', mid: '중층', bottom: '바닥층' };
 const SPOT_KO = {
   rocky_shore: '갯바위', breakwater: '방파제', beach: '모래해변', tidal_flat: '갯벌',
   harbor: '항·내항', estuary: '기수역', boat_fishing: '선상', open_sea: '외양', reef: '수중여',
+  // 323 — 표에 없던 자리 이름(내부 id가 위키에 그대로 나갔다 — 참다랑어 「overnight_boat」 등)
+  overnight_boat: '밤샘 선상', pier: '부두',
 };
 const MONTHS = (arr) => (arr?.length ? arr.slice().sort((a, b) => a - b).map((m) => `${m}월`).join('·') : '연중');
 
@@ -313,7 +319,9 @@ for (const f of core.FISH_DATABASE) {
     rarity: RARITY_KO[f.rarity] ?? f.rarity,
     traits: [
       ['평균 체장', `${f.avgSizeRangeCm[0]}~${f.avgSizeRangeCm[1]} cm (최대 ${f.maxRecordCm} cm)`],
-      ['평균 체중', `${f.avgWeightRangeG[0]}~${f.avgWeightRangeG[1]} g`],
+      ['평균 체중', weightRangeKo(f.avgWeightRangeG[0], f.avgWeightRangeG[1]) + (f.maxRecordKg ? ` (최대 ${f.maxRecordKg} kg)` : '')],
+      // 323 — 해역 · 철에 따라 크기대가 갈리는 어종(참다랑어)
+      ...(f.sizeGroups ?? []).map((g) => [g.labelKo, `${g.lengthCm[0]}~${g.lengthCm[1]} cm · ${g.weightKg[0]}~${g.weightKg[1]} kg`]),
       ['서식 수심', `${f.preferredDepthM[0]}~${f.preferredDepthM[1]} m`],
       ['적수온', `${f.preferredTempC[0]}~${f.preferredTempC[1]} ℃`],
       ['수층', LAYER_KO[f.swimmingLayer] ?? f.swimmingLayer ?? '—'],
@@ -781,6 +789,17 @@ const rules = [
       ['칼', '편의점(24시간) = 막칼 · 회칼(사시미) · 생활용품점 사이소 = 보급형 야나기바(65,000원) · 장인 야나기바 + 초보 기본 채비 한 벌(목줄 2호 · 감성돔 바늘 · 고리 · 구멍봉돌 3호 · 좁쌀봉돌 · 핀 도래 · 구멍찌 0.8호) · 식자재마트(10~22시) = 막칼 · 회칼 · 장인 · 장인 단조'],
       ['생선 값', '식용 어획물은 한 마리 1,000원 밑으로 내려가지 않는다(상점에 팔 때도 — 보통 500 · 나쁨 100 · 부패 0). 꽁치 kg 단가는 원양 냉동 경락 밴드(5,000)에서 국내 생물 · 냉동 도매(8,000)로 — 25cm 꽁치 1,000원 · 45cm 약 3,000원'],
       ['참다랑어 어종군', '참다랑어는 잡어 폴백(2.2)이 아니라 전용 군 「참치류」(5.0)로 싸운다 — 방어류(5.5)와 체형은 같지만 체급이 커서 체중당 힘은 조금 낮고, 대신 오래 달린다(부분 온혈). 평균 25kg 개체가 줄에 거는 힘은 약 134kg(합사 15호급) — 가게 줄(합사 1호)로는 못 올린다. 희귀도는 우량부터'],
+    ],
+  },
+  {
+    id: 'tuna_real_size_323', round: 323, hidden: false, title: '참다랑어 크기는 실제 어획 크기로',
+    lede: '도감의 참다랑어 체장 · 체중을 우리 바다에서 실제로 잡히는 크기로 고쳤다. 어린 고기와 큰 고기, 두 무리가 든다.',
+    rows: [
+      ['어린 고기', '남해와 제주에 드는 30kg 미만의 어린 고기(몸길이 50cm ~ 1m 남짓). 국제 관리 기준에서도 30kg이 소형어와 대형어를 가르는 금이다'],
+      ['큰 고기', '여름 동해(강원 · 경북)에 드는 몸길이 1.5 ~ 2m, 100 ~ 150kg급. 2025년 7월 영덕에서 1,300여 마리, 2026년 6월 주문진에서 170여 마리가 한꺼번에 들었다'],
+      ['가장 큰 것', '동해에서 300kg이 넘는 것도 잡혔다(2025년 2월 영덕 314kg). 다 자라면 몸길이 3m, 450kg에 이른다'],
+      ['규제', '금지체장과 금어기는 없다. 대신 나라마다 한 해에 잡을 수 있는 양(어획 한도)이 정해져 있다'],
+      ['위키 표기', '체중은 1kg부터 kg으로 적는다(10000~80000 g처럼 큰 숫자를 g로 늘어놓지 않는다)'],
     ],
   },
   {

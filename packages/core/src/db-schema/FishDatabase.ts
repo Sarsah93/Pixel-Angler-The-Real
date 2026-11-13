@@ -30,6 +30,13 @@ export interface FishSpecies {
   maxRecordCm: number;
   /** 평균 무게 범위 (g) */
   avgWeightRangeG: [number, number];
+  /**
+   * 323 — 크기 무리(도감 · 위키 표시용). 해역 · 철에 따라 잡히는 크기대가 뚜렷이 갈리는 어종만 적는다
+   * (참다랑어 — 남해 · 제주의 어린 고기와 여름 동해의 큰 고기). 체장 cm · 체중 kg.
+   */
+  sizeGroups?: ReadonlyArray<{ labelKo: string; lengthCm: readonly [number, number]; weightKg: readonly [number, number] }>;
+  /** 323 — 최대 체중 기록(kg — 도감 · 위키 표시용 · 없으면 안 보인다) */
+  maxRecordKg?: number;
   /** 적정 수심 범위 (m) */
   preferredDepthM: [number, number];
   /** 적정 수온 범위 (°C) */
@@ -1399,13 +1406,24 @@ export const FISH_DATABASE: FishSpecies[] = [
   {
     id: 'bluefin_tuna', nameKo: '참다랑어', nameEn: 'Pacific Bluefin Tuna',
     scientificName: 'Thunnus orientalis', spriteKey: 'fish_bluefin_tuna',
-    minLegalSizeCm: 0, avgSizeRangeCm: [80, 150], maxRecordCm: 300, avgWeightRangeG: [10000, 80000],
+    // 323 — 실제 국내 어획 크기로 고침(사용자 「체중/체장 정보가 잘못 기입 … 실제를 반영해서 수정」). 옛 값 80~150cm · 10~80kg은
+    //  게임 스폰 분포(평균 110cm ± 30)를 옮겨 적은 것이었다. 국내에 드는 무리는 둘이다:
+    //   · 30kg 미만 어린 고기(국제 관리 기준의 「소형어」) — 남해 · 제주
+    //   · 1.5 ~ 2m · 100 ~ 150kg급 어른 고기 — 여름 동해 정치망(2025.7 영덕 1,300여 마리 130 ~ 150kg · 2026.6 주문진 170여 마리 100 ~ 140kg)
+    //  국내 최대급 = 2025.2 영덕 314kg · 종 최대 = 3m · 450kg 남짓. 금지체장 · 금어기는 없다(어획 한도로 관리).
+    //  ⚠ 게임 스폰 분포(오라클 `meanCm` 110)는 그대로다 — 100kg급을 풀려면 채비 · 싸움 물리가 먼저다(워크로그 323 §6).
+    minLegalSizeCm: 0, avgSizeRangeCm: [60, 200], maxRecordCm: 300, avgWeightRangeG: [5000, 150000],
+    sizeGroups: [
+      { labelKo: '어린 고기 (남해 · 제주)', lengthCm: [50, 115], weightKg: [2, 30] },
+      { labelKo: '큰 고기 (여름 동해)', lengthCm: [150, 200], weightKg: [100, 150] },
+    ],
+    maxRecordKg: 450,
     preferredDepthM: [10, 200], preferredTempC: [15, 26],
     preferredBaits: ['artificial_lure', 'live_fish', 'squid', 'fish_strip'],
     habitatSpotTypes: ['boat_fishing', 'overnight_boat'],
     peakSeasonMonths: [6, 7, 8, 9, 10], activeTidePhases: [6, 7, 8, 9, 10, 11],
     isNocturnal: false, nightBiteBonus: -30, rarity: 'rare', difficulty: 5, sashimiValuePerKg: 60000, swimmingLayer: 'surface',
-    description: '바다에서 가장 센 물고기. 여름부터 가을까지 동해 먼바다(울릉 · 독도)와 제주 남쪽을 회유한다. 캐스팅 · 지깅으로 겨루며, 한 번 달리면 줄이 수백 미터 풀린다.',
+    description: '바다에서 가장 센 물고기. 남해와 제주에는 30kg이 안 되는 어린 고기가, 여름 동해에는 몸길이 1.5 ~ 2m에 100kg이 넘는 큰 고기가 든다. 다 자라면 3m, 450kg에 이른다. 캐스팅 · 지깅으로 겨루며, 한 번 달리면 줄이 수백 미터 풀린다. 금지체장과 금어기는 없고 나라마다 어획 한도가 정해져 있다.',
   },
   // ── 322차 — 청어과 셋 · 조기류 둘 · 바리류 넷(사용자 요청) ──
   {
