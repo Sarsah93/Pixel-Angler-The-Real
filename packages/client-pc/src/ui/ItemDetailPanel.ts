@@ -404,7 +404,7 @@ function lineStrengthLabel(item: Pick<InvItem, 'name' | 'lineNo' | 'lineMaterial
   return v ? `${v.lb}lb (${v.kg}kg)` : '-';
 }
 
-export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack' | 'unitG' | 'originRegion'>): ItemDetailData {
+function buildItemDetailBase(item: Pick<InvItem, 'id' | 'name' | 'subCategory' | 'category' | 'qty' | 'basePrice' | 'condition' | 'conditionSinceMs' | 'speciesId' | 'lengthCm' | 'weightG' | 'floatBuoyG' | 'plateWip' | 'fault' | 'useCount' | 'tool' | 'bound' | 'dish' | 'dishInstance' | 'sashimi' | 'cutQuality' | 'hungerRestore' | 'hydrationRestore' | 'hpRestore' | 'fatigueRestore' | 'lineMaterial' | 'lineForm' | 'lineLengthM' | 'lineUsedM' | 'lineNo' | 'lineDiameterMm' | 'lineStrengthLb' | 'sinkerKind' | 'sinkerWeightG' | 'sinkerHo' | 'netReachM' | 'blueprintId' | 'wading' | 'sex' | 'toxin' | 'condProfile' | 'chumKind' | 'unpack' | 'unitG' | 'originRegion'>): ItemDetailData {
   const rows: ItemDetailRow[] = [];
   let desc = '';
   // 229차 — 패류독소: 채취 금지 기간에 캔 조개(또는 그것이 들어간 요리). 모든 갈래의 맨 위에 보라 물방울로
@@ -1054,18 +1054,39 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     const def = GEAR_FAULTS[item.fault];
     desc = `${def.descKo}\n${def.fixKo}${desc ? `\n\n${desc}` : ''}`;
   }
-  // 324차 — 짐 무게(가방 무게 · 과적). 이미 무게 · 자중 줄이 있는 물건(고기 · 낚싯대 · 무게로 세는 것)은 되풀이하지 않고, 묶음일 때만 합을 적는다
-  {
-    const unitG = itemUnitWeightG(item);
-    const qty = Math.max(1, item.qty ?? 1);
-    const has = rows.some((r) => r.label === '무게' || r.label === '자중');
-    if (unitG > 0 && !has) {
-      rows.push({ label: '무게', value: qty > 1 ? `${carryWeightText(unitG)} × ${qty} = ${carryWeightText(unitG * qty)}` : carryWeightText(unitG) });
-    } else if (unitG > 0 && qty > 1 && !item.unitG) {
-      rows.push({ label: '짐 무게', value: `${carryWeightText(unitG * qty)} (${qty}개)` });
-    }
-  }
   return { title: item.name, subtitle: item.subCategory, rows, desc };
+}
+
+/** `buildItemDetail`이 받는 아이템 모습 */
+type DetailItem = Parameters<typeof buildItemDetailBase>[0];
+
+/**
+ * 324차 — 짐 무게 줄(가방 무게 · 과적). 이미 「무게」 · 「자중」 줄이 있는 물건(고기 · 낚싯대 · 무게로 세는 것)은 되풀이하지 않고,
+ * 묶음일 때만 합을 「짐 무게」로 적는다. 무게가 0인 것(자전거 — 타고 다닌다)은 짐으로 치지 않는다고 적는다.
+ */
+function withCarryWeightRow(rows: ItemDetailRow[], item: DetailItem): ItemDetailRow[] {
+  const unitG = itemUnitWeightG(item);
+  const qty = Math.max(1, item.qty ?? 1);
+  const has = rows.some((r) => r.label === '무게' || r.label === '자중');
+  if (!has) {
+    return [...rows, {
+      label: '무게',
+      value: unitG <= 0 ? '짐으로 치지 않는다'
+        : qty > 1 ? `${carryWeightText(unitG)} × ${qty} = ${carryWeightText(unitG * qty)}` : carryWeightText(unitG),
+    }];
+  }
+  if (unitG > 0 && qty > 1 && !item.unitG) return [...rows, { label: '짐 무게', value: `${carryWeightText(unitG * qty)} (${qty}개)` }];
+  return rows;
+}
+
+/**
+ * 아이템 상세 정보 — 갈래별 줄(`buildItemDetailBase`) 뒤에 짐 무게 줄을 붙인다.
+ * 324차 — 갈래마다 일찍 반환하는 곳(씨앗 · 농산물 · 도면 · 기름병 · 이야기 물건 …)이 많아, 맨 끝에 한 번만 붙였더니
+ * 1,021종 가운데 507종에 무게 줄이 없었다(사용자 「무게 관련 정보도 모든 아이템 상세보기 … 에서 볼 수 있도록 되어있지?」). 여기서 한 번에 붙인다.
+ */
+export function buildItemDetail(item: DetailItem): ItemDetailData {
+  const d = buildItemDetailBase(item);
+  return { ...d, rows: withCarryWeightRow(d.rows, item) };
 }
 
 /** 아이템 상세 정보 팝업 — 신선도 상태/남은 시간은 1초 주기 실시간 갱신 */

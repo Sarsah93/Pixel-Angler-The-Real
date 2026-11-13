@@ -243,11 +243,12 @@ export {
 export { buildCephalopodStages, isCephalopodTreeReady } from './db-schema/CephalopodStages.js';
 
 // 파이트 피로 4페이즈 (어종·사이즈별 스태미나 풀 + 회복/서지 — thrust 게이팅)
-export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';
+export type { FatiguePhase, FatigueInput, FatigueTick, SecondWindPlan } from './simulation/FishFatigueModel.js';
 export {
   FishFatigueModel, staminaMaxFor, STAMINA_BASE, DEFAULT_STAMINA_BASE, FATIGUE_PHASE_LABEL,
   fightEscapeScale,   // 324차 — 탈출 확률의 체급 배수
   fightSubdueBonusCap,   // 324차 — 대응만으로 채울 수 있는 제압도 상한
+  secondWindCount, rollSecondWind,   // 324차 — 되살아남(제압 뒤 다시 힘을 쓴다)
 } from './simulation/FishFatigueModel.js';
 
 // 파이트 모드 2D 횡 러닝 (측면하중 + heading/displacement — LinePhysics 1D 재사용 확장)

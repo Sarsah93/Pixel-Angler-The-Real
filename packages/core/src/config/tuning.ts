@@ -231,6 +231,26 @@ export interface TuningConfig {
     subdueRefStamina: number;
     /** 324 — 안전대 하한의 드랙 보정: 릴 드랙이 허락하는 장력(드랙 ÷ 줄 세기)의 이 비율을 넘으면 안전대로 본다 */
     safeDragFrac: number;
+    /**
+     * 324차 — 되살아남: 큰 고기는 제압된 뒤 끌려오다 다시 힘을 써 여로 박거나 옆으로 짼다(사용자 「실제로도 그럼」).
+     * 스태미나 풀이 `minStamina`를 넘는 체급만 — 그 아래 고기(참다랑어 25kg급 · 방어 · 돔)는 되살아나지 않는다.
+     */
+    secondWind: {
+      /** 되살아나는 체급의 하한(스태미나 풀) */
+      minStamina: number;
+      /** 풀이 이만큼 늘 때마다 횟수가 하나씩 는다 · 횟수 상한 */
+      perStamina: number; maxCount: number;
+      /** 회차별 일어날 확률(첫 번째 · 두 번째 · 세 번째) */
+      chance: [number, number, number];
+      /** 되살아나는 자리 — 제압된 거리의 이 비율까지 끌려왔을 때(하한 ~ 상한에서 뽑는다) */
+      atFracMin: number; atFracMax: number;
+      /** 발앞 이 거리(m) 안에서는 되살아나지 않는다 */
+      minDistM: number;
+      /** 되찾는 스태미나(풀 대비) · 덜어 내는 대응 몫 — 회차마다 `decay`배로 약해진다 */
+      recoverFrac: number; bonusDrop: number; decay: number;
+      /** 예고 시간(초 — 초릿대가 다시 처박히는 낌새) · 되살아나며 바로 일으키는 패턴의 길이(초) */
+      warnSec: number; patternSecMin: number; patternSecMax: number;
+    };
     /** 패턴별 힘 배수 — none(유영) / dive / lateral / jump(줄이 느슨) */
     pullIdle: number; pullDive: number; pullLateral: number; pullJump: number;
     /** 패턴에 **맞게 대응**하면 요구 장력 감쇠 (로드·드랙이 흡수) / 틀리면 증폭 */
@@ -1501,6 +1521,14 @@ export const TUNING: TuningConfig = {
     burstRefCm: { tuna: 110, billfish: 170, amberjack: 120 }, burstSizeExp: 1.5,
     subdueRefStamina: 17,   // 17 = 참다랑어 110cm(25kg)급 — 301(2)에 맞춘 그 체급까지는 대응만으로 제압된다(그대로)
     escapeRefStamina: 8, safeDragFrac: 0.8,   // 8 = 부시리 · 잿방어 95cm급 — 그 아래 고기는 그대로다
+    // 324차 — 되살아남. 111kg 참다랑어(풀 40.5) = 두 번까지 · 한 번에 겨루기 약 12초 · 줄 20m 남짓
+    secondWind: {
+      minStamina: 17, perStamina: 12, maxCount: 3,
+      chance: [0.9, 0.65, 0.4],
+      atFracMin: 0.4, atFracMax: 0.8, minDistM: 15,
+      recoverFrac: 0.07, bonusDrop: 30, decay: 0.75,
+      warnSec: 0.8, patternSecMin: 2.4, patternSecMax: 3.6,
+    },
     // 133차 — idle(유영) 부하 0.22 → 0.10. 구 값은 **감고만 있어도** 체중의 0.9배가 걸려
     //   1.8kg 감성돔이 1.5호 목줄(2.7kg)에 124%를 띄웠다(시뮬 랜딩 0/300).
     pullIdle: 0.10, pullDive: 1.0, pullLateral: 0.8, pullJump: 0.35,
@@ -2073,6 +2101,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'fightPhys.shockBreakFrac', min: 1.5, max: 5.0, step: 0.1, category: 'balance', label: '충격 파단 임계(배)' },
   { path: 'fightPhys.shockDragRelief', min: 0, max: 1, step: 0.05, category: 'balance', label: '드랙 여유 충격 완화 지수' },
   { path: 'fightPhys.subdueRefStamina', min: 6, max: 40, step: 1, category: 'balance', label: '대응만으로 제압되는 체급(풀)' },
+  { path: 'fightPhys.secondWind.minStamina', min: 6, max: 60, step: 1, category: 'balance', label: '되살아나는 체급(풀)' },
+  { path: 'fightPhys.secondWind.recoverFrac', min: 0, max: 0.3, step: 0.01, category: 'balance', label: '되살아날 때 되찾는 스태미나' },
+  { path: 'fightPhys.secondWind.bonusDrop', min: 0, max: 80, step: 5, category: 'balance', label: '되살아날 때 덜리는 제압' },
+  { path: 'fightPhys.secondWind.warnSec', min: 0, max: 2, step: 0.1, category: 'feel', label: '되살아남 예고(초)' },
   { path: 'fightPhys.escapeRefStamina', min: 3, max: 30, step: 1, category: 'balance', label: '탈출 배수 기준 체급(풀)' },
   { path: 'fightPhys.burstSizeExp', min: 0, max: 3, step: 0.1, category: 'balance', label: '큰 개체 순간 힘 감쇠 지수' },
   { path: 'fightPhys.safeFloorFrac', min: 0, max: 1.0, step: 0.05, category: 'balance', label: '체급 안전대 하한' },

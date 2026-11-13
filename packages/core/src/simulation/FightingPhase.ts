@@ -243,6 +243,23 @@ export class FightingPhase {
     }
   }
 
+  /**
+   * 324차 — 제압된 큰 고기가 다시 힘을 쓴다(되살아남). 대응 몫을 덜어 내고 패턴 하나를 바로 일으킨다.
+   * 지친 고기는 뛰어오르지 못한다 — 여 박기 · 횡이동만(그 어종의 패턴 가중대로 뽑는다).
+   * @returns 일으킨 패턴
+   */
+  revive(bonusDrop: number, patternSec: number, rnd: () => number = Math.random): FightPattern {
+    if (this.done) return 'none';
+    this.subdueBonus = Math.max(-40, this.subdueBonus - Math.max(0, bonusDrop));
+    const d = Math.max(0, this.weights.dive), l = Math.max(0, this.weights.lateral);
+    this.pattern = d + l <= 0 || rnd() * (d + l) < d ? 'dive' : 'lateral';
+    if (this.pattern === 'lateral') this.lateralDir = rnd() < 0.5 ? -1 : 1;
+    this.patternTimer = Math.max(0.5, patternSec);
+    this.slackTimer = 0;
+    this.slackRisk = 0;
+    return this.pattern;
+  }
+
   update(input: FightInput): FightStatus {
     if (this.done) return this.status('none', 0);
     const { dtSec, holding, reeling } = input;

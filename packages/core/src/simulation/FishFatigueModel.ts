@@ -73,6 +73,53 @@ export function fightSubdueBonusCap(speciesId: string, weightKg: number): number
   return 100 * Math.min(1, Math.sqrt(TUNING.fightPhys.subdueRefStamina / Math.max(0.01, pool)));
 }
 
+/** 324차 — 되살아남 한 번의 내용 */
+export interface SecondWindPlan {
+  /** 이 거리(m)까지 끌려오면 되살아난다 */
+  atM: number;
+  /** 되찾는 스태미나(풀 대비 0~1) */
+  recoverFrac: number;
+  /** 덜어 내는 대응 몫(제압도 점수) */
+  bonusDrop: number;
+  /** 바로 일으키는 패턴의 길이(초) */
+  patternSec: number;
+}
+
+/**
+ * 324차 — 이 체급이 제압 뒤 다시 힘을 쓸 수 있는 횟수(0 = 되살아나지 않는다).
+ * 스태미나 풀이 기준(참다랑어 25kg급)을 넘는 큰 고기만 — 1번에서 시작해 풀이 `perStamina` 늘 때마다 하나씩, `maxCount`까지.
+ */
+export function secondWindCount(speciesId: string, weightKg: number): number {
+  const S = TUNING.fightPhys.secondWind;
+  const pool = staminaMaxFor(speciesId, weightKg);
+  if (pool <= S.minStamina) return 0;
+  return Math.min(S.maxCount, 1 + Math.floor((pool - S.minStamina) / Math.max(0.01, S.perStamina)));
+}
+
+/**
+ * 324차 — 끌어오기를 시작할 때 굴린다: 이번 끌어오기에서 되살아나는가, 어디서인가.
+ * @param used 이 싸움에서 이미 되살아난 횟수
+ * @param dragStartM 제압된 거리(m) · `landRangeM` 랜딩 거리(m)
+ * @param rnd 0~1 난수(시험은 고정값)
+ */
+export function rollSecondWind(
+  speciesId: string, weightKg: number, used: number, dragStartM: number, landRangeM: number, rnd: () => number = Math.random,
+): SecondWindPlan | null {
+  const S = TUNING.fightPhys.secondWind;
+  if (used >= secondWindCount(speciesId, weightKg)) return null;
+  if (rnd() >= (S.chance[Math.min(used, S.chance.length - 1)] ?? 0)) return null;
+  const span = Math.max(0, dragStartM - landRangeM);
+  const atM = landRangeM + span * (S.atFracMin + rnd() * Math.max(0, S.atFracMax - S.atFracMin));
+  if (atM < landRangeM + S.minDistM) return null;   // 발앞에서는 되살아나지 않는다
+  const k = Math.pow(S.decay, used);
+  return {
+    atM,
+    recoverFrac: S.recoverFrac * k,
+    bonusDrop: S.bonusDrop * k,
+    patternSec: S.patternSecMin + rnd() * Math.max(0, S.patternSecMax - S.patternSecMin),
+  };
+}
+
 export interface FatigueInput {
   dtSec: number;
   /** 릴링 중 (드랙 저항으로 피로 가속) */
@@ -116,6 +163,17 @@ export class FishFatigueModel {
     this.staminaMax = staminaMaxFor(speciesId, weightKg);
     this.stamina = this.staminaMax;
     this.runPower = runPower;
+  }
+
+  /**
+   * 324차 — 되살아남: 스태미나를 풀의 `frac`만큼 되찾는다. 완전히 지친 고기(제압 페이즈 0.15 이하)도
+   * 적어도 `0.15 + frac`까지는 올라와 한 번은 다시 힘을 쓴다.
+   */
+  recover(frac: number): void {
+    const f = Math.max(0, frac);
+    const next = Math.max(this.stamina + f * this.staminaMax, (0.15 + f) * this.staminaMax);
+    this.stamina = Math.min(this.staminaMax, next);
+    this.surgeLeft = 0;
   }
 
   /** 잔여 비율 (0~1) */

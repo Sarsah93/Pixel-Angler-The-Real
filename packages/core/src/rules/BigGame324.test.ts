@@ -6,7 +6,9 @@ import { describe, it, expect } from 'vitest';
 import { TUNING } from '../config/tuning.js';
 import { ORACLE_FISH_DB, fishSizeModeFor, spawnFish, type SpawnContext } from '../simulation/FishSpawningOracle.js';
 import { fightGroupOf, fightBurstMult, fightBodyFormOf, fishRarity } from '../simulation/FishRarity.js';
-import { fightEscapeScale, fightSubdueBonusCap, staminaMaxFor } from '../simulation/FishFatigueModel.js';
+import {
+  fightEscapeScale, fightSubdueBonusCap, staminaMaxFor, secondWindCount, rollSecondWind, FishFatigueModel,
+} from '../simulation/FishFatigueModel.js';
 import { FightingPhase } from '../simulation/FightingPhase.js';
 import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
 import { SEAFOOD_AUCTION_MAPPING } from '../types/Economy.js';
@@ -192,6 +194,88 @@ describe('324 — 큰 고기는 대응만으로 제압되지 않는다', () => {
     expect(fresh).toBeLessThanOrEqual(cap + 0.001); expect(fresh).toBeLessThan(70);
     // 절반쯤 지치면(피로 몫 35) 제압된다
     expect(run(mk(cap), 0.45, 60)).toBe(100);
+  });
+});
+
+describe('324 — 되살아남(제압된 큰 고기가 끌려오다 다시 힘을 쓴다)', () => {
+  const seq = (...v: number[]) => { let i = 0; return () => v[Math.min(i++, v.length - 1)]; };
+
+  it('횟수 — 참다랑어 25kg급 · 방어 · 돔은 0, 큰 고기는 체급대로 1 ~ 3', () => {
+    expect(secondWindCount('black_seabream', 1.2)).toBe(0);
+    expect(secondWindCount('yellowtail', kgAt('yellowtail', 110))).toBe(0);
+    expect(secondWindCount('greater_amberjack', kgAt('greater_amberjack', 130))).toBe(0);
+    expect(secondWindCount('bluefin_tuna', kgAt('bluefin_tuna', 110))).toBe(0);
+    expect(secondWindCount('bluefin_tuna', kgAt('bluefin_tuna', 130))).toBe(1);
+    expect(secondWindCount('bluefin_tuna', kgAt('bluefin_tuna', 180))).toBe(2);
+    expect(secondWindCount('bluefin_tuna', kgAt('bluefin_tuna', 200))).toBe(3);
+    expect(secondWindCount('bluefin_tuna', kgAt('bluefin_tuna', 260))).toBe(3);   // 상한
+    expect(secondWindCount('swordfish', kgAt('swordfish', 230))).toBe(2);
+    expect(secondWindCount('striped_marlin', kgAt('striped_marlin', 250))).toBe(1);
+  });
+
+  it('자리 — 제압된 거리의 40 ~ 80%까지 끌려왔을 때 · 발앞 15m 안에서는 없다 · 회차마다 약해진다', () => {
+    const S = TUNING.fightPhys.secondWind;
+    const kg = kgAt('bluefin_tuna', 180), land = 2.5;
+    // 난수: 일어난다(0) · 자리 하한(0) · 패턴 길이 하한(0)
+    const lo = rollSecondWind('bluefin_tuna', kg, 0, 202.5, land, seq(0, 0, 0))!;
+    expect(lo.atM).toBeCloseTo(land + 200 * S.atFracMin, 6);
+    expect(lo.recoverFrac).toBeCloseTo(S.recoverFrac, 6); expect(lo.bonusDrop).toBeCloseTo(S.bonusDrop, 6);
+    expect(lo.patternSec).toBeCloseTo(S.patternSecMin, 6);
+    const hi = rollSecondWind('bluefin_tuna', kg, 0, 202.5, land, seq(0, 0.999999, 0.999999))!;
+    expect(hi.atM).toBeGreaterThan(land + 200 * (S.atFracMax - 0.01)); expect(hi.atM).toBeLessThan(202.5);
+    // 두 번째는 0.75배로 약하다 · 세 번째는 이 체급에 없다
+    const second = rollSecondWind('bluefin_tuna', kg, 1, 120, land, seq(0, 0.5, 0.5))!;
+    expect(second.recoverFrac).toBeCloseTo(S.recoverFrac * S.decay, 6); expect(second.bonusDrop).toBeCloseTo(S.bonusDrop * S.decay, 6);
+    expect(rollSecondWind('bluefin_tuna', kg, 2, 120, land, seq(0, 0.5, 0.5))).toBeNull();
+    // 확률에 걸리지 않으면 없다 · 가까이서 제압되면 없다(2.5 + 20 × 0.4 = 10.5m < 17.5m)
+    expect(rollSecondWind('bluefin_tuna', kg, 0, 202.5, land, seq(0.95, 0, 0))).toBeNull();
+    expect(rollSecondWind('bluefin_tuna', kg, 0, 22.5, land, seq(0, 0, 0))).toBeNull();
+    // 작은 고기는 굴리지도 않는다
+    expect(rollSecondWind('yellowtail', kgAt('yellowtail', 90), 0, 202.5, land, seq(0, 0, 0))).toBeNull();
+  });
+
+  it('피로 — 되찾는 만큼 오른다 · 완전히 지친 고기도 제압 페이즈를 벗어난다', () => {
+    const kg = kgAt('bluefin_tuna', 180);
+    const f = new FishFatigueModel('bluefin_tuna', kg, 1);
+    // 절반까지 지치게 한다
+    while (f.ratio > 0.5) f.update({ dtSec: 0.5, reeling: true, holding: false, tensionRatio: 0.6 });
+    const r0 = f.ratio; f.recover(0.07);
+    expect(f.ratio).toBeCloseTo(r0 + 0.07, 6);
+    // 바닥까지 지치게 한다 → 0.15 + 0.07
+    while (f.ratio > 0.01) f.update({ dtSec: 0.5, reeling: true, holding: false, tensionRatio: 0.9 });
+    expect(f.phase).toBe('SPENT');
+    f.recover(0.07);
+    expect(f.ratio).toBeCloseTo(0.22, 6); expect(f.phase).not.toBe('SPENT');
+  });
+
+  it('싸움 — 제압(100)된 고기가 되살아나면 제압이 풀리고 여 박기 · 횡이동이 바로 일어난다(뛰지는 않는다)', () => {
+    const cap = fightSubdueBonusCap('bluefin_tuna', kgAt('bluefin_tuna', 180));
+    const mk = (): FightingPhase => new FightingPhase({
+      powerFactor: 0.8, tackleA: 1, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 0.55, mouthFragility: 0,
+      weightKg: 110.8, burstMult: 2.39, bodyForm: 'fusiform', lineCapacityKg: 108, reelDragKg: 30, baseEscapePerSec: 0, subdueBonusCap: cap,
+    });
+    const play = (f: FightingPhase, fatigueRatio: number, secs: number): number => {
+      let subdue = 0;
+      for (let i = 0; i < secs * 20; i++) {
+        const dive = f.pattern === 'dive', lat = f.pattern === 'lateral';
+        const st = f.update({ dtSec: 0.05, holding: dive, reeling: f.pattern === 'none', steerDir: lat ? st0.lateralDir : 0, thrustGate: 0.62, fatigueRatio, landProgress: 0 });
+        st0 = st; subdue = st.subdue; if (st.event !== 'none' || subdue >= 100) break;
+      }
+      return subdue;
+    };
+    let st0 = { lateralDir: 1 } as { lateralDir: -1 | 1 };
+    const f = mk();
+    expect(play(f, 0.45, 90)).toBe(100);
+    const seen = new Set<string>();
+    for (let i = 0; i < 40; i++) { const g = mk(); seen.add(g.revive(30, 3, Math.random)); expect(g.pattern).not.toBe('jump'); expect(g.pattern).not.toBe('none'); }
+    expect(seen.has('dive')).toBe(true);
+    // 되살아난 직후 — 피로를 조금 되찾았고(0.52) 대응 몫 30이 덜렸다
+    const pat = f.revive(30, 3, () => 0);
+    expect(pat).toBe('dive');
+    const after = f.update({ dtSec: 0.05, holding: true, reeling: false, thrustGate: 0.62, fatigueRatio: 0.52, landProgress: 0 });
+    expect(after.subdue).toBeLessThan(80); expect(after.pattern).toBe('dive');
+    // 다시 맞게 답하고 지치게 하면 또 제압된다
+    expect(play(f, 0.45, 60)).toBe(100);
   });
 });
 

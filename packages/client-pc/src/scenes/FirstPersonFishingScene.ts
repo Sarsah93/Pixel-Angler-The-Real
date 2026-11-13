@@ -51,7 +51,7 @@ import {
   chumBankDeposit, chumBankRelease, chumBandSigmaMult, surfSinkerTide, lureKindTideMult, holeWaterLevelMult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
-  fightBurstMult, fightBodyFormOf, fishRarity, RARITY_STYLE, lineHoOf, reelLineCapacityM, encumbranceOf, haulFeeWon, fightEscapeScale, fightSubdueBonusCap,
+  fightBurstMult, fightBodyFormOf, fishRarity, RARITY_STYLE, lineHoOf, reelLineCapacityM, encumbranceOf, haulFeeWon, fightEscapeScale, fightSubdueBonusCap, rollSecondWind, type SecondWindPlan,
   fishImageSizeScale,
   TUNING,
   computeCastWeather, rodFitsHole,
@@ -287,6 +287,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private spoolOutT = 0;
   private hookKg = Infinity;
   private hookStrainT = 0;
+  /**
+   * 324차 — 되살아남(사용자 「큰 개체들은 제압 뒤 … 갑자기 다시 힘을 쓰면서 살아나서 쳐박기, 횡이동 등 액션을 할 수도 있어. (실제로도 그럼)」).
+   * 끌어오기를 시작할 때 굴린 계획(없으면 null) · 이 싸움에서 되살아난 횟수 · 예고 남은 시간(초).
+   */
+  private secondWind: SecondWindPlan | null = null;
+  private secondWindUsed = 0;
+  private secondWindWarnT = 0;
   /** 211차 — 릴 딸깍 누적(감은 m) · 드랙 지지직 간격 */
   private reelSoundAccM = 0;
   private dragZingT = 0;
@@ -1135,6 +1142,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.spoolOutT = 0;
       this.hookKg = InventoryStore.hookStrengthKg();
       this.hookStrainT = 0;
+      this.secondWind = null;
+      this.secondWindUsed = 0;
+      this.secondWindWarnT = 0;
     }
     this.fleeLatM = this.rig.baitX;
     this.fleePlanAng = (Math.random() - 0.5) * Phaser.Math.DegToRad(TUNING.fightDist.runSpreadDeg * 2);
@@ -1370,7 +1380,36 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   /** 제압 성공 → 끌어오기 시작 — 지친 고기가 세트에 편입되어 수면에 떠서 끌려온다 */
   private beginDragIn(): void {
     this.dragInMode = true;
-    this.flashState('제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요');
+    // 324차 — 큰 고기는 끌려오다 다시 힘을 쓴다. 이번 끌어오기에서 되살아날지 · 어디서일지 지금 굴린다
+    const f = this.hookedFish;
+    this.secondWind = f
+      ? rollSecondWind(f.speciesId, f.weightG / 1000 * this.schoolMult, this.secondWindUsed, this.distM, TUNING.fightDist.landRangeM)
+      : null;
+    this.secondWindWarnT = 0;
+    this.flashState(this.secondWindUsed > 0
+      ? '다시 제압했습니다 — 끝까지 끌어오세요'
+      : '제압 성공! 지친 고기를 릴링으로 발앞까지 끌어오세요');
+  }
+
+  /**
+   * 324차 — 되살아남: 제압돼 끌려오던 큰 고기가 다시 힘을 쓴다.
+   * 스태미나를 조금 되찾고 대응 몫이 덜려 제압이 풀리고, 여 박기나 횡이동이 바로 일어난다 — 끌어오기를 멈추고 다시 겨룬다.
+   */
+  private reviveFish(): void {
+    const plan = this.secondWind;
+    this.secondWind = null;
+    this.secondWindWarnT = 0;
+    if (!plan || !this.fight) return;
+    this.secondWindUsed++;
+    this.dragInMode = false;
+    this.fatigue?.recover(plan.recoverFrac);
+    // 끌어오는 동안 멈춰 있던 피로 값을 지금 값으로(제압 판정이 옛 값을 보지 않게)
+    this.lastFatigue = this.fatigue?.update({ dtSec: 0, reeling: false, holding: false, tensionRatio: 0 }) ?? this.lastFatigue;
+    this.fight.revive(plan.bonusDrop, plan.patternSec);
+    this.fleeRepickT = 0;
+    this.dragPromptText.setVisible(false);
+    playDragZing(1);
+    this.flashState('고기가 다시 힘을 씁니다!');
   }
 
   /**
@@ -1385,6 +1424,17 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 324차 — 드랙 미끄럼으로 챔질 거리의 1.6배보다 멀리 끌려 나간 고기도 그 자리에서부터 끌어온다(옛 상한으로 순간 이동하지 않는다)
     this.distM = Phaser.Math.Clamp(this.distM - reelMps * dt, D.landRangeM * 0.4, Math.max(this.hookDistM * 1.6, this.fightSpoolCapM));
 
+    // 324차 — 되살아남: 굴려 둔 자리까지 끌려오면 초릿대가 다시 처박히는 낌새(예고) → 잠시 뒤 다시 싸움
+    if (this.secondWind && this.secondWindWarnT <= 0 && this.distM <= this.secondWind.atM) {
+      this.secondWindWarnT = Math.max(0.05, TUNING.fightPhys.secondWind.warnSec);
+      playDragZing(0.5);
+      this.flashState('고기가 다시 힘을 씁니다!');   // 윗줄의 「제압 성공」 글도 바꾼다
+    }
+    if (this.secondWindWarnT > 0) {
+      this.secondWindWarnT -= dt;
+      if (this.secondWindWarnT <= 0) { this.reviveFish(); return; }
+    }
+
     // 지친 롤 — 수면 부상 + 횡 편차가 중앙으로 수렴 (질질 끌려오는 자세)
     this.fightDepthNorm = Math.max(D.depthSubdued, this.fightDepthNorm - dt * 0.5);
     const bottom = this.getBottomDepthAt();
@@ -1394,7 +1444,10 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     this.f2dPos.x = Phaser.Math.Clamp(this.fleeLatM * 22, -114, 114);
     this.f2dPos.y = -118 + 26 + this.fightDepthNorm * (132 * 1.5 - 26);
     this.f2dHeading = this.lerpHeading(this.f2dHeading, Math.PI / 2, 0.05);
-    this.rodBendDeg = 24 + Math.sin(this.time.now / 160) * 4;
+    // 324차 — 되살아남 예고 동안에는 초릿대가 다시 깊이 처박힌다
+    this.rodBendDeg = this.secondWindWarnT > 0
+      ? 46 + Math.sin(this.time.now / 45) * 7
+      : 24 + Math.sin(this.time.now / 160) * 4;
 
     this.renderFightUi({
       tension: 24, progress: this.landProgress(), subdue: 100,
@@ -1403,15 +1456,19 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       demandKg: 0, lineCapKg: 0, response: 'neutral', dragSlipKg: 0, dragKg: this.currentDragKg(),
     });
     this.patternText
-      .setText('제압 완료! 릴링으로 끌어오세요 — 남은 '
-        + `${Math.max(0, this.distM - TUNING.fightDist.landRangeM).toFixed(1)}m`)
+      .setText(this.secondWindWarnT > 0
+        ? '초릿대가 다시 처박힙니다 — 고기가 힘을 씁니다!'
+        : '제압 완료! 릴링으로 끌어오세요 — 남은 '
+          + `${Math.max(0, this.distM - TUNING.fightDist.landRangeM).toFixed(1)}m`)
       .setVisible(true);
     // 물고기 머리가 치우친 쪽으로 ←/→ + 릴링 = 견인. 화살표를 물고기 바로 위에 크게 (슬로우 중)
     const off = this.f2dPos.x;
     const fs = this.fightFishScreen;
     const px = fs ? fs.x : GAME_WIDTH / 2, py = fs ? fs.y - 70 : GAME_HEIGHT / 2 - 40;
     const pulse = 0.85 + Math.sin(this.time.now / 140) * 0.15;
-    if (Math.abs(off) > 6) {
+    if (this.secondWindWarnT > 0) {
+      this.dragPromptText.setVisible(false);   // 예고 동안에는 「릴링 유지」를 권하지 않는다
+    } else if (Math.abs(off) > 6) {
       this.dragPromptText
         .setText(off > 0 ? '◀ ←키 + 릴링' : '→키 + 릴링 ▶')
         .setPosition(px, py).setScale(pulse).setVisible(true);
