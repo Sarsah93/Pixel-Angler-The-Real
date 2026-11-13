@@ -17,6 +17,18 @@ export interface ContextAction {
   disabled?: boolean;
 }
 
+/**
+ * 326차 — 창(DraggablePanel)의 단추에서 펼치는 메뉴의 깊이.
+ * 창은 눌릴 때마다 일반 밴드 안에서 맨 위로 올라온다(`bringSelfToTop` — 최대 897) — `창 depth + 1`로 띄우면
+ * 메뉴를 연 그 클릭이 창을 메뉴 위로 올려 버려 메뉴가 창 뒤에 가린다(실측). 일반 밴드 꼭대기(898 · 모달 dim 899 바로 아래)에 띄운다.
+ */
+export const MENU_DEPTH_OVER_PANELS = 898;
+
+/** 326차 — `openContextMenu`가 돌려준 메뉴의 판 사각(화면 좌표). 닫혔으면 null */
+export function contextMenuRectOf(menu: Phaser.GameObjects.Container | null | undefined): Phaser.Geom.Rectangle | null {
+  return menu?.active ? (menu.getData('rect') as Phaser.Geom.Rectangle | undefined) ?? null : null;
+}
+
 export function openContextMenu(
   scene: Phaser.Scene, screenX: number, screenY: number, actions: ContextAction[], depth = 895,
 ): Phaser.GameObjects.Container {
@@ -27,6 +39,8 @@ export function openContextMenu(
   if (my + menuH > GAME_HEIGHT - 8) my = GAME_HEIGHT - 8 - menuH;
 
   const menu = scene.add.container(0, 0).setDepth(depth).setScrollFactor(0);
+  // 326차 — 메뉴 판의 화면 사각(가이드 하이라이트 · 허용 영역용 — 컨테이너 경계는 바깥 누름 판까지 잡혀 쓸 수 없다)
+  menu.setData('rect', new Phaser.Geom.Rectangle(mx, my, menuW, menuH));
   const close = (): void => { menu.destroy(); };
 
   const catcher = scene.add.rectangle(-GAME_WIDTH, -GAME_HEIGHT, GAME_WIDTH * 3, GAME_HEIGHT * 3, 0x000000, 0.001)

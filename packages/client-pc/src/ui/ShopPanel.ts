@@ -20,7 +20,7 @@ import { cv, cvText } from './ColorAssist.js';
 import Phaser from 'phaser';
 import { rareArrivalInDays, GEAR_FAULTS, gearRepairFee, affinityTier, AFFINITY_TIER_LABEL, getStoryNpc, type AffinityTier, type NpcShopTerms } from '@tra/core';
 import { GameState } from '../store/GameState.js';
-import { InventoryStore, InvItem, CONDITION_LABEL, CATEGORY_LABEL, type InvCategory } from '../store/InventoryStore.js';
+import { InventoryStore, InvItem, CONDITION_LABEL, CATEGORY_LABEL, isSealedBaitBundle, type InvCategory } from '../store/InventoryStore.js';
 import { specialtyDisplayName, specialtyOriginLabel } from '../data/SpecialtyTag.js';
 import { regionStallEntries } from '../data/RegionStall.js';
 import { TitleStore } from '../store/TitleStore.js';
@@ -28,7 +28,7 @@ import { ShopCartDialog, type CartLine } from './ShopCartDialog.js';
 import { TextInput } from './TextInput.js';
 import { RecommendationStore } from '../store/RecommendationStore.js';
 import { ShopDef, ShopEntry, shopBuysItem, NPC_SHOP_EXTRAS, packQtyOf, packLabelOf } from '../data/ShopCatalog.js';
-import { DraggablePanel } from './DraggablePanel.js';
+import { DraggablePanel, restoreHandCursor } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { ShopStore, type ShopContext, type UsedGood } from '../store/ShopStore.js';
 import type { InvDropResult } from './InventoryPanel.js';
@@ -36,7 +36,7 @@ import { createItemIcon } from './ItemIcon.js';
 import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
 import { MarketStore } from '../store/MarketStore.js';
 import { clampTextWidth } from './TextFit.js';
-import { SHOP_STOCK_PLENTY, kstMonthOf, type MarketTrend, type LicenseType } from '@tra/core';
+import { SHOP_STOCK_PLENTY, kstMonthOf, itemUnitWeightG, type MarketTrend, type LicenseType } from '@tra/core';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { FarmStore } from '../store/FarmStore.js';
@@ -49,6 +49,8 @@ import { CraftingStore } from '../store/CraftingStore.js';
 import { isConsignmentOpen, minutesUntilConsignment, consignmentFeeRate, coopDuesFeeCut, REGION_DATABASE } from '@tra/core';
 import { t, getLocale } from '../i18n/I18n.js';
 import { qtyBadge } from './QtyLabel.js';
+import { addPixelIcon } from './PixelIcon.js';
+import { openContextMenu, MENU_DEPTH_OVER_PANELS } from './ContextMenu.js';
 
 export type ShopTab = 'buy' | 'fav' | 'sell' | 'repair' | 'consign';
 
@@ -68,6 +70,52 @@ const BAR_X = PANEL_W - 16;
 const CAT_ORDER: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'lure', 'quest', 'etc'];
 const FONT = '"Noto Sans KR", sans-serif';
 const SEARCH_W = 150;
+
+/**
+ * 326차 — 늘어놓는 순서(사용자 결정 「상점에는 넣는 것 … 칩 줄에 정렬 단추 하나 → 작은 메뉴」).
+ * 기본 = 가게가 늘어놓은 순서(팔기 탭은 얻은 순서). 값 · 무게가 없는 것(0)은 어느 방향이든 맨 뒤다.
+ */
+export type ShopSort = 'default' | 'name' | 'priceAsc' | 'priceDesc' | 'weightAsc' | 'weightDesc';
+export const SHOP_SORTS: { id: ShopSort; label: string; done: string }[] = [
+  { id: 'default', label: '기본 순서', done: '가게가 늘어놓은 순서로 되돌렸다' },
+  { id: 'name', label: '가나다순', done: '가나다순으로 늘어놓았다' },
+  { id: 'priceAsc', label: '값 싼 순', done: '값이 싼 것부터 늘어놓았다' },
+  { id: 'priceDesc', label: '값 비싼 순', done: '값이 비싼 것부터 늘어놓았다' },
+  { id: 'weightAsc', label: '가벼운 순', done: '가벼운 것부터 늘어놓았다' },
+  { id: 'weightDesc', label: '무거운 순', done: '무거운 것부터 늘어놓았다' },
+];
+/** 고른 순서는 가게를 옮겨도 잇는다(세이브에는 싣지 않는다 — 게임을 다시 켜면 기본 순서) */
+const shopSortPref: { buy: ShopSort; sell: ShopSort } = { buy: 'default', sell: 'default' };
+/** 정렬 단추 한 변(칩 높이와 같다) */
+const SORT_BTN = 22;
+
+/**
+ * 326차 — 사면 가방에 들어오는 무게(g). 묶음 판매는 묶음 수만큼 · 세트는 구성품 합 · 가구는 집으로 배달돼 0(짐이 아니다).
+ * 가방 「짐 N kg」과 같은 함수(core `itemUnitWeightG`)로 센다.
+ */
+export function shopEntryCarryG(e: ShopEntry): number {
+  if (e.furnKind) return 0;
+  if (e.bundle && !isSealedBaitBundle(e.id)) return e.bundle.reduce((sum, b) => sum + itemUnitWeightG({ ...b.tpl, qty: 1 }) * b.qty, 0);
+  return itemUnitWeightG({ ...e, qty: 1 }) * packQtyOf(e);
+}
+
+/** 326차 — 목록을 고른 순서로(원본은 그대로 · 안정 정렬 — 같은 값이면 이름 → 원래 순서) */
+export function sortShopList<T>(list: T[], mode: ShopSort, of: { name: (x: T) => string; price: (x: T) => number; weight: (x: T) => number }): T[] {
+  if (mode === 'default') return list;
+  const at = new Map<T, number>(list.map((x, i) => [x, i]));
+  const coll = new Intl.Collator(getLocale() === 'en' ? 'en' : 'ko', { numeric: true, sensitivity: 'base' });
+  const byName = (a: T, b: T): number => coll.compare(of.name(a), of.name(b)) || (at.get(a) ?? 0) - (at.get(b) ?? 0);
+  const byNum = (get: (x: T) => number, dir: 1 | -1) => (a: T, b: T): number => {
+    const x = get(a), y = get(b);
+    const xn = !(x > 0), yn = !(y > 0);
+    if (xn || yn) return (xn ? 1 : 0) - (yn ? 1 : 0) || (at.get(a) ?? 0) - (at.get(b) ?? 0);
+    return dir * (x - y) || byName(a, b);
+  };
+  const cmp = mode === 'name' ? byName
+    : mode === 'priceAsc' ? byNum(of.price, 1) : mode === 'priceDesc' ? byNum(of.price, -1)
+      : mode === 'weightAsc' ? byNum(of.weight, 1) : byNum(of.weight, -1);
+  return list.slice().sort(cmp);
+}
 
 /** 254차 — 인물 가게(`<지역>:npc:<인물 id>`)면 그 사람 id */
 export function npcOfShopKey(key: string | undefined): string | null {
@@ -233,6 +281,9 @@ export class ShopPanel extends DraggablePanel {
   /** 찾기 칸 패널 로컬 사각(바깥을 누르면 입력을 끝낸다) */
   private searchRect: Phaser.Geom.Rectangle | null = null;
   private filterRowRect: Phaser.Geom.Rectangle | null = null;
+  /** 326차 — 정렬 단추 패널 로컬 사각(가이드가 짚는다) · 떠 있는 순서 메뉴 */
+  private sortBtnRect: Phaser.Geom.Rectangle | null = null;
+  private sortMenu: Phaser.GameObjects.Container | null = null;
   private cartOpen = false;
   private readonly downOutside: (p: Phaser.Input.Pointer) => void;
   private footerLeft?: Phaser.GameObjects.Text;
@@ -322,6 +373,30 @@ export class ShopPanel extends DraggablePanel {
     maybeStartTour(scene, () => (tourSeen('shop') ? this.buildCartTour() : null));
     // 221차 — 이미 본 사람에게 즐겨찾기 · 재고 · 끌어 놓아 팔기만 짧게
     maybeStartTour(scene, () => (tourSeen('shop') ? this.buildFavTour() : null));
+    // 326차 — 이미 본 사람에게 늘어놓는 순서 단추만 짧게
+    maybeStartTour(scene, () => (tourSeen('shop') ? this.buildSortTour() : null));
+  }
+
+  /** 326차 — 정렬 단추 한 단계(이미 상점 가이드를 본 사람용 · 처음인 사람은 본 가이드가 함께 알려 준다) */
+  private buildSortTour(): TourOptions {
+    return {
+      id: 'shop_sort',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '찾기 칸 옆 단추를 누르면 늘어놓는 순서를 바꾼다. 값이 싼 것부터, 가벼운 것부터처럼 고르면 가게를 옮겨도 그 순서로 보인다.',
+          target: () => this.sortBtnLocalRect(),
+          skipIf: () => !this.sortBtnRect,
+          onEnter: () => { if (this.currentTab !== 'buy' && this.currentTab !== 'sell') this.selectTab('buy'); },
+        },
+      ],
+    };
+  }
+
+  private sortBtnLocalRect(): Phaser.Geom.Rectangle | null {
+    const r = this.sortBtnRect;
+    return r ? this.localRect(r.x, r.y, r.width, r.height) : null;
   }
 
   private buildFavTour(): TourOptions {
@@ -641,6 +716,7 @@ export class ShopPanel extends DraggablePanel {
     let gy0 = this.contentTop + (this.currentTab === 'consign' ? 96 : 60);
     this.searchRect = null;
     this.filterRowRect = null;
+    this.sortBtnRect = null;
 
     // ── 1) 셀 스펙 수집 ──
     const cells: ShopCell[] = [];
@@ -649,7 +725,10 @@ export class ShopPanel extends DraggablePanel {
       this.pruneBuyCart();
       const all = this.buyables();
       gy0 = this.renderFilters('buy', all.map((e) => e.category));
-      const shown = all.filter((e) => this.passesFilter('buy', e.category, e.name, e.subCategory));
+      // 326차 — 거른 뒤 고른 순서로(값 = 칸에 찍히는 값 · 무게 = 사면 가방에 들어오는 무게)
+      const shown = sortShopList(all.filter((e) => this.passesFilter('buy', e.category, e.name, e.subCategory)), shopSortPref.buy, {
+        name: (e) => t(e.name), price: (e) => this.buyPriceOf(e), weight: shopEntryCarryG,
+      });
       shown.forEach((entry) => cells.push(this.buyCell(entry, reco)));
       if (all.length === 0) this.renderEmptyNote(gy0, '판매 품목이 없습니다.');
       else if (cells.length === 0) this.renderEmptyNote(gy0, '찾는 물건이 없다.');
@@ -728,7 +807,10 @@ export class ShopPanel extends DraggablePanel {
       const hasWipPlate = InventoryStore.items.some((i) => i.plateWip && i.slot >= 0);
       const sellable = this.sellableItems();
       if (this.shop.buysCategories.length > 0 && sellable.length > 0) gy0 = this.renderFilters('sell', sellable.map((i) => i.category));
-      const shownSell = sellable.filter((i) => this.passesFilter('sell', i.category, i.name, i.subCategory));
+      // 326차 — 팔기 탭 순서(값 = 한 개 매입가 · 무게 = 한 개 무게)
+      const shownSell = sortShopList(sellable.filter((i) => this.passesFilter('sell', i.category, i.name, i.subCategory)), shopSortPref.sell, {
+        name: (i) => t(i.name), price: (i) => this.sellPriceOf(i), weight: (i) => itemUnitWeightG(i),
+      });
       shownSell.forEach((item) => {
         const inCart = this.sellCart.get(item.id);
         cells.push({
@@ -898,13 +980,58 @@ export class ShopPanel extends DraggablePanel {
       this.gridContainer.add([g, label, hit]);
       x += w + gap;
     }
-    // 찾기 칸
-    if (x + SEARCH_W > xMax) { if (chips.length) { x = x0; y += chipH + 4; } }
-    const sx = chips.length ? xMax - SEARCH_W : x0;
-    const sw = chips.length ? SEARCH_W : xMax - x0;
+    // 찾기 칸 · 326차 — 그 오른쪽 끝에 정렬 단추
+    const sortX = xMax - SORT_BTN;
+    const searchMax = sortX - gap;
+    if (x + SEARCH_W > searchMax) { if (chips.length) { x = x0; y += chipH + 4; } }
+    const sx = chips.length ? searchMax - SEARCH_W : x0;
+    const sw = chips.length ? SEARCH_W : searchMax - x0;
     this.renderSearch(sx, y, sw, chipH);
+    this.renderSortButton(tab, sortX, y);
     this.filterRowRect = new Phaser.Geom.Rectangle(x0, this.contentTop + 56, xMax - x0, y + chipH - (this.contentTop + 56));
     return y + chipH + 8;
+  }
+
+  /** 326차 — 정렬 단추(칩 줄 오른쪽 끝). 기본 순서가 아니면 초록으로 켜진다 · 누르면 순서 메뉴가 단추 아래로 펼쳐진다 */
+  private renderSortButton(tab: 'buy' | 'sell', x: number, y: number): void {
+    const on = shopSortPref[tab] !== 'default';
+    const g = this.scene.add.graphics();
+    g.fillStyle(on ? 0x4af2a1 : 0x0e1c2d, on ? 0.95 : 0.9); g.fillRoundedRect(x, y, SORT_BTN, SORT_BTN, 4);
+    g.lineStyle(1, on ? 0x4af2a1 : 0x2a5070, 0.95); g.strokeRoundedRect(x, y, SORT_BTN, SORT_BTN, 4);
+    this.gridContainer.add(g);
+    const ic = addPixelIcon(this.scene, on ? 'ui_sort_on' : 'ui_sort', x + SORT_BTN / 2, y + SORT_BTN / 2, 16);
+    if (ic) this.gridContainer.add(ic);
+    const hit = this.scene.add.rectangle(x + SORT_BTN / 2, y + SORT_BTN / 2, SORT_BTN, SORT_BTN, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => this.openSortMenu(tab));
+    this.gridContainer.add(hit);
+    this.sortBtnRect = new Phaser.Geom.Rectangle(x, y, SORT_BTN, SORT_BTN);
+  }
+
+  /** 326차 — 순서 메뉴(지금 고른 줄은 초록). 고르면 첫 줄부터 다시 보인다 */
+  private openSortMenu(tab: 'buy' | 'sell'): void {
+    const r = this.sortBtnRect;
+    if (!r) return;
+    this.stopSearch();
+    this.closeSortMenu();
+    const MENU_W = 150;
+    this.sortMenu = openContextMenu(this.scene, this.x + r.right - MENU_W - 6, this.y + r.bottom - 4, SHOP_SORTS.map((o) => ({
+      label: t(o.label),
+      color: shopSortPref[tab] === o.id ? cvText('#4af2a1', '#5cb8ff') : undefined,
+      run: () => {
+        this.sortMenu = null;
+        if (shopSortPref[tab] === o.id) return;
+        shopSortPref[tab] = o.id;
+        this.scrollRow = 0;
+        this.setStatus(t(o.done));
+        this.renderGrid();
+        restoreHandCursor(this.scene);
+      },
+    })), MENU_DEPTH_OVER_PANELS);
+  }
+
+  private closeSortMenu(): void {
+    if (this.sortMenu?.active) this.sortMenu.destroy();
+    this.sortMenu = null;
   }
 
   private renderSearch(x: number, y: number, w: number, h: number): void {
@@ -1446,7 +1573,7 @@ export class ShopPanel extends DraggablePanel {
           text: '가게에 들어오면 이 창이 열린다. 진열된 물건을 사고, 내 물건을 팔 수 있다. 오른쪽에는 내 가방이 함께 열린다.',
           target: () => this.panelBounds(),
           // 220차 — 이 가이드가 장바구니 · 찾기를 함께 알려 준다(따로 도는 짧은 가이드는 건너뛴다)
-          onEnter: () => { GameState.setFlag('tour.shop_cart'); GameState.setFlag('tour.shop_fav'); },
+          onEnter: () => { GameState.setFlag('tour.shop_cart'); GameState.setFlag('tour.shop_fav'); GameState.setFlag('tour.shop_sort'); },
         },
         {
           text: '진열대에서 물건 하나를 눌러 장바구니에 담아 보자.',
@@ -1471,6 +1598,12 @@ export class ShopPanel extends DraggablePanel {
           text: '위쪽 칩을 누르면 그 종류만 보이고, 오른쪽 칸에 이름을 쳐서 찾을 수도 있다.',
           target: () => (this.filterRowRect ? this.localRect(this.filterRowRect.x, this.filterRowRect.y, this.filterRowRect.width, this.filterRowRect.height) : null),
           skipIf: () => !this.filterRowRect,
+        },
+        {
+          // 326차 — 늘어놓는 순서
+          text: '찾기 칸 옆 단추를 누르면 늘어놓는 순서를 바꾼다. 값이 싼 것부터, 가벼운 것부터처럼 고른다.',
+          target: () => this.sortBtnLocalRect(),
+          skipIf: () => !this.sortBtnRect,
         },
         {
           text: '아래 「구매」를 누르면 장바구니가 열린다. 줄마다 수량을 정하고 「사기」를 누르면 값을 치르고 가방에 들어온다. 사 보자.',
@@ -1538,6 +1671,7 @@ export class ShopPanel extends DraggablePanel {
     this.scene?.input?.off('pointerdown', this.downOutside);
     this.searchInput?.close();
     this.searchInput = undefined;
+    this.closeSortMenu();
     super.destroy(fromScene);
   }
 }

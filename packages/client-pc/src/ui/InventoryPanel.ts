@@ -25,7 +25,7 @@ import {
   CATEGORY_LABEL, CONDITION_LABEL, CONDITION_COLOR, refreshCondition,
   CONDITION_NEXT, conditionRemainMs, formatDhms, plateWipProgress,
  isBundlePack } from '../store/InventoryStore.js';
-import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
+import { DraggablePanel, applyScreenFixed, restoreHandCursor } from './DraggablePanel.js';
 import { ConfirmDialog, QuantityDialog } from './Dialogs.js';
 import { createItemIcon } from './ItemIcon.js';
 import { drawTrendIcon, TREND_ICON_PX } from './MarketTrendIcon.js';
@@ -40,7 +40,8 @@ import { gramsText } from './QtyLabel.js';
 import { playEatSfx } from '../audio/Sfx.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { maybeStartTour, tourSeen, type TourOptions } from './GuideTour.js';
-import { inventorySortCompare } from '../store/InventorySort.js';
+import { inventorySortCompare, inventoryWeightCompare } from '../store/InventorySort.js';
+import { openContextMenu as openMenu, contextMenuRectOf, MENU_DEPTH_OVER_PANELS } from './ContextMenu.js';
 import { prologueProtects, PROLOGUE_PROTECT_MSG } from '../store/Prologue.js';
 import { itemKeepReason } from '../store/ItemKeepGuard.js';
 import { CraftingStore } from '../store/CraftingStore.js';
@@ -152,6 +153,8 @@ export class InventoryPanel extends DraggablePanel {
   /** 277차 — 「정리」 단추(재화 줄 오른쪽 안 · 패널 로컬 좌표) · 가이드 대기용 눌림 표시 */
   private sortBtnRect = new Phaser.Geom.Rectangle(0, 0, 0, 0);
   private sortedOnce = false;
+  /** 326차 — 「정리」를 누르면 뜨는 순서 메뉴 */
+  private sortMenu: Phaser.GameObjects.Container | null = null;
 
   /** 신선도 실시간 갱신 타이머 + 마지막 상태 시그니처 (변화 시에만 리랜더) */
   private freshnessTimer?: Phaser.Time.TimerEvent;
@@ -1277,9 +1280,10 @@ export class InventoryPanel extends DraggablePanel {
       alive: () => this.active,
       steps: [
         {
-          text: '「정리」를 누르면 지금 칸의 물건이 비슷한 것끼리 모이고, 같은 무리 안에서는 이름 순으로 놓인다. 한 번 눌러 보자.',
-          target: btn,
-          allow: () => [btn()],
+          // 326차 — 누르면 순서를 고른다(종류 · 이름순 / 무거운 것부터)
+          text: '「정리」를 누르면 순서를 고른다. 「종류 · 이름순」은 비슷한 것끼리 모아 이름 순으로 놓고, 「무거운 것부터」는 짐이 무거운 물건을 앞에 놓는다. 하나 골라 보자.',
+          target: () => contextMenuRectOf(this.sortMenu) ?? btn(),
+          allow: () => { const m = contextMenuRectOf(this.sortMenu); return m ? [btn(), m] : [btn()]; },
           onEnter: () => { this.sortedOnce = false; },
           wait: () => this.sortedOnce,
         },
@@ -1486,16 +1490,38 @@ export class InventoryPanel extends DraggablePanel {
       .setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => { paint(true); label.setColor('#ffffff'); });
     hit.on('pointerout', () => { paint(false); label.setColor('#d0e8f5'); });
-    hit.on('pointerdown', () => this.sortCurrentTab());
+    hit.on('pointerdown', () => this.openSortMenu());
     this.add([g, label, hit]);
   }
 
-  /** 277차 — 지금 탭 정리: 비슷한 물건끼리(무리 순서) → 이름 가나다 · 알파벳 순 */
-  private sortCurrentTab(): void {
+  /**
+   * 326차 — 「정리」 순서 메뉴(단추 위로 펼쳐진다). 종류 · 이름순(277) / 무거운 것부터(324 과적 — 내려놓을 것을 앞에).
+   * 메뉴는 공용 `openContextMenu` — 바깥을 누르면 접힌다.
+   */
+  private openSortMenu(): void {
     if (this.itemDrag) return;
     this.closeContextMenu();
-    const moved = InventoryStore.sortCategory(this.currentTab, inventorySortCompare());
+    this.closeSortMenu();
+    const r = this.sortBtnRect;
+    const MENU_W = 150, MENU_H = 2 * 27 + 10;
+    this.sortMenu = openMenu(this.scene, this.x + r.right - MENU_W - 6, this.y + r.y - MENU_H - 10, [
+      { label: '종류 · 이름순', run: () => { this.sortMenu = null; this.sortCurrentTab('kind'); } },
+      { label: '무거운 것부터', run: () => { this.sortMenu = null; this.sortCurrentTab('weight'); } },
+    ], MENU_DEPTH_OVER_PANELS);
+  }
+
+  private closeSortMenu(): void {
+    if (this.sortMenu?.active) this.sortMenu.destroy();
+    this.sortMenu = null;
+  }
+
+  /** 277차 — 지금 탭 정리: 비슷한 물건끼리(무리 순서) → 이름 가나다 · 알파벳 순 · 326차 — 또는 무거운 것부터 */
+  private sortCurrentTab(mode: 'kind' | 'weight' = 'kind'): void {
+    if (this.itemDrag) return;
+    this.closeContextMenu();
+    const moved = InventoryStore.sortCategory(this.currentTab, mode === 'weight' ? inventoryWeightCompare() : inventorySortCompare());
     this.sortedOnce = true;
+    restoreHandCursor(this.scene);
     if (moved === 0) {
       this.setStatus('이미 정리되어 있습니다.');
       return;
@@ -1505,7 +1531,7 @@ export class InventoryPanel extends DraggablePanel {
     GameState.markDirty();
     this.renderGrid();
     this.scene.events.emit('inventory-changed');
-    this.setStatus('비슷한 물건끼리 모아 이름 순으로 정리했습니다.');
+    this.setStatus(mode === 'weight' ? '무거운 것부터 앞에 놓았습니다.' : '비슷한 물건끼리 모아 이름 순으로 정리했습니다.');
   }
 
   /**
@@ -1613,6 +1639,7 @@ export class InventoryPanel extends DraggablePanel {
   }
 
   override destroy(fromScene?: boolean): void {
+    this.closeSortMenu();
     this.freshnessTimer?.remove();
     this.freshnessTimer = undefined;
     if (this.keyHandler) {

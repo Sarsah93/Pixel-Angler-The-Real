@@ -214,6 +214,23 @@ export const EN_UI: Record<string, string> = {
   '사기': 'Buy',
   '팔기': 'Sell',
   '이름으로 찾기': 'Search by name',
+  // 326차 — 늘어놓는 순서
+  '기본 순서': 'Default order',
+  '가나다순': 'Name (A–Z)',
+  '값 싼 순': 'Price: low to high',
+  '값 비싼 순': 'Price: high to low',
+  '가벼운 순': 'Weight: light first',
+  '무거운 순': 'Weight: heavy first',
+  '가게가 늘어놓은 순서로 되돌렸다': 'Back to the shop\'s own order',
+  '가나다순으로 늘어놓았다': 'Sorted by name',
+  '값이 싼 것부터 늘어놓았다': 'Sorted by price, cheapest first',
+  '값이 비싼 것부터 늘어놓았다': 'Sorted by price, most expensive first',
+  '가벼운 것부터 늘어놓았다': 'Sorted by weight, lightest first',
+  '무거운 것부터 늘어놓았다': 'Sorted by weight, heaviest first',
+  '찾기 칸 옆 단추를 누르면 늘어놓는 순서를 바꾼다. 값이 싼 것부터, 가벼운 것부터처럼 고른다.':
+    'The button next to the search box changes the order — cheapest first, lightest first and so on.',
+  '찾기 칸 옆 단추를 누르면 늘어놓는 순서를 바꾼다. 값이 싼 것부터, 가벼운 것부터처럼 고르면 가게를 옮겨도 그 순서로 보인다.':
+    'The button next to the search box changes the order — cheapest first, lightest first and so on. Your choice carries over to other shops.',
   '찾는 물건이 없다.': 'Nothing matches.',
   '담은 물건이 없다.': 'The cart is empty.',
   '팔 물건을 고르지 않았다.': 'Nothing picked to sell.',

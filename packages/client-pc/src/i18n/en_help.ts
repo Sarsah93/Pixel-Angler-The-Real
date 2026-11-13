@@ -493,9 +493,15 @@ export const EN_HELP: Record<string, string> = {
   '우클릭 메뉴와 드래그': 'Right-click menu and dragging',
   '장비(낚싯대 · 릴 · 뜰채 · 칼 · 옷 · 신발 · 장갑 · 가방)와 단단한 루어(미노우 · 스푼 · 에기 · 메탈지그)는 같은 것이라도 한 개에 한 칸입니다. 고장 · 쓴 횟수 · 착용이 저마다 다르기 때문입니다. 미끼 · 봉돌 · 바늘 · 찌 · 줄 · 웜은 한 칸에 수량으로 쌓입니다. 채비 창에서는 같은 루어가 상태별로 한 줄에 모여 보이고, 고르면 덜 쓴 것부터 끼웁니다.':
     'Gear (rods · reels · landing nets · knives · clothes · shoes · gloves · bags) and hard lures (minnows · spoons · egi · metal jigs) take one slot each, even when identical, because each one has its own faults, use count and equipped state. Bait, sinkers, hooks, floats, line and soft lures stack in one slot. In the rig window, identical lures are grouped by condition on one row, and picking a row fits the least-used one.',
-  '「정리」 — 비슷한 물건끼리, 이름 순으로': 'Sort — similar items together, then by name',
-  '재화 줄 오른쪽의 「정리」를 누르면 지금 보고 있는 탭만 정리됩니다. 비슷한 물건끼리 모은 뒤, 같은 무리 안에서는 이름 가나다순(영어 화면에서는 알파벳 순)으로 놓습니다. 이름 속 숫자는 크기 순입니다(2호 다음 10호).':
-    'Press Sort at the right of the money bar to tidy only the tab you are looking at. Similar items are grouped first, then each group is ordered by name (alphabetically in English, by Hangul order in Korean). Numbers in names go by size (No. 2 before No. 10).',
+  '「정리」 — 종류 · 이름순 / 무거운 것부터': 'Sort — by kind and name, or heaviest first',
+  '재화 줄 오른쪽의 「정리」를 누르면 순서를 고르는 메뉴가 뜨고, 고르면 지금 보고 있는 탭만 정리됩니다. 「종류 · 이름순」은 비슷한 물건끼리 모은 뒤, 같은 무리 안에서는 이름 가나다순(영어 화면에서는 알파벳 순)으로 놓습니다. 이름 속 숫자는 크기 순입니다(2호 다음 10호).':
+    'Press Sort at the right of the money bar and a small menu lets you choose an order; only the tab you are looking at is tidied. "By kind, then name" groups similar items first, then orders each group by name (alphabetically in English, by Hangul order in Korean). Numbers in names go by size (No. 2 before No. 10).',
+  '「무거운 것부터」는 칸에 든 묶음의 무게가 무거운 것을 앞에 놓습니다 — 짐이 무거울 때 내려놓거나 집에 둘 것을 고르기 좋습니다. 무게가 같으면 종류 · 이름순입니다.':
+    '"Heaviest first" puts the heaviest stacks at the front — handy when your load is heavy and you need to decide what to put down or leave at home. Equal weights fall back to kind and name.',
+  '찾기 칸 옆 단추를 누르면 늘어놓는 순서를 고릅니다 — 기본 순서 · 가나다순 · 값 싼 순 · 값 비싼 순 · 가벼운 순 · 무거운 순. 무게는 사면 가방에 들어오는 무게이고(묶음은 묶음째), 집으로 배달되는 가구는 맨 뒤에 놓입니다. 고른 순서는 가게를 옮겨도 이어집니다.':
+    'The button next to the search box chooses the order — default, name, price low to high, price high to low, lightest first, heaviest first. Weight is what lands in your bag when you buy (a pack counts as the whole pack), and furniture delivered to your home goes last. Your choice carries over to other shops.',
+  '냉장고 창 오른쪽의 가방 목록은 열두 줄씩 보입니다. 음식이 더 많으면 목록 위에서 휠을 굴려 넘깁니다.':
+    'The bag list on the right of the fridge window shows twelve rows at a time. If you carry more food than that, scroll the list with the mouse wheel.',
   '무리의 차례 — 낚시용품: 원줄 · 목줄 → 찌 → 구슬 · 쿠션 → 봉돌(고리 · 구멍 → 좁쌀 → 묶음추) → 도래 → 바늘 · 카드 채비 → 지그헤드 · 웜 → 루어 → 타이라바 → 미끼. 장비: 낚싯대 → 릴 → 손도구 → 가방 → 모자부터 신발까지. 음식: 어획물 → 채집물 → 손질한 것 → 요리 → 농산물 → 식자재 · 가공품.':
     'Group order — Tackle: main line · leader → floats → beads · cushions → sinkers (ring · hole → split shot → bundle rigs) → swivels → hooks · card rigs → jig heads · soft lures → lures → tai rubber → bait. Gear: rods → reels → hand tools → bags → hat down to shoes. Food: catch → foraged → prepared → dishes → produce → ingredients · processed food.',
   '빈칸 없이 앞에서부터 채우므로, 잠긴 칸에 있던 물건도 자리가 있으면 안으로 들어옵니다. 착용 중인 것 · 퀵슬롯 · 채비는 그대로입니다.':

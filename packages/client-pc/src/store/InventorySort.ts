@@ -21,7 +21,7 @@ import type { InvCategory, InvCondition, InvItem } from './InventoryStore.js';
 import { partKindOf, isPackItem } from './RigParts.js';
 import { PRODUCE_SUB, PIECE_SUB, SEED_SUB, FARM_SUB } from '../data/CropItems.js';
 import { getLocale, t } from '../i18n/I18n.js';
-import type { RigPartKind } from '@tra/core';
+import { itemStackWeightG, type RigPartKind } from '@tra/core';
 
 /** 낚시용품 — 채비 부품 종류의 차례(위 → 아래로 매는 차례 · 완제품 · 루어 · 미끼) */
 const TACKLE_KIND_ORDER: RigPartKind[] = [
@@ -107,4 +107,13 @@ export function inventorySortCompare(): (a: InvItem, b: InvItem) => number {
     if (a.qty !== b.qty) return b.qty - a.qty;
     return coll.compare(a.id, b.id);   // 282차 — 개체 번호(`x#2` < `x#10`)도 숫자 순
   };
+}
+
+/**
+ * 326차 — 무거운 것부터(사용자 결정 「가방 정리에 무게순 … 과적일 때 무거운 것부터 내려놓기 좋게」).
+ * 칸 하나에 든 묶음의 무게(가방 「짐 N kg」과 같은 셈 — core `itemStackWeightG`)로 줄 세우고, 같으면 종류 · 이름순이다.
+ */
+export function inventoryWeightCompare(): (a: InvItem, b: InvItem) => number {
+  const base = inventorySortCompare();
+  return (a, b) => itemStackWeightG(b) - itemStackWeightG(a) || base(a, b);
 }

@@ -27,6 +27,10 @@ description: Pixel Angler 팝업/패널/HUD UI 작성·수정·검수 규칙. Dr
 - **새 팝업은 여는 순간 밴드 최상단**(122차 — `RegionFieldScene.openPopup` → `DraggablePanel.raiseToTop()`). 정적 depth는 밴드 안 초기값일 뿐 —
   큰 패널(스킬 892) 위에 작은 정적 depth(일지 891)를 열면 통째로 가려지고 ESC 순서가 어긋났다.
 - 밴드 밖 특수값: HUD 200 / 드래그 고스트 1500 / 일시정지·최상위 확인 1200.
+- **창의 단추에서 펼치는 메뉴(`openContextMenu`)는 깊이 `MENU_DEPTH_OVER_PANELS`(898)** (326차) — `창 depth + 1`로 띄우면
+  메뉴를 연 그 클릭이 창을 맨 위로 올려(`focusDownHandler` → `bringSelfToTop` — 동료 창 최대 + 1) 메뉴가 창 뒤에 가린다
+  (상점 + 가방이 함께 열린 화면에서 실측 — 판정 어서션은 통과하고 스크린샷에만 메뉴가 없었다). 창은 일반 밴드에서 897까지만 오른다.
+  가이드가 메뉴를 짚거나 허용할 때는 `contextMenuRectOf(menu)` — 컨테이너 `getBounds`는 바깥 누름 판(화면 3배)까지 잡힌다.
 
 ## 타이틀바(캡션바) 규칙 (119차 확립 — 위반 금지)
 

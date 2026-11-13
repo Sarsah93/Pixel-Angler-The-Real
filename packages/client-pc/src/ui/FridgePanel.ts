@@ -6,6 +6,7 @@
  *  - 인벤토리 아이템 클릭 → 선택 구획(냉동/냉장)의 첫 빈칸에 보관 (상태 냉동/냉장 전환).
  *  - 보관 아이템 클릭 → 인벤토리로 꺼내기 (신선도 시계 재시작).
  *  - 보관 중에는 신선도 정지. 세이브(GameState.fridge)에 영속.
+ *  - 326차 — 오른쪽 목록은 보이는 12줄만 그리고 휠로 넘긴다(옛 판은 13번째부터 「… 외 N개」로만 남아 넣을 길이 없었다).
  *  - 189차 — 조작 안내 문구(`아이템을 클릭해 보관 · 보관물 클릭해 꺼내기` · 호버 꼬리 `— 클릭 시 …`)를 걷었다(규칙 R11).
  *    처음 열 때 체험 가이드(`home_fridge`)가 짚고, 아래 줄은 결과만 보여 준다.
  */
@@ -31,6 +32,10 @@ const PANEL_W = 580;
 const PANEL_H = 470;
 const CELL = 42;
 const CELL_GAP = 6;
+/** 오른쪽 가방 목록 — 한 번에 보이는 줄 수 · 줄 높이 · 줄 폭 */
+const LIST_ROWS = 12;
+const LIST_ROW_H = 30;
+const LIST_W = 190;
 
 export class FridgePanel extends DraggablePanel {
   private gridC!: Phaser.GameObjects.Container;
@@ -39,6 +44,9 @@ export class FridgePanel extends DraggablePanel {
   /** 가이드 판정 — 이번 창에서 넣은 횟수 · 꺼낸 횟수 */
   private deposits = 0;
   private withdraws = 0;
+  /** 326차 — 오른쪽 목록의 맨 윗줄 번호(휠로 넘긴다) */
+  private listScroll = 0;
+  private readonly wheelFn: (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => void;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClose: () => void) {
     super(scene, { x, y, width: PANEL_W, height: PANEL_H, title: '냉장고 (냉동고 · 냉장고)', onClose, depth: 850 });
@@ -52,9 +60,23 @@ export class FridgePanel extends DraggablePanel {
     }).setOrigin(0.5);
     this.add(this.statusText);
 
+    // 326차 — 목록 위에서 휠을 굴리면 한 줄씩 넘어간다(다른 창의 휠은 건드리지 않는다)
+    this.wheelFn = (p, _o, _dx, dy) => {
+      if (!this.listRect().contains(p.x, p.y)) return;
+      const max = Math.max(0, InventoryStore.getByCategory('food').length - LIST_ROWS);
+      const n = Phaser.Math.Clamp(this.listScroll + (dy > 0 ? 1 : -1), 0, max);
+      if (n !== this.listScroll) { this.listScroll = n; this.render(); this.applyFix(); }
+    };
+    scene.input.on('wheel', this.wheelFn);
+
     this.render();
     this.applyFix();
     maybeStartTour(scene, () => this.buildTour());
+  }
+
+  override destroy(fromScene?: boolean): void {
+    this.scene?.input?.off('wheel', this.wheelFn);
+    super.destroy(fromScene);
   }
 
   // ── 첫 열기 가이드 (189차 — tour id 'home_fridge') ──
@@ -69,7 +91,7 @@ export class FridgePanel extends DraggablePanel {
 
   private listRect(): Phaser.Geom.Rectangle {
     const x0 = 18 + FRIDGE_COLS * (CELL + CELL_GAP) + 24;
-    return this.localRect(x0 - 4, this.contentTop + 4, 198, 12 * 30 + 30);
+    return this.localRect(x0 - 4, this.contentTop + 4, LIST_W + 16, LIST_ROWS * LIST_ROW_H + 30);
   }
 
   private buildTour(): TourOptions {
@@ -186,37 +208,48 @@ export class FridgePanel extends DraggablePanel {
 
     const items = InventoryStore.getByCategory('food');
     const listY = y0 + 22;
-    const rowH = 30;
-    const maxRows = 12;
+    const rowH = LIST_ROW_H;
+    const maxRows = LIST_ROWS;
+    this.listScroll = Phaser.Math.Clamp(this.listScroll, 0, Math.max(0, items.length - maxRows));
     if (items.length === 0) {
       this.gridC.add(scene.add.text(x0, listY, '보관할 음식/어획물이 없습니다', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#607b8e',
       }));
       return;
     }
-    items.slice(0, maxRows).forEach((item, i) => {
+    items.slice(this.listScroll, this.listScroll + maxRows).forEach((item, i) => {
       refreshCondition(item);
       const ry = listY + i * rowH;
       const rowBg = scene.add.graphics();
       rowBg.fillStyle(0x0e1c2d, 0.85);
-      rowBg.fillRoundedRect(x0, ry, 190, rowH - 3, 4);
+      rowBg.fillRoundedRect(x0, ry, LIST_W, rowH - 3, 4);
       rowBg.lineStyle(1, 0x1f3d5a, 0.7);
-      rowBg.strokeRoundedRect(x0, ry, 190, rowH - 3, 4);
+      rowBg.strokeRoundedRect(x0, ry, LIST_W, rowH - 3, 4);
       const icon = createItemIcon(scene, x0 + 15, ry + (rowH - 3) / 2, item, 20);
       // 188차 — 글씨 축소(setScale) 대신 이름 축약 (수량 꼬리는 지킨다)
       const nameTxt = setSlotLabel(scene.add.text(x0 + 30, ry + (rowH - 3) / 2, '', {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: `${SLOT_LABEL_PX}px`, color: '#c8dceb',
       }).setOrigin(0, 0.5), item.name, 150, qtyBadge(item) ? ` ${qtyBadge(item)}` : '');
-      const hit = scene.add.rectangle(x0 + 95, ry + (rowH - 3) / 2, 190, rowH - 3, 0xffffff, 0.001)
+      const hit = scene.add.rectangle(x0 + LIST_W / 2, ry + (rowH - 3) / 2, LIST_W, rowH - 3, 0xffffff, 0.001)
         .setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => this.setStatus(item.name));
       hit.on('pointerdown', () => this.deposit(item));
       this.gridC.add([rowBg, icon, nameTxt, hit]);
     });
+    // 326차 — 넘치면 스크롤 막대와 「몇 번째 ~ 몇 번째 / 전체」(집 보관함과 같은 문법)
     if (items.length > maxRows) {
-      this.gridC.add(scene.add.text(x0, listY + maxRows * rowH, `… 외 ${items.length - maxRows}개`, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '9px', color: '#607b8e',
-      }));
+      const trackH = maxRows * rowH - 3;
+      const tx = x0 + LIST_W + 5;
+      const thumbH = Math.max(18, trackH * (maxRows / items.length));
+      const thumbY = listY + (trackH - thumbH) * (this.listScroll / Math.max(1, items.length - maxRows));
+      const sb = scene.add.graphics();
+      sb.fillStyle(0x1f3d5a, 0.6); sb.fillRoundedRect(tx, listY, 4, trackH, 2);
+      sb.fillStyle(0x5cd0ff, 0.9); sb.fillRoundedRect(tx, thumbY, 4, thumbH, 2);
+      this.gridC.add(sb);
+      this.gridC.add(scene.add.text(x0 + LIST_W, listY + maxRows * rowH,
+        `${this.listScroll + 1}–${Math.min(items.length, this.listScroll + maxRows)} / ${items.length}`, {
+          fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#7f97ab',
+        }).setOrigin(1, 0));
     }
   }
 

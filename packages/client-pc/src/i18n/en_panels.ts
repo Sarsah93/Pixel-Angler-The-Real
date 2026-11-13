@@ -162,6 +162,10 @@ export const EN_PANELS: Record<string, string> = {
   '정리': 'Sort',
   '이미 정리되어 있습니다.': 'Already sorted.',
   '비슷한 물건끼리 모아 이름 순으로 정리했습니다.': 'Sorted — similar items together, then by name.',
+  // 326차 — 정리 순서 메뉴
+  '종류 · 이름순': 'By kind, then name',
+  '무거운 것부터': 'Heaviest first',
+  '무거운 것부터 앞에 놓았습니다.': 'Sorted — heaviest first.',
   '우클릭: 아이템 액션 · 드래그: 위치 이동': 'Right-click: item actions · Drag: move',
   '시너지': 'Synergy',
   '조건': 'Cond.',
