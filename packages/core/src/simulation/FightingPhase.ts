@@ -137,6 +137,8 @@ export interface FightingFishSpec {
   reelDragKg?: number;
   /** 222차 「드랙 제어」 — 텐션이 오르는 속도를 이 배수로 나눈다(1 = 그대로) */
   tensionResist?: number;
+  /** 324차 — 대응만으로 채울 수 있는 제압도 상한(`fightSubdueBonusCap` · 미지정 = 100). 큰 고기는 나머지를 지치게 해서 채운다 */
+  subdueBonusCap?: number;
   /** 210차 — 기어 배율(`reelGearK` — 한 바퀴 회수 길이 / 기준 릴). 감는 중 하중에 곱한다. 미지정 = 1 */
   reelGearK?: number;
 }
@@ -184,11 +186,14 @@ export class FightingPhase {
   /** 210차 — 릴 최대 드랙(kg, 0 = 줄만) · 기어 배율 */
   private readonly reelDragKg: number;
   private readonly tensionResist: number;
+  private readonly subdueBonusCap: number;
   private readonly gearK: number;
   /** 체형 배수 (정적하중·추력·요동·바늘빠짐) */
   private readonly form: typeof TUNING.fightPhys.form[BodyFormKey];
   /** 요동 위상 (장어·리본형 텐션 출렁임) */
   private thrashPhase = Math.random() * Math.PI * 2;
+  /** 324차 — 이번 틱의 충격 파단 임계(kg) */
+  private lastShockCapKg = 0;
 
   constructor(fish: FightingFishSpec) {
     this.power = fish.powerFactor;
@@ -204,6 +209,7 @@ export class FightingPhase {
     this.physical = this.weightKg > 0 && this.lineCapKg > 0;
     this.reelDragKg = fish.reelDragKg ?? 0;
     this.tensionResist = Math.max(1, fish.tensionResist ?? 1);
+    this.subdueBonusCap = Math.max(0, Math.min(100, fish.subdueBonusCap ?? 100));
     this.gearK = fish.reelGearK ?? 1;
     // 132차 — **첫 패턴은 챔질 직후**(훅셋 버스트). 구 구현은 첫 패턴까지 4.7~10.7초가 걸려
     //   가까운 거리에서 건 고기는 패턴을 한 번도 못 보고 끌려왔다(= 상호작용 없는 파이트).
@@ -293,7 +299,7 @@ export class FightingPhase {
     else if (response === 'bad') this.subdueBonus -= P.subdueBadRate * dtSec;
     // 다이브 중 견제하지 않으면 여로 파고듦 (제압도 급락)
     if (this.pattern === 'dive' && !holding) this.subdueBonus -= P.subdueDiveLoss * dtSec;
-    this.subdueBonus = Math.max(-40, Math.min(100, this.subdueBonus));
+    this.subdueBonus = Math.max(-40, Math.min(this.subdueBonusCap, this.subdueBonus));
 
     const fatigueRatio = input.fatigueRatio ?? 1;
     this.subdue = Math.max(0, Math.min(100,
@@ -396,7 +402,14 @@ export class FightingPhase {
     const dragKg = this.reelDragKg > 0 ? Math.min(lineDrag, this.reelDragKg) : lineDrag;
     this.lastDragKg = dragKg;
     this.lastDragSlipKg = 0;
-    if (demand <= this.lineCapKg * P.shockBreakFrac) {
+    //  324차 — 릴 드랙이 줄보다 훨씬 약하게 물린 채비(큰 고기 채비 — 합사 12호 108kg에 드랙 30kg)는
+    //  스풀이 일찍 돌기 시작해 충격을 드랙이 먼저 받아 낸다. 충격 임계가 √(줄 쪽 상한 ÷ 릴 드랙)배로 는다.
+    //  릴 드랙이 줄 쪽 상한 이상인 채비(대부분의 옛 채비)는 그대로다.
+    const lineDragBase = this.lineCapKg * P.dragCapFrac;
+    const shockRelief = this.reelDragKg > 0 && this.reelDragKg < lineDragBase
+      ? Math.pow(lineDragBase / this.reelDragKg, P.shockDragRelief) : 1;
+    this.lastShockCapKg = this.lineCapKg * P.shockBreakFrac * shockRelief;
+    if (demand <= this.lastShockCapKg) {
       if (this.reelDragKg > 0 && this.reelDragKg < lineDrag && demand > this.reelDragKg) {
         this.lastDragSlipKg = demand - this.reelDragKg;
       }
@@ -425,7 +438,11 @@ export class FightingPhase {
    */
   private safeMin(): number {
     if (!this.physical) return SAFE_MIN;
-    return Math.min(SAFE_MIN, this.maxDemandPct() * TUNING.fightPhys.safeFloorFrac);
+    let floor = Math.min(SAFE_MIN, this.maxDemandPct() * TUNING.fightPhys.safeFloorFrac);
+    // 324차 — 릴 드랙이 줄보다 훨씬 약하면(굵은 합사 + 드랙 한계) 드랙이 미끄러져 게이지를 안전대까지 올릴 수 없다.
+    //   「못 거는 장력을 못 걸었다고 벌하지 않는다」(133차)와 같은 이치 — 드랙이 허락하는 장력의 80%를 하한으로 본다.
+    if (this.reelDragKg > 0) floor = Math.min(floor, this.reelDragKg / this.lineCapKg * 100 * TUNING.fightPhys.safeDragFrac);
+    return floor;
   }
 
   /** 구 상수 모드 (레거시 호출 호환) */

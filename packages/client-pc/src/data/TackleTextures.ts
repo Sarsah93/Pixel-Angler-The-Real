@@ -12,7 +12,7 @@
  *   - 그 밖 — 사용자 그림(스피닝대 · 구멍찌 등)과, 다른 종류 그림을 빌려 쓰던 장비의 새 그림(원투대 · 레버브레이크 릴 · 합사 등).
  *     어느 대 · 릴 · 줄이 어느 그림인지는 아래 `rodArtKey` · `reelArtKey` · `lineArtKey`가 정한다(상점 · 시작 아이템 · 보상 · 구세이브 공용).
  */
-import { reelSpecFor, rodSpecFor, itemBaseId } from '@tra/core';
+import { reelSpecFor, rodSpecFor, itemBaseId, getRodCatalogEntry, getReelCatalogEntry } from '@tra/core';
 import type { RodUse } from '@tra/core';
 
 /** 텍스처 키 → `food assets/tackle/` 원본 파일(= `public/tackle/` 카드 · `public/tackle/icon/` 아이콘 파일 이름) */
@@ -133,6 +133,59 @@ export const TACKLE_IMAGE_FILES: Record<string, string> = {
   art_junk_parts: 'junk_parts.png',
   art_toolset_rod: 'toolset_rod.png',
   art_spray: 'spray.png',
+  // ── 324차 Gemini — 큰 고기용 장비(대 20 · 릴 20 · 줄 6 · 바늘 2 · 루어 4). 대 · 릴은 물건마다 제 그림(만든 곳마다 색이 다르다) ──
+  item_rod_ishidai_nj: 'rod_ishidai_nj.png',
+  item_rod_ishidai_daio: 'rod_ishidai_daio.png',
+  item_rod_ishidai_gama: 'rod_ishidai_gama.png',
+  item_rod_iso3_haewon: 'rod_iso3_haewon.png',
+  item_rod_iso3_gama: 'rod_iso3_gama.png',
+  item_rod_jig_minor: 'rod_jig_minor.png',
+  item_rod_jig_yamano: 'rod_jig_yamano.png',
+  item_rod_jig_somano: 'rod_jig_somano.png',
+  item_rod_jig_nj: 'rod_jig_nj.png',
+  item_rod_cast_minor: 'rod_cast_minor.png',
+  item_rod_cast_nj: 'rod_cast_nj.png',
+  item_rod_cast_yamano: 'rod_cast_yamano.png',
+  item_rod_cast_somano: 'rod_cast_somano.png',
+  item_rod_cast_daio: 'rod_cast_daio.png',
+  item_rod_bg_penson: 'rod_bg_penson.png',
+  item_rod_bg_somano: 'rod_bg_somano.png',
+  item_rod_bg_daio: 'rod_bg_daio.png',
+  item_rod_shorejig_minor: 'rod_shorejig_minor.png',
+  item_rod_shorejig_yamano: 'rod_shorejig_yamano.png',
+  item_rod_surf_somano: 'rod_surf_somano.png',
+  item_reel_sw8000_daio_bg: 'reel_sw8000_daio_bg.png',
+  item_reel_sw8000_penson: 'reel_sw8000_penson.png',
+  item_reel_sw8000_somano: 'reel_sw8000_somano.png',
+  item_reel_sw14000_daio_bg: 'reel_sw14000_daio_bg.png',
+  item_reel_sw14000_somano: 'reel_sw14000_somano.png',
+  item_reel_sw14000_daio: 'reel_sw14000_daio.png',
+  item_reel_sw18000_penson: 'reel_sw18000_penson.png',
+  item_reel_sw20000_daio: 'reel_sw20000_daio.png',
+  item_reel_sw20000_somano: 'reel_sw20000_somano.png',
+  item_reel_sw30000_somano: 'reel_sw30000_somano.png',
+  item_reel_ishidai_banex: 'reel_ishidai_banex.png',
+  item_reel_ishidai_daio: 'reel_ishidai_daio.png',
+  item_reel_ishidai_somano: 'reel_ishidai_somano.png',
+  item_reel_jig_banex: 'reel_jig_banex.png',
+  item_reel_jig_somano: 'reel_jig_somano.png',
+  item_reel_jig_daio: 'reel_jig_daio.png',
+  item_reel_ld_daio: 'reel_ld_daio.png',
+  item_reel_ld_penson30: 'reel_ld_penson30.png',
+  item_reel_ld_penson50: 'reel_ld_penson50.png',
+  item_reel_ld_somano: 'reel_ld_somano.png',
+  item_line_pe_offshore: 'line_pe_offshore.png',
+  item_line_pe_solline: 'line_pe_solline.png',
+  item_line_pe_baribos: 'line_pe_baribos.png',
+  item_line_shock_nylon: 'line_shock_nylon.png',
+  item_line_shock_fluoro: 'line_shock_fluoro.png',
+  item_line_ishidai: 'line_ishidai.png',
+  item_hook_ishidai: 'hook_ishidai.png',
+  item_hook_tuna: 'hook_tuna.png',
+  item_lure_jig_big: 'lure_jig_big.png',
+  item_lure_pencil: 'lure_pencil.png',
+  item_lure_popper: 'lure_popper.png',
+  item_lure_troll: 'lure_troll.png',
 };
 
 /** 하네스 복제본(`inv_rod_budget_h0`)처럼 꼬리가 붙은 id → 원래 id */
@@ -148,12 +201,19 @@ const ROD_ART_BY_USE: Record<RodUse, string> = {
   boat_bait: 'item_bait_rod',
   hole: 'item_rod_hole',
   budget: 'item_rod_budget',
+  // 324차 — 큰 고기용 대는 물건마다 제 그림(`RodCatalogEntry.art`)이 먼저다. 아래는 그림이 없을 때 빌려 쓰는 것
+  ishidai: 'item_rod_surf',
+  offshore_jig: 'item_bait_rod',
+  offshore_cast: 'item_rod_shorejig',
+  big_game: 'item_bait_rod',
 };
 
 /** 낚싯대 그림 키 — 대 종류(core `rodSpecFor` — id 표 · 이름 추정)로 고른다. 죽간만 따로 */
 export function rodArtKey(id: string, nameKo = ''): string {
   const base = baseId(id);
   if (base === 'qr_rod_bamboo' || /죽간/.test(nameKo)) return 'item_rod_bamboo';
+  const own = getRodCatalogEntry(base)?.art;   // 324차 — 이 대만의 그림
+  if (own && TACKLE_IMAGE_FILES[own]) return own;
   return ROD_ART_BY_USE[rodSpecFor(base, nameKo).use] ?? 'item_spinning_rod';
 }
 
@@ -163,6 +223,8 @@ const LEVER_REEL_IDS = new Set(['inv_reel', 'qr_reel_heirloom']);
 /** 릴 그림 키 — 베이트 · 레버브레이크 · 번수(2000 이하 소형 · 4000 쇼어지깅 · 5000 이상 원투)로 고른다 */
 export function reelArtKey(id: string, nameKo = ''): string {
   const base = baseId(id);
+  const own = getReelCatalogEntry(base)?.art;   // 324차 — 이 릴만의 그림
+  if (own && TACKLE_IMAGE_FILES[own]) return own;
   const s = reelSpecFor(base, nameKo);
   if (s.kind === 'bait') return 'item_bait_reel';
   if (LEVER_REEL_IDS.has(base) || /레버|LBD/.test(nameKo)) return 'item_reel_lever';
@@ -170,6 +232,11 @@ export function reelArtKey(id: string, nameKo = ''): string {
   if (s.size >= 4000) return 'item_reel_sw';
   if (s.size <= 2000) return 'item_reel_small';
   return 'item_spinning_reel';
+}
+
+/** 324차 — 루어 그림 키: 그 루어만의 그림(`LureSpec.art`)이 실려 있으면 그것, 아니면 종류별 그림 */
+export function lureArtKey(art: string | undefined, fallback: string): string {
+  return art && TACKLE_IMAGE_FILES[art] ? art : fallback;
 }
 
 /** 낚싯줄 스풀 그림 키 — 목줄 스풀(카본 · 나일론 목줄) · 합사(PE) · 그 밖 나일론 원줄 */

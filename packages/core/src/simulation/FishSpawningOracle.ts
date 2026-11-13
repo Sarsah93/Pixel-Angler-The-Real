@@ -22,7 +22,7 @@ import { TUNING, type BodyFormKey } from '../config/tuning.js';
 import type { ClosedSeason } from '../types/LegalSeason.js';
 import { isClosedOn } from '../rules/ClosedSeason.js';
 import { earthwormSeaPref } from './EarthwormRules.js';
-import { speciesPresence, seaPresence, tempPresence, presenceSstC } from '../rules/SpeciesPresence.js';
+import { speciesPresence, seaPresence, tempPresence, presenceSstC, seaOf, type SeaKey } from '../rules/SpeciesPresence.js';
 
 /**
  * 체형 분류 (133차) — **같은 체중이라도 파이트에서 내는 힘·압력이 다르다.**
@@ -74,6 +74,9 @@ export interface FightProfile {
 }
 
 /** 어종 마스터 스펙 */
+/** 324 — 체장 분포 한 벌(cm) */
+export interface FishSizeMode { minCm: number; maxCm: number; meanCm: number; sdCm: number }
+
 export interface FishMasterSpec {
   speciesId: string;
   nameKo: string;
@@ -131,6 +134,12 @@ export interface FishMasterSpec {
    * 그 자리에 사는 다른 어종이 적으면 가중이 낮아도 몫이 커지므로, 드문 어종은 이 값으로 눌러 둔다.
    */
   abundance?: number;
+  /**
+   * 324 — **바다마다 드는 크기 무리가 다른 어종**(참다랑어 — 남해 · 제주에는 30kg 미만 어린 고기, 동해에는 100kg급 어른 고기).
+   * 그 바다에서는 이 분포로 체장을 뽑는다. 적지 않은 바다는 기본 분포(`minCm` · `maxCm` · `meanCm` · `sdCm`)다.
+   * 기본 분포의 `meanCm`은 그대로 종 전체의 기준 체장이다(희귀도 등급 · 싸움 체급 보정이 이 값을 쓴다).
+   */
+  sizeBySea?: Partial<Record<SeaKey, FishSizeMode>>;
   /** 에기 전용 두족류 — 스폰 필터(speciesFilter)에 포함될 때만 후보에 오른다 */
   egiOnly?: boolean;
   fight: FightProfile;
@@ -817,9 +826,51 @@ export const ORACLE_FISH_DB: FishMasterSpec[] = [
     habitat: ['open'], minDepthM: 10, maxDepthM: 200, preferredLayers: ['surface', 'mid'],
     baitPreference: { lure: 70, fishcut: 45, livefish: 60, krill: 10 },
     minCm: 50, maxCm: 300, meanCm: 110, sdCm: 30, lwrA: 0.019, lwrB: 3.0, bodyForm: 'fusiform', maleRatio: 0.5,
+    // 324 — 실제 국내 어획대로 가른다(323 조사): 남해 · 제주 = 30kg 미만 어린 고기(80cm ≈ 10kg) /
+    //  동해 · 울릉 · 독도 = 1.5 ~ 2m · 100 ~ 150kg급(180cm ≈ 111kg). 기본 분포(평균 110cm)는 종 전체의 기준 체장으로 남는다
+    sizeBySea: {
+      jeju: { minCm: 50, maxCm: 125, meanCm: 80, sdCm: 16 },
+      south: { minCm: 50, maxCm: 125, meanCm: 80, sdCm: 16 },
+      west: { minCm: 50, maxCm: 125, meanCm: 80, sdCm: 16 },
+      east: { minCm: 130, maxCm: 270, meanCm: 180, sdCm: 20 },
+      ulleung: { minCm: 130, maxCm: 270, meanCm: 180, sdCm: 20 },
+    },
     sexNote: '한 번 달리면 줄이 수백 미터 풀린다 — 드랙을 잠그면 줄이 끊어지고, 놓아주면 바닥으로 박는다',
     nightBonus: 0.6, tideActivity: sariPeak(0.5, 0.9),
     fight: { basePower: 1.5, patternWeights: { jump: 0.1, dive: 0.6, lateral: 0.3 }, intervalMult: 0.55, mouthFragility: 0.05 },
+  },
+  // ── 324차 — 큰 회유어 셋(사용자 「이왕 종 추가하는 김에 눈다랑어, 황새치, 청새치도」) ──
+  //  셋 다 따뜻한 물(쿠로시오 · 대마난류)을 타고 여름 ~ 가을에 제주 남쪽 · 동해로 올라오는 드문 고기다(`abundance`).
+  //  체장은 **전장**(새치류는 부리 끝까지) — 체장-체중 식의 계수도 전장 기준으로 옮겨 적었다.
+  {
+    speciesId: 'bigeye_tuna', nameKo: '눈다랑어', nameEn: 'Bigeye Tuna',
+    // 참다랑어보다 깊은 물(낮 100m 아래) · 눈이 크다. 우리 바다에서는 제주 남쪽 먼바다에 가끔
+    habitat: ['open'], minDepthM: 30, maxDepthM: 300, preferredLayers: ['mid'],
+    baitPreference: { lure: 60, fishcut: 55, livefish: 60, krill: 5 },
+    minCm: 60, maxCm: 230, meanCm: 105, sdCm: 22, lwrA: 0.03661, lwrB: 2.90182, bodyForm: 'fusiform', maleRatio: 0.5,
+    sexNote: '참다랑어보다 몸이 통통하고 눈이 크다 — 낮에는 깊이 머물다 해 질 녘에 떠오른다',
+    abundance: 0.05, nightBonus: 1.1, tideActivity: sariPeak(0.5, 0.9),
+    fight: { basePower: 1.4, patternWeights: { jump: 0.05, dive: 0.7, lateral: 0.25 }, intervalMult: 0.6, mouthFragility: 0.06 },
+  },
+  {
+    speciesId: 'swordfish', nameKo: '황새치', nameEn: 'Swordfish',
+    // 낮에는 수백 미터 아래, 밤에 표층으로 올라와 오징어 · 작은 물고기를 부리로 쳐서 먹는다. 동해 · 제주에 여름 ~ 가을
+    habitat: ['open'], minDepthM: 20, maxDepthM: 600, preferredLayers: ['mid'],
+    baitPreference: { livefish: 60, fishcut: 55, lure: 35 },
+    minCm: 120, maxCm: 450, meanCm: 230, sdCm: 40, lwrA: 0.004145, lwrB: 3.074, bodyForm: 'fusiform', maleRatio: 0.5,
+    sexNote: '납작한 칼 같은 긴 부리 · 비늘과 배지느러미가 없다 — 입이 물러 바늘이 잘 빠진다',
+    abundance: 0.04, nightBonus: 1.6, tideActivity: sariPeak(0.5, 0.9),
+    fight: { basePower: 1.5, patternWeights: { jump: 0.15, dive: 0.6, lateral: 0.25 }, intervalMult: 0.6, mouthFragility: 0.35 },
+  },
+  {
+    speciesId: 'striped_marlin', nameKo: '청새치', nameEn: 'Striped Marlin',
+    // 표층 회유 — 끌낚시(트롤링) 대상. 걸리면 수면 위로 연달아 뛴다. 제주 · 남해 · 동해 남부에 여름 ~ 가을
+    habitat: ['open'], minDepthM: 0, maxDepthM: 150, preferredLayers: ['surface'],
+    baitPreference: { lure: 75, livefish: 65, fishcut: 30 },
+    minCm: 150, maxCm: 380, meanCm: 250, sdCm: 30, lwrA: 0.0042, lwrB: 3.0, bodyForm: 'fusiform', maleRatio: 0.5,
+    sexNote: '둥근 창 같은 부리 · 옆구리에 푸른 가로줄 — 뛰어오르며 머리를 털어 바늘을 뱉는다',
+    abundance: 0.06, nightBonus: 0.5, tideActivity: sariPeak(0.5, 0.9),
+    fight: { basePower: 1.35, patternWeights: { jump: 0.55, dive: 0.15, lateral: 0.3 }, intervalMult: 0.5, mouthFragility: 0.3 },
   },
   // ── 322차 — 사용자 요청 9종: 청어과 셋(전어 · 청어 · 멸치) · 조기류 둘(참조기 · 백조기) · 바리류 넷(붉바리 · 자바리 · 다금바리 · 능성어) ──
   {
@@ -1036,6 +1087,11 @@ export interface SpawnedFish {
  * 체장 → 표준 체중(g) — **W = a·L^b** (비만도 미적용 기준값).
  * 도감·시세·시뮬이 "그 길이의 표준 무게"를 물을 때 쓴다.
  */
+/** 324 — 그 지역(바다)에서 이 어종의 체장 분포 — `sizeBySea`에 그 바다가 없으면 기본 분포 */
+export function fishSizeModeFor(spec: FishMasterSpec, regionId: string | undefined | null): FishSizeMode {
+  return spec.sizeBySea?.[seaOf(regionId)] ?? spec;
+}
+
 export function standardWeightG(spec: Pick<FishMasterSpec, 'lwrA' | 'lwrB'>, lengthCm: number): number {
   return spec.lwrA * Math.pow(Math.max(0.1, lengthCm), spec.lwrB ?? 3);
 }
@@ -1264,7 +1320,9 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
   // 205차 — 공통 단계 대물 가중 + 그 어종만의 단계 대물 가중(감성돔 물돌이 · 참돔 강물 …)
   const sizeBias = Math.min(1, (ctx.sizeBias ?? 0) + (ctx.flowPhase
     ? speciesTideSizeBias(picked.speciesId, ctx.flowPhase, ctx.tideStrength01 ?? 0.5, ctx.tideRegionK ?? 1) : 0));
-  const tiered = rollTieredLength(picked.speciesId, picked.minCm, picked.maxCm, {
+  // 324 — 바다마다 크기 무리가 다른 어종은 그 바다의 분포로
+  const size = fishSizeModeFor(picked, ctx.region);
+  const tiered = rollTieredLength(picked.speciesId, size.minCm, size.maxCm, {
     lureWeightG: ctx.lureWeightG,
     zMax: ctx.zMax,
     isNight: ctx.isNight,
@@ -1275,8 +1333,8 @@ export function spawnFish(ctx: SpawnContext): SpawnedFish {
     (tiered >= 0
       ? tiered
       // 204차 — 물돌이·끝물 대물 가중: 평균을 표준편차의 최대 0.5배까지 위로
-      : Math.min(picked.maxCm, Math.max(picked.minCm,
-        gaussian(picked.meanCm + picked.sdCm * 0.5 * Math.max(0, sizeBias), picked.sdCm)))) * 10,
+      : Math.min(size.maxCm, Math.max(size.minCm,
+        gaussian(size.meanCm + size.sdCm * 0.5 * Math.max(0, sizeBias), size.sdCm)))) * 10,
   ) / 10;
   // 133차 — 체형별 LWR(W = a·L^b) × 비만도(계절·산란·개체 편차)
   const conditionFactor = conditionFactorFor(picked, ctx.month, gaussian(0, 1));

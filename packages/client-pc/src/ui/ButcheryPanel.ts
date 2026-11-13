@@ -18,7 +18,7 @@
 import Phaser from 'phaser';
 import {
   ButcheryProcess, CutPoint, OrientationState, ButcheryStage, ButcheryPrimitive,
-  orientationLabel, ButcheryOrientation, ROTATION_LABEL, BoardRotation, FISH_DATABASE, getButcheryFamily,
+  orientationLabel, ButcheryOrientation, ROTATION_LABEL, BoardRotation, FISH_DATABASE, BUTCHERY_PROFILES, getButcheryFamily,
   computeFilletYield, getBestKnife, KnifeSpec,
   TUNING,
   SASHIMI_GUIDE_GROUP, SASHIMI_GUIDE_SHEET, LIVE_STAGE_GUIDE,
@@ -455,8 +455,11 @@ export class ButcheryPanel extends DraggablePanel {
     this.applyFix();
     // 317 — 해체 공정이면 처음에 한 줄(대방어급은 크기로 갈린다는 것을 알려 준다)
     if (this.isLoin && !this.resumed) {
-      const big = this.process.profile.speciesId !== 'bluefin_tuna';
-      this.flash(big ? '큰 개체 — 등살 · 뱃살 4덩어리로 해체합니다' : '참다랑어 — 등살 · 뱃살 4덩어리로 해체합니다', true);
+      // 324 — 늘 해체하는 어종(참다랑어 · 눈다랑어 · 새치류)은 어종 이름으로, 크기로 갈린 방어류 · 바리류는 「큰 개체」
+      const sid = this.process.profile.speciesId;
+      const always = BUTCHERY_PROFILES[sid]?.tree === 'loin';
+      const nm = FISH_DATABASE.find((x) => x.id === sid)?.nameKo;
+      this.flash(always && nm ? `${nm} — 등살 · 뱃살 4덩어리로 해체합니다` : '큰 개체 — 등살 · 뱃살 4덩어리로 해체합니다', true);
     }
     // 188차 — 첫 손질 체험 가이드 (구 사이드바 하단 키 안내 줄을 대신한다)
     maybeStartTour(scene, () => this.buildTour());

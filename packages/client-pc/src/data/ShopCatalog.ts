@@ -9,13 +9,13 @@
  */
 
 import type { InvCategory, InvItemTemplate } from '../store/InventoryStore.js';
-import { reelArtKey, rodArtKey } from './TackleTextures.js';
+import { reelArtKey, rodArtKey, lureArtKey } from './TackleTextures.js';
 import { COOK_CORNER, COOK_SEASONINGS, COOK_STOVE_KIT, COOK_POT_CAMP } from './CookItems.js';
 import { dailyFarmEntries, nurseryFarmEntries, PRODUCE_SUB } from './CropItems.js';
 import { PROCESSED_SUB } from './ProcessedItems.js';   // 295차
 import { millShopEntries } from './MillItems.js';
 import { CURE_SUB } from './CureItems.js';
-import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, CRAFT_BLUEPRINTS, blueprintPaperId, produceUnitG, oilBottleDef } from '@tra/core';
+import { WEIGHT_SINKER_DB, TRAP_DATABASE, getLureSpec, ROD_SHOP, REEL_SHOP, BIG_GAME_ROD_SHOP, BIG_GAME_REEL_SHOP, isBigGameGear, itemBaseId, CRAFT_BLUEPRINTS, blueprintPaperId, produceUnitG, oilBottleDef } from '@tra/core';
 import { applyItemVitals } from './ItemVitals.js';
 import type { FurnKind } from './HomeFurniture.js';
 
@@ -204,9 +204,106 @@ function lureTemplate(lureId: string): InvItemTemplate {
   const spec = getLureSpec(lureId);
   if (!spec) throw new Error(`[ShopCatalog] 루어 카탈로그에 없는 id: ${lureId}`);
   return {
-    id: spec.id, name: `${spec.nameKo} (${spec.weightG}g)`, icon: '', iconTexture: LURE_KIND_TEXTURE[spec.kind] ?? 'px:it_lure',
-    category: 'lure', subCategory: '루어', basePrice: Math.round(400 + spec.weightG * 220), equippable: false,
+    // 324차 — 큰 고기용 루어는 이름에 무게가 이미 있다 · 제 그림(`art`) · 제 값(`priceWon`)
+    id: spec.id, name: spec.bigGame ? spec.nameKo : `${spec.nameKo} (${spec.weightG}g)`, icon: '',
+    iconTexture: lureArtKey(spec.art, LURE_KIND_TEXTURE[spec.kind] ?? 'px:it_lure'),
+    category: 'lure', subCategory: '루어', basePrice: spec.priceWon ?? Math.round(400 + spec.weightG * 220), equippable: false,
   };
+}
+
+/** 324차 — 큰 고기용 루어 진열(직판장 채비 코너 · 낚시용품점) */
+const BIG_LURE_DESC: Record<string, string> = {
+  lure_jig_big_150: '방어 · 부시리 지깅의 표준 무게. 바닥까지 곧장 내려 쳐올린다. 지깅대 · 캐스팅대에 맞는다.',
+  lure_jig_big_200: '깊은 곳 · 센 조류용 롱 지그. 잿방어가 잘 문다.',
+  lure_jig_big_300: '가장 무거운 롱 지그. 깊은 골의 큰 잿방어 · 눈다랑어를 본다 — 대가 받는 무게를 먼저 볼 것.',
+  lure_pencil_80: '수면 바로 아래로 파고드는 큰 나무 플러그. 부시리 · 방어와 참다랑어 어린 고기.',
+  lure_pencil_120: '참다랑어 캐스팅의 주력. 멀리 던져 길게 끌면 수면이 터진다.',
+  lure_popper_100: '오목한 머리로 물을 튀겨 멀리 있는 고기를 부른다. 부시리 · 잿방어.',
+  lure_popper_150: '큰 물보라를 내는 대형 포퍼. 큰 참다랑어 · 청새치가 올라온다.',
+  lure_troll_skirt_180: '수면을 끌고 가는 술 달린 루어. 청새치 · 황새치 · 다랑어 — 스탠드업대와 레버 드랙 릴에 단다.',
+};
+const bigLureEntry = (lureId: string): ShopEntry => {
+  const tpl = lureTemplate(lureId);
+  return { ...tpl, price: Math.round(tpl.basePrice * 1.2 / 100) * 100, maxPerPurchase: 5, desc: BIG_LURE_DESC[lureId] ?? '' };
+};
+
+/**
+ * 324차 — 큰 고기용 줄(굵은 합사 · 돌돔 나일론 · 트롤링 모노 · 쇼크리더) · 바늘.
+ * 줄 세기는 호수에서 나온다(core `LineStrength` — 합사 9kg/호 · 나일론 · 카본 1.8kg/호). 만든 곳마다 결이 달라 닳는 빠르기가 다르다(`LINE_WEAR_MULT`).
+ */
+const peBig = (id: string, brand: string, art: string, no: number, lenM: number, price: number, desc: string): ShopEntry => ({
+  id, name: `${brand} ${no}호 · ${lenM}m`, icon: '', iconTexture: art, category: 'tackle', subCategory: '원줄 스풀',
+  basePrice: Math.round(price * 0.85 / 500) * 500, price, maxPerPurchase: 2, equippable: false,
+  lineMaterial: 'pe_braid', lineForm: 'sinking', lineLengthM: lenM, lineNo: no,
+  lineDiameterMm: Math.round(0.165 * Math.sqrt(no) * 1000) / 1000, lineStrengthLb: Math.round(no * 9 * 2.20462), desc,
+});
+const monoBig = (id: string, name: string, art: string, sub: '원줄 스풀' | '목줄 스풀', material: 'nylon' | 'fluorocarbon',
+  no: number, lenM: number, price: number, desc: string): ShopEntry => ({
+  id, name: `${name} ${no}호 · ${lenM}m`, icon: '', iconTexture: art, category: 'tackle', subCategory: sub,
+  basePrice: Math.round(price * 0.85 / 500) * 500, price, maxPerPurchase: 3, equippable: false,
+  lineMaterial: material, lineForm: material === 'nylon' ? 'float' : 'suspend', lineLengthM: lenM, lineNo: no,
+  lineDiameterMm: Math.round(0.165 * Math.sqrt(no) * 1000) / 1000, lineStrengthLb: Math.round(no * 1.8 * 2.20462), desc,
+});
+export const BIG_GAME_TACKLE: ShopEntry[] = [
+  // ── 굵은 합사 원줄 ──
+  peBig('line_pe_off_am_5_300', 'AMSTRONG 오프쇼어 합사', 'item_line_pe_offshore', 5, 300, 48000, '4합사 보급형. 방어 · 부시리 지깅 · 캐스팅의 시작 — 8000번 릴에 240m 감긴다.'),
+  peBig('line_pe_off_am_6_300', 'AMSTRONG 오프쇼어 합사', 'item_line_pe_offshore', 6, 300, 56000, '4합사 보급형. 대부시리 · 잿방어 · 50kg급 참다랑어. 결이 거칠어 조금 빨리 닳는다.'),
+  peBig('line_pe_off_am_8_300', 'AMSTRONG 오프쇼어 합사', 'item_line_pe_offshore', 8, 300, 72000, '4합사 보급형 8호. 100kg급을 걸 수 있는 가장 싼 줄 — 20000번 릴에 300m.'),
+  peBig('line_pe_sol_6_300', '솔라인 오션 8합사', 'item_line_pe_solline', 6, 300, 98000, '매끈한 8합사. 가이드를 덜 긁어 오래 간다.'),
+  peBig('line_pe_sol_8_300', '솔라인 오션 8합사', 'item_line_pe_solline', 8, 300, 118000, '매끈한 8합사 8호. 100kg급 참다랑어 캐스팅의 표준.'),
+  peBig('line_pe_sol_10_400', '솔라인 오션 8합사', 'item_line_pe_solline', 10, 400, 178000, '10호 400m — 30000번 릴에 다 감긴다. 여름 동해의 큰 참다랑어.'),
+  peBig('line_pe_sol_12_400', '솔라인 오션 8합사', 'item_line_pe_solline', 12, 400, 215000, '가장 굵은 합사. 150kg이 넘는 고기를 보고 감는 줄.'),
+  peBig('line_pe_bari_8_400', '바리보스 캐스팅 합사', 'item_line_pe_baribos', 8, 400, 165000, '캐스팅 전용 단색 합사. 400m — 줄을 많이 끌려도 남는다.'),
+  peBig('line_pe_bari_10_300', '바리보스 캐스팅 합사', 'item_line_pe_baribos', 10, 300, 158000, '캐스팅 전용 10호. 매끈하고 질기다.'),
+  // ── 돌돔 나일론 원줄 · 트롤링 모노 ──
+  monoBig('line_ny_ishidai_16_200', '솔라인 석조 나일론 원줄', 'item_line_ishidai', '원줄 스풀', 'nylon', 16, 200, 32000, '돌돔 원투용 굵은 나일론. 늘어나서 여에 박는 충격을 받아 준다.'),
+  monoBig('line_ny_ishidai_20_200', '솔라인 석조 나일론 원줄', 'item_line_ishidai', '원줄 스풀', 'nylon', 20, 200, 38000, '큰 돌돔 · 강담돔용 20호. 돌돔 양축릴에 200m가 꼭 맞는다.'),
+  monoBig('line_ny_troll_30_600', '펜슨 트롤링 모노', 'item_line_ishidai', '원줄 스풀', 'nylon', 30, 600, 68000, '레버 드랙 릴에 감는 굵은 모노 30호. 눈다랑어 · 청새치급.'),
+  monoBig('line_ny_troll_50_600', '펜슨 트롤링 모노', 'item_line_ishidai', '원줄 스풀', 'nylon', 50, 600, 96000, '50호 600m. 50W · 80W 릴에 감아 100kg이 넘는 고기를 버틴다.'),
+  // ── 쇼크리더 ──
+  monoBig('leader_ny_shock_20_50', '솔라인 나일론 쇼크리더', 'item_line_shock_nylon', '목줄 스풀', 'nylon', 20, 50, 18000, '합사 4호와 세기가 같은 쇼크리더. 방어 · 부시리.'),
+  monoBig('leader_ny_shock_30_50', '솔라인 나일론 쇼크리더', 'item_line_shock_nylon', '목줄 스풀', 'nylon', 30, 50, 22000, '합사 6호와 세기가 같다. 대부시리 · 잿방어.'),
+  monoBig('leader_ny_shock_40_50', '솔라인 나일론 쇼크리더', 'item_line_shock_nylon', '목줄 스풀', 'nylon', 40, 50, 26000, '합사 8호와 세기가 같다. 참다랑어 캐스팅의 표준 리더.'),
+  monoBig('leader_ny_shock_50_30', '솔라인 나일론 쇼크리더', 'item_line_shock_nylon', '목줄 스풀', 'nylon', 50, 30, 24000, '합사 10호와 세기가 같다.'),
+  monoBig('leader_ny_shock_60_30', '솔라인 나일론 쇼크리더', 'item_line_shock_nylon', '목줄 스풀', 'nylon', 60, 30, 28000, '합사 12호와 세기가 같은 가장 굵은 리더.'),
+  monoBig('leader_fc_big_12_50', '바리보스 카본 쇼크리더', 'item_line_shock_fluoro', '목줄 스풀', 'fluorocarbon', 12, 50, 28000, '여에 쓸려도 잘 버티는 굵은 카본. 대물 참돔 · 부시리 갯바위.'),
+  monoBig('leader_fc_big_16_50', '바리보스 카본 쇼크리더', 'item_line_shock_fluoro', '목줄 스풀', 'fluorocarbon', 16, 50, 34000, '돌돔 목줄로 쓰는 굵은 카본 16호 — 이빨과 여에 강하다.'),
+  monoBig('leader_fc_big_24_30', '바리보스 카본 쇼크리더', 'item_line_shock_fluoro', '목줄 스풀', 'fluorocarbon', 24, 30, 36000, '지깅 리더. 바닥의 큰 잿방어가 여로 박아도 버틴다.'),
+  monoBig('leader_fc_big_40_30', '바리보스 카본 쇼크리더', 'item_line_shock_fluoro', '목줄 스풀', 'fluorocarbon', 40, 30, 52000, '합사 8호와 세기가 같은 굵은 카본. 황새치의 긴 부리에 쓸려도 버틴다.'),
+  // ── 바늘 ──
+  { id: 'hook_ishidai_16', name: '돌돔 바늘 16호', icon: '', iconTexture: 'item_hook_ishidai', category: 'tackle', subCategory: '바늘/훅', basePrice: 900, price: 5400, packQty: 5, maxPerPurchase: 5, equippable: false, desc: '굵고 짧은 돌돔 바늘. 성게 · 게를 꿰고, 이빨에 물려도 펴지지 않는다. 한 봉지에 5개.' },
+  { id: 'hook_tuna_circle', name: '참치 서클 훅 12/0', icon: '', iconTexture: 'item_hook_tuna', category: 'tackle', subCategory: '바늘/훅', basePrice: 2500, price: 9000, packQty: 3, maxPerPurchase: 5, equippable: false, desc: '끝이 안으로 말린 굵은 바늘. 산 미끼 · 생선 살을 꿰어 다랑어 · 새치를 건다. 한 봉지에 3개.' },
+  // ── 큰 루어 ──
+  ...['lure_jig_big_150', 'lure_jig_big_200', 'lure_jig_big_300', 'lure_pencil_80', 'lure_pencil_120', 'lure_popper_100', 'lure_popper_150', 'lure_troll_skirt_180'].map(bigLureEntry),
+];
+const BIG_GAME_TACKLE_IDS = new Set(BIG_GAME_TACKLE.map((e) => e.id));
+
+/**
+ * 324차 — 줄이 닳는 빠르기(만든 곳 · 짜임). 1 = 보통. 아이템에 저장하지 않고 id로 본다(구세이브 백필 불필요).
+ * 8합사는 겉이 매끈해 가이드를 덜 긁는다.
+ */
+const LINE_WEAR_MULT: Array<[RegExp, number]> = [
+  [/^line_pe_sol_/, 0.8], [/^line_pe_bari_/, 0.85], [/^line_pe_off_am_/, 1.1],
+  [/^leader_fc_big_/, 0.9],
+];
+export function lineWearMultOf(id: string): number {
+  const base = itemBaseId(id);
+  return LINE_WEAR_MULT.find(([re]) => re.test(base))?.[1] ?? 1;
+}
+
+/**
+ * 324차 — 바늘이 버티는 힘(kg). 줄 · 드랙이 이보다 세면 큰 고기 앞에서 바늘이 먼저 펴진다.
+ * 가는 줄 채비(목줄 8호 이하 · 드랙 12kg 이하)에는 걸리지 않는다 — 굵은 줄에 작은 바늘을 묶었을 때만의 일이다.
+ */
+export function hookStrengthKgOf(item: { id: string; name: string } | null | undefined): number {
+  if (!item) return Infinity;
+  const base = itemBaseId(item.id);
+  if (base === 'hook_tuna_circle') return 200;
+  if (base === 'hook_ishidai_16') return 60;
+  if (/트레블/.test(item.name)) return 25;
+  if (/서클|참치/.test(item.name)) return 200;
+  if (/돌돔/.test(item.name)) return 60;
+  return 15;   // 감성돔 바늘 등 작은 바늘
 }
 
 /** 272차 — 묶음 판매 항목의 한 묶음 개수(없으면 1) · 진열 이름 꼬리 「(10개입)」 */
@@ -332,6 +429,8 @@ const TACKLE_CORNER: ShopEntry[] = [
   { id: 'inv_cushion_bell', name: '종형 쿠션고무 2호', icon: '', iconTexture: 'cushion_bell', category: 'tackle', subCategory: '채비 부속', basePrice: 250, price: 1500, packQty: 5, maxPerPurchase: 5, equippable: false, desc: '찌·채비 충격을 흡수하는 종형 쿠션고무. 한 봉지에 5개.' },
   { id: 'inv_cushion_round', name: '원형 쿠션고무 2호', icon: '', iconTexture: 'cushion_round', category: 'tackle', subCategory: '채비 부속', basePrice: 250, price: 1500, packQty: 5, maxPerPurchase: 5, equippable: false, desc: '찌·채비 충격을 흡수하는 원형 쿠션고무. 한 봉지에 5개.' },
   { id: 'inv_bead_halfmoon', name: '반달구슬 3호', icon: '', iconTexture: 'bead_halfmoon', category: 'tackle', subCategory: '채비 부속', basePrice: 90, price: 1800, packQty: 16, maxPerPurchase: 5, equippable: false, desc: '채비 위치를 고정하는 반달구슬. 한 팩에 16개.' },
+  // 324차 — 큰 고기용 줄 · 쇼크리더 · 바늘 · 루어
+  ...BIG_GAME_TACKLE,
 ];
 
 /** 직판장 채집·통발 코너 (121차) — 시행령 허용 도구(집게·갈고리·통발) + 헤드랜턴. 통발은 아이템 소유·설치 소모·수거 반환 */
@@ -356,12 +455,13 @@ const FORAGE_CORNER: ShopEntry[] = [
   // 209차 — 용도별 낚싯대 14자루 · 릴 6개(제원은 core `RodCatalog` — id로 조회). 그림은 릴 종류로 가른다:
   //  스피닝대 = item_spinning_rod · 베이트대 = item_bait_rod (사이소 민물대가 베이트대 그림을 쓰던 것도 정정)
   //  249차 — 대 종류(원투 · 쇼어지깅 · 라이트 · 에깅 · 구멍치기 · 싸구려 짧은 대)마다 제 그림(`rodArtKey`) · 릴도 종류별(`reelArtKey`)
-  ...ROD_SHOP.map((r): ShopEntry => ({
+  // 324차 — 큰 고기용 대 20 · 릴 20도 같은 길로 판다(직판장 · 낚시용품점)
+  ...[...ROD_SHOP, ...BIG_GAME_ROD_SHOP].map((r): ShopEntry => ({
     id: r.id, name: r.nameKo, icon: '', iconTexture: rodArtKey(r.id, r.nameKo),
     category: 'gear', subCategory: '손도구', basePrice: Math.round(r.priceWon * 0.85 / 1000) * 1000, price: r.priceWon,
     maxPerPurchase: 3, equippable: true, tool: 'rod', desc: r.descKo,
   })),
-  ...REEL_SHOP.map((r): ShopEntry => ({
+  ...[...REEL_SHOP, ...BIG_GAME_REEL_SHOP].map((r): ShopEntry => ({
     id: r.id, name: r.nameKo, icon: '', iconTexture: reelArtKey(r.id, r.nameKo),
     category: 'gear', subCategory: '릴', basePrice: Math.round(r.priceWon * 0.85 / 1000) * 1000, price: r.priceWon,
     maxPerPurchase: 3, equippable: true, desc: r.descKo,
@@ -768,7 +868,8 @@ export const SHOP_CATALOG: Record<BuildingKind, ShopDef> = {
     get sells(): ShopEntry[] {
       const pick = (kind: BuildingKind, ids: string[]): ShopEntry[] => SHOP_CATALOG[kind].sells.filter((e) => ids.includes(e.id));
       return [
-        ...SHOP_CATALOG.market.sells.filter((e) => e.category === 'tackle' || e.id === 'inv_bakkan'),
+        // 324차 — 큰 고기용 대 · 릴 · 루어도 낚시용품점에서 산다(직판장과 같은 정의)
+        ...SHOP_CATALOG.market.sells.filter((e) => e.category === 'tackle' || e.id === 'inv_bakkan' || isBigGameGear(e.id) || BIG_GAME_TACKLE_IDS.has(e.id)),
         ...pick('daily', ['inv_rod_budget', 'inv_reel_budget', 'inv_line_nylon3', 'inv_headlamp']),
         ...pick('mart', ['inv_breadbait_pack', 'inv_chum_krill_block', 'inv_chum_krill_block_thawed']),
       ];

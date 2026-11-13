@@ -51,7 +51,7 @@ import {
   chumBankDeposit, chumBankRelease, chumBandSigmaMult, surfSinkerTide, lureKindTideMult, holeWaterLevelMult,
   getMovementProfile, pickRunHeading,
   FishFatigueModel, FatigueTick, FATIGUE_PHASE_LABEL,
-  fightGroupOf, fightBodyFormOf, fishRarity, RARITY_STYLE,
+  fightBurstMult, fightBodyFormOf, fishRarity, RARITY_STYLE, lineHoOf, reelLineCapacityM, encumbranceOf, haulFeeWon, fightEscapeScale, fightSubdueBonusCap,
   fishImageSizeScale,
   TUNING,
   computeCastWeather, rodFitsHole,
@@ -102,6 +102,7 @@ import { cv, cvCss, drawHatch, shapeCuesOn } from '../ui/ColorAssist.js';
 import { CoolerPanel } from '../ui/CoolerPanel.js';
 import { CoolerSwapPanel } from '../ui/CoolerSwapPanel.js';
 import { ConfirmDialog } from '../ui/Dialogs.js';
+import { MailboxStore } from '../store/MailboxStore.js';   // 324차 — 큰 고기 용달(집 앞 우편함)
 import { tagUiRect } from '../ui/ScreenReserve.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import { ItemDetailPanel } from '../ui/ItemDetailPanel.js';
@@ -281,6 +282,11 @@ export class FirstPersonFishingScene extends Phaser.Scene {
   private fight: FightingPhase | null = null;
   /** 210차 — 릴 드랙이 미끄러지는 중(넘친 장력만큼 줄이 나간다) — 하네스 · 연출 */
   private dragSlipping = false;
+  /** 324차 — 이 릴에 이 원줄이 감긴 길이(m) · 스풀 끝에서 끌려 나간 시간 · 바늘이 버티는 힘(kg) · 바늘에 무리가 간 시간 */
+  private fightSpoolCapM = 150;
+  private spoolOutT = 0;
+  private hookKg = Infinity;
+  private hookStrainT = 0;
   /** 211차 — 릴 딸깍 누적(감은 m) · 드랙 지지직 간격 */
   private reelSoundAccM = 0;
   private dragZingT = 0;
@@ -1086,7 +1092,12 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       intervalMult: f.fight.intervalMult,
       mouthFragility: f.fight.mouthFragility,
       weightKg: f.weightG / 1000 * this.schoolMult,
-      burstMult: TUNING.fightPhys.burst[fightGroupOf(f.speciesId)],
+      // 324 — 체급 보정(기준 체장보다 큰 참치 · 새치는 체중 대비 순간 힘이 준다)
+      burstMult: fightBurstMult(f.speciesId, f.lengthCm),
+      // 324 — 큰 고기는 싸움이 길다. 초당 탈출 확률을 지치는 시간만큼 낮춘다(방어 90cm급까지는 그대로 0.05)
+      baseEscapePerSec: 0.05 * fightEscapeScale(f.speciesId, f.weightG / 1000 * this.schoolMult),
+      // 324 — 큰 고기는 대응만으로 제압되지 않는다(상한 아래는 지치게 해서 채운다 — 참다랑어 25kg급까지는 그대로 100)
+      subdueBonusCap: fightSubdueBonusCap(f.speciesId, f.weightG / 1000 * this.schoolMult),
       // 133차 — 체형: 어종군(힘의 크기)과 직교하는 "힘의 성질"(면적·추력·요동)
       bodyForm: f.bodyForm ?? fightBodyFormOf(f.speciesId),
       lineCapacityKg: lineCap,
@@ -1113,6 +1124,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const hole = this.cfg.hole;
     if (hole) this.distM = TUNING.fightDist.landRangeM + Math.max(2, hole.depthM);
     this.hookDistM = Math.max(TUNING.fightDist.landRangeM + 0.5, this.distM);
+    // 324차 — 이 릴에 이 원줄이 감긴 길이(스풀이 바닥나는 거리) · 바늘이 버티는 힘
+    {
+      const main = InventoryStore.rigMainLineItem;
+      const no = main ? lineHoOf(main) : null;
+      const reelSp = InventoryStore.reelSpec;
+      const byReel = reelSp && no ? reelLineCapacityM(reelSp, no) : TUNING.spool.maxLineM;
+      const byLine = main?.lineLengthM !== undefined ? Math.max(0, main.lineLengthM - (main.lineUsedM ?? 0)) : Infinity;
+      this.fightSpoolCapM = Math.max(this.hookDistM + 10, Math.min(byReel, byLine));
+      this.spoolOutT = 0;
+      this.hookKg = InventoryStore.hookStrengthKg();
+      this.hookStrainT = 0;
+    }
     this.fleeLatM = this.rig.baitX;
     this.fleePlanAng = (Math.random() - 0.5) * Phaser.Math.DegToRad(TUNING.fightDist.runSpreadDeg * 2);
     this.fleeRepickT = 0;
@@ -1359,7 +1382,8 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     // 132차 — 파이트와 **같은 회수 식**을 쓴다(구 구현의 상수 2.4m/s는 거리·무게와 무관했다).
     //   방치하면 지친 고기가 아주 천천히 되풀려 나간다.
     const reelMps = this.reeling ? this.fightReelMps(true) : -0.15;
-    this.distM = Phaser.Math.Clamp(this.distM - reelMps * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
+    // 324차 — 드랙 미끄럼으로 챔질 거리의 1.6배보다 멀리 끌려 나간 고기도 그 자리에서부터 끌어온다(옛 상한으로 순간 이동하지 않는다)
+    this.distM = Phaser.Math.Clamp(this.distM - reelMps * dt, D.landRangeM * 0.4, Math.max(this.hookDistM * 1.6, this.fightSpoolCapM));
 
     // 지친 롤 — 수면 부상 + 횡 편차가 중앙으로 수렴 (질질 끌려오는 자세)
     this.fightDepthNorm = Math.max(D.depthSubdued, this.fightDepthNorm - dt * 0.5);
@@ -3253,7 +3277,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const rod = InventoryStore.handRod;
     if (rod) {
       const used = InventoryStore.bumpUse(rod);
-      const w = wearFactor(used, rodMaxCasts(rod.basePrice ?? GEAR_REF_PRICE.rod));
+      const w = wearFactor(used, rodMaxCasts(rod.basePrice ?? GEAR_REF_PRICE.rod, InventoryStore.handRodSpec?.durabilityMult));   // 324차 — 만든 곳마다 내구도가 다르다
       if (!this.rollFault(rod, 'rod_tip', GEAR_REF_PRICE.rod, w)) {
         this.rollFault(rod, 'rod_section', GEAR_REF_PRICE.rod, w);
       }
@@ -3261,7 +3285,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const reel = InventoryStore.equippedReel;
     if (reel) {
       const used = InventoryStore.bumpUse(reel);
-      const w = wearFactor(used, rodMaxCasts(reel.basePrice ?? GEAR_REF_PRICE.reel));
+      const w = wearFactor(used, rodMaxCasts(reel.basePrice ?? GEAR_REF_PRICE.reel, InventoryStore.reelSpec?.durabilityMult));
       // 백래시가 오래 이어졌으면 스풀 꼬임이 크게 오른다 (스풀 개방 운용의 대가)
       const tangleW = w * (1 + Math.min(4, this.spoolOverrunT * 1.2)) * GameState.skillMult('spool_trouble');   // 222차 — 「스풀 컨트롤」
       if (!this.rollFault(reel, 'reel_tangle', GEAR_REF_PRICE.reel, tangleW)
@@ -3432,8 +3456,18 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       this.dragZingT -= dt;
       if (this.dragZingT <= 0) { this.dragZingT = 0.14; playDragZing(slip01); }
     }
-    this.distM = Phaser.Math.Clamp(
-      this.distM + (fwd + slipOutMps - reelMps) * dt, D.landRangeM * 0.4, this.hookDistM * 1.6);
+    // 324차 — 도주만으로는 챔질 거리의 1.6배를 넘지 못한다(옛 규칙 그대로). 드랙이 미끄러져 풀려 나가는 줄은
+    //   스풀에 줄이 남아 있는 한 계속 나간다 — 큰 고기에 작은 릴이면 스풀이 바닥난다(`fightSpoolCapM`).
+    {
+      const softCap = this.hookDistM * 1.6;
+      let next = this.distM + (fwd - reelMps) * dt;
+      if (next > this.distM) next = Math.max(this.distM, Math.min(next, softCap));
+      next += slipOutMps * dt;
+      const cap = Math.max(softCap, this.fightSpoolCapM);
+      this.distM = Phaser.Math.Clamp(next, D.landRangeM * 0.4, cap);
+      // 스풀 끝에서도 계속 끌려 나가면 0.8초 뒤 줄이 다 풀려 끊어진다
+      this.spoolOutT = slipOutMps > 0 && this.distM >= cap - 0.05 ? this.spoolOutT + dt : 0;
+    }
 
     // ④ 횡 — 도주 횡분 + 릴링/제압 시 중앙 수렴 (끌려오면 정면으로 정렬)
     this.fleeLatM = Phaser.Math.Clamp(
@@ -3516,6 +3550,13 @@ export class FirstPersonFishingScene extends Phaser.Scene {
 
     // ── 132차 파이트 3D 운동 (횡 · 거리 · 수심) — 세 뷰가 같은 물리를 소비 ──
     this.stepFightKinematics(dt, st, effectiveReeling, spoolOpen);
+    // 324차 — 스풀이 바닥났다: 큰 고기가 드랙을 이기고 줄을 다 끌고 나갔다
+    if (this.spoolOutT > 0.8 && st.event === 'none' && !isGod()) { this.failSpooledOut(); return; }
+    // 324차 — 바늘이 펴진다: 줄 · 드랙이 바늘보다 세서, 바늘에 걸리는 힘이 버티는 힘을 넘은 채 0.6초
+    if (st.event === 'none' && st.demandKg > this.hookKg) {
+      this.hookStrainT += dt;
+      if (this.hookStrainT > 0.6 && !isGod()) { this.failHookBent(); return; }
+    } else this.hookStrainT = Math.max(0, this.hookStrainT - dt);
     // 210차 — 드랙이 미끄러지는 동안 초릿대가 잘게 떨린다(스풀이 역회전하며 줄이 풀린다)
     if (this.dragSlipping) this.rodBendDeg += Math.sin(this.time.now / 35) * 2.5;
 
@@ -3627,6 +3668,27 @@ export class FirstPersonFishingScene extends Phaser.Scene {
    * 과부하 줄터짐 — 한계 텐션에서 저항을 무시하고 릴링을 강행했을 때.
    * (텐션 저항 시스템: 릴링이 미끄러지는데도 초과 입력을 유지하면 강제 파단)
    */
+  /** 324차 — 스풀이 바닥났다(줄이 다 풀려 끊어진다 — 채비 전부와 원줄을 잃는다) */
+  private failSpooledOut(): void {
+    const lost = this.applyLineLoss('above_float');
+    TitleStore.bump('lineBreak');
+    playLineSnap();
+    LedgerStore.lost('lineBreak');
+    this.failAndExit('스풀이 바닥났다! 줄이 다 풀려 끊어졌습니다',
+      `고기가 드랙을 이기고 감아 둔 줄 ${Math.round(this.fightSpoolCapM)}m를 다 끌고 나갔습니다.\n손실: ${lost.join(', ')}\n\n`
+      + '큰 고기에는 드랙이 센 릴과 줄이 넉넉히 감기는 큰 릴을 쓰세요.');
+  }
+
+  /** 324차 — 바늘이 펴졌다(굵은 줄 · 센 드랙에 작은 바늘) */
+  private failHookBent(): void {
+    LedgerStore.lost('hookOff');
+    playHookMiss();
+    const lost = InventoryStore.loseRigParts(['hook', 'bait'] as RigStepKey[]);
+    this.failAndExit('바늘이 펴졌습니다',
+      `줄과 드랙이 바늘보다 세서, 큰 고기의 힘을 바늘이 버티지 못했습니다.\n손실: ${lost.join(', ')}\n\n`
+      + '큰 고기를 노리는 채비에는 굵은 바늘(돌돔 바늘 · 참치 서클 훅)을 묶으세요.');
+  }
+
   private forceLineBreak(): void {
     // dev 무적(갓모드): 줄이 터지지 않는다 (손실·강제 종료 전부 무시)
     if (isGod()) return;
@@ -3828,8 +3890,19 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       const r = fishRarity(x.speciesId, x.lengthCm);
       return `${x.nameKo} ${x.lengthCm}cm / ${(x.weightG / 1000).toFixed(2)}kg / ${x.sex === 'M' ? '수컷' : '암컷'} [${r.ratio.toFixed(2)}×, ${r.label}]`;
     };
-    const body = `${school.map(line).join('\n')}${extraLine}`;
+    // 324차 — 짐 무게: 이 고기를 들면 몇 kg이 되는지, 느려지거나 움직일 수 없게 되면 미리 일러 준다
+    const schoolKg = school.reduce((a, x) => a + x.weightG, 0) / 1000;
+    GameState.refreshCarryWeight();
+    const afterKg = GameState.carriedWeightG / 1000 + schoolKg;
+    const afterEnc = encumbranceOf(afterKg);
+    const loadLine = afterEnc.stage >= 2
+      ? `\n\n들고 가면 짐이 ${afterKg.toFixed(1)}kg — ${afterEnc.immobile ? '움직일 수 없다' : afterEnc.stage === 3 ? '매우 무겁다(달릴 수 없다)' : '무겁다(느려지고 자전거를 못 탄다)'}`
+      : '';
+    const body = `${school.map(line).join('\n')}${extraLine}${loadLine}`;
     const hasCooler = InventoryStore.hasCooler();
+    // 들고는 움직일 수 없는 고기(짐 70kg 초과)는 용달을 불러 집 앞 우편함으로 보낼 수 있다
+    const haulFee = haulFeeWon(schoolKg);
+    const heavy = afterEnc.immobile;
     const imgScale = fishImageSizeScale(lead.speciesId, lead.lengthCm);
     const texOf = (x: SpawnedFish): string | undefined => resolveFishTexture(x.speciesId, x.lengthCm, x.sex);
     const invTpl = (x: SpawnedFish) => ({
@@ -3842,12 +3915,27 @@ export class FirstPersonFishingScene extends Phaser.Scene {
       speciesId: x.speciesId, lengthCm: x.lengthCm, weightG: x.weightG, sex: x.sex, catchMethod: 'rod' as const,
       originRegion: GameState.originRegionId,   // 295차 — 가방으로 보관한 고기도 얻은 지역을 기억한다(294는 쿨러 쪽만 붙였다)
     });
+    const haulButton: DecisionButton = {
+      label: '집으로 보내기', fill: 0x3a2f12, stroke: 0xe0b060, color: '#ffe28a',
+      disabled: GameState.player.inventory.coins < haulFee,
+      disabledHint: `용달 값 ${haulFee.toLocaleString()}원이 모자랍니다`,
+      onClick: () => this.confirmHaulHome(school, haulFee, () => {
+        MailboxStore.send({
+          kind: 'overflow', from: '용달',
+          title: `${lead.nameKo} ${lead.lengthCm}cm${n > 1 ? ` 외 ${n - 1}마리` : ''}를 실어다 놓았습니다`,
+          body: `들고 올 수 없는 큰 고기라 용달이 얼음에 재워 집 앞까지 실어다 놓았습니다.\n요금 ${haulFee.toLocaleString()}원 · ${schoolKg.toFixed(1)}kg`,
+          items: school.map((x) => ({ tpl: invTpl(x), qty: 1 })),
+        });
+        GameState.markDirty();
+        this.showPostDecisionPanel(`용달로 집에 보냈습니다. 집 앞 우편함에서 찾으세요. (요금 ${haulFee.toLocaleString()}원)`, '#ffe28a', fishTexture, imgScale, n);
+      }),
+    };
     this.buildDecisionPanel(
       `${lead.nameKo} ${lead.lengthCm}cm 낚음!${extra.length > 0 ? ` (+${extra.length})` : ''}`,
       body, cvCss(rr.color), fishTexture,
       [
         {
-          label: '쿨러에 보관하기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
+          label: heavy ? '쿨러에 보관' : '쿨러에 보관하기', fill: 0x0d4a2e, stroke: 0x4af2a1, color: '#4af2a1',
           disabled: !hasCooler,
           disabledHint: '쿨러가 없습니다 — 기타 아이템에 쿨러(아이스박스)가 필요합니다',
           onClick: () => {
@@ -3870,7 +3958,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           },
         },
         {
-          label: '인벤토리에 보관하기', fill: 0x14425e, stroke: 0x33b0e0, color: '#aee8ff',
+          label: heavy ? '가방에 보관' : '인벤토리에 보관하기', fill: 0x14425e, stroke: 0x33b0e0, color: '#aee8ff',
           onClick: () => {
             // 개체마다 길이·무게가 달라 칸을 따로 쓴다 — 전부 들어갈 때만 넣는다(addBundle)
             const ok = InventoryStore.addBundle(school.map((x) => ({ tpl: invTpl(x), qty: 1 })));
@@ -3892,9 +3980,27 @@ export class FirstPersonFishingScene extends Phaser.Scene {
           onClick: () => this.confirmReleaseCatch(school, () => this.showPostDecisionPanel(
             n > 1 ? `${n}마리를 모두 방생하였습니다.` : '해당 어종을 방생하였습니다.', '#9fd0e4', fishTexture, imgScale, n)),
         },
+        ...(heavy ? [haulButton] : []),
       ],
       imgScale, n,
     );
+  }
+
+  /** 324차 — 용달 확인 창(무엇을 · 얼마에 · 어디로). 돈이 나가는 일이라 한 번 더 묻는다 */
+  private confirmHaulHome(school: SpawnedFish[], fee: number, onYes: () => void): void {
+    if (this.releaseConfirm) return;
+    const rows = school.map((x) => `${x.nameKo} ${x.lengthCm}cm · ${(x.weightG / 1000).toFixed(1)}kg`).join('\n');
+    const dlg = new ConfirmDialog(this,
+      `용달을 불러 집으로 보낼까요?\n${rows}\n요금 ${fee.toLocaleString()}원 — 집 앞 우편함에서 찾는다.`,
+      () => {
+        dlg.destroy(); this.releaseConfirm = null;
+        if (!GameState.addCoins(-fee, false, 'other')) { this.flashState('돈이 모자랍니다'); return; }
+        onYes();
+      },
+      () => { dlg.destroy(); this.releaseConfirm = null; },
+      { yes: '보내기', no: '취소' });
+    this.add.existing(dlg);
+    this.releaseConfirm = dlg;
   }
   /** 198차 — 방생 확인 창(이름·크기 목록 + 「방생하기」/「취소」) */
   private releaseConfirm: ConfirmDialog | null = null;
@@ -4024,9 +4130,9 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     c.add(t2);
 
     const btnY = half - 48;
-    // 버튼 폭/간격 — 개수에 따라 자동 배치 (3개 = 어획 결정 쿨러/인벤/방생)
-    const bw = buttons.length >= 3 ? 142 : buttons.length === 2 ? 180 : 200;
-    const spacing = bw + 10;
+    // 버튼 폭/간격 — 개수에 따라 자동 배치 (3개 = 어획 결정 쿨러/인벤/방생 · 324차 4개 = 큰 고기 「집으로 보내기」)
+    const bw = buttons.length >= 4 ? 104 : buttons.length >= 3 ? 142 : buttons.length === 2 ? 180 : 200;
+    const spacing = bw + (buttons.length >= 4 ? 6 : 10);
     buttons.forEach((btn, i) => {
       const bx = (i - (buttons.length - 1) / 2) * spacing;
       const g = this.add.graphics();
@@ -4038,7 +4144,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
         g.lineStyle(2, btn.stroke, 1); g.strokeRoundedRect(bx - bw / 2, btnY - 19, bw, 38, 5);
       }
       const txt = this.add.text(bx, btnY, btn.label, {
-        fontFamily: '"Noto Sans KR", sans-serif', fontSize: buttons.length >= 3 ? '12px' : '13px',
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: buttons.length >= 4 ? '11px' : buttons.length >= 3 ? '12px' : '13px',
         color: btn.disabled ? '#546a7c' : btn.color, fontStyle: 'bold',
       }).setOrigin(0.5);
       const hit = this.add.rectangle(bx, btnY, bw, 38, 0xffffff, 0.001)

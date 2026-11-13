@@ -67,4 +67,10 @@ export interface LureSpec {
   fallLureWeight?: number;
   /** 밑걸림 위험 배율 (에기 바닥 드래깅 -30% → 0.7) */
   snagRiskMult?: number;
+  /** 324차 — 큰 고기용 루어(대형 지그 · 펜슬 · 포퍼 · 트롤링 스커트). 새 게임 시작 가방에 넣지 않고 가게에서만 판다 */
+  bigGame?: boolean;
+  /** 324차 — 이 루어만의 그림 키(없으면 종류별 그림) */
+  art?: string;
+  /** 324차 — 기준가(원). 없으면 무게로 셈한다(400 + g × 220) */
+  priceWon?: number;
 }

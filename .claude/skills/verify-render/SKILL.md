@@ -223,3 +223,13 @@ const { chromium } = resolvePlaywright();
   상황(모달 등)을 만든 뒤 `for (…) t.tick(16)`로 타이핑 · 자리 잡기를 돌리고 `t.bubble.getBounds()`를 잰다. 끝나면 `t.dismiss()`.
   상점은 `sc.openShop(kind, branch)`(문 앞에 갈 필요 없음) · 팔 물건은 `(await import('/src/store/Prologue.ts')).prologueSquid()` 틀에서
   `qty` · `slot`을 뺀 뒤 `__INV.addItem(t, 2)` · 상점 품목 표는 `SHOP_CATALOG[*].sells`(`items` 아님) · 수량 창은 `shop.askSellQty(item, cb)`.
+- **싸움(파이팅)을 여러 판 돌릴 때는 판마다 1인칭 씬을 새로 띄운다**(324차) — 한 `FirstPersonFishingScene`에서 `enterFight`를 되풀이하면
+  챔질 연출(`playHookUpEffect`)이 죽은 글자 객체를 건드려 `Cannot read properties of null (reading 'context')`가 난다(하네스 탓 — 게임 결함 아님).
+  `game.scene.stop('FirstPersonFishingScene')` → 필드에서 `s.scene.launch('FirstPersonFishingScene', {…})` → `__FP` 대기 → `fp.scene.pause()` →
+  `fp.pendingFish = …; fp.enterFight(); for (…) fp.updateFighting(1 / 30, { x: 0, y: 0 })`. 결과는 `fp.failAndExit` · `fp.onLanded`를 갈아 끼워 받는다.
+  `renderFightUi` · `tickReelSound` · `playHookUpEffect`는 빈 함수로 막고, `Math.random`을 시드 난수로 바꾸면 판이 재현된다(끝나면 되돌린다).
+  채비는 `Object.defineProperty(__INV, 'reelSpec', { get: … })` · `__INV.lineCapacityKg = () => …`로 바꿔 끼운다. 예 = scratchpad `r324c.cjs`.
+- **`page.evaluate` 화살표가 Phaser 객체를 돌려주면 파이프가 죽는다**(324차) — `page.evaluate(() => fp.scene.resume())`는 ScenePlugin을 직렬화하려다
+  「Cannot create a string longer than 0x1fffffe8」로 브라우저 연결이 끊긴다. 중괄호로 감싸 아무것도 돌려주지 않는다(`() => { fp.scene.resume(); }`).
+- **무거운 하네스와 typecheck · 빌드를 같이 돌리지 않는다**(324차) — 컨테이너 메모리가 모자라 작업 프로세스가 죽는다(exit 137).
+  긴 하네스는 `timeout`을 걸어 백그라운드로 돌리고, 그동안 `packages/` 아래 소스는 고치지 않는다(HMR이 페이지를 다시 읽는다 — 문서는 괜찮다).

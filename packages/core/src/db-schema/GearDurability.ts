@@ -151,9 +151,10 @@ export function gearQualityMult(basePrice: number, refPrice: number): number {
  * 로드 전체 내구도(던질 수 있는 횟수) — 사이소 200회 기준으로 가격에 비례해 보정.
  *  사이소(12,000) = 200 · 중급(45,000) = 359 · 시드 로드(185,000) = 684
  */
-export function rodMaxCasts(basePrice: number): number {
+export function rodMaxCasts(basePrice: number, durabilityMult = 1): number {
   const r = Math.max(1, basePrice) / GEAR_REF_PRICE.rod;
-  return Math.min(1200, Math.max(120, Math.round(200 * Math.pow(r, 0.45))));
+  // 324차 — 만든 곳마다 내구도가 다르다(제원의 `durabilityMult` — 통쇠 몸통 릴 1.25 · 가벼운 보급형 0.95). 상한도 그만큼 는다
+  return Math.round(Math.min(1200, Math.max(120, Math.round(200 * Math.pow(r, 0.45)))) * Math.max(0.5, durabilityMult));
 }
 
 /**

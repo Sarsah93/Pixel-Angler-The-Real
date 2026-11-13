@@ -242,6 +242,23 @@ export const BUTCHERY_PROFILES: Record<string, ButcheryProfile> = {
     baseYieldRate: 0.60, sliceGramBase: 16, minFilletLengthCm: 50, bodyRatio: 0.28, filletShape: 'loin_thick',
   },
 
+  // ── 324 큰 회유어 셋 — 참다랑어처럼 늘 4덩어리 해체. 새치류는 머리를 뗄 때 부리째 떨어진다 ──
+  bigeye_tuna: {
+    speciesId: 'bigeye_tuna', bodyShape: 'round', hasScales: false, tree: 'loin',
+    scaleToughness: 0.1, anusRatio: 0.55, skinToughness: 0.7, bloodAmount: 1.0, filletCount: 4,
+    baseYieldRate: 0.58, sliceGramBase: 16, minFilletLengthCm: 50, bodyRatio: 0.30, filletShape: 'loin_thick',
+  },
+  swordfish: {
+    speciesId: 'swordfish', bodyShape: 'round', hasScales: false, tree: 'loin',
+    scaleToughness: 0, anusRatio: 0.55, skinToughness: 0.85, bloodAmount: 0.9, filletCount: 4,
+    baseYieldRate: 0.55, sliceGramBase: 16, minFilletLengthCm: 100, bodyRatio: 0.22, filletShape: 'loin_thick',
+  },
+  striped_marlin: {
+    speciesId: 'striped_marlin', bodyShape: 'round', hasScales: false, tree: 'loin',
+    scaleToughness: 0.1, anusRatio: 0.55, skinToughness: 0.8, bloodAmount: 0.9, filletCount: 4,
+    baseYieldRate: 0.52, sliceGramBase: 16, minFilletLengthCm: 120, bodyRatio: 0.20, filletShape: 'loin_thick',
+  },
+
   // ── 장어류 (315 — `tree: 'eel'` · 송곳 고정 · 펼친 포 한 장) ──
   //  붕장어 = 등 가르기 · 갯장어 = 배 가르기 + 뼈끊기 · 먹장어 = 껍질 통째로 벗기기(뼈 없음)
   conger_eel: {
@@ -376,7 +393,7 @@ export const BUTCHERY_WIRED_SPECIES: ReadonlySet<string> = new Set<string>([
   // 315 — 장어류(송곳 고정 · 가르기 · 펼친 포)
   'conger_eel', 'pike_conger', 'hagfish',
   // 317 — 참다랑어(4덩어리 해체 — 방어류 앞 단계 + 양면 해체 · 중골 살 · 덩어리 다듬기)
-  'bluefin_tuna',
+  'bluefin_tuna', 'bigeye_tuna', 'swordfish', 'striped_marlin',   // 324
   // 넙치류 (다섯장뜨기)
   'flatfish', 'flounder', 'frog_flounder', 'starry_flounder',
   'tonguefish',   // 313 — 개서대(광어 트리)
@@ -405,6 +422,7 @@ const AMBERJACK_ART_SPECIES: ReadonlySet<string> = new Set<string>([
   'sea_bass', 'black_rockfish', 'blue_rockfish', 'golden_rockfish', 'red_snapper_rockfish',
   'striped_mullet', 'redlip_mullet',
   'pacific_saury', 'halfbeak', 'round_herring', 'northern_whiting', 'yellowfin_goby',
+  'bigeye_tuna', 'swordfish', 'striped_marlin',   // 324 — 방추형(복면 · 체강 공용 그림은 방어류)
   'bluefin_tuna',   // 317 — 방추형(앞 단계 유도선 · 복면 · 체강 공용 그림은 방어류)
   // 322 — 청어과(작은 생선) · 조기류 · 바리류: 체고가 몸길이의 3분의 1 안팎이라 방추형 쪽(우럭 · 농어와 같다)
   'gizzard_shad', 'pacific_herring', 'anchovy', 'yellow_croaker', 'white_croaker',

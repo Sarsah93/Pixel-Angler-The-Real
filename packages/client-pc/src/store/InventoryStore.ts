@@ -55,7 +55,7 @@ import { processedItemTemplate, PROCESSED_SUB } from '../data/ProcessedItems.js'
 import { StoryStore } from './StoryStore.js';
 import { CoolerStore } from './CoolerStore.js';
 import { migrateCatchItemId, migrateSpeciesId, migrateForageName } from '../data/SpeciesMigration.js';
-import { SHOP_CATALOG, CARD_RIG_ENTRIES } from '../data/ShopCatalog.js';
+import { SHOP_CATALOG, CARD_RIG_ENTRIES, lineWearMultOf, hookStrengthKgOf } from '../data/ShopCatalog.js';
 import { rigViewOf, isPackItem } from './RigParts.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
 import { canonicalItemId } from './ItemIdAlias.js';
@@ -934,6 +934,7 @@ function createSeedItems(): InvItem[] {
     spoon: 'art_lure_spoon', spinner: 'art_lure_spinner', egi: 'art_lure_egi', tairaba: 'art_lure_tairaba',
   };
   for (const lure of LURES_CATALOG_DB) {
+    if (lure.bigGame) continue;   // 324차 — 큰 고기용 루어는 가게에서 산다(시작 가방에 넣지 않는다)
     defs.push({
       id: lure.id, name: `${lure.nameKo} (${lure.weightG}g)`, icon: '', iconTexture: lureTexture[lure.kind],
       category: 'lure', subCategory: '루어', qty: lure.family === 'soft' ? 8 : 3,
@@ -3060,7 +3061,8 @@ class InventoryStoreManager {
     if (!id) return null;
     if (this._lineWear[role].itemId !== id) this._lineWear[role] = { itemId: id, wear: 0 };
     if (isGod() || !(delta > 0)) return this._lineWear[role].wear;
-    this._lineWear[role].wear = addLineWearCore(this._lineWear[role].wear, delta);
+    // 324차 — 만든 곳 · 짜임마다 닳는 빠르기가 다르다(8합사 0.8 · 보급형 4합사 1.1)
+    this._lineWear[role].wear = addLineWearCore(this._lineWear[role].wear, delta * lineWearMultOf(id));
     return this._lineWear[role].wear;
   }
 
@@ -3138,6 +3140,22 @@ class InventoryStoreManager {
     const b = lineStrengthKg(leaderId ? this.find(leaderId) : null);
     const vals = [a, b].filter((v): v is number => v !== null && v > 0);
     return vals.length ? Math.min(...vals) : null;
+  }
+
+  /** 324차 — 지금 채비의 원줄(루어 모드는 루어 원줄 칸) */
+  get rigMainLineItem(): InvItem | undefined {
+    const id = this.rigMode === 'lure' ? this._lureLine : this._rig.mainLine;
+    return id ? this.find(id) : undefined;
+  }
+
+  /**
+   * 324차 — 바늘이 버티는 힘(kg). 미끼 채비의 바늘 가운데 가장 약한 것. 루어 채비는 루어 제 바늘이라 제한이 없다.
+   * 굵은 줄 · 센 드랙에 작은 바늘을 묶으면 큰 고기 앞에서 바늘이 먼저 펴진다.
+   */
+  hookStrengthKg(): number {
+    if (this.rigMode === 'lure') return Infinity;
+    const id = this._rig.hook;
+    return hookStrengthKgOf(id ? this.find(id) : null);
   }
 
   /** 현재 장착 루어의 카탈로그 스펙 (없으면 undefined) */

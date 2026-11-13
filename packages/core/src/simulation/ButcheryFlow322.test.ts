@@ -260,7 +260,7 @@ describe('322 — 새 어종 9', () => {
     // 드문 어종 값(`abundance`)은 0~1 · 표시한 어종만
     for (const f of ORACLE_FISH_DB) if (f.abundance !== undefined) { expect(f.abundance, f.speciesId).toBeGreaterThan(0); expect(f.abundance, f.speciesId).toBeLessThanOrEqual(1); }
     expect(ORACLE_FISH_DB.filter((f) => f.abundance !== undefined).map((f) => f.speciesId).sort())
-      .toEqual(['longtooth_grouper', 'redspotted_grouper', 'sawedged_perch', 'sevenband_grouper']);
+      .toEqual(['bigeye_tuna', 'longtooth_grouper', 'redspotted_grouper', 'sawedged_perch', 'sevenband_grouper', 'striped_marlin', 'swordfish']);   // 324 — 눈다랑어 · 새치 둘
   });
 
   it('파이팅 어종군 — 청어과는 작은 표층어 · 바리류는 굴로 박는 무리', () => {

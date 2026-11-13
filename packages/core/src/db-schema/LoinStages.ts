@@ -143,6 +143,7 @@ export const LOIN_MASS_SHARE: Record<LoinPart, number> = { back: 0.27, belly: 0.
  */
 export function loinValueShare(speciesId: string, part: LoinPart): number {
   if (speciesId === 'bluefin_tuna') return part === 'back' ? 0.21 : 0.29;
+  if (speciesId === 'bigeye_tuna') return part === 'back' ? 0.22 : 0.28;   // 324 — 눈다랑어도 뱃살이 더 비싸다(참다랑어보다는 덜)
   return part === 'back' ? 0.24 : 0.26;
 }
 /** 다듬기에서 떨어지는 몫(덩어리 무게 중) — 혈합육 · 껍질. 나머지가 사쿠 */

@@ -25,6 +25,10 @@ export const ROD_USE_LABEL: Record<RodUse, { ko: string; en: string }> = {
   boat_bait: { ko: '선상 타이라바 · 슬로우지깅', en: 'Boat tai-rubber · slow jigging' },
   hole: { ko: '구멍치기', en: 'Hole fishing' },
   budget: { ko: '다용도(입문)', en: 'All-round (entry)' },
+  ishidai: { ko: '돌돔 원투(석조)', en: 'Knifejaw bottom casting' },
+  offshore_jig: { ko: '지깅(방어 · 부시리 · 잿방어)', en: 'Offshore jigging' },
+  offshore_cast: { ko: '캐스팅 · 포핑(부시리 · 참다랑어)', en: 'Offshore casting · popping' },
+  big_game: { ko: '스탠드업 · 트롤링(참다랑어 · 새치)', en: 'Stand-up · trolling' },
 };
 
 /**
@@ -40,6 +44,11 @@ export const ROD_USE_CAST: Record<RodUse, { base: number; typLenM: number }> = {
   boat_bait: { base: 0.7, typLenM: 2.0 },
   hole: { base: 0.7, typLenM: 2.1 },
   budget: { base: 0.85, typLenM: 2.4 },
+  // 324차 — 돌돔대는 무거운 봉돌을 가까이 던지고, 지깅대 · 스탠드업대는 던지려고 만든 대가 아니다
+  ishidai: { base: 0.9, typLenM: 5.25 },
+  offshore_jig: { base: 0.6, typLenM: 1.9 },
+  offshore_cast: { base: 1.1, typLenM: 2.5 },
+  big_game: { base: 0.5, typLenM: 1.7 },
 };
 
 /** 원줄 호수 PE → 나일론 환산(같은 인장 강도) — PE 1호 ≈ 나일론 4호 */
@@ -99,6 +108,35 @@ export function reelFitsRod(spec: RodItemSpec, reel: ReelItemSpec | undefined): 
   return !reel || reel.kind === spec.reel;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 324차 — 줄 · 릴 · 대 궁합(큰 고기용 장비가 생기면서 「아무 줄이나 아무 릴에」가 통하지 않는다)
+// ═══════════════════════════════════════════════════════════════
+
+/** 릴에 감겨 있어야 하는 줄의 최소 길이(m) — 이보다 적게 감기는 굵은 줄은 그 릴에 못 쓴다 */
+export const REEL_MIN_LINE_M = 100;
+
+/**
+ * 이 릴에 이 호수의 줄이 몇 m 감기나.
+ * 릴의 권사량(`lineCapM`)은 3호 기준이고, 줄의 단면적은 호수에 비례한다(나일론 · 합사 모두 같은 호수면 굵기가 거의 같다).
+ */
+export function reelLineCapacityM(reel: ReelItemSpec, lineNo: number): number {
+  return Math.round(reel.lineCapM * 3 / Math.max(0.1, lineNo));
+}
+
+/** 이 릴이 이 줄을 최소 길이만큼 감을 수 있나 */
+export function reelHoldsLine(reel: ReelItemSpec | undefined, lineNo: number): boolean {
+  return !reel || reelLineCapacityM(reel, lineNo) >= REEL_MIN_LINE_M;
+}
+
+/**
+ * 대가 이 채비의 드랙을 버티나 — 실제로 대에 걸리는 힘은 줄 강도와 릴 드랙 중 약한 쪽이다.
+ *  ok = 대가 받아 준다 · strained = 대 하중의 1.5배를 넘는다(파이팅 중 대가 먼저 부러질 수 있다 — 136차 판정과 같은 기준)
+ */
+export function rodDragFit(spec: RodItemSpec, lineCapKg: number, reel: ReelItemSpec | undefined): 'ok' | 'strained' {
+  const pull = Math.min(lineCapKg, reel?.maxDragKg ?? Infinity);
+  return pull > spec.powerKg * 1.5 ? 'strained' : 'ok';
+}
+
 /** 구멍치기에 쓸 만한 길이인가(테트라포드 틈에서 휘두를 수 있나) */
 export function rodFitsHole(spec: RodItemSpec): boolean {
   return spec.lengthM <= TUNING.rodSpec.holeMaxLenM;
@@ -123,6 +161,8 @@ export function rodSelfHookChance(spec: RodItemSpec | undefined, sinkerG: number
  * 베이트는 스풀이 작다(150 · 200번 3.4cm 남짓). 원투 전용 롱캐스트 스풀(비거리 배율 ≥ 1.05)은 지름이 1.6cm 더 크다.
  */
 export function reelSpoolDiamCm(reel: ReelItemSpec): number {
+  // 324차 — 지깅 · 돌돔 · 레버 드랙 양축릴(size 350 이상)은 스풀이 훨씬 크다(지깅 2000번급 5cm · 50W 7.6cm · 80W 8.8cm)
+  if (reel.kind === 'bait' && reel.size >= 350) return 4.9 + 1.9 * Math.log2(reel.size / 350);
   if (reel.kind === 'bait') return 3.0 + 0.4 * Math.log2(Math.max(50, reel.size) / 100);
   const longCast = reel.castMult >= 1.05 ? 1.6 : 0;
   return 3.9 + 0.8 * Math.log2(Math.max(500, reel.size) / 1000) + longCast;
@@ -158,7 +198,18 @@ export function reelWindLoad(reel: ReelItemSpec | undefined): number {
  */
 export function reelRetrieveMps(baseMps: number, minMps: number, fishKg: number, weightK: number, reel: ReelItemSpec | undefined): number {
   const g = reelGearK(reel);
-  return Math.max(minMps * Math.min(1, g), baseMps * g / (1 + fishKg * weightK * reelWindLoad(reel)));
+  return Math.max(minMps * Math.min(1, g) * reelFloorK(reel), baseMps * g / (1 + fishKg * weightK * reelWindLoad(reel)));
+}
+
+/**
+ * 324차 — 회수 속도 바닥값의 릴 크기 배수. 무거운 고기는 어느 릴이든 바닥값으로 감긴다(25kg부터 전부 바닥) —
+ * 큰 릴(스풀 · 몸체 · 핸들이 크다)은 그 바닥이 높다: √(번수 ÷ 4000). 4000번까지는 1(옛 값 그대로).
+ * 양축릴은 번수 × 20으로 환산한다(지깅 2000번급 = 8000 · 50W = 20000 · 80W = 30000).
+ */
+export function reelFloorK(reel: ReelItemSpec | undefined): number {
+  if (!reel) return 1;
+  const sizeEq = reel.kind === 'bait' ? reel.size * 20 : reel.size;
+  return Math.sqrt(Math.max(1, sizeEq / TUNING.reelFight.bigReelFloorRef));
 }
 
 /**

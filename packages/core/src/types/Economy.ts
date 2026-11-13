@@ -337,6 +337,10 @@ export const SEAFOOD_AUCTION_MAPPING: Record<string, AuctionMappingDef> = {
   bulgyhead_wrasse: { itemCode: '100410', defaultPricePerKg: 16000, sizeFactorMultiplier: 1.1, weightExp: 0.6 },   // 혹돔(대형 — 마리당 평탄)
   red_tilefish: { itemCode: '100406', defaultPricePerKg: 45000, sizeFactorMultiplier: 1.2 },        // 옥돔(제주 — 비싼 생선)
   bluefin_tuna: { itemCode: '101501', defaultPricePerKg: 30000, sizeFactorMultiplier: 1.0, weightExp: 0.5 },   // 참다랑어(초대형 — kg^0.5)
+  // 324차 — 큰 회유어 셋(초대형 — 참다랑어와 같은 kg^0.5 · 품목 코드는 가상)
+  bigeye_tuna: { itemCode: '101502', defaultPricePerKg: 22000, sizeFactorMultiplier: 1.0, weightExp: 0.5 },    // 눈다랑어
+  swordfish: { itemCode: '101601', defaultPricePerKg: 14000, sizeFactorMultiplier: 1.0, weightExp: 0.5 },      // 황새치
+  striped_marlin: { itemCode: '101602', defaultPricePerKg: 11000, sizeFactorMultiplier: 1.0, weightExp: 0.5 }, // 청새치
   // 322차 — 9종(품목 코드는 추정 — 실 시세는 품목명 매핑이 잡는다).
   //  바리류는 클수록 kg 값이 오르지만 10kg급에서 값이 터지지 않게 무게 지수를 0.8로 둔다(자연산 자바리 kg 15~20만 원)
   gizzard_shad: { itemCode: '100206', defaultPricePerKg: 12000, sizeFactorMultiplier: 0.9 },          // 전어(가을 활전어)

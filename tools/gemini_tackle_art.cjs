@@ -245,6 +245,136 @@ const LOOKS = {
       + '고리 · 도래 · 소켓 · 철사 고리는 절대 없다 — 몸통 끝은 매끈한 납 끝면뿐이다. 납 특유의 무광 회색에 밝은 하이라이트 한 줄과 어두운 그늘.' },
 };
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 324차 — 큰 고기용 장비(돌돔 · 지깅 · 캐스팅 · 스탠드업 · 대형 릴 · 굵은 줄 · 큰 루어). `--group big`
+//  만든 곳(가상 상표)마다 색과 꾸밈이 다르다 — 같은 급이라도 한눈에 가려진다.
+// ══════════════════════════════════════════════════════════════════════════════
+const BRAND_LOOK = {
+  nj: '블랭크는 무광 검정이고 가이드 발마다 붉은 실 감기, 손잡이 위 한 뼘에 붉은 띠',
+  daio: '블랭크는 광택 검정이고 손잡이 위에 금색 띠 두 줄 · 금색 금속 릴시트 너트',
+  gama: '블랭크는 짙은 와인색(자줏빛) 광택이고 가이드 발마다 금색 실 감기, 손잡이 끝 금색 마감',
+  haewon: '블랭크는 짙은 남색 광택이고 손잡이 위에 은색 띠',
+  minor: '블랭크는 짙은 회색이고 손잡이 위에 연두색 띠 · 연두색 실 감기',
+  yamano: '블랭크는 꾸밈 없는 무광 숯색 카본(가는 카본 무늬가 비친다)이고 가이드 실 감기는 검정, 은색 금속은 최소한',
+  somano: '블랭크는 짙은 청색 메탈릭이고 가이드 실 감기는 은색 · 하늘색, 은색 금속 릴시트',
+  penson: '블랭크는 검정이고 금속 부품(릴시트 · 가이드 틀)은 전부 금색 아노다이징',
+};
+const ROD_POSE = '참고 그림의 낚싯대처럼 초릿대 끝이 왼쪽 위, 손잡이가 오른쪽 아래인 대각선으로 화면을 가로지른다. 릴은 달지 않는다.';
+const rodLook = (kind, brand, extra = '') => {
+  const K = {
+    ishidai: '돌돔 원투 낚싯대 한 대(5m 급 — 굵고 길다). 초릿대 끝 한 뼘은 형광 주황(입질을 보는 색 초리)이고 그 아래로 빠르게 굵어져 허리가 아주 굵다. '
+      + '가이드는 작은 고리가 촘촘히 대의 윗면에 줄지어 있다(양축릴용). 손잡이는 굵고 길며 릴시트가 손잡이 가운데 위쪽에 있고, 손잡이 끝에는 둥근 고무 마개.',
+    iso3: '굵은 갯바위 찌낚시대 한 대(5.3m 급 — 길고 낭창하지만 허리가 굵다). 가이드는 작고 많다. 손잡이는 가늘고 곧은 검정 그립과 금속 릴시트, 끝에 금속 마개.',
+    jigbait: '짧고 굵은 양축 지깅 낚싯대 한 대(1.8m — 다른 낚싯대의 3분의 1 길이). 화면 대각선의 3분의 2 길이만 차지하게 짧게 그린다. '
+      + '가이드는 대의 윗면에 있고 크고 튼튼하다. 릴시트 아래쪽에 검지를 거는 방아쇠 모양 돌기(트리거), 그 뒤로 아주 긴 검정 EVA 뒷손잡이(겨드랑이에 끼는 길이).',
+    jigspin: '짧고 굵은 스피닝 지깅 낚싯대 한 대(1.8m). 화면 대각선의 3분의 2 길이만 차지하게 짧게 그린다. '
+      + '가이드는 크고 튼튼한 은색 고리 대여섯 개(손잡이 쪽이 가장 크다). 짧은 앞 손잡이 + 금속 릴시트 + 아주 긴 검정 EVA 뒷손잡이.',
+    cast: '굵은 캐스팅(포핑) 낚싯대 한 대(2.5m). 블랭크가 끝까지 굵고 힘이 있다. 가이드는 아주 크고 튼튼한 은색 고리(손잡이 쪽 첫 가이드가 주먹만 하다). '
+      + '긴 검정 EVA 앞 손잡이 + 굵은 금속 릴시트 + 아주 긴 뒷손잡이, 손잡이 끝은 십자 홈이 파인 금속 마개(짐벌).',
+    biggame: '아주 짧고 아주 굵은 스탠드업(트롤링) 낚싯대 한 대(1.7m — 뭉툭하다). 화면 대각선의 3분의 2 길이만 차지하게 그린다. '
+      + '가이드는 고리가 아니라 작은 바퀴가 달린 롤러 가이드 네댓 개가 대의 윗면에 있고 끝에도 롤러. 두꺼운 검정 EVA 앞 손잡이, '
+      + '굵은 금속 릴시트, 그 뒤로 굵은 알루미늄 파이프 손잡이(버트)와 십자 홈 금속 마개(짐벌).',
+    shorejig: '굵고 빳빳한 쇼어지깅 낚싯대 한 대(3m 남짓). 블랭크는 끝까지 굵기가 크게 줄지 않는다. 가이드는 크고 튼튼한 은색 고리가 듬성듬성. '
+      + '짧은 앞 손잡이 + 금속 릴시트 + 긴 뒷손잡이(검정 EVA), 끝에 고무 마개.',
+    surf: '굵고 곧은 대물 원투 낚싯대 한 대(4.25m). 초릿대 끝 한 뼘은 형광 노랑, 가이드는 대여섯 개뿐이고 손잡이 쪽으로 갈수록 크게 커진다. '
+      + '손잡이는 길고 곧은 검정 그립과 금속 릴시트.',
+  }[kind];
+  return `${K} ${BRAND_LOOK[brand]}. ${extra}${ROD_POSE}`;
+};
+const bigRod = (key, nameKo, nameEn, kind, brand, extra) => [key, { group: 'big', file: `${key.replace(/^item_/, '')}.png`, nameKo, nameEn, aspect: '1:1', refs: REF_ROD, look: rodLook(kind, brand, extra) }];
+
+const SPIN_POSE = '참고 그림의 스피닝릴과 같은 각도 · 같은 구성(위에 스풀, 다리와 몸통, 옆으로 뻗은 손잡이)이다. ';
+const spinLook = (size, body, line, extra = '') => `바다 대물용 아주 큰 ${size}번 스피닝릴 하나. ${SPIN_POSE}`
+  + `참고 그림의 릴보다 훨씬 크고 두껍고 각진 통금속 몸통 — ${body}. 스풀은 크고 깊으며 ${line} 합사가 꽉 감겨 있다. `
+  + `굵은 손잡이 팔 끝에 주먹만 한 둥근 금속 파워 노브. ${extra}`;
+const CONV_POSE = '비스듬히 위에서 본 모습. ';
+const bigReel = (key, nameKo, nameEn, look) => [key, { group: 'big', file: `${key.replace(/^item_/, '')}.png`, nameKo, nameEn, aspect: '1:1', refs: REF_REEL, look }];
+const ishidaiLook = (body, extra = '') => `돌돔 낚시용 양축릴 하나(북처럼 둥근 통 모양 — 스피닝릴이 아니다). ${CONV_POSE}`
+  + `둥근 옆판 두 장 사이에 넓고 큰 스풀이 가로로 놓이고, 스풀에는 굵은 형광 노랑 나일론 줄이 가득 감겨 있다. ${body}. `
+  + `옆판 한쪽에 별 모양 드랙 손잡이(스타 드랙)와 긴 손잡이 팔 · 큰 둥근 노브, 아래에는 낚싯대에 물리는 금속 발. ${extra}`;
+const jigLook = (body, extra = '') => `지깅용 양축릴 하나(둥글고 폭이 좁은 통 모양 — 스피닝릴이 아니다). ${CONV_POSE}`
+  + `둥근 옆판 사이에 폭이 좁고 깊은 스풀이 있고 5색 합사가 감겨 있다. ${body}. `
+  + `옆판에 별 모양 드랙 손잡이와 아주 긴 외팔 손잡이, 끝에 큰 T자 파워 노브. 위쪽에 줄을 푸는 클러치 레버. ${extra}`;
+const leverLook = (size, body, extra = '') => `트롤링 · 스탠드업용 ${size} 레버 드랙 릴 하나(크고 무거운 북 모양 양축릴). ${CONV_POSE}`
+  + `두꺼운 둥근 옆판 사이에 아주 넓고 깊은 스풀, 굵은 줄이 가득 감겨 있다. ${body}. `
+  + `옆판 위쪽에 앞뒤로 미는 긴 드랙 레버(끝이 둥근 손잡이)와 눈금 호, 옆에 굵은 손잡이 팔과 큰 T자 노브. `
+  + `위쪽 틀 양옆에 어깨끈을 거는 금속 고리 두 개, 아래에 낚싯대에 조이는 금속 발과 죔쇠. ${extra}`;
+
+const LINE_POSE = '첫 번째 참고 그림의 낚싯줄 스풀과 같은 모양 · 같은 각도. ';
+const bigItem = (key, nameKo, nameEn, refs, aspect, look) => [key, { group: 'big', file: `${key.replace(/^item_/, '')}.png`, nameKo, nameEn, aspect, refs, look }];
+
+Object.assign(LOOKS, Object.fromEntries([
+  // ── 낚싯대 20 ──
+  bigRod('item_rod_ishidai_nj', '돌돔 원투대(엔제이)', 'Knifejaw bottom rod', 'ishidai', 'nj'),
+  bigRod('item_rod_ishidai_daio', '돌돔 원투대(다이오)', 'Knifejaw bottom rod', 'ishidai', 'daio'),
+  bigRod('item_rod_ishidai_gama', '돌돔 원투대(가마모토)', 'Knifejaw bottom rod', 'ishidai', 'gama'),
+  bigRod('item_rod_iso3_haewon', '대물 갯바위 찌낚시대(해원)', 'Heavy float rod', 'iso3', 'haewon'),
+  bigRod('item_rod_iso3_gama', '대물 갯바위 찌낚시대(가마모토)', 'Heavy float rod', 'iso3', 'gama'),
+  bigRod('item_rod_jig_minor', '양축 지깅대(마이너크래프트)', 'Overhead jigging rod', 'jigbait', 'minor'),
+  bigRod('item_rod_jig_yamano', '스피닝 지깅대(야마노블랭크)', 'Spinning jigging rod', 'jigspin', 'yamano'),
+  bigRod('item_rod_jig_somano', '양축 지깅대(소마노)', 'Overhead jigging rod', 'jigbait', 'somano'),
+  bigRod('item_rod_jig_nj', '스피닝 지깅대(엔제이)', 'Spinning jigging rod', 'jigspin', 'nj'),
+  bigRod('item_rod_cast_minor', '캐스팅대(마이너크래프트)', 'Offshore casting rod', 'cast', 'minor'),
+  bigRod('item_rod_cast_nj', '캐스팅대(엔제이)', 'Offshore casting rod', 'cast', 'nj'),
+  bigRod('item_rod_cast_yamano', '캐스팅대(야마노블랭크)', 'Offshore casting rod', 'cast', 'yamano'),
+  bigRod('item_rod_cast_somano', '참다랑어 캐스팅대(소마노)', 'Tuna casting rod', 'cast', 'somano', '다른 캐스팅대보다 한층 굵다. '),
+  bigRod('item_rod_cast_daio', '참다랑어 캐스팅대(다이오)', 'Tuna casting rod', 'cast', 'daio', '다른 캐스팅대보다 한층 굵다. '),
+  bigRod('item_rod_bg_penson', '스탠드업대 50lb(펜슨)', 'Stand-up rod 50lb', 'biggame', 'penson'),
+  bigRod('item_rod_bg_somano', '스탠드업대 80lb(소마노)', 'Stand-up rod 80lb', 'biggame', 'somano'),
+  bigRod('item_rod_bg_daio', '트롤링대 130lb(다이오)', 'Trolling rod 130lb', 'biggame', 'daio', '알루미늄 손잡이(버트)가 아래로 살짝 굽어 있다. '),
+  bigRod('item_rod_shorejig_minor', '쇼어지깅대(마이너크래프트)', 'Shore jigging rod', 'shorejig', 'minor'),
+  bigRod('item_rod_shorejig_yamano', '쇼어지깅대(야마노블랭크)', 'Shore jigging rod', 'shorejig', 'yamano'),
+  bigRod('item_rod_surf_somano', '대물 원투대(소마노)', 'Heavy surf rod', 'surf', 'somano'),
+  // ── 릴 20 ──
+  bigReel('item_reel_sw8000_daio_bg', '대형 스피닝릴 8000번(다이오 보급형)', 'Saltwater spinning reel 8000', spinLook(8000, '무광 검정 몸통에 금색 테 두 줄', '형광 녹색')),
+  bigReel('item_reel_sw8000_penson', '대형 스피닝릴 8500번(펜슨)', 'Saltwater spinning reel 8500', spinLook(8500, '검정 몸통에 금색 스풀 · 금색 옆판', '노란', '몸통이 유난히 두껍고 투박하다. ')),
+  bigReel('item_reel_sw8000_somano', '대형 스피닝릴 8000번(소마노 고급형)', 'Flagship spinning reel 8000', spinLook(8000, '매끈한 은색 · 짙은 청색 몸통에 금색 가는 테', '5색(빨강 · 노랑 · 초록 · 파랑 · 분홍)')),
+  bigReel('item_reel_sw14000_daio_bg', '대형 스피닝릴 14000번(다이오 보급형)', 'Saltwater spinning reel 14000', spinLook(14000, '무광 검정 몸통에 금색 테 두 줄', '흰')),
+  bigReel('item_reel_sw14000_somano', '대형 스피닝릴 14000번(소마노)', 'Saltwater spinning reel 14000', spinLook(14000, '짙은 남색 몸통에 은색 테', '형광 연두')),
+  bigReel('item_reel_sw14000_daio', '대형 스피닝릴 14000번(다이오 고급형)', 'Flagship spinning reel 14000', spinLook(14000, '통알루미늄을 깎은 검정 몸통에 금색 스풀 테 · 붉은 가는 띠', '5색')),
+  bigReel('item_reel_sw18000_penson', '대형 스피닝릴 10500번(펜슨)', 'Saltwater spinning reel 10500', spinLook(10500, '검정 몸통에 금색 스풀 · 금색 옆판', '노란', '몸통이 유난히 두껍고 무거워 보인다. ')),
+  bigReel('item_reel_sw20000_daio', '대형 스피닝릴 20000번(다이오 고급형)', 'Flagship spinning reel 20000', spinLook(20000, '통알루미늄을 깎은 검정 몸통에 금색 스풀 테 · 붉은 가는 띠', '흰', '스풀이 몸통만큼 크다. ')),
+  bigReel('item_reel_sw20000_somano', '대형 스피닝릴 20000번(소마노 고급형)', 'Flagship spinning reel 20000', spinLook(20000, '매끈한 은색 · 짙은 청색 몸통에 금색 가는 테', '형광 주황', '스풀이 몸통만큼 크다. ')),
+  bigReel('item_reel_sw30000_somano', '초대형 스피닝릴 30000번(소마노)', 'Giant spinning reel 30000', spinLook(30000, '매끈한 은색 · 짙은 청색 몸통에 금색 가는 테', '5색', '스풀이 유난히 크고 깊어 릴 전체가 위로 길다. ')),
+  bigReel('item_reel_ishidai_banex', '돌돔 양축릴(바넥스)', 'Knifejaw conventional reel', ishidaiLook('옆판은 은색이고 빨간 포인트 띠')),
+  bigReel('item_reel_ishidai_daio', '돌돔 양축릴(다이오)', 'Knifejaw conventional reel', ishidaiLook('옆판은 광택 검정에 금색 테')),
+  bigReel('item_reel_ishidai_somano', '돌돔 양축릴(소마노)', 'Knifejaw conventional reel', ishidaiLook('옆판은 짙은 청색에 은색 테', '옆판 위에 작은 수심 표시창(네모난 유리창 — 숫자는 없다). ')),
+  bigReel('item_reel_jig_banex', '지깅 양축릴(바넥스)', 'Jigging conventional reel', jigLook('옆판은 은색이고 빨간 포인트 띠')),
+  bigReel('item_reel_jig_somano', '지깅 양축릴(소마노)', 'Jigging conventional reel', jigLook('옆판은 금색 · 짙은 회색 두 색')),
+  bigReel('item_reel_jig_daio', '지깅 양축릴(다이오)', 'Jigging conventional reel', jigLook('옆판은 광택 검정에 금색 테 · 붉은 띠')),
+  bigReel('item_reel_ld_daio', '레버 드랙 릴 50(다이오)', 'Lever drag reel 50', leverLook('50번', '옆판은 무광 검정에 금색 테', '스풀에는 짙은 녹색 줄. ')),
+  bigReel('item_reel_ld_penson30', '레버 드랙 릴 30(펜슨)', 'Lever drag reel 30', leverLook('30번', '옆판 · 틀 · 스풀이 모두 금색 아노다이징', '다른 트롤링 릴보다 작고 날렵하다. 스풀에는 형광 노랑 줄. ')),
+  bigReel('item_reel_ld_penson50', '레버 드랙 릴 50W(펜슨)', 'Lever drag reel 50 wide', leverLook('50W', '옆판 · 틀 · 스풀이 모두 금색 아노다이징', '스풀 폭이 넓다(와이드). 스풀에는 형광 노랑 줄. ')),
+  bigReel('item_reel_ld_somano', '레버 드랙 릴 80W(소마노)', 'Lever drag reel 80 wide', leverLook('80W', '옆판 · 틀은 금색이고 가는 검정 띠', '가장 크고 육중하다 — 스풀 폭이 아주 넓다. 스풀에는 흰 줄. ')),
+  // ── 줄 6 ──
+  bigItem('item_line_pe_offshore', '굵은 합사 원줄 스풀(보급형)', 'Heavy PE braid spool', REF_LINE, '1:1',
+    `굵은 합사(PE) 원줄 큰 스풀 하나. ${LINE_POSE}보통 스풀보다 지름이 크고 폭이 넓다. 검정 플라스틱 테에 굵은 5색 합사(빨강 · 노랑 · 초록 · 파랑 · 분홍 띠)가 두툼하게 감겨 있고, 옆면 라벨은 글자 없이 주황색 띠만.`),
+  bigItem('item_line_pe_solline', '굵은 8합사 원줄 스풀(솔라인)', 'Heavy 8-braid PE spool', REF_LINE, '1:1',
+    `굵은 8합사(PE) 원줄 큰 스풀 하나. ${LINE_POSE}보통 스풀보다 지름이 크고 폭이 넓다. 짙은 초록 플라스틱 테에 매끈하고 굵은 5색 합사가 두툼하게 감겨 있고, 옆면 라벨은 글자 없이 금색 띠만.`),
+  bigItem('item_line_pe_baribos', '굵은 캐스팅 합사 스풀(바리보스)', 'Heavy casting PE spool', REF_LINE, '1:1',
+    `굵은 캐스팅용 합사(PE) 원줄 큰 스풀 하나. ${LINE_POSE}보통 스풀보다 지름이 크고 폭이 넓다. 흰색 · 은색 플라스틱 테에 굵은 단색 연두빛 합사가 두툼하게 감겨 있고, 옆면 라벨은 글자 없이 빨간 띠만.`),
+  bigItem('item_line_shock_nylon', '나일론 쇼크리더 스풀', 'Nylon shock leader spool', REF_LINE, '1:1',
+    '굵은 나일론 쇼크리더 스풀 하나. 납작하고 지름이 큰 반투명 흰 플라스틱 스풀(가운데 구멍이 크다)에 연필심만큼 굵은 투명 분홍빛 나일론 줄이 몇 겹 감겨 있다. 줄 끝 한 가닥이 스풀 밖으로 살짝 나와 있다. 옆면 라벨은 글자 없이 파란 띠만.'),
+  bigItem('item_line_shock_fluoro', '카본 쇼크리더 스풀', 'Fluorocarbon shock leader spool', REF_LINE, '1:1',
+    '굵은 카본 쇼크리더 스풀 하나. 납작하고 지름이 큰 검정 플라스틱 스풀(가운데 구멍이 크다)에 연필심만큼 굵은 맑은 투명 카본 줄이 몇 겹 감겨 있다. 줄 끝 한 가닥이 스풀 밖으로 살짝 나와 있다. 옆면 라벨은 글자 없이 은색 띠만.'),
+  bigItem('item_line_ishidai', '돌돔 나일론 원줄 스풀', 'Heavy knifejaw nylon spool', REF_LINE, '1:1',
+    `돌돔 낚시용 굵은 나일론 원줄 큰 스풀 하나. ${LINE_POSE}보통 스풀보다 지름이 크다. 검정 플라스틱 테에 아주 굵은 형광 노랑 나일론 줄이 두툼하게 감겨 있고, 옆면 라벨은 글자 없이 빨간 띠만.`),
+  // ── 바늘 2 ──
+  bigItem('item_hook_ishidai', '돌돔 바늘', 'Knifejaw hook', REF_METAL, '1:1',
+    '돌돔 바늘 한 개. 아주 굵고 짧은 검은 니켈 낚싯바늘 — 허리가 짧고 품(굽은 폭)이 넓으며 끝이 안쪽으로 살짝 말려 있고 미늘이 하나. 바늘귀는 납작한 판(귀가 없는 넓적 귀). 옆에서 본 모습, 크게.'),
+  bigItem('item_hook_tuna', '참치 서클 훅', 'Tuna circle hook', REF_METAL, '1:1',
+    '참치 낚시용 서클 훅 한 개. 아주 굵은 은색 스테인리스 낚싯바늘 — 바늘 끝이 허리 쪽으로 둥글게 말려 거의 원을 이루고, 위쪽에 둥근 고리(바늘귀)가 있다. 옆에서 본 모습, 크게.'),
+  // ── 루어 4 ──
+  bigItem('item_lure_jig_big', '대형 롱 메탈지그', 'Long metal jig', REF_LURE, '4:3',
+    '대형 롱 메탈지그 하나(손 한 뼘 반 길이). 두 번째 참고 그림의 메탈지그와 같은 각도지만 훨씬 길고 날씬한 칼날 모양 금속 몸통. 등은 파랑, 옆구리는 은색 홀로그램 비늘 무늬, 배는 분홍. 머리에 검은 눈, 앞뒤 끝에 작은 금속 고리. 바늘은 없다.'),
+  bigItem('item_lure_pencil', '다이빙 펜슬', 'Diving pencil lure', REF_LURE, '4:3',
+    '다이빙 펜슬 루어 하나(손 한 뼘 반 길이). 굵은 연필 · 물고기 모양의 나무 플러그 — 머리 쪽이 가늘고 배 쪽이 통통하다. 등은 짙은 청록, 옆구리는 은색 자개 무늬, 배는 흰색, 큰 검은 눈과 붉은 아가미 선. 배 아래와 꼬리 끝에 굵은 세 갈래 바늘(트레블 훅)이 하나씩, 주둥이 끝에 금속 고리.'),
+  bigItem('item_lure_popper', '대형 포퍼', 'Popper lure', REF_LURE, '4:3',
+    '대형 포퍼 루어 하나. 굵은 병 모양 나무 플러그 — 머리 앞면이 숟가락처럼 오목하게 파여 있고(물을 튀기는 컵) 꼬리로 갈수록 가늘다. 등은 주황 · 노랑, 옆구리는 금색 자개 무늬, 배는 흰색, 큰 검은 눈. 배 아래와 꼬리 끝에 굵은 세 갈래 바늘이 하나씩, 오목한 앞면 가운데에 금속 고리.'),
+  bigItem('item_lure_troll', '트롤링 스커트 루어', 'Trolling skirt lure', REF_LURE, '4:3',
+    '트롤링 스커트 루어 하나. 앞에 총알 모양의 맑은 수지 머리(안에 큰 눈알과 자개 조각이 박혀 있다), 그 뒤로 문어 다리처럼 길게 늘어진 비닐 술(스커트)이 보라 · 검정 · 분홍 여러 가닥. 술 끝에서 굵은 은색 바늘 끝이 살짝 나와 있고, 머리 앞으로 굵은 투명 줄 한 가닥이 짧게.'),
+]));
+
 const STYLE_INTRO = '첨부한 그림 세 장은 화풍 참고용입니다. 이 그림들과 같은 픽셀 아트 화풍으로 낚시 장비(또는 낚시꾼의 물건) 하나를 새로 그려 주세요. '
   + '같은 도트 크기, 물건 둘레 전체를 감싸는 진한 윤곽선, 밝은 하이라이트와 어두운 그늘의 단계, 사실적인 색과 재질(금속 · 플라스틱 · 천 · 고무 · 나무) 표현을 맞춥니다. '
   + '참고 그림 속 물건은 그리지 마세요(설명이 같은 모양 · 같은 각도를 요구할 때만 따라 합니다).';

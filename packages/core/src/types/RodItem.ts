@@ -18,9 +18,17 @@ export type RodUse =
   | 'eging'          // 에깅대 — 무늬오징어 에기
   | 'boat_bait'      // 선상 베이트대 — 타이라바 · 슬로우지깅(던지지 않고 내린다)
   | 'hole'           // 구멍치기대 — 짧고 뻣뻣하다, 테트라포드 틈
-  | 'budget';        // 다용도 싸구려 짧은 대
+  | 'budget'         // 다용도 싸구려 짧은 대
+  // ── 324차 대물 장비 ──
+  | 'ishidai'        // 돌돔 원투대(석조대) — 굵은 나일론 + 양축릴, 갯바위 발밑 · 근거리 처박기
+  | 'offshore_jig'   // 지깅대 — 무거운 메탈지그를 내려 저킹한다(방어 · 부시리 · 잿방어)
+  | 'offshore_cast'  // 캐스팅대(포핑 · 펜슬) — 큰 플러그를 던져 수면을 친다(부시리 · 참다랑어)
+  | 'big_game';      // 스탠드업 · 트롤링대 — 던지지 않는다. 레버 드랙 릴로 버틴다(참다랑어 · 새치)
 
-/** 릴 종류 — 대의 릴 시트와 가이드가 정한다 */
+/**
+ * 릴 종류 — 대의 릴 시트와 가이드가 정한다.
+ * 324차 — 양축릴(`bait`)에는 베이트릴 · 돌돔 양축릴 · 지깅 양축릴 · 레버 드랙 트롤링릴이 모두 든다(가이드가 위로 난 대에 단다).
+ */
 export type ReelKind = 'spinning' | 'bait';
 
 /** 원줄 재질 기준(적합 호수의 단위) */
@@ -46,12 +54,16 @@ export interface RodItemSpec {
   telescopic: boolean;
   /** 자중(g) */
   weightG: number;
+  /** 324차 — 만든 곳(게임 안 가상 상표). 같은 제원이라도 만든 곳마다 자중 · 내구도 · 손맛이 조금씩 다르다 */
+  brand?: string;
+  /** 324차 — 내구도 배수(1 = 값대로). 튼튼하게 만든 대는 1보다 크다 */
+  durabilityMult?: number;
 }
 
 /** 릴 제원 */
 export interface ReelItemSpec {
   kind: ReelKind;
-  /** 번수(스피닝 1000~6000) · 베이트 100~300 */
+  /** 번수(스피닝 1000~30000) · 베이트 100~300 · 양축 · 트롤링 릴은 제 번수 표기(2000 · 30 · 50) */
   size: number;
   /** 최대 드랙(kg) */
   maxDragKg: number;
@@ -61,6 +73,14 @@ export interface ReelItemSpec {
   lineCapM: number;
   /** 비거리 배율 — 원투 전용 롱캐스트 스풀은 1보다 크다, 베이트는 엄지 제어로 작다 */
   castMult: number;
+  /** 324차 — 자중(g). 없으면 번수로 어림한다(`reelWeightG`) */
+  weightG?: number;
+  /** 324차 — 만든 곳(게임 안 가상 상표) */
+  brand?: string;
+  /** 324차 — 내구도 배수(1 = 값대로) */
+  durabilityMult?: number;
+  /** 324차 — 레버 드랙(트롤링 · 스탠드업 릴). 드랙을 레버로 그때그때 조인다 — 큰 고기 전용 */
+  leverDrag?: boolean;
 }
 
 /** 채비 무게가 대의 적합 범위 어디에 있나 */
@@ -73,6 +93,8 @@ export interface RodCatalogEntry {
   priceWon: number;
   spec: RodItemSpec;
   descKo: string;
+  /** 324차 — 이 대만의 그림 키(없으면 용도별 그림) */
+  art?: string;
 }
 
 /** 상점 릴 하나 */
@@ -82,4 +104,6 @@ export interface ReelCatalogEntry {
   priceWon: number;
   spec: ReelItemSpec;
   descKo: string;
+  /** 324차 — 이 릴만의 그림 키(없으면 종류 · 번수별 그림) */
+  art?: string;
 }

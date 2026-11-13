@@ -318,6 +318,11 @@ python3.13 tools/item_art/build.py --only __none__                              
 - 위키: `gen_wiki_images.py`가 같은 표로 원본을 읽는다. **아티팩트 한 판 파일 상한 511 · 한 번 발행 255** — `gen_game_wiki_data.mjs`가 8KB 이하 그림을
   HTML 안에 넣고(`tools/wiki_img/inlined.txt`) 파일로 둘 것만 `used.txt`에 적는다. 발행은 바뀐 · 새 그림만 올리고, 아티팩트에 있는데 `used.txt`에 없는 것은 `null`.
 
+- **큰 고기용 장비는 장비마다 한 장**(324 — `--group big` 52장: 대 20 · 릴 20 · 줄 · 바늘 · 루어 12). 생김새는 `LOOKS`의 `rodLook` · `spinLook` · `ishidaiLook` · `jigLook` · `leverLook`이
+  만든 곳 색(`BRAND_LOOK`)과 함께 짠다 — 같은 급이라도 만든 곳마다 몸체 색 · 띠 · 손잡이가 다르다. 실제 상표 · 글자는 그리지 않는다.
+  배선 = core 카탈로그 항목의 `art` 키(`RodCatalogEntry.art` · `ReelCatalogEntry.art` · 루어 `art`) → `TackleTextures.rodArtKey` · `reelArtKey` · `lureArtKey`가 먼저 본다(없으면 용도 · 번수별 그림).
+  새 장비를 넣으면 `TACKLE_IMAGE_FILES`에 키를 더하고 `node tools/tackle_cards.cjs`로 카드 · 아이콘을 굽는다. 위키는 `python3.13 tools/gen_wiki_images.py` → `node tools/dump_wiki_items.mjs` → 생성기.
+
 ## ⑨ 장비 밖 아이템 그림 — Gemini · 합성 · 별칭 · 요리 사진 (255차)
 
 코드로 그린 임시 그림(`art_*` — `tools/item_art/`) · 16px 손그림(`px:*`) · 그림이 없던 아이템(가구)을 249차 장비와 같은 카드 방식으로 바꾼다.

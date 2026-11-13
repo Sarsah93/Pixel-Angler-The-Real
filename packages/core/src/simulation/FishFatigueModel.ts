@@ -17,6 +17,8 @@
  * 순수 TS — 렌더/브라우저 API 없음.
  */
 
+import { TUNING } from '../config/tuning.js';
+
 /** 피로 페이즈 */
 export type FatiguePhase = 'RUN' | 'LULL' | 'SURGE' | 'SPENT';
 
@@ -30,6 +32,9 @@ export const STAMINA_BASE: Record<string, number> = {
   amberjack: 1.8,           // 부시리
   greater_amberjack: 1.9,   // 잿방어
   bluefin_tuna: 2.4,        // 참다랑어 — 301(2) 참치류: 부분 온혈이라 방어류보다 오래 달린다(「한 번 달리면 줄이 수백 미터」)
+  bigeye_tuna: 2.3,         // 눈다랑어 — 324: 참다랑어에 버금간다(깊이 박는 지구전)
+  swordfish: 2.6,           // 황새치 — 324: 가장 오래 버티는 고기(밤새 싸우는 일도 있다)
+  striped_marlin: 2.1,      // 청새치 — 324: 뛰어오르며 빨리 지친다(방어류보다는 오래)
   spanish_mackerel: 1.0,    // 삼치
   pacific_cod: 1.2,         // 대구
   red_seabream: 1.1,        // 참돔
@@ -45,6 +50,27 @@ export const DEFAULT_STAMINA_BASE = 0.9;
 export function staminaMaxFor(speciesId: string, weightKg: number): number {
   const base = STAMINA_BASE[speciesId] ?? DEFAULT_STAMINA_BASE;
   return base * Math.max(0.35, Math.pow(Math.max(0.05, weightKg), 0.6));
+}
+
+/**
+ * 324차 — 초당 탈출 확률의 체급 배수(0~1). 스태미나 풀이 큰 고기는 지치는 데 √풀만큼 오래 걸린다 —
+ * 초당 확률을 그만큼 낮춰 「싸움 한 판의 탈출 위험」이 체급과 무관하게 비슷하도록 맞춘다. 기준 이하 고기는 1.
+ */
+export function fightEscapeScale(speciesId: string, weightKg: number): number {
+  const pool = Math.max(0.01, staminaMaxFor(speciesId, weightKg));
+  // 대응만으로 제압되지 않는 체급(`fightSubdueBonusCap` < 100)은 지칠 때까지 싸움이 그만큼 더 길다 — 그 몫만큼 더 낮춘다
+  return Math.min(1, Math.sqrt(TUNING.fightPhys.escapeRefStamina / pool)) * Math.min(1, TUNING.fightPhys.subdueRefStamina / pool);
+}
+
+/**
+ * 324차 — 대응(정대응 · 안전대 릴링)만으로 채울 수 있는 제압도 상한(0~100).
+ * 제압도 = 피로 몫 + 대응 몫인데, 옛 식은 대응 몫이 체급과 무관하게 10여 초면 100까지 찼다 —
+ * 111kg 참다랑어도 지치기 전에 「제압」돼 끌려왔다. 기준 풀(참다랑어 25kg급)보다 큰 고기는
+ * 대응 몫의 상한이 √(기준 ÷ 풀)로 낮아지고, 모자란 만큼은 고기가 실제로 지쳐야 채워진다.
+ */
+export function fightSubdueBonusCap(speciesId: string, weightKg: number): number {
+  const pool = staminaMaxFor(speciesId, weightKg);
+  return 100 * Math.min(1, Math.sqrt(TUNING.fightPhys.subdueRefStamina / Math.max(0.01, pool)));
 }
 
 export interface FatigueInput {

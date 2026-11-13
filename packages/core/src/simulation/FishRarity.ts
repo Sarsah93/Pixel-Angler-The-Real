@@ -15,12 +15,14 @@
 import { ORACLE_FISH_DB, type FishBodyForm } from './FishSpawningOracle.js';
 import { FISH_DATABASE } from '../db-schema/FishDatabase.js';
 import { lineStrengthKgOf, type LineStrengthSource } from '../rules/LineStrength.js';
+import { TUNING } from '../config/tuning.js';
 
 /** 어종군 — 파이팅 가속 배수·희귀도 하한·가이드 문구가 공유하는 분류 */
 export type FightGroup =
   | 'seabream'      // 돔류 — 감성돔·참돔·돌돔·강담돔·벵에돔류 (여 박기, 순간 3~5배)
   | 'amberjack'     // 방어류 — 방어·부시리·잿방어 (횡 러닝, 지구력)
   | 'tuna'          // 참치류 — 참다랑어 (301(2) P-0029 — 방어류와 같은 방추형 러너지만 체급 2.4배 · 온혈 지구력 · 수직 하강)
+  | 'billfish'      // 새치류 — 황새치 · 청새치 (324 — 수면 위로 뛰며 머리를 턴다 · 긴 러닝 · 참치류보다 순간 힘은 조금 낮다)
   | 'mackerel'      // 고등어·전갱이·삼치·꽁치·학꽁치 (빠르고 짧은 러닝)
   | 'rockfish'      // 볼락·열기·우럭·쏨뱅이 (짧은 박기)
   | 'flatfish'      // 광어·도다리·서대 (무겁지만 힘은 약함)
@@ -46,6 +48,7 @@ export function fightGroupOf(speciesId: string): FightGroup {
   if (SEABREAM.has(speciesId)) return 'seabream';
   if (AMBERJACK.has(speciesId)) return 'amberjack';
   if (TUNA.has(speciesId) || /tuna$|skipjack|bonito/.test(speciesId)) return 'tuna';   // 301(2) — 앞으로 더할 가다랑어 · 다랑어도 같은 군
+  if (/swordfish|marlin|sailfish|spearfish/.test(speciesId)) return 'billfish';            // 324 — 새치류
   if (MACKEREL.has(speciesId)) return 'mackerel';
   if (FLATFISH.has(speciesId)) return 'flatfish';
   if (CEPH.has(speciesId)) return 'cephalopod';
@@ -53,6 +56,20 @@ export function fightGroupOf(speciesId: string): FightGroup {
   // 322차 — 바리류(붉바리 · 자바리 · 능성어 · 다금바리)도 굴로 처박는 짧은 다이브다(힘은 `basePower` · 체중이 받친다)
   if (/rockfish|snapper|scorpion|greenling|grouper|sawedged/.test(speciesId)) return 'rockfish';
   return 'other';
+}
+
+/**
+ * 324 — **이 개체의 순간 가속 배수**(체중 대비). 어종군 배수(`TUNING.fightPhys.burst`)에 체급 보정을 건다:
+ * 기준 체장(`burstRefCm`)보다 큰 개체는 `(기준 / 체장)^burstSizeExp`만큼 준다(근력 ∝ L² · 체중 ∝ L³).
+ * 180cm · 111kg 참다랑어 = 5.0 × 110 / 180 ≈ 3.06 — 요구 장력 약 374kg(보정이 없으면 590kg).
+ * 기준 이하 개체 · 기준이 없는 군 · 체장을 모를 때는 군 배수 그대로다.
+ */
+export function fightBurstMult(speciesId: string, lengthCm?: number): number {
+  const g = fightGroupOf(speciesId);
+  const base = TUNING.fightPhys.burst[g];
+  const ref = TUNING.fightPhys.burstRefCm[g];
+  if (!ref || !lengthCm || lengthCm <= ref) return base;
+  return base * Math.pow(ref / lengthCm, TUNING.fightPhys.burstSizeExp);
 }
 
 /**
@@ -108,7 +125,7 @@ export function fishRarity(speciesId: string, lengthCm: number): FishRarityInfo 
   const g = fightGroupOf(speciesId);
   // 돔류·방어류 하한 = 우량(노랑) — 단 평균의 0.8배 이하(소형)는 초록을 유지한다(20cm 잿방어가 '우량'이면 어색)
   // 301(2) — 참치류도 대물군이라 같은 하한
-  if ((g === 'seabream' || g === 'amberjack' || g === 'tuna') && tier === 'common') tier = 'fine';
+  if ((g === 'seabream' || g === 'amberjack' || g === 'tuna' || g === 'billfish') && tier === 'common') tier = 'fine';
   const st = RARITY_STYLE[tier];
   return { tier, ratio, label: st.label, color: st.color, tint: st.tint };
 }

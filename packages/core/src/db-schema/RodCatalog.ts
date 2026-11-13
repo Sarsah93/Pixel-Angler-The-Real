@@ -3,6 +3,7 @@
  * @description 낚싯대 · 릴 제원표 (209차).
  *
  * - 상점 라인업(수산물 직판장 채비 코너) = `ROD_SHOP` 14자루 · `REEL_SHOP` 6개.
+ * - 324차 큰 고기용 = `BIG_GAME_ROD_SHOP` 20자루 · `BIG_GAME_REEL_SHOP` 20개(돌돔 · 지깅 · 캐스팅 · 스탠드업 — 만든 곳별로 자중 · 내구도가 다르다).
  * - 이미 있던 대(아버지 대 · 사이소 민물대 · 이야기 보상 · 수제)는 `ROD_SPEC_BY_ID`에 제원만 붙인다.
  * - 제원은 아이템에 저장하지 않는다 — id로 조회(구세이브 백필 불필요), 모르는 id는 이름 · 가격으로 추정.
  *
@@ -75,9 +76,99 @@ export const ROD_SHOP: RodCatalogEntry[] = [
     descKo: '짧고 뻣뻣한 테트라포드 구멍치기 전용대. 걸면 바로 틈에서 뽑아낸다.' },
 ];
 
+/**
+ * 324차 — 큰 고기용 낚싯대(만든 곳 · 내구도 배수까지). 같은 급이라도 만든 곳마다 자중 · 내구도 · 받는 무게가 조금씩 다르다.
+ * 만든 곳 이름은 전부 가상이다(크레딧 「게임 내 장비 브랜드명은 실존 브랜드와 무관한 가상의 명칭」).
+ */
+const bigRod = (
+  brand: string, durabilityMult: number,
+  use: RodUse, lengthM: number, grade: string, lineNo: [number, number], lineBasis: 'nylon' | 'pe',
+  loadG: [number, number], powerKg: number, pieces: number, telescopic: boolean, weightG: number,
+  reel: 'spinning' | 'bait' = 'spinning',
+): RodItemSpec => ({ ...rod(use, lengthM, grade, lineNo, lineBasis, loadG, powerKg, pieces, telescopic, weightG, reel), brand, durabilityMult });
+
+/**
+ * 324차 큰 고기용 낚싯대 20자루 — 돌돔 원투 3 · 대물 찌낚시 2 · 지깅 4 · 캐스팅 5 · 스탠드업 3 · 쇼어지깅(만든 곳 다른 것) 2 · 원투 대물 1.
+ * 「견디는 하중」은 줄 · 릴 드랙 중 약한 쪽이 이 값의 1.5배를 넘으면 파이팅 중 대가 먼저 부러질 수 있다는 뜻이다.
+ */
+export const BIG_GAME_ROD_SHOP: RodCatalogEntry[] = [
+  // ── 돌돔 원투대(석조대) — 굵은 나일론 16~20호 + 양축릴 · 봉돌 30~50호 ──
+  { id: 'rod_ishidai_nj_530', nameKo: '엔제이 흑조 돌돔 MH 5.3m', priceWon: 185000, art: 'item_rod_ishidai_nj',
+    spec: bigRod('엔제이', 1.1, 'ishidai', 5.3, 'MH', [14, 20], 'nylon', [112, 170], 14, 5, false, 560, 'bait'),
+    descKo: '돌돔 · 강담돔 원투 입문대. 무겁지만 값이 싸고 허리가 질기다. 봉돌 30~45호를 발밑 골에 던져 넣고 초릿대로 입질을 본다.' },
+  { id: 'rod_ishidai_daio_525', nameKo: '다이오 대물 석조 H 5.25m', priceWon: 420000, art: 'item_rod_ishidai_daio',
+    spec: bigRod('다이오', 1.0, 'ishidai', 5.25, 'H', [16, 24], 'nylon', [130, 190], 17, 5, false, 520, 'bait'),
+    descKo: '큰 돌돔을 여에서 떼어 내는 강한 허리. 봉돌 35~50호 · 원줄 18~20호가 제 짝이다.' },
+  { id: 'rod_ishidai_gama_500', nameKo: '가마모토 석조 스페셜 MH 5.0m', priceWon: 560000, art: 'item_rod_ishidai_gama',
+    spec: bigRod('가마모토', 1.25, 'ishidai', 5.0, 'MH', [14, 22], 'nylon', [112, 170], 16, 5, false, 470, 'bait'),
+    descKo: '가볍고 오래 가는 돌돔대. 초릿대가 예민해 성게를 쪼는 입질이 손에 온다.' },
+  // ── 대물 찌낚시대 3호 — 참돔 · 부시리를 갯바위에서 ──
+  { id: 'rod_iso_3_53', nameKo: '해원 갯바위 3호 5.3m', priceWon: 248000, art: 'item_rod_iso3_haewon',
+    spec: bigRod('해원', 1.0, 'float_iso', 5.3, '3호', [4, 6], 'nylon', [5, 25], 9, 5, true, 265),
+    descKo: '갯바위에서 큰 참돔 · 부시리를 받아 내는 굵은 찌낚시대. 원줄 5호 · 목줄 5호까지 쓴다.' },
+  { id: 'rod_iso_gama_3_50', nameKo: '가마모토 대물 이소 3호 5.0m', priceWon: 520000, art: 'item_rod_iso3_gama',
+    spec: bigRod('가마모토', 1.2, 'float_iso', 5.0, '3호', [4, 6], 'nylon', [5, 25], 9.5, 5, true, 240),
+    descKo: '같은 3호라도 25g 가볍고 오래 간다. 종일 들고 있어도 팔이 덜 지친다.' },
+  // ── 지깅대 — 무거운 메탈지그를 내려 저킹한다(방어 · 부시리 · 잿방어) ──
+  { id: 'rod_jig_minor_b60', nameKo: '마이너크래프트 자이언트 지깅 B60/5', priceWon: 198000, art: 'item_rod_jig_minor',
+    spec: bigRod('마이너크래프트', 1.0, 'offshore_jig', 1.83, '#5', [3, 5], 'pe', [120, 250], 16, 1, false, 215, 'bait'),
+    descKo: '값 대비 든든한 양축 지깅대. 지그 150~200g으로 방어 · 부시리를 노린다.' },
+  { id: 'rod_jig_yamano_s62', nameKo: '야마노블랭크 갈라하드 지깅 S62/4', priceWon: 465000, art: 'item_rod_jig_yamano',
+    spec: bigRod('야마노블랭크', 1.15, 'offshore_jig', 1.88, '#4', [2.5, 4], 'pe', [100, 200], 15, 1, false, 190),
+    descKo: '스피닝 지깅대. 가볍고 탄력이 좋아 지그를 길게 날린다 — 종일 저킹해도 덜 지친다.' },
+  { id: 'rod_jig_somano_b61', nameKo: '소마노 오션지거 B61-5', priceWon: 520000, art: 'item_rod_jig_somano',
+    spec: bigRod('소마노', 1.2, 'offshore_jig', 1.85, '#5', [3, 6], 'pe', [150, 300], 20, 1, false, 205, 'bait'),
+    descKo: '깊은 곳 큰 잿방어용 양축 지깅대. 지그 200~300g을 받고 허리로 고기를 띄운다.' },
+  { id: 'rod_jig_nj_s58', nameKo: '엔제이 보카 지깅 S58/6', priceWon: 235000, art: 'item_rod_jig_nj',
+    spec: bigRod('엔제이', 1.1, 'offshore_jig', 1.73, '#6', [4, 6], 'pe', [180, 350], 22, 1, false, 260),
+    descKo: '짧고 굵은 스피닝 지깅대. 무겁지만 힘으로 버티는 싸움에 강하다.' },
+  // ── 캐스팅대(포핑 · 펜슬) — 큰 플러그를 던져 수면을 친다 ──
+  { id: 'rod_cast_minor_80h', nameKo: '마이너크래프트 자이언트 캐스팅 80H', priceWon: 215000, art: 'item_rod_cast_minor',
+    spec: bigRod('마이너크래프트', 1.0, 'offshore_cast', 2.44, 'H', [4, 6], 'pe', [60, 120], 17, 2, false, 330),
+    descKo: '부시리 · 방어 캐스팅 입문대. 펜슬 60~100g을 던진다. 참다랑어 어린 고기까지.' },
+  { id: 'rod_cast_nj_82', nameKo: '엔제이 대양 캐스팅 82/6', priceWon: 268000, art: 'item_rod_cast_nj',
+    spec: bigRod('엔제이', 1.1, 'offshore_cast', 2.5, 'H', [5, 6], 'pe', [70, 130], 19, 2, false, 345),
+    descKo: '국산 캐스팅대. 조금 무겁지만 질겨서 막 쓰기 좋다.' },
+  { id: 'rod_cast_yamano_82_8', nameKo: '야마노블랭크 블루스나이퍼 82/8', priceWon: 598000, art: 'item_rod_cast_yamano',
+    spec: bigRod('야마노블랭크', 1.2, 'offshore_cast', 2.5, 'XH', [6, 8], 'pe', [80, 150], 23, 2, false, 340),
+    descKo: '대부시리 · 50kg급 참다랑어용. 던질 때는 낭창하고 걸면 허리가 선다.' },
+  { id: 'rod_cast_somano_83h', nameKo: '소마노 오션플러거 83H 튜나', priceWon: 780000, art: 'item_rod_cast_somano',
+    spec: bigRod('소마노', 1.2, 'offshore_cast', 2.52, 'XXH', [8, 10], 'pe', [90, 180], 27, 2, false, 395),
+    descKo: '참다랑어 100kg급을 보고 만든 캐스팅대. 합사 8~10호 · 드랙 25kg을 받는다.' },
+  { id: 'rod_cast_daio_85_10', nameKo: '다이오 솔티가 캐스팅 85-10 튜나', priceWon: 890000, art: 'item_rod_cast_daio',
+    spec: bigRod('다이오', 1.15, 'offshore_cast', 2.59, 'XXXH', [8, 12], 'pe', [100, 200], 30, 2, false, 425),
+    descKo: '합사 12호 · 드랙 30kg까지 받는 가장 강한 캐스팅대. 여름 동해의 큰 참다랑어용.' },
+  // ── 스탠드업 · 트롤링대 — 던지지 않는다. 레버 드랙 릴로 버틴다 ──
+  { id: 'rod_bg_penson_50', nameKo: '펜슨 인터내셔널 스탠드업 50lb 1.68m', priceWon: 385000, art: 'item_rod_bg_penson',
+    spec: bigRod('펜슨', 1.3, 'big_game', 1.68, '50lb', [14, 24], 'nylon', [80, 300], 24, 2, false, 880, 'bait'),
+    descKo: '짧고 굵은 스탠드업대. 눈다랑어 · 청새치급. 롤러 가이드가 굵은 줄을 깎지 않는다.' },
+  { id: 'rod_bg_somano_80', nameKo: '소마노 티아그로 스탠드업 80lb 1.70m', priceWon: 720000, art: 'item_rod_bg_somano',
+    spec: bigRod('소마노', 1.3, 'big_game', 1.7, '80lb', [24, 40], 'nylon', [100, 400], 31, 2, false, 1050, 'bait'),
+    descKo: '참다랑어 · 황새치 100kg급을 버티는 스탠드업대. 드랙 30kg을 걸고도 허리가 남는다.' },
+  { id: 'rod_bg_daio_130', nameKo: '다이오 솔티가 트롤링 130lb 1.75m', priceWon: 980000, art: 'item_rod_bg_daio',
+    spec: bigRod('다이오', 1.25, 'big_game', 1.75, '130lb', [40, 60], 'nylon', [150, 500], 38, 2, false, 1280, 'bait'),
+    descKo: '가장 굵은 트롤링대. 200kg이 넘는 고기를 보고 만들었다 — 무겁고, 그만큼 부러지지 않는다.' },
+  // ── 쇼어지깅(같은 급 · 다른 만든 곳) · 원투 대물 ──
+  { id: 'rod_shorejig_minor_100h', nameKo: '마이너크래프트 쇼어 100H', priceWon: 225000, art: 'item_rod_shorejig_minor',
+    spec: bigRod('마이너크래프트', 0.95, 'shore_jigging', 3.05, 'H', [2, 4], 'pe', [40, 110], 18, 2, false, 285),
+    descKo: '블루러너 100H와 같은 급. 15g 가볍지만 조금 덜 질기다.' },
+  { id: 'rod_shorejig_yamano_106h', nameKo: '야마노블랭크 쇼어 106H', priceWon: 498000, art: 'item_rod_shorejig_yamano',
+    spec: bigRod('야마노블랭크', 1.2, 'shore_jigging', 3.2, 'H', [2, 4], 'pe', [40, 120], 19, 2, false, 275),
+    descKo: '갯바위에서 부시리를 거는 긴 쇼어대. 길어도 가볍고, 오래 간다.' },
+  { id: 'rod_surf_somano_35_425', nameKo: '소마노 서프리더 원투 35호 4.25m', priceWon: 395000, art: 'item_rod_surf_somano',
+    spec: bigRod('소마노', 1.2, 'surf', 4.25, '35호', [5, 10], 'nylon', [94, 150], 14, 3, false, 420),
+    descKo: '봉돌 25~40호를 싣는 대물 원투대. 굵은 원줄로 큰 참돔 · 혹돔을 받는다.' },
+];
+
 /** 상점 릴 6개 */
 const reel = (kind: 'spinning' | 'bait', size: number, maxDragKg: number, gearRatio: number, lineCapM: number, castMult: number): ReelItemSpec =>
   ({ kind, size, maxDragKg, gearRatio, lineCapM, castMult });
+
+/** 324차 — 큰 고기용 릴(자중 · 만든 곳 · 내구도 배수 · 레버 드랙) */
+const bigReel = (
+  brand: string, durabilityMult: number, weightG: number,
+  kind: 'spinning' | 'bait', size: number, maxDragKg: number, gearRatio: number, lineCapM: number, castMult: number, leverDrag = false,
+): ReelItemSpec => ({ ...reel(kind, size, maxDragKg, gearRatio, lineCapM, castMult), weightG, brand, durabilityMult, ...(leverDrag ? { leverDrag: true } : {}) });
 
 export const REEL_SHOP: ReelCatalogEntry[] = [
   { id: 'reel_spin_1000', nameKo: '문라이트 1000S 스피닝릴', priceWon: 72000, spec: reel('spinning', 1000, 3, 5.2, 100, 0.97),
@@ -92,6 +183,82 @@ export const REEL_SHOP: ReelCatalogEntry[] = [
     descKo: '고기어 · 강한 드랙의 쇼어지깅릴. 지그를 빠르게 감아 올리고 청물의 첫 질주를 버틴다.' },
   { id: 'reel_bait_150', nameKo: '레드씨 150 베이트릴', priceWon: 178000, spec: reel('bait', 150, 9, 6.3, 200, 0.85),
     descKo: '타이라바 · 슬로우지깅용 베이트릴. 클러치를 눌러 발밑에 떨어뜨리고 일정하게 감는다. 베이트대에만 맞는다.' },
+];
+
+/**
+ * 324차 큰 고기용 릴 20개 — 대형 스피닝 10 · 돌돔 양축 3 · 지깅 양축 3 · 레버 드랙 4.
+ *  - 권사량(`lineCapM`)은 3호 환산이다 — 합사 N호는 `권사량 × 3 ÷ N` m가 감긴다(8000번 400 = 합사 4호 300m).
+ *  - 양축 · 레버 드랙 릴의 `size`는 스피닝 번수의 1/20로 적는다(400 = 스피닝 8000번급 · 1000 = 20000번급) — 감기 부하 · 스풀 지름 식이 그 값을 쓴다.
+ *    화면에는 이름의 호칭(2000 · 40 · 50W)이 나온다.
+ */
+export const BIG_GAME_REEL_SHOP: ReelCatalogEntry[] = [
+  // ── 대형 스피닝 8000번(합사 4호 300m) ──
+  { id: 'reel_sw_8000_daio_bg', nameKo: '다이오 블루기어 8000H', priceWon: 228000, art: 'item_reel_sw8000_daio_bg',
+    spec: bigReel('다이오', 1.0, 650, 'spinning', 8000, 15, 5.3, 400, 1.03),
+    descKo: '값싼 대형 스피닝릴. 드랙 15kg — 방어 · 부시리 캐스팅과 스피닝 지깅의 시작.' },
+  { id: 'reel_sw_8000_penson', nameKo: '펜슨 스핀피셔 8500', priceWon: 298000, art: 'item_reel_sw8000_penson',
+    spec: bigReel('펜슨', 1.25, 780, 'spinning', 8000, 18, 4.7, 440, 1.0),
+    descKo: '통쇠 몸통. 130g 무겁고 느리지만 소금물과 모래에 강하다.' },
+  { id: 'reel_sw_8000_somano', nameKo: '소마노 스텔론 SW 8000HG', priceWon: 1180000, art: 'item_reel_sw8000_somano',
+    spec: bigReel('소마노', 1.35, 625, 'spinning', 8000, 25, 5.6, 400, 1.05),
+    descKo: '같은 8000번인데 드랙 25kg · 25g 가볍다. 대부시리와 50kg급 참다랑어까지.' },
+  // ── 14000번(합사 5~6호 300~400m) ──
+  { id: 'reel_sw_14000_daio_bg', nameKo: '다이오 블루기어 14000', priceWon: 285000, art: 'item_reel_sw14000_daio_bg',
+    spec: bigReel('다이오', 1.0, 865, 'spinning', 14000, 20, 5.7, 620, 1.03),
+    descKo: '합사 6호를 300m 감는 보급형. 무겁지만 드랙 20kg이면 50kg급까지 버틴다.' },
+  { id: 'reel_sw_14000_somano', nameKo: '소마노 트윈포스 SW 14000XG', priceWon: 760000, art: 'item_reel_sw14000_somano',
+    spec: bigReel('소마노', 1.2, 675, 'spinning', 14000, 25, 6.2, 600, 1.05),
+    descKo: '하이기어 14000번. 한 바퀴에 많이 감아 펜슬을 빠르게 끌고, 드랙 25kg을 건다.' },
+  { id: 'reel_sw_14000_daio', nameKo: '다이오 솔티가 14000XH', priceWon: 1250000, art: 'item_reel_sw14000_daio',
+    spec: bigReel('다이오', 1.3, 640, 'spinning', 14000, 25, 6.2, 667, 1.05),
+    descKo: '통알루미늄 몸통. 14000번 가운데 가장 가볍고 오래 간다.' },
+  // ── 18000~20000번(합사 8호 300m) ──
+  { id: 'reel_sw_18000_penson', nameKo: '펜슨 스핀피셔 10500', priceWon: 365000, art: 'item_reel_sw18000_penson',
+    spec: bigReel('펜슨', 1.25, 1090, 'spinning', 18000, 22, 4.2, 820, 0.98),
+    descKo: '합사 8호를 300m 넘게 감는 통쇠 릴. 1kg이 넘어 팔이 먼저 지친다.' },
+  { id: 'reel_sw_20000_daio', nameKo: '다이오 솔티가 20000H', priceWon: 1320000, art: 'item_reel_sw20000_daio',
+    spec: bigReel('다이오', 1.3, 835, 'spinning', 20000, 30, 5.8, 800, 1.04),
+    descKo: '드랙 30kg. 합사 8호 300m — 100kg급 참다랑어 캐스팅의 표준.' },
+  { id: 'reel_sw_20000_somano', nameKo: '소마노 스텔론 SW 20000PG', priceWon: 1390000, art: 'item_reel_sw20000_somano',
+    spec: bigReel('소마노', 1.35, 840, 'spinning', 20000, 28, 4.4, 800, 1.04),
+    descKo: '파워 기어. 한 바퀴에 덜 감기는 대신 무거운 고기를 감을 때 덜 힘들다.' },
+  // ── 30000번(합사 12호 400m) ──
+  { id: 'reel_sw_30000_somano', nameKo: '소마노 스텔론 SW 30000', priceWon: 1480000, art: 'item_reel_sw30000_somano',
+    spec: bigReel('소마노', 1.35, 985, 'spinning', 30000, 30, 4.4, 1600, 1.02),
+    descKo: '가장 큰 스피닝릴. 합사 12호를 400m 감는다 — 큰 참다랑어가 300m를 끌고 나가도 남는다.' },
+  // ── 돌돔 양축릴(나일론 20호 200m) ──
+  { id: 'reel_ishidai_banex_30', nameKo: '바넥스 돌돔 스페셜 30', priceWon: 215000, art: 'item_reel_ishidai_banex',
+    spec: bigReel('바넥스', 1.05, 720, 'bait', 450, 14, 4.1, 1200, 0.88),
+    descKo: '국산 돌돔 양축릴. 나일론 18호를 200m 감는다. 무겁지만 값이 절반이다.' },
+  { id: 'reel_ishidai_daio_40', nameKo: '다이오 석조 40 양축릴', priceWon: 398000, art: 'item_reel_ishidai_daio',
+    spec: bigReel('다이오', 1.2, 660, 'bait', 500, 16, 4.3, 1333, 0.9),
+    descKo: '돌돔 전용 양축릴. 굵은 나일론 20호를 200m 감고 드랙 16kg으로 여에서 떼어 낸다.' },
+  { id: 'reel_ishidai_somano_3000t', nameKo: '소마노 해혼 3000T 양축릴', priceWon: 520000, art: 'item_reel_ishidai_somano',
+    spec: bigReel('소마노', 1.25, 640, 'bait', 500, 18, 4.4, 1400, 0.92),
+    descKo: '드랙 18kg · 스풀이 매끄러워 무거운 봉돌이 조금 더 나간다.' },
+  // ── 지깅 양축릴(합사 3~4호 400m) ──
+  { id: 'reel_jig_banex_300', nameKo: '바넥스 카이젠 지깅 300', priceWon: 168000, art: 'item_reel_jig_banex',
+    spec: bigReel('바넥스', 1.0, 480, 'bait', 350, 9, 5.8, 380, 0.82),
+    descKo: '가벼운 국산 지깅 양축릴. 방어 · 중치 부시리까지.' },
+  { id: 'reel_jig_somano_2000', nameKo: '소마노 오션지거 2000NRHG', priceWon: 548000, art: 'item_reel_jig_somano',
+    spec: bigReel('소마노', 1.3, 605, 'bait', 400, 10, 6.2, 400, 0.8),
+    descKo: '지깅 양축릴의 표준. 합사 3호 400m · 클러치를 눌러 지그를 곧장 내린다.' },
+  { id: 'reel_jig_daio_35', nameKo: '다이오 솔티가 지깅 35', priceWon: 498000, art: 'item_reel_jig_daio',
+    spec: bigReel('다이오', 1.25, 620, 'bait', 450, 15, 6.3, 533, 0.8),
+    descKo: '드랙 15kg — 큰 잿방어를 바닥에서 떼어 내는 힘 있는 지깅릴.' },
+  // ── 레버 드랙 트롤링 · 스탠드업 릴 ──
+  { id: 'reel_ld_daio_50', nameKo: '다이오 씨라인 LD 50', priceWon: 520000, art: 'item_reel_ld_daio',
+    spec: bigReel('다이오', 1.2, 2350, 'bait', 1000, 22, 3.1, 3200, 0.45, true),
+    descKo: '보급형 레버 드랙 릴. 드랙 22kg · 굵은 줄을 깊이 감는다 — 눈다랑어 · 청새치급.' },
+  { id: 'reel_ld_penson_30', nameKo: '펜슨 인터내셔널 30', priceWon: 720000, art: 'item_reel_ld_penson30',
+    spec: bigReel('펜슨', 1.4, 1650, 'bait', 700, 18, 3.8, 1700, 0.5, true),
+    descKo: '금빛 몸통의 레버 드랙 릴. 드랙 18kg · 가벼워 스탠드업으로 들고 싸우기 좋다.' },
+  { id: 'reel_ld_penson_50w', nameKo: '펜슨 인터내셔널 50W', priceWon: 890000, art: 'item_reel_ld_penson50',
+    spec: bigReel('펜슨', 1.4, 2600, 'bait', 1000, 27, 3.1, 3600, 0.45, true),
+    descKo: '드랙 27kg · 두 단 기어. 100kg급 참다랑어 · 황새치를 버티는 릴.' },
+  { id: 'reel_ld_somano_80w', nameKo: '소마노 티아그로 80W', priceWon: 1450000, art: 'item_reel_ld_somano',
+    spec: bigReel('소마노', 1.45, 4200, 'bait', 1500, 36, 2.5, 6900, 0.4, true),
+    descKo: '드랙 36kg · 4kg이 넘는 가장 큰 릴. 200kg급을 보고 만든 것 — 130lb 트롤링대에만 어울린다.' },
 ];
 
 /** 이미 있던 대 · 보상 대 · 수제 대의 제원 */
@@ -121,11 +288,11 @@ const REEL_SPEC_EXTRA: Record<string, ReelItemSpec> = {
 };
 
 export const ROD_SPEC_BY_ID: Record<string, RodItemSpec> = {
-  ...Object.fromEntries(ROD_SHOP.map((r) => [r.id, r.spec])),
+  ...Object.fromEntries([...ROD_SHOP, ...BIG_GAME_ROD_SHOP].map((r) => [r.id, r.spec])),
   ...ROD_SPEC_EXTRA,
 };
 export const REEL_SPEC_BY_ID: Record<string, ReelItemSpec> = {
-  ...Object.fromEntries(REEL_SHOP.map((r) => [r.id, r.spec])),
+  ...Object.fromEntries([...REEL_SHOP, ...BIG_GAME_REEL_SHOP].map((r) => [r.id, r.spec])),
   ...REEL_SPEC_EXTRA,
 };
 
@@ -146,6 +313,10 @@ export function rodSpecFor(id: string, nameKo = '', priceWon = 12000): RodItemSp
   if (hit) return hit;
   const lenM = Number(nameKo.match(/(\d+(?:\.\d+)?)\s*m\b/)?.[1] ?? NaN);
   const power = 2.2 + priceWon / 60000;
+  // 324차 — 큰 고기용 대(이름에 종류가 적혀 있다 — 지깅 · 쇼어보다 먼저 본다)
+  if (/돌돔|석조/.test(nameKo)) return rod('ishidai', lenM || 5.25, 'MH', [14, 22], 'nylon', [112, 170], Math.max(14, power), 5, false, 520, 'bait');
+  if (/스탠드업|트롤링/.test(nameKo)) return rod('big_game', lenM || 1.7, '80lb', [24, 40], 'nylon', [100, 400], Math.max(24, power), 2, false, 1000, 'bait');
+  if (/캐스팅|포핑/.test(nameKo)) return rod('offshore_cast', lenM || 2.5, 'H', [5, 8], 'pe', [70, 150], Math.max(18, power), 2, false, 350);
   if (/원투|서프/.test(nameKo)) return rod('surf', lenM || 4.05, '25호', [4, 6], 'nylon', [56, 113], Math.max(8, power), 3, false, 345);
   if (/지깅|지그/.test(nameKo)) return rod('shore_jigging', lenM || 2.9, 'MH', [1.5, 3], 'pe', [30, 90], Math.max(12, power), 2, false, 270);
   if (/타이라바|베이트/.test(nameKo)) return rod('boat_bait', lenM || 2.0, 'ML', [0.8, 1.5], 'pe', [45, 150], Math.max(9, power), 2, false, 140, 'bait');
@@ -169,9 +340,15 @@ export function reelSpecFor(id: string, nameKo = ''): ReelItemSpec {
 /** 상점 · 도감용 */
 export function getRodCatalogEntry(id: string): RodCatalogEntry | undefined {
   const base = itemBaseId(id);
-  return ROD_SHOP.find((r) => r.id === base);
+  return ROD_SHOP.find((r) => r.id === base) ?? BIG_GAME_ROD_SHOP.find((r) => r.id === base);
 }
 export function getReelCatalogEntry(id: string): ReelCatalogEntry | undefined {
   const base = itemBaseId(id);
-  return REEL_SHOP.find((r) => r.id === base);
+  return REEL_SHOP.find((r) => r.id === base) ?? BIG_GAME_REEL_SHOP.find((r) => r.id === base);
+}
+
+/** 324차 — 큰 고기용 장비인가(낚시용품점이 이것들을 판다) */
+export function isBigGameGear(id: string): boolean {
+  const base = itemBaseId(id);
+  return BIG_GAME_ROD_SHOP.some((r) => r.id === base) || BIG_GAME_REEL_SHOP.some((r) => r.id === base);
 }

@@ -154,6 +154,61 @@ export const LURES_CATALOG_DB: LureSpec[] = [
     fallLureWeight: 0.25, actionFlags: ['wobble'],
     speciesWeightBias: { red_seabream: 0.30, flatfish: 0.08 },
   },
+  // ══════════════════════════════════════════════════════════════
+  // 324차 — 큰 고기용 루어(가게에서만 판다 — `bigGame`). 이름의 g은 정수(채비 무게를 이름에서 읽는 곳이 있다)
+  // ══════════════════════════════════════════════════════════════
+  // 대형 롱 지그 · Deep Slasher — 방어 · 부시리 · 잿방어 지깅(지깅대 · 양축릴)
+  {
+    id: 'lure_jig_big_150', nameKo: '딥 슬래셔 롱 지그 150g', nameEn: 'Deep Slasher Long Jig 150g',
+    brand: 'Iron Works', family: 'hard', kind: 'metal_jig', sizeLabel: '150g', bigGame: true, art: 'item_lure_jig_big', priceWon: 22000,
+    weightG: 150, sinkType: 'fast_sinking', sinkRateMps: 1.3, dragCoefficient: BASE_CD * 0.65, actionFlags: ['flash', 'dart'],
+    speciesWeightBias: { amberjack: 0.30, yellowtail: 0.30, greater_amberjack: 0.25, spanish_mackerel: 0.10 },
+  },
+  {
+    id: 'lure_jig_big_200', nameKo: '딥 슬래셔 롱 지그 200g', nameEn: 'Deep Slasher Long Jig 200g',
+    brand: 'Iron Works', family: 'hard', kind: 'metal_jig', sizeLabel: '200g', bigGame: true, art: 'item_lure_jig_big', priceWon: 28000,
+    weightG: 200, sinkType: 'fast_sinking', sinkRateMps: 1.5, dragCoefficient: BASE_CD * 0.65, actionFlags: ['flash', 'dart'],
+    speciesWeightBias: { amberjack: 0.30, yellowtail: 0.25, greater_amberjack: 0.35, bigeye_tuna: 0.10 },
+  },
+  {
+    id: 'lure_jig_big_300', nameKo: '딥 슬래셔 롱 지그 300g', nameEn: 'Deep Slasher Long Jig 300g',
+    brand: 'Iron Works', family: 'hard', kind: 'metal_jig', sizeLabel: '300g', bigGame: true, art: 'item_lure_jig_big', priceWon: 38000,
+    weightG: 300, sinkType: 'fast_sinking', sinkRateMps: 1.8, dragCoefficient: BASE_CD * 0.65, actionFlags: ['flash', 'dart'],
+    speciesWeightBias: { greater_amberjack: 0.40, bigeye_tuna: 0.20, bluefin_tuna: 0.10, swordfish: 0.10 },
+  },
+  // 다이빙 펜슬 · Blue Diver — 수면 아래로 파고드는 큰 플러그(부시리 · 참다랑어 캐스팅)
+  {
+    id: 'lure_pencil_80', nameKo: '블루 다이버 펜슬 80g', nameEn: 'Blue Diver Pencil 80g',
+    brand: 'Wood Tide', family: 'hard', kind: 'plug_minnow', sizeLabel: '190mm 80g', bigGame: true, art: 'item_lure_pencil', priceWon: 32000,
+    weightG: 80, sinkType: 'floating', diveDepthPerRetrieve: 0.6, dragCoefficient: BASE_CD * 0.85, actionFlags: ['dart', 'wobble'],
+    speciesWeightBias: { amberjack: 0.35, yellowtail: 0.25, bluefin_tuna: 0.25, spanish_mackerel: 0.10 },
+  },
+  {
+    id: 'lure_pencil_120', nameKo: '블루 다이버 펜슬 120g', nameEn: 'Blue Diver Pencil 120g',
+    brand: 'Wood Tide', family: 'hard', kind: 'plug_minnow', sizeLabel: '220mm 120g', bigGame: true, art: 'item_lure_pencil', priceWon: 42000,
+    weightG: 120, sinkType: 'floating', diveDepthPerRetrieve: 0.7, dragCoefficient: BASE_CD * 0.85, actionFlags: ['dart', 'wobble'],
+    speciesWeightBias: { bluefin_tuna: 0.40, bigeye_tuna: 0.20, amberjack: 0.20, striped_marlin: 0.15 },
+  },
+  // 포퍼 · Splash King — 오목한 머리로 물을 튀겨 멀리서 부른다
+  {
+    id: 'lure_popper_100', nameKo: '스플래시 킹 포퍼 100g', nameEn: 'Splash King Popper 100g',
+    brand: 'Wood Tide', family: 'hard', kind: 'plug_minnow', sizeLabel: '180mm 100g', bigGame: true, art: 'item_lure_popper', priceWon: 30000,
+    weightG: 100, sinkType: 'floating', diveDepthPerRetrieve: 0.2, dragCoefficient: BASE_CD * 0.95, actionFlags: ['flash'],
+    speciesWeightBias: { amberjack: 0.30, greater_amberjack: 0.30, yellowtail: 0.20, bluefin_tuna: 0.20 },
+  },
+  {
+    id: 'lure_popper_150', nameKo: '스플래시 킹 포퍼 150g', nameEn: 'Splash King Popper 150g',
+    brand: 'Wood Tide', family: 'hard', kind: 'plug_minnow', sizeLabel: '210mm 150g', bigGame: true, art: 'item_lure_popper', priceWon: 38000,
+    weightG: 150, sinkType: 'floating', diveDepthPerRetrieve: 0.2, dragCoefficient: BASE_CD * 0.95, actionFlags: ['flash'],
+    speciesWeightBias: { bluefin_tuna: 0.35, greater_amberjack: 0.30, bigeye_tuna: 0.15, striped_marlin: 0.15 },
+  },
+  // 트롤링 스커트 · Kona Runner — 수면을 끌고 가는 술 달린 루어(새치 · 다랑어)
+  {
+    id: 'lure_troll_skirt_180', nameKo: '코나 러너 트롤링 스커트 180g', nameEn: 'Kona Runner Trolling Skirt 180g',
+    brand: 'Bluewater', family: 'hard', kind: 'plug_minnow', sizeLabel: '9인치 180g', bigGame: true, art: 'item_lure_troll', priceWon: 45000,
+    weightG: 180, sinkType: 'floating', diveDepthPerRetrieve: 0.3, dragCoefficient: BASE_CD * 1.05, actionFlags: ['flash', 'wobble'],
+    speciesWeightBias: { striped_marlin: 0.45, swordfish: 0.25, bluefin_tuna: 0.25, bigeye_tuna: 0.25 },
+  },
 ];
 
 /**

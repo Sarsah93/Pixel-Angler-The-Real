@@ -25,7 +25,8 @@ import { GameState } from '../store/GameState.js';
 import { PRODUCE_SUB, SEED_SUB, PIECE_SUB, RESIDUE_SUB, produceBaseName, looseShortName, looseCountKo, EARTHWORM_ID, EARTHWORM_DESC } from '../data/CropItems.js';
 import { gramsText, qtyWord } from './QtyLabel.js';
 import { FarmStore } from '../store/FarmStore.js';
-import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
+import { hookStrengthKgOf } from '../data/ShopCatalog.js';   // 324차 — 바늘이 버티는 힘
+import { reelCmPerTurn, rodSpecFor, reelSpecFor, rodLoadState, ROD_USE_LABEL, reelLineCapacityM, REEL_MIN_LINE_M, reelWeightG, lineHoOf, itemUnitWeightG, carryWeightText, getRodCatalogEntry, getReelCatalogEntry, getLureSpec, getNuisance, sashimiStarsAt, sashimiNutrition, foodNutritionOf, nutritionLineKo, restoreFromNutrition } from '@tra/core';
 import { FISH_DATABASE, fishImageSizeScale, fishRarity, speciesStandardWeightG, forageImageSizeScale,
   GEAR_FAULTS, gearRepairFee, rodMaxCasts,
   getFireRecipe, getCookIngredient, dishStarsAt, dishVitalsMult, fmtUnits, SALT_LABEL_KO, SUGAR_LABEL_KO, STAR_NAME_KO,
@@ -521,8 +522,9 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     rows.push({ label: '적합 원줄', value: `${lineUnit}${sp.lineNo[0]}~${sp.lineNo[1]}호` });
     rows.push({ label: '적합 채비 무게', value: `${sp.loadG[0]}~${sp.loadG[1]}g` });
     rows.push({ label: '견디는 하중', value: `${sp.powerKg.toFixed(1)}kg` });
-    rows.push({ label: '릴', value: sp.reel === 'bait' ? '베이트릴' : '스피닝릴' });
+    rows.push({ label: '릴', value: sp.reel === 'bait' ? '양축릴 · 베이트릴' : '스피닝릴' });
     rows.push({ label: '자중', value: `${sp.weightG}g` });
+    if (sp.brand) rows.push({ label: '만든 곳', value: sp.brand });   // 324차
     // 지금 짜 둔 채비가 이 대에 맞는가 — 무거우면 덜 나가고, 아주 무거우면 세게 던질 때 초릿대가 부러진다
     const rigG = InventoryStore.getRigTotalWeightG();
     if (rigG > 0) {
@@ -535,15 +537,30 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
   }
   if (item.subCategory === '릴') {
     const rs = reelSpecFor(item.id, item.name);
-    rows.push({ label: '종류', value: rs.kind === 'bait' ? `베이트릴 ${rs.size}` : `스피닝릴 ${rs.size}번` });
+    // 324차 — 큰 양축 · 레버 드랙 릴은 번수를 이름에 적는다(안쪽 값은 감기 계산용이라 보이지 않는다)
+    rows.push({ label: '종류', value: rs.leverDrag ? '레버 드랙 릴(양축)' : rs.kind === 'bait' ? (rs.size >= 350 ? '양축릴' : `베이트릴 ${rs.size}`) : `스피닝릴 ${rs.size}번` });
     rows.push({ label: '최대 드랙', value: `${rs.maxDragKg}kg` });
     rows.push({ label: '기어비', value: `${rs.gearRatio.toFixed(1)} : 1` });
     // 210차 — 한 바퀴에 감기는 길이(기어비 × 스풀 둘레) — 파이팅 감기 속도가 이것으로 정해진다
     rows.push({ label: '한 바퀴 감기', value: `${Math.round(reelCmPerTurn(rs))}cm` });
-    rows.push({ label: '권사량', value: `3호 ${rs.lineCapM}m` });
+    // 324차 — 큰 릴은 굵은 줄 기준으로 적는다(3호로 적으면 감이 안 온다) · 지금 원줄이 감기는 길이
+    if (rs.lineCapM >= 400) {
+      const no = rs.lineCapM >= 3000 ? 50 : rs.lineCapM >= 1500 ? 12 : rs.lineCapM >= 1000 ? 20 : rs.lineCapM >= 700 ? 8 : rs.lineCapM >= 500 ? 5 : 4;
+      rows.push({ label: '권사량', value: `${no}호 ${reelLineCapacityM(rs, no)}m` });
+    } else rows.push({ label: '권사량', value: `3호 ${rs.lineCapM}m` });
+    const mainLine = InventoryStore.rigMainLineItem;
+    const mainNo = mainLine ? lineHoOf(mainLine) : null;
+    if (mainNo) {
+      const m = reelLineCapacityM(rs, mainNo);
+      rows.push({ label: '지금 원줄', value: `${mainNo}호 ${m}m 감긴다${m < REEL_MIN_LINE_M ? ' — 너무 굵다' : ''}`, color: m < REEL_MIN_LINE_M ? '#ff5a4a' : '#8affb0' });
+    }
+    rows.push({ label: '자중', value: `${reelWeightG(rs)}g` });
+    if (rs.brand) rows.push({ label: '만든 곳', value: rs.brand });
   }
   if (item.tool === 'rod' || item.subCategory === '릴') {
-    const mx = rodMaxCasts(item.basePrice ?? 12000);
+    // 324차 — 만든 곳마다 내구도가 다르다(제원의 내구도 배수)
+    const durMult = item.tool === 'rod' ? rodSpecFor(item.id, item.name, item.basePrice).durabilityMult : reelSpecFor(item.id, item.name).durabilityMult;
+    const mx = rodMaxCasts(item.basePrice ?? 12000, durMult);
     const used = item.useCount ?? 0;
     rows.push({ label: '내구도', value: `${Math.max(0, mx - used)} / ${mx} 회` });
     if (used >= mx) rows.push({ label: '마모', value: '한계 초과 — 고장이 잦아집니다' });
@@ -964,9 +981,10 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
     case '바늘/훅':
       rows.push(
         { label: '규격', value: item.name.includes('3호') ? '감성돔 3호' : item.name },
-        { label: '대상어 한계 중량', value: '5 kg' },
+        // 324차 — 바늘이 버티는 힘(줄 · 드랙이 이보다 세면 큰 고기 앞에서 바늘이 먼저 펴진다). 옛 「대상어 한계 중량 5kg」은 쓰이지 않던 글이었다
+        { label: '버티는 힘', value: `${hookStrengthKgOf(item)}kg` },
       );
-      desc = '대상 어종과 미끼 크기에 맞는 바늘을 선택하세요.';
+      desc = '대상 어종과 미끼 크기에 맞는 바늘을 선택하세요. 굵은 줄 · 센 드랙에는 그만큼 굵은 바늘을 묶습니다.';
       break;
     case '채비 부속':
       if (item.name.includes('수중찌')) {
@@ -1035,6 +1053,17 @@ export function buildItemDetail(item: Pick<InvItem, 'id' | 'name' | 'subCategory
   if (item.fault) {
     const def = GEAR_FAULTS[item.fault];
     desc = `${def.descKo}\n${def.fixKo}${desc ? `\n\n${desc}` : ''}`;
+  }
+  // 324차 — 짐 무게(가방 무게 · 과적). 이미 무게 · 자중 줄이 있는 물건(고기 · 낚싯대 · 무게로 세는 것)은 되풀이하지 않고, 묶음일 때만 합을 적는다
+  {
+    const unitG = itemUnitWeightG(item);
+    const qty = Math.max(1, item.qty ?? 1);
+    const has = rows.some((r) => r.label === '무게' || r.label === '자중');
+    if (unitG > 0 && !has) {
+      rows.push({ label: '무게', value: qty > 1 ? `${carryWeightText(unitG)} × ${qty} = ${carryWeightText(unitG * qty)}` : carryWeightText(unitG) });
+    } else if (unitG > 0 && qty > 1 && !item.unitG) {
+      rows.push({ label: '짐 무게', value: `${carryWeightText(unitG * qty)} (${qty}개)` });
+    }
   }
   return { title: item.name, subtitle: item.subCategory, rows, desc };
 }

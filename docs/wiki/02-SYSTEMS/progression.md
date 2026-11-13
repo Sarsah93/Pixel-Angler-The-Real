@@ -97,6 +97,7 @@ learnSkill(id): ranks[id]++ · markDirty   (세이브 `skillTree`)
 | 스토리·퀘스트 본편 | ✅ | 134 — S22 신설(120퀘 · 완료 XP `grantXp` 경유 · 스토리 면허 4종은 보너스 제외) |
 | 농사 카테고리 해제 | ⬜ | 농장 경영(S8 E1~) 착수 시 `locked: false` |
 | **제작 카테고리 해제** | ✅ | 129 — `locked` 제거 + 제작 스킬 9종 `wired: true` |
+| **과적이 소모를 키운다**(324 — `tickVitals` 소모 × `encumbrance.drainMult` [허기 · 수분 · 피로] · 55kg ×1.2 · 1.3 · 1.5 → 70kg ×1.5 · 1.7 · 2.4 · 앉아 있을 때 피로는 그대로) | ✅ | **324** — [S5 인벤](inventory-equipment.md) |
 | **생존 지표 4종 + 상태이상 11종 (스펙 P2)** | ✅ | 125 — core 2종 + 세이브 + 배선 9곳 |
 | **상태 패널 '대' 개편(경험치·허기/수분 바·호버 팝업·상태이상 스트립)** | ✅ | 126 — `barRects` 단일 소스 · '중/소' 회귀 0 |
 | **기절·사망 FSM + 연출** | ✅ | 126 — `CollapseOverlay` · `TUNING.collapse` · 눕기 스프라이트는 플레이스홀더 |

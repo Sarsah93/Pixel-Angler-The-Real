@@ -17,7 +17,7 @@
  */
 
 import Phaser from 'phaser';
-import { fishRarity } from '@tra/core';
+import { fishRarity, carryWeightText, type EncumbranceStage } from '@tra/core';
 import { GameState } from '../store/GameState.js';
 import { cv, cvCss, drawBlockedX, shapeCuesOn } from './ColorAssist.js';
 import {
@@ -51,6 +51,9 @@ import { qtyBadge, qtyWord } from './QtyLabel.js';
 /** 190차 — 식탁 식사 보너스 (허기 회복량의 25% 추가) */
 const TABLE_MEAL_BONUS = 0.25;
 const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'quest', 'etc'];
+
+/** 324차 — 과적 단계 색(가볍다 흰 · 무겁다 노랑 · 매우 무겁다 주황 · 움직일 수 없다 빨강) */
+export const ENCUMBRANCE_COLOR: Record<EncumbranceStage, string> = { 1: '#d0e8f5', 2: '#ffd257', 3: '#ff9a3c', 4: '#ff5a4a' };
 
 const PANEL_W = 440;
 const PANEL_H = 596;
@@ -100,6 +103,8 @@ export class InventoryPanel extends DraggablePanel {
   private tabTexts = new Map<InvCategory, Phaser.GameObjects.Text>();
   private gridContainer!: Phaser.GameObjects.Container;
   private footerText!: Phaser.GameObjects.Text;
+  /** 324차 — 재화 줄 왼쪽의 짐 무게(단계마다 색이 바뀐다) */
+  private weightText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   /** 하단 요약이 가리키는 선택 아이템 id — 남은 시간 실시간 갱신 대상 (다른 안내 표시 시 해제) */
   private summaryItemId: string | null = null;
@@ -173,6 +178,8 @@ export class InventoryPanel extends DraggablePanel {
     maybeStartTour(scene, () => this.buildTour());
     // 277차 — 가방 가이드를 이미 본 사람(또는 방금 끝낸 사람)에게 「정리」 단추만 한 번 짚는다
     maybeStartTour(scene, () => (tourSeen('inventory') ? this.buildSortTour() : null));
+    // 324차 — 짐 무게 줄도 같은 길로 한 번 짚는다
+    maybeStartTour(scene, () => (tourSeen('inventory') ? this.buildWeightTour() : null));
 
     // 퀵슬롯 배정용 숫자 키 리스너
     this.keyHandler = (ev: KeyboardEvent) => {
@@ -517,6 +524,7 @@ export class InventoryPanel extends DraggablePanel {
   // ═══════════════════════════════════════════════════
   private renderGrid(): void {
     this.gridContainer.removeAll(true);
+    this.refreshWeight();   // 324차 — 가방이 바뀌면 짐 무게도 다시 쓴다
 
     const cap = InventoryStore.gridCapacity();
     const total = this.totalSlots();
@@ -1074,7 +1082,9 @@ export class InventoryPanel extends DraggablePanel {
     //  이야기가 준 물건에만 붙인다 — 일반 아이템까지 열면 '버리기'와 뜻이 겹친다.
     // 234차 — 퀘스트 칸의 나머지(모으는 물건 · 가족사진)는 바닥에 두지 않는다 — 끝난 뒤에도 바닥에 남아
     //  쓸모없는 퀘스트 물건이 되거나(감사 낮음-2) 진행과 엇갈렸다. 심부름 물건 + 이야기가 준 장비만.
-    if (item.subCategory === '심부름' || (item.bound && item.category !== 'quest')) {
+    // 324차 — 짐 무게가 생기면서 「내려놓기」가 버리기와 다른 뜻을 갖는다(무거운 것을 잠깐 두고 간다 — [F]로 다시 줍는다).
+    //  퀘스트 칸의 모으는 물건 · 가족사진만 여전히 막는다. 일반 물건은 묶음째 내려놓는다(필드가 수량을 정한다).
+    if (item.subCategory === '심부름' || item.category !== 'quest') {
       actions.push({
         label: '내려놓기',
         run: () => {
@@ -1414,7 +1424,42 @@ export class InventoryPanel extends DraggablePanel {
         fontFamily: '"Noto Sans KR", sans-serif', fontSize: '14px', color: '#ffe28a', fontStyle: 'bold',
       }).setOrigin(0.5);
     this.add(this.footerText);
+    // 324차 — 짐 무게: 재화 줄(금테 띠) 왼쪽 안쪽. 40 · 55 · 70kg을 넘을 때마다 색이 바뀐다(흰 → 노랑 → 주황 → 빨강)
+    this.weightText = this.scene.add.text(24, fy + 16, '', {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#d0e8f5', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    this.add(this.weightText);
+    this.refreshWeight();
     this.buildSortButton(fy);
+  }
+
+  /** 324차 — 짐 무게 글을 다시 쓴다(가방이 바뀔 때마다). 재화 글과 겹치지 않게 단계 말은 무게 아래가 아니라 색으로만 전한다 */
+  private refreshWeight(): void {
+    if (!this.weightText) return;
+    GameState.refreshCarryWeight();
+    const enc = GameState.encumbrance;
+    this.weightText.setText(`짐 ${carryWeightText(GameState.carriedWeightG)}`);
+    this.weightText.setColor(ENCUMBRANCE_COLOR[enc.stage]);
+  }
+
+  /** 324차 — 짐 무게 가이드(가방 가이드를 본 사람에게 한 번) */
+  private buildWeightTour(): TourOptions {
+    const rect = (): Phaser.Geom.Rectangle => this.localRect(18, PANEL_H - 44, 120, 32);
+    return {
+      id: 'inventory_weight',
+      anchor: () => this.panelBounds(),
+      alive: () => this.active,
+      steps: [
+        {
+          text: '여기는 지금 든 짐의 무게다. 가방 속 물건과 입고 든 장비, 쿨러에 넣은 고기까지 모두 더한 값이다.',
+          target: rect,
+        },
+        {
+          text: '40kg을 넘으면 걸음이 느려지고 자전거를 탈 수 없다. 55kg을 넘으면 달리지 못하고, 70kg을 넘으면 그 자리에서 움직일 수 없다. 무거운 것은 내려놓거나 집에 두고 다니자.',
+          target: rect,
+        },
+      ],
+    };
   }
 
   /**

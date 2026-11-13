@@ -1331,8 +1331,10 @@ export class HomeInteriorScene extends Phaser.Scene {
       return;
     }
     // 144차 — Shift 홀드 달리기(실내는 12x10칸이라 피로 드레인 없이 조작감만 통일)
-    const running = !!this.cursors.shift?.isDown;
-    const spd = 0.18 * delta * (running ? TUNING.vitals.runSpeedMult : 1);
+    // 324차 — 집 안에서도 짐 무게가 걸음을 늦춘다(70kg을 넘으면 제자리)
+    const enc = GameState.encumbrance;
+    const running = !!this.cursors.shift?.isDown && enc.canRun;
+    const spd = 0.18 * delta * (running ? 1 + (TUNING.vitals.runSpeedMult - 1) * enc.runBonus : 1) * enc.moveMult;
     let dx = 0, dy = 0;
     if (this.cursors.left.isDown) { dx = -spd; this.facing = 'left'; }
     else if (this.cursors.right.isDown) { dx = spd; this.facing = 'right'; }

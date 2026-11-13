@@ -38,6 +38,10 @@ import { MapPinStore } from '../store/MapPinStore.js';
 import { getLocale } from '../i18n/I18n.js';
 import { StoryStore } from '../store/StoryStore.js';
 import { tideFlowStateAt, TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, TIDE_FLOW_PROFILE, getBlueprint } from '@tra/core';
+import { ENCUMBRANCE_LABEL, carryWeightText, type EncumbranceStage } from '@tra/core';   // 324차 — 과적 칸
+
+/** 324차 — 과적 단계 칸 색(무겁다 노랑 · 매우 무겁다 주황 · 움직일 수 없다 빨강) */
+const ENCUMBRANCE_TINT: Record<EncumbranceStage, number> = { 1: 0xd0e8f5, 2: 0xffd257, 3: 0xff9a3c, 4: 0xff5a4a };
 import { playSfx } from '../audio/SfxBank.js';
 
 /** 미니맵 마커 — priority: 0 상점 / 2 퀘스트 보유 / 3 완료 가능 (높을수록 셀 점유 우선) */
@@ -786,12 +790,15 @@ export class RegionHud extends Phaser.GameObjects.Container {
   /** 활성 목록이 바뀔 때만 재생성 — 매초 파괴/생성하면 호버가 끊긴다 */
   private refreshStatusStrip(): void {
     const list = GameState.statuses;
-    const sig = `${getLocale()}|${this.statusSize}|${this.tideBox ? 1 : 0}|${this.craftBox ? 1 : 0}|${list.map((a) => a.id).join(',')}`;
+    // 324차 — 과적(짐 무게 40kg 초과)도 이 띠의 한 칸이다. 단계가 바뀔 때만 다시 그린다
+    const encStage = GameState.encumbrance.stage;
+    const encChip = encStage >= 2;
+    const sig = `${getLocale()}|${this.statusSize}|${this.tideBox ? 1 : 0}|${this.craftBox ? 1 : 0}|${list.map((a) => a.id).join(',')}|w${encStage}`;
     if (sig === this.stripSig) return;
     this.stripSig = sig;
     this.stripC?.destroy();
     this.stripC = undefined;
-    if (list.length === 0) return;
+    if (list.length === 0 && !encChip) return;
 
     const c = this.scene.add.container(0, 0);
     // 물때 칩이 있으면 그 아래로 내려간다
@@ -799,11 +806,12 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const y0 = above ? above.y + above.h + STRIP.gap : SP.y + this.statusLayout.h + STRIP.top;
     // 툴팁 앵커는 **스트립 전체 박스**다 — 칩 하나에 붙이면 팝업이 옆 칩들을 덮어
     // 다른 상태이상으로 커서를 옮길 수 없다(실렌더에서 확인).
-    const rows = Math.ceil(list.length / STRIP.perRow);
+    const chipCount = list.length + (encChip ? 1 : 0);
+    const rows = Math.ceil(chipCount / STRIP.perRow);
     const stripBox: TipAnchor = {
       x: SP.x,
       y: y0,
-      w: Math.min(list.length, STRIP.perRow) * (STRIP.chip + STRIP.gap) - STRIP.gap,
+      w: Math.min(chipCount, STRIP.perRow) * (STRIP.chip + STRIP.gap) - STRIP.gap,
       h: rows * (STRIP.chip + STRIP.gap) - STRIP.gap,
     };
     list.forEach((a, i) => {
@@ -826,6 +834,24 @@ export class RegionHud extends Phaser.GameObjects.Container {
       hit.on('pointerout', () => this.hideValueTip());
       c.add(icon ? [g, icon, hit] : [g, hit]);
     });
+    // 324차 — 과적 칸(가방 그림 · 단계 색). 상태 이상 칸들 뒤에 선다
+    if (encChip) {
+      const i = list.length;
+      const x = SP.x + (i % STRIP.perRow) * (STRIP.chip + STRIP.gap);
+      const y = y0 + Math.floor(i / STRIP.perRow) * (STRIP.chip + STRIP.gap);
+      const color = ENCUMBRANCE_TINT[encStage];
+      const g = this.scene.add.graphics();
+      g.fillStyle(color, 0.32);
+      g.fillRoundedRect(x, y, STRIP.chip, STRIP.chip, 4);
+      g.lineStyle(1.2, color, 0.95);
+      g.strokeRoundedRect(x, y, STRIP.chip, STRIP.chip, 4);
+      const icon = addPixelIcon(this.scene, 'it_backpack', x + STRIP.chip / 2, y + STRIP.chip / 2, STRIP.icon);
+      const hit = this.scene.add.rectangle(x + STRIP.chip / 2, y + STRIP.chip / 2, STRIP.chip + 2, STRIP.chip + 2, 0xffffff, 0.001)
+        .setInteractive({ useHandCursor: false });
+      hit.on('pointerover', () => this.showEncumbranceTip(stripBox));
+      hit.on('pointerout', () => this.hideValueTip());
+      c.add(icon ? [g, icon, hit] : [g, hit]);
+    }
     this.stripC = c;
     c.setPosition(this.statusOffset.x, this.statusOffset.y);
     this.add(c);
@@ -1101,6 +1127,60 @@ export class RegionHud extends Phaser.GameObjects.Container {
     applyScreenFixed(this);
     this.anchorTip(c, anchor);
     this.tipRefresh = () => this.showStatusTip(id, anchor);
+  }
+
+  /** 324차 — 과적 칸 설명(지금 무게 · 단계 · 무엇이 달라졌나). 숫자는 지금 값으로 다시 그린다 */
+  private showEncumbranceTip(anchor: TipAnchor): void {
+    this.hideValueTip();
+    const enc = GameState.encumbrance;
+    if (enc.stage < 2) return;
+    const en = getLocale() === 'en';
+    const color = ENCUMBRANCE_TINT[enc.stage];
+    const c = this.scene.add.container(0, 0);
+    const g = this.scene.add.graphics();
+    c.add(g);
+    const padX = 10, padY = 8, maxW = 240;
+    const tipIcon = addPixelIcon(this.scene, 'it_backpack', padX + 9, padY + 9, 16);
+    if (tipIcon) c.add(tipIcon);
+    const nameX = tipIcon ? padX + 24 : padX;
+    const label = en ? ENCUMBRANCE_LABEL[enc.stage].en : enc.immobile ? '짐이 너무 무겁다' : `짐이 ${ENCUMBRANCE_LABEL[enc.stage].ko}`;
+    const name = this.scene.add.text(nameX, padY + 2, `${label} · ${carryWeightText(GameState.carriedWeightG)}`, {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#f2f8ff', fontStyle: 'bold',
+    });
+    const pct = (m: number): string => `${Math.round((1 - m) * 100)}%`;
+    const more = (m: number): string => `${Math.round((m - 1) * 100)}%`;
+    const lines: string[] = enc.immobile
+      ? [en ? 'You cannot move until you put something down.' : '짐을 내려놓기 전에는 그 자리에서 움직일 수 없다.']
+      : [
+        en ? `Walking −${pct(enc.moveMult)}` : `걷기 ${pct(enc.moveMult)} 느림`,
+        enc.canRun ? (en ? `Running bonus −${pct(enc.runBonus)}` : `달리기 덧속도 ${pct(enc.runBonus)} 줄어듦`) : (en ? 'Cannot run' : '달릴 수 없다'),
+        en ? 'Cannot ride the bicycle' : '자전거를 탈 수 없다',
+        en ? `Hunger +${more(enc.drainMult[0])} · Thirst +${more(enc.drainMult[1])} · Fatigue +${more(enc.drainMult[2])}`
+          : `허기 ${more(enc.drainMult[0])} · 수분 ${more(enc.drainMult[1])} · 피로 ${more(enc.drainMult[2])} 더 든다`,
+      ];
+    const subT = this.scene.add.text(padX, name.y + name.height + 4, lines.join('\n'), {
+      fontFamily: '"Noto Sans KR", sans-serif', fontSize: '11px', color: '#ffcc44', lineSpacing: 3,
+      wordWrap: { width: maxW },
+    });
+    const desc = this.scene.add.text(padX, subT.y + subT.height + 4,
+      en ? 'Up to 40kg is fine. Over 40kg you slow down, over 55kg much more, over 70kg you cannot move.'
+        : '40kg까지는 평소와 같다. 40kg을 넘으면 느려지고, 55kg을 넘으면 훨씬 심해지며, 70kg을 넘으면 움직일 수 없다.', {
+        fontFamily: '"Noto Sans KR", sans-serif', fontSize: '10px', color: '#cfe3f2',
+        wordWrap: { width: maxW },
+      });
+    c.add([name, subT, desc]);
+    const w = padX * 2 + Math.max(nameX - padX + name.width, subT.width, desc.width);
+    const h = desc.y + desc.height + padY;
+    g.fillStyle(0x06101e, 0.96);
+    g.fillRoundedRect(0, 0, w, h, 5);
+    g.lineStyle(1.2, color, 0.95);
+    g.strokeRoundedRect(0, 0, w, h, 5);
+    c.setSize(w, h);
+    this.valueTip = c;
+    this.add(c);
+    applyScreenFixed(this);
+    this.anchorTip(c, anchor);
+    this.tipRefresh = () => this.showEncumbranceTip(anchor);
   }
 
   // ── 날씨 호버 툴팁 (축소 단계 전용) ──────────────────

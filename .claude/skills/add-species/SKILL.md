@@ -87,6 +87,12 @@ description: Pixel Angler 신규 어종 등록 절차 (4계층 — 오라클/도
 - **그림이 없는 새 어종은 Gemini로**(295차): `tools/gemini_fish_art.cjs`의 `LOOKS`에 한 줄 → `NODE_USE_ENV_PROXY=1 node tools/gemini_fish_art.cjs --out <폴더>` → 검수 → `--install` → `node tools/fish_cards.cjs --only <파일>`.
   ⚠ 도구는 **core dist**에서 어종 DB를 읽는다 — `npx pnpm --filter @tra/core run build`를 먼저 하지 않으면 「어종 DB에 없다」로 건너뛴다.
 - **지역 특산이면 `REGIONAL_SPECIALTIES`에도**(294 · 295 — `db-schema/RegionalSpecialty.ts`): 지역 · 제철 · 배율 · 유래. 다섯 바다 가중(`SPECIES_SEA_WEIGHT`)은 `Presence289.test`가 빠짐을 잡는다.
+- **바다마다 크기가 다른 어종은 `sizeBySea`**(324 — 오라클 `FishMasterSpec.sizeBySea[바다] = { minCm, maxCm, meanCm, sdCm }` · `fishSizeModeFor`). 표에 없는 바다는 기본 분포다.
+  기본 분포(`meanCm`)는 「종 전체의 기준 체장」으로 남긴다 — 도감 경험치 · 횟집 값의 기준이 읽는다.
+- **큰 고기 어종군**(324): 어종군(`fightGroupOf`)에 순간 힘 `TUNING.fightPhys.burst[군]`과 기준 체장 `burstRefCm[군]`을 함께 준다(기준보다 큰 개체는 (기준 ÷ 체장)^1.5).
+  스태미나 기저(`STAMINA_BASE`)가 큰 어종은 풀이 17을 넘는 체급부터 「대응만으로 제압되지 않는다」(`fightSubdueBonusCap`) — 평균 개체가 어느 채비로 올라오는지
+  `BigGame324.test.ts`의 줄 급 시험 꼴로 확인하고, 드문 어종은 `abundance`를 준다(322).
+- 80cm가 넘는 큰 회유어는 4덩어리 해체(`LoinStages` · 프로필 `tree: 'loin'`)로 배선한다(317 · 324).
 
 ## 검증
 

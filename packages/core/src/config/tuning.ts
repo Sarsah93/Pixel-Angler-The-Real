@@ -211,7 +211,26 @@ export interface TuningConfig {
     /** 물속 정적 하중 = 체중 × 이 값 (부력 차감 — 25cm 감성돔 300g → ≈100g) */
     staticFrac: number;
     /** 어종군별 순간 가속 배수 (체중 대비 — 돔류 여 박기 3~5배 실측 문헌) */
-    burst: Record<'seabream' | 'amberjack' | 'tuna' | 'mackerel' | 'rockfish' | 'flatfish' | 'seabass' | 'cephalopod' | 'other', number>;
+    burst: Record<'seabream' | 'amberjack' | 'tuna' | 'billfish' | 'mackerel' | 'rockfish' | 'flatfish' | 'seabass' | 'cephalopod' | 'other', number>;
+    /**
+     * 324 — **체급 보정 기준 체장(cm)**. 순간 가속 배수(`burst`)는 그 군의 평균 개체에 맞춘 값이다(참치류 5.0 = 110cm · 25kg).
+     * 근력은 단면적(L²), 체중은 부피(L³)에 비례하므로 큰 개체일수록 체중 대비 순간 힘은 준다 —
+     * 기준보다 큰 개체의 배수 = `burst × (기준 / 체장)^burstSizeExp`. 기준 이하 개체와 여기 없는 군은 그대로다.
+     * (방어류 120cm — 평균 95cm 개체는 그대로이고, 1.2m를 넘는 대부시리 · 대잿방어만 준다)
+     */
+    burstRefCm: Partial<Record<'seabream' | 'amberjack' | 'tuna' | 'billfish' | 'mackerel' | 'rockfish' | 'flatfish' | 'seabass' | 'cephalopod' | 'other', number>>;
+    /** 324 — 체급 보정 지수(1 = 근력 ∝ L² · 체중 ∝ L³ 그대로 · 1.5 = 큰 개체가 그보다 더 무디다 — 실제 채비 급에 맞춘 값) */
+    burstSizeExp: number;
+    /**
+     * 324 — 탈출 확률의 체급 보정 기준(스태미나 풀). 큰 고기는 지치는 데 오래 걸려 싸움이 길다 — 초당 탈출 확률을 그대로 두면
+     * 「큰 고기 = 탈출 폭증」이 된다(180cm 참다랑어 루어 채비 랜딩 4% — 대응을 다 맞춰도). 지치는 시간은 √풀에 비례하므로
+     * 풀이 이 값보다 큰 고기의 초당 탈출 확률 = 기본 × √(기준 ÷ 풀). 이 값 이하(부시리 · 잿방어 95cm급까지)는 그대로다.
+     */
+    escapeRefStamina: number;
+    /** 324차 — 대응만으로 채울 수 있는 제압도 상한의 기준 스태미나 풀. 이보다 큰 고기는 상한이 √(기준 ÷ 풀)로 낮아져 나머지를 「지치게 해서」 채워야 한다 */
+    subdueRefStamina: number;
+    /** 324 — 안전대 하한의 드랙 보정: 릴 드랙이 허락하는 장력(드랙 ÷ 줄 세기)의 이 비율을 넘으면 안전대로 본다 */
+    safeDragFrac: number;
     /** 패턴별 힘 배수 — none(유영) / dive / lateral / jump(줄이 느슨) */
     pullIdle: number; pullDive: number; pullLateral: number; pullJump: number;
     /** 패턴에 **맞게 대응**하면 요구 장력 감쇠 (로드·드랙이 흡수) / 틀리면 증폭 */
@@ -232,6 +251,8 @@ export interface TuningConfig {
      * "패턴 오대응 = 파단"이 여기서 성립한다.
      */
     shockBreakFrac: number;
+    /** 324차 — 릴 드랙이 줄 쪽 드랙 상한보다 약할 때 충격 임계가 (줄 쪽 상한 ÷ 릴 드랙)^이 값 배로 는다(0 = 옛 규칙) */
+    shockDragRelief: number;
     /**
      * 133차 — **체급 보정 안전대 하한**. 안전대(30~80)는 절대값이라, 3kg 원줄에 최대 2%를
      * 거는 24g 복섬은 영영 "느슨함"으로 판정돼 탈출 배수가 2배였다. 그 체급이 걸 수 있는
@@ -849,6 +870,8 @@ export interface TuningConfig {
   reelFight: {
     /** 기준 릴(2500번 · 5.1:1)의 한 바퀴 회수 길이(cm) — 기어 배율 1의 기준 */
     refCmPerTurn: number;
+    /** 324차 — 회수 속도 바닥값이 커지기 시작하는 릴 크기(스피닝 번수 환산). 이보다 큰 릴은 바닥값이 √(번수 ÷ 이 값)배 */
+    bigReelFloorRef: number;
     /** 감기 부하의 릴 크기 지수 — 큰 릴일수록 몸체가 튼튼해 무거운 고기를 덜 힘들게 감는다 */
     sizePowerExp: number;
     /** 베이트릴 감기 부하 배율(직결 구동 — 같은 기어비라도 덜 힘들다) */
@@ -953,6 +976,25 @@ export interface TuningConfig {
     cookBase: number;
     /** 준법 방생(금지체장·금어기 자동 방생) = 어획 XP × 이 배율 */
     lawfulReleaseMult: number;
+  };
+  /**
+   * 324차 — 가방 무게와 과적 4단계(사용자 지정). 든 것 전부(가방 · 착용 · 쿨러 속 고기)의 무게로 단계를 정한다.
+   *  1단계 = `freeKg` 이하(평소와 같다) · 2단계 = 그 위(걷기 · 달리기가 느려지고 탈것을 못 탄다 · 허기 · 수분 · 피로가 더 든다) ·
+   *  3단계 = `heavyKg` 위(훨씬 심하다 · 달리지 못한다) · 4단계 = `maxKg` 위(제자리에서 움직이지 못한다).
+   *  단계 사이 값은 선형으로 잇는다 — 41kg와 54kg가 같지 않다.
+   */
+  encumbrance: {
+    /** 단계 경계(kg) — 이 무게를 「넘으면」 다음 단계다 */
+    freeKg: number; heavyKg: number; maxKg: number;
+    /** 걷기 속도 배율 — `heavyKg`에서의 값 · `maxKg`에서의 값(그 사이는 선형) */
+    moveAtHeavy: number; moveAtMax: number;
+    /** 달리기 가산분(달리기 배율 − 1) 가운데 `heavyKg`에서 남는 비율 — 3단계부터는 달리지 못한다 */
+    runBonusAtHeavy: number;
+    /** 소모 배율 [허기, 수분, 피로] — `heavyKg`에서의 값 · `maxKg`에서의 값 */
+    drainAtHeavy: [number, number, number];
+    drainAtMax: [number, number, number];
+    /** 큰 고기를 집으로 보내는 용달 값 — 기본 + kg당 */
+    haulBaseWon: number; haulPerKgWon: number;
   };
   /** 생존 지표 — 허기·수분·피로 (125차 — SPEC §4. 드레인은 **활동 시간** 기준, 오프라인 정지) */
   vitals: {
@@ -1451,7 +1493,14 @@ export const TUNING: TuningConfig = {
   fightPhys: {
     staticFrac: 0.35,
     // 301(2) — 참치류 5.0(P-0029): 방어류 5.5에 체급 보정(평균 체장 잿방어 95cm : 참다랑어 110cm — 근력 ∝ L² · 체중 ∝ L³) · 25.3kg 평균 개체 요구 장력 ≈ 134kg(잿방어 62kg의 2.2배)
-    burst: { seabream: 4.0, amberjack: 5.5, tuna: 5.0, mackerel: 3.0, rockfish: 2.5, flatfish: 2.0, seabass: 3.5, cephalopod: 1.5, other: 2.2 },
+    // 324 — 새치류 4.5: 참치류보다 순간 가속은 조금 낮고(긴 몸 · 뛰어오르며 힘을 흩는다) 러닝은 길다
+    burst: { seabream: 4.0, amberjack: 5.5, tuna: 5.0, billfish: 4.5, mackerel: 3.0, rockfish: 2.5, flatfish: 2.0, seabass: 3.5, cephalopod: 1.5, other: 2.2 },
+    // 324 — 체급 보정: 참치류 110cm(25kg) · 새치류 전장 170cm(약 25kg) · 방어류 120cm가 기준 — 그보다 크면 배수가 (기준/체장)^1.5로 준다.
+    //   지수 1.5 = 합사 8호(72kg)가 100kg급 참다랑어의 시작 · 10~12호가 여유(실제 참다랑어 캐스팅 채비와 같은 급).
+    //   1.0이면 180cm · 111kg에 합사 10호가 빠듯하고 200cm는 12호로도 못 올린다(패턴에 다 맞게 답해도 충격 파단).
+    burstRefCm: { tuna: 110, billfish: 170, amberjack: 120 }, burstSizeExp: 1.5,
+    subdueRefStamina: 17,   // 17 = 참다랑어 110cm(25kg)급 — 301(2)에 맞춘 그 체급까지는 대응만으로 제압된다(그대로)
+    escapeRefStamina: 8, safeDragFrac: 0.8,   // 8 = 부시리 · 잿방어 95cm급 — 그 아래 고기는 그대로다
     // 133차 — idle(유영) 부하 0.22 → 0.10. 구 값은 **감고만 있어도** 체중의 0.9배가 걸려
     //   1.8kg 감성돔이 1.5호 목줄(2.7kg)에 124%를 띄웠다(시뮬 랜딩 0/300).
     pullIdle: 0.10, pullDive: 1.0, pullLateral: 0.8, pullJump: 0.35,
@@ -1459,7 +1508,7 @@ export const TUNING: TuningConfig = {
     // reelLoadKg = 낚시인 자체 당김. 구 0.6은 1.5호 목줄의 22%를 상수로 먹었다 —
     //   소형어 슬랙 이탈은 132차 체급 게이트가 이미 막으므로 0.25로 낮춘다(133차).
     reelLoadMult: 1.10, reelLoadKg: 0.25, holdStiffMult: 1.1, slackMult: 0.7,
-    dragCapFrac: 0.85, reelDragCapFrac: 0.97, shockBreakFrac: 2.8, safeFloorFrac: 0.45,
+    dragCapFrac: 0.85, reelDragCapFrac: 0.97, shockBreakFrac: 2.8, shockDragRelief: 0.5, safeFloorFrac: 0.45,
     tensionRiseRate: 3.2, tensionFallRate: 2.6,
     slackHookOffBelow: 6, slackHookOffSec: 1.5, slackOpenGraceMult: 0.4,
     dragInTimeScale: 0.70,
@@ -1660,6 +1709,7 @@ export const TUNING: TuningConfig = {
   },
   reelFight: {
     refCmPerTurn: 78,
+    bigReelFloorRef: 4000,   // 4000번까지는 그대로 · 8000번 1.41배 · 20000번 2.24배 · 30000번 2.74배
     sizePowerExp: 0.3,
     baitWindMult: 0.85,
     slipMpsPerKg: 0.35,
@@ -1701,6 +1751,14 @@ export const TUNING: TuningConfig = {
     sizeFactorMin: 0.5, sizeFactorMax: 3.0, firstDiscoveryMult: 5,
     butcherBase: 30, sashimiBase: 50, forageBase: 12, craftBase: 15, cookBase: 12,
     lawfulReleaseMult: 0.5,
+  },
+  // 324차 — 사용자 지정 경계 40 · 55 · 70kg. 55kg에서 걷기 −20% · 달리기 가산 60% 깎임, 70kg 직전 걷기 −65%
+  encumbrance: {
+    freeKg: 40, heavyKg: 55, maxKg: 70,
+    moveAtHeavy: 0.8, moveAtMax: 0.35,
+    runBonusAtHeavy: 0.4,
+    drainAtHeavy: [1.2, 1.3, 1.5], drainAtMax: [1.5, 1.7, 2.4],
+    haulBaseWon: 15000, haulPerKgWon: 300,
   },
   vitals: {
     // 155차 — 하루 세 끼 기준 재보정(사용자 지시). 전형적 하루(수면 8h·대기 6h·걷기 8h·달리기 2h)의 소모가
@@ -1887,6 +1945,7 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'reelFight.slipMpsPerKg', min: 0, max: 1.5, step: 0.05, category: 'balance', label: '드랙 미끄럼 줄 방출(m/s·kg)' },
   { path: 'reelFight.slipReelCut', min: 0, max: 1, step: 0.05, category: 'balance', label: '드랙 미끄럼 감기 손실' },
   { path: 'reelFight.sizePowerExp', min: 0, max: 1, step: 0.05, category: 'balance', label: '릴 크기 감기 힘 지수' },
+  { path: 'reelFight.bigReelFloorRef', min: 1000, max: 20000, step: 500, category: 'balance', label: '회수 바닥이 커지기 시작하는 번수' },
   { path: 'reelFight.gearLoadExp', min: 0, max: 2, step: 0.1, category: 'balance', label: '하이기어 감기 하중 지수' },
   // ── 물때 흐름 × 어종 × 장르 (205차 — 설계 초안, 실플레이 조율 대기) ──
   { path: 'tidePhase.eastSeaK', min: 0, max: 1, step: 0.05, category: 'balance', label: '동해 물때 효과 계수' },
@@ -2012,6 +2071,10 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'fightPhys.dragCapFrac', min: 0.6, max: 1.0, step: 0.05, category: 'balance', label: '드랙 미끄럼 상한' },
   { path: 'fightPhys.reelDragCapFrac', min: 0.7, max: 1.2, step: 0.01, category: 'balance', label: '릴링 중 드랙 상한' },
   { path: 'fightPhys.shockBreakFrac', min: 1.5, max: 5.0, step: 0.1, category: 'balance', label: '충격 파단 임계(배)' },
+  { path: 'fightPhys.shockDragRelief', min: 0, max: 1, step: 0.05, category: 'balance', label: '드랙 여유 충격 완화 지수' },
+  { path: 'fightPhys.subdueRefStamina', min: 6, max: 40, step: 1, category: 'balance', label: '대응만으로 제압되는 체급(풀)' },
+  { path: 'fightPhys.escapeRefStamina', min: 3, max: 30, step: 1, category: 'balance', label: '탈출 배수 기준 체급(풀)' },
+  { path: 'fightPhys.burstSizeExp', min: 0, max: 3, step: 0.1, category: 'balance', label: '큰 개체 순간 힘 감쇠 지수' },
   { path: 'fightPhys.safeFloorFrac', min: 0, max: 1.0, step: 0.05, category: 'balance', label: '체급 안전대 하한' },
   { path: 'fightPhys.pullIdle', min: 0.05, max: 0.6, step: 0.01, category: 'balance', label: '유영 부하 배수' },
   { path: 'fightPhys.reelLoadKg', min: 0, max: 1.2, step: 0.05, category: 'balance', label: '낚시인 당김(kg)' },
@@ -2108,6 +2171,11 @@ export const TUNING_META: TuningParamMeta[] = [
   { path: 'rep.seaReleaseUndersize', min: 0, max: 3, step: 0.1, category: 'balance', label: '바다 평판 +/준법 방생' },
   // 144차 — 달리기
   { path: 'vitals.runSpeedMult', min: 1.1, max: 2.0, step: 0.05, category: 'feel', label: '달리기 속도 배율' },
+  { path: 'encumbrance.freeKg', min: 10, max: 80, step: 1, category: 'balance', label: '과적 2단계 시작(kg)' },
+  { path: 'encumbrance.heavyKg', min: 20, max: 100, step: 1, category: 'balance', label: '과적 3단계 시작(kg)' },
+  { path: 'encumbrance.maxKg', min: 30, max: 150, step: 1, category: 'balance', label: '과적 4단계 시작(kg)' },
+  { path: 'encumbrance.moveAtHeavy', min: 0.4, max: 1.0, step: 0.05, category: 'balance', label: '3단계 시작 걷기 배율' },
+  { path: 'encumbrance.moveAtMax', min: 0.1, max: 0.8, step: 0.05, category: 'balance', label: '4단계 직전 걷기 배율' },
   { path: 'vitals.runFatigueGatePct', min: 50, max: 100, step: 1, category: 'balance', label: '달리기 차단 피로도(%)' },
 ];
 

@@ -50,6 +50,7 @@ import { MailboxStore, type MailboxSave } from './MailboxStore.js';   // 296차
 import { RegionalPlotStore, type RegionalPlotSave } from './RegionalPlotStore.js';   // 300차 — 지역 빌린 밭
 import { CureQueue, type CureQueueSave } from './CureQueue.js';
 import { canSleep, applyPartialSleep, offlineCountsAsSleep, type SleepGate, kstParts, getQuestItem } from '@tra/core';
+import { carriedWeightG as coreCarriedWeightG, encumbranceOf, type Encumbrance } from '@tra/core';   // 324차 — 가방 무게 · 과적
 import { prologueSquid } from './Prologue.js';
 import { buildItemWikiCatalog } from '../data/WikiCatalog.js';
 import {
@@ -873,15 +874,40 @@ export class GameStateManager {
     return coreVitalsLow(this.vitals);
   }
 
-  /** 이동 속도 배율 — 생존 임계(−20%) × 상태이상(골절 등) */
+  /** 이동 속도 배율 — 생존 임계(−20%) × 상태이상(골절 등) × 324차 과적(짐 무게) */
   get moveSpeedMult(): number {
-    return coreVitalsSpeed(this.vitals) * this.statusModifiers.moveMult;
+    return coreVitalsSpeed(this.vitals) * this.statusModifiers.moveMult * this.encumbrance.moveMult;
   }
 
-  /** 자전거 탑승 가능 여부 — 골절 시 불가 */
+  /** 자전거 탑승 가능 여부 — 골절 시 불가 · 324차 짐이 40kg을 넘으면 불가 */
   get canRideBike(): boolean {
-    return !this.statusModifiers.noBike;
+    return !this.statusModifiers.noBike && this.encumbrance.canRide;
   }
+
+  /** 324차 — 자전거를 못 타는 까닭(다리를 다쳤다 · 짐이 무겁다). 탈 수 있으면 null */
+  get bikeBlockReason(): 'injury' | 'overweight' | null {
+    if (this.statusModifiers.noBike) return 'injury';
+    return this.encumbrance.canRide ? null : 'overweight';
+  }
+
+  // ── 324차 가방 무게 · 과적 4단계(core `rules/CarryWeight`) ──
+  /** 무게는 250ms마다 다시 센다(매 프레임 가방 전체를 훑지 않는다) */
+  private _carryCache: { atMs: number; g: number; enc: Encumbrance } | null = null;
+  private carrySnapshot(): { atMs: number; g: number; enc: Encumbrance } {
+    const now = Date.now();
+    if (this._carryCache && now - this._carryCache.atMs < 250) return this._carryCache;
+    // 든 것 전부 — 가방 · 입고 든 장비 · 쿨러 속 고기(쿨러를 들고 있을 때)
+    let g = coreCarriedWeightG(InventoryStore.items);
+    if (InventoryStore.hasCooler()) for (const f of CoolerStore.all()) g += f.weightG;
+    this._carryCache = { atMs: now, g, enc: encumbranceOf(g / 1000) };
+    return this._carryCache;
+  }
+  /** 지금 든 무게(g) */
+  get carriedWeightG(): number { return this.carrySnapshot().g; }
+  /** 지금 무게가 몸에 주는 것(단계 · 속도 · 달리기 · 탈것 · 소모 배율) */
+  get encumbrance(): Encumbrance { return this.carrySnapshot().enc; }
+  /** 가방이 바뀐 직후 곧바로 다시 세게 한다(어획 · 버리기 · 구매 뒤 화면 표시가 250ms 늦지 않게) */
+  refreshCarryWeight(): void { this._carryCache = null; }
 
   private commitVitals(v: VitalsState): void {
     const p = this.player;
@@ -940,13 +966,15 @@ export class GameStateManager {
       this._drainBuff.leftMs -= dtMs;
       if (this._drainBuff.leftMs <= 0) this._drainBuff = null;
     }
+    const enc = this.encumbrance;
     const r = coreTickVitals(v, dtMs, activity, {
       ...env,
       coldResistRank: env.coldResistRank ?? this.skillRank('life_cold'),
+      // 324차 — 무거운 짐은 허기 · 수분 · 피로를 더 쓴다(앉아 쉬는 회복에는 곱하지 않는다)
       extraMult: [
-        mods.drainMult[0] * sk[0] * buff,
-        mods.drainMult[1] * sk[1] * buff,
-        mods.drainMult[2] * sk[2] * buff,
+        mods.drainMult[0] * sk[0] * buff * enc.drainMult[0],
+        mods.drainMult[1] * sk[1] * buff * enc.drainMult[1],
+        mods.drainMult[2] * sk[2] * buff * (restoring ? 1 : enc.drainMult[2]),
       ],
     });
     this.commitVitals(v);

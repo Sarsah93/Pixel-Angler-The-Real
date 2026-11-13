@@ -90,6 +90,9 @@
 | **아이템 그림 고르기**(`ui/ItemIcon.ts` — 작물 초상 · 채소 별칭 → `itemImageKeyOf`(아이템 id → 16px 키 → 같은 음식 별칭 · `ItemImages.ts`) → 코드 그림 → `iconTexture` → 16px) · 옛 세이브 요리 계열 그림 키 → 레시피 사진(`refreshDishPhoto`) | ✅ | **255** — 가방 칸 새 그림 전부 · 이전 10/10 |
 | **특산 배지 · 판매 지역**(295 — 칸 배지 `mk_origin`(얻은 지역 꼬리표가 있고 특산이면) · 표시 이름 `specialtyDisplayName` · `getSellPrice(item, sellRegion)` · `addItemIds` `noteSpecialty` · 같은 id · 다른 꼬리표 합치면 꼬리표 비움 · 가공품 분류 「가공품」 `processedItemTemplate` 백필) | ✅ | **295** |
 | **넣다 실패하면 우편함으로**(296 — `MailDeliver.addItemOrMail(tpl, qty, letter)` · `InventoryStore.canRecoverPlaceable`(화구 회수 자리 확인) — 자동 반환 경로(통발 · 용기)는 사라지지 않는다 · 수동 경로(화구 스토브 · 위판 찾아오기)는 거부) | ✅ | **296** |
+| **짐 무게 · 과적 4단계**(core `rules/CarryWeight.ts` — 무게는 저장하지 않고 센다: 개체 무게 → 무게로 세는 것 → 대 · 릴 자중 → 줄 스풀 → 봉돌 → 찌 → id 표 → 이름의 무게 → 씨앗 → 소분류 · `encumbranceOf` 40 → 55 → 70kg 구간 선형 · `GameState.encumbrance`(가방 + 쿨러 고기 · 250ms 캐시) · 가방 바닥 줄 「짐 N kg」 · HUD 칩 · 상세보기 「무게」) | ✅ | **324** — [324](../03-WORKLOG/2026-11-13-324-big-game-tackle-carry-weight.md) |
+| **큰 고기용 장비**(대 20 · 릴 20 `BIG_GAME_ROD_SHOP` · `BIG_GAME_REEL_SHOP` · 줄 · 바늘 · 루어 32 `BIG_GAME_TACKLE` · 만든 곳 `brand` · 내구도 배수 `durabilityMult` · 릴 자중 · 레버 드랙 · 장비별 그림 `art` · 줄 상표 마모 `lineWearMultOf`) | ✅ | **324** — 직판장 · 낚시용품점 |
+| **내려놓기 넓히기 · 집으로 보내기**(의뢰품 밖 모든 물건 · 묶음 통째로 · 내려놓은 음식은 계속 상함 · 어획 결정 창 「집으로 보내기」 = 용달 값 `haulFeeWon` → 우편함) | ✅ | **324** |
 
 ## 5. 잔여·차기
 
@@ -108,6 +111,13 @@
   두 모델을 합칠지 core 쪽을 걷어낼지는 별도 결정.
 
 ## 6. 함정·불변조건
+
+### [324차] 무게는 아이템에 저장하지 않는다
+
+- 무게는 `itemUnitWeightG`가 매번 센다 — 아이템에 무게 필드를 새로 박지 않는다(옛 세이브 백필이 1,000종에 걸린다).
+  어색한 무게는 core `ITEM_WEIGHT_G`(id 표)에 한 줄을 더해 고친다. 이름에 「600g」 · 「1kg」 · 「500ml」가 있으면 그 값이 먼저다(길이 m · 밝기 lm은 무게가 아니다).
+- 하네스에서 `INV.addItem(틀, 수량)`의 수량은 둘째 인자다 — 틀 안에 `qty`를 넣으면 무게 합이 NaN이 된다(core는 NaN을 0 · 1단계로 받지만 화면 검증이 틀어진다).
+- 4단계(70kg 초과)는 움직이지 못한다 — 물건을 받는 길을 새로 만들면 「받고 나서 갇히는가」를 본다(큰 고기는 「집으로 보내기」 · 그 밖은 「내려놓기」가 풀 길이다).
 
 - **넣다 실패하면 사라지는 지급 금지**(234 · 296) — 자동으로 돌아오는 물건(유찰품 · 걷은 통발 · 내린 용기)은 `addItemOrMail`로 우편함에, 사람 앞에서 받는 것(보상 · 찾아오기 · 화구 회수)은 자리를 먼저 확인하고 거부한다. `addItem` 반환값을 버리는 새 코드를 쓰지 않는다.
 

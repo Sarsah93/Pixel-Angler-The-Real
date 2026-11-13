@@ -81,6 +81,10 @@ const SPECIES = [
   { id: 'yellowfin_goby',      sym: 'YELLOWFIN_GOBY',      file: 'yellowfin_goby.png',        ko: '문절망둑',     mirror: false },
   // 317 — 4덩어리 해체(참다랑어 — 방어류 앞 단계 + 해체)
   { id: 'bluefin_tuna',        sym: 'BLUEFIN_TUNA',        file: 'pacific_bluefin_tuna.png',  ko: '참다랑어',     mirror: false },
+  // 324 — 큰 회유어 셋(4덩어리 해체 — 옆면은 제 그림)
+  { id: 'bigeye_tuna',         sym: 'BIGEYE_TUNA',         file: 'bigeye_tuna.png',           ko: '눈다랑어',     mirror: false },
+  { id: 'swordfish',           sym: 'SWORDFISH',           file: 'swordfish.png',             ko: '황새치',       mirror: false },
+  { id: 'striped_marlin',      sym: 'STRIPED_MARLIN',      file: 'striped_marlin.png',        ko: '청새치',       mirror: false },
   // 322 — 9종(원본이 생기면 굽는다 — 없으면 건너뛴다. 구운 뒤 core `BUTCHERY_ART_PENDING_SPECIES`에서 뺀다)
   { id: 'gizzard_shad',        sym: 'GIZZARD_SHAD',        file: 'dotted_gizzard_shad.png',   ko: '전어',         mirror: false },
   { id: 'pacific_herring',     sym: 'PACIFIC_HERRING',     file: 'pacific_herring.png',       ko: '청어',         mirror: false },

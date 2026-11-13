@@ -95,6 +95,10 @@ export const FISH_TEXTURE: Record<string, string> = {
   longtooth_grouper: 'fish_longtooth_grouper',       // 자바리
   sawedged_perch: 'fish_sawedged_perch',             // 다금바리
   sevenband_grouper: 'fish_sevenband_grouper',       // 능성어
+  // 324 — 큰 회유어 셋
+  bigeye_tuna: 'fish_bigeye_tuna',                   // 눈다랑어
+  swordfish: 'fish_swordfish',                       // 황새치
+  striped_marlin: 'fish_striped_marlin',             // 청새치
 };
 
 /**
@@ -183,6 +187,10 @@ export const FISH_IMAGE_FILES: Record<string, string> = {
   fish_longtooth_grouper: 'longtooth_grouper.png',        // 자바리
   fish_sawedged_perch: 'sawedged_perch.png',              // 다금바리
   fish_sevenband_grouper: 'sevenband_grouper.png',        // 능성어
+  // 324 — 큰 회유어 셋
+  fish_bigeye_tuna: 'bigeye_tuna.png',                    // 눈다랑어
+  fish_swordfish: 'swordfish.png',                        // 황새치
+  fish_striped_marlin: 'striped_marlin.png',              // 청새치
 };
 
 /**

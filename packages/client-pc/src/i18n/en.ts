@@ -12,6 +12,7 @@ import { EN_HELP } from './en_help.js';
 import { EN_FORAGE } from './en_forage.js';
 import { EN_PANELS } from './en_panels.js';
 import { EN_GEAR } from './en_gear.js';
+import { EN_BIGGAME } from './en_biggame.js';   // 324차
 import { EN_AUCTION } from './en_auction.js';
 import { EN_CONTENT } from './en_content.js';
 import { EN_FISH } from './en_fish.js';
@@ -697,7 +698,7 @@ export const EN_DICT: Record<string, string> = {
   '물이 들어오는 중': 'Water coming in',
   '물이 빠지는 중': 'Water going out',
   '물이 멈췄다': 'The water has stopped',
-  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_MAIL, ...EN_VISIT, ...EN_GIFT, ...EN_FEST, ...EN_CURE, ...EN_TALK, ...EN_BASE,
+  ...EN_FISH, ...EN_CONTENT, ...EN_ITEMS, ...EN_RIG_COOKING, ...EN_HELP, ...EN_FORAGE, ...EN_PANELS, ...EN_GEAR, ...EN_AUCTION, ...EN_COOK, ...EN_UI, ...EN_EXTRA, ...EN_TOUR, ...EN_TOUR_PANELS, ...EN_TOUR_PANELS2, ...EN_SKILL, ...EN_HOME, ...EN_RIG, ...EN_FARM, ...EN_MILL, ...EN_MAIL, ...EN_VISIT, ...EN_GIFT, ...EN_FEST, ...EN_CURE, ...EN_TALK, ...EN_BIGGAME, ...EN_BASE,
   // 214차 — 인물의 집 · 문 두드리기
   '정옥선의 집': "Jeong Okseon's house", '어촌계 사무실': 'Co-op office', '도현수의 집': "Do Hyeonsu's house",
   '강두철의 집': "Kang Ducheol's house", '탁씨 죽간 공방': "The Taks' bamboo-rod workshop", '공방 살림채': 'Workshop living quarters',

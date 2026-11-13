@@ -55,8 +55,33 @@ const GROUPER: LoinLook = {
   bone: 0xece6d6, boneDark: 0xc0b8a4, remnant: 0xd0ab9c,
 };
 const GROUPER_LOIN = new Set(['longtooth_grouper', 'sawedged_perch', 'sevenband_grouper']);
+/** 324 — 눈다랑어: 참다랑어보다 밝은 붉은 살 · 지방이 적다 */
+const BIGEYE: LoinLook = {
+  flesh: 0xb5303a, fleshDark: 0x8c1c26, fleshLight: 0xd04a4c,
+  belly: 0xd87a78, fat: 0xf2cfc8,
+  chiai: 0x56121a, chiaiDark: 0x3a0c12,
+  skinBack: 0x22304c, skinBelly: 0xc9d0d8,
+  bone: 0xe9e2d0, boneDark: 0xbcb29c, remnant: 0x96222c,
+};
+/** 324 — 황새치: 옅은 분홍빛이 도는 크림색 살 · 짙은 혈합육 · 흑갈색 껍질 */
+const SWORDFISH: LoinLook = {
+  flesh: 0xf0d2c4, fleshDark: 0xdcb6a8, fleshLight: 0xf9e6dc,
+  belly: 0xf5dfd4, fat: 0xfdf3ec,
+  chiai: 0x8a3a34, chiaiDark: 0x66241f,
+  skinBack: 0x3a3632, skinBelly: 0xb9aca0,
+  bone: 0xece6d6, boneDark: 0xc0b8a4, remnant: 0xcf9c8e,
+};
+/** 324 — 청새치: 주황빛이 도는 분홍 살 · 청남색 껍질 */
+const MARLIN: LoinLook = {
+  flesh: 0xea9c7c, fleshDark: 0xd07e62, fleshLight: 0xf5b89c,
+  belly: 0xf2bfa6, fat: 0xfbe6d8,
+  chiai: 0x7a2a22, chiaiDark: 0x561a14,
+  skinBack: 0x24365a, skinBelly: 0xc6ced8,
+  bone: 0xece6d6, boneDark: 0xc0b8a4, remnant: 0xba6850,
+};
+const LOOK_BY_SPECIES: Record<string, LoinLook> = { bluefin_tuna: TUNA, bigeye_tuna: BIGEYE, swordfish: SWORDFISH, striped_marlin: MARLIN };
 export function loinLook(speciesId: string): LoinLook {
-  return speciesId === 'bluefin_tuna' ? TUNA : GROUPER_LOIN.has(speciesId) ? GROUPER : AMBERJACK;
+  return LOOK_BY_SPECIES[speciesId] ?? (GROUPER_LOIN.has(speciesId) ? GROUPER : AMBERJACK);
 }
 const hex = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
 const hash = (a: number, b: number): number => ((a * 73856093) ^ (b * 19349663)) >>> 0;

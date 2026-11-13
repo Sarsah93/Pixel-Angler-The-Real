@@ -31,6 +31,7 @@ import {
 } from '../../data/InteriorLayouts.js';
 import { fieldReserved, assertClear } from '../../ui/ScreenReserve.js';
 import { addPixelIcon } from '../../ui/PixelIcon.js';
+import { GameState } from '../../store/GameState.js';   // 324차 — 짐 무게(과적) 걸음 배율
 
 /** 겹층 depth — 배경 · 집기/사람(+y) · 안내 */
 const D_BACK = 70;
@@ -261,8 +262,10 @@ export class InteriorSystem {
       this.hint.setVisible(false);
       return;
     }
-    const running = !!cursors.shift?.isDown;
-    const spd = 0.18 * delta * (running ? TUNING.vitals.runSpeedMult : 1);
+    // 324차 — 가게 안에서도 짐 무게가 걸음을 늦춘다(70kg을 넘으면 제자리)
+    const enc = GameState.encumbrance;
+    const running = !!cursors.shift?.isDown && enc.canRun;
+    const spd = 0.18 * delta * (running ? 1 + (TUNING.vitals.runSpeedMult - 1) * enc.runBonus : 1) * enc.moveMult;
     let dx = 0, dy = 0;
     if (cursors.left.isDown) { dx = -spd; this.facing = 'left'; }
     else if (cursors.right.isDown) { dx = spd; this.facing = 'right'; }

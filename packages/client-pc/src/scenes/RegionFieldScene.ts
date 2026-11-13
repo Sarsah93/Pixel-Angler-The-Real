@@ -85,6 +85,8 @@ import { RegionLight, RegionBuilding,
   computeCastWeather, castScatterRadius, applyCastScatter, castWeatherLabelKo, kstParts,
   sharedWeatherKind, quantizeShared,
   rodCastDistanceMult, rodLoadState, rodTipSnapChance, reelFitsRod, rodFitsHole,
+  reelHoldsLine, reelLineCapacityM, rodLineFit, rodDragFit, lineHoOf, isPeLine,   // 324차 — 줄 · 릴 · 대 궁합
+  carryWeightText,
   FARM_TUNING,
   type CastWeatherEffect,
   type VitalsActivity,
@@ -530,6 +532,10 @@ export class RegionFieldScene extends Phaser.Scene {
   private running = false;
   /** 숨참 안내 스로틀 — 피로도 게이트에 걸렸을 때 로그를 도배하지 않게 */
   private runGateWarnAt = 0;
+  /** 324차 — 줄 · 릴 · 대 궁합을 이미 일러 준 조합(같은 채비로 던질 때마다 되풀이하지 않는다) */
+  private gearFitWarnedKey = '';
+  /** 324차 — 「짐이 너무 무겁다」를 다시 띄울 수 있는 시각 */
+  private overweightWarnAt = 0;
 
   // ── 대기/조명/날씨 (2026-07-20) ──
   /** 화면 고정 빗줄기 풀 */
@@ -3576,7 +3582,10 @@ export class RegionFieldScene extends Phaser.Scene {
     if (!GameState.isMounted && !InventoryStore.find('inv_bike')) return;
     // 221차 — 골절이면 탈 수 없다(상태 이상 정의에만 있고 막지 않았다 — 성장·생존 감사)
     if (!GameState.isMounted && !GameState.canRideBike) {
-      this.floatingHint('다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자');
+      // 324차 — 짐이 40kg을 넘으면 탈 수 없다
+      this.floatingHint(GameState.bikeBlockReason === 'overweight'
+        ? `짐이 무거워 자전거를 탈 수 없다(${carryWeightText(GameState.carriedWeightG)} · 40kg까지)`
+        : '다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자');
       return;
     }
     GameState.isMounted = !GameState.isMounted;
@@ -4174,6 +4183,25 @@ export class RegionFieldScene extends Phaser.Scene {
     if (missing.length > 0) {
       this.floatingHint(`채비가 불완전합니다 — ${missing.join(', ')} 장착 필요 (U 채비하기)`);
       return;
+    }
+    // 324차 — 줄 · 릴 · 대 궁합. 굵은 줄이 릴에 100m도 안 감기면 던질 수 없고, 그 밖의 어긋남은 한 번씩 일러 준다
+    const mainLine = InventoryStore.rigMainLineItem;
+    const mainNo = mainLine ? lineHoOf(mainLine) : null;
+    const reelSp = InventoryStore.reelSpec;
+    if (mainLine && mainNo && reelSp && !reelHoldsLine(reelSp, mainNo)) {
+      this.floatingHint(`이 릴에는 ${mainNo}호 줄이 ${reelLineCapacityM(reelSp, mainNo)}m밖에 감기지 않는다 — 더 큰 릴이나 가는 줄을 쓰자`);
+      return;
+    }
+    if (rodSpec && mainLine && mainNo) {
+      const fit = rodLineFit(rodSpec, mainNo, isPeLine(mainLine));
+      const drag = rodDragFit(rodSpec, InventoryStore.lineNominalCapacityKg() ?? 0, reelSp);
+      const key = `${InventoryStore.handRod?.id}|${mainLine.id}|${InventoryStore.equippedReel?.id}`;
+      if (key !== this.gearFitWarnedKey) {
+        this.gearFitWarnedKey = key;
+        if (drag === 'strained') this.hud?.pushLog('[채비] 줄과 드랙이 이 대가 버티는 힘보다 훨씬 세다 — 큰 고기를 걸면 대가 먼저 부러질 수 있다');
+        else if (fit === 'thick') this.hud?.pushLog('[채비] 원줄이 이 대에 비해 굵다 — 대가 받는 줄보다 굵으면 덜 나가고 대에 무리가 간다');
+        else if (fit === 'thin') this.hud?.pushLog('[채비] 원줄이 이 대에 비해 가늘다 — 대의 힘을 다 쓰기 전에 줄이 먼저 터진다');
+      }
     }
     // 209차 — 채비가 대에 비해 너무 무거우면 미리 알린다(세게 던지면 초릿대가 부러진다)
     if (rodSpec && !this.holeSpot && rodLoadState(rodSpec, InventoryStore.getRigTotalWeightG()) === 'danger') {
@@ -8194,13 +8222,16 @@ export class RegionFieldScene extends Phaser.Scene {
     const g = GroundItemStore.all.find((x) => x.uid === uid);
     if (!g) return;
     // 신선도 시계는 집는 순간부터 다시 흐른다 (놓여 있던 동안은 정지 — 쿨러와 같은 규칙)
-    const tpl = { ...g.tpl, conditionSinceMs: g.tpl.condition ? Date.now() : undefined };
+    // 324차 — 내가 내려놓은 것은 바닥에서도 시간이 흐른다(바닥이 냉장고가 되지 않게 — 놓을 때의 시계를 그대로 잇는다)
+    const keepClock = !!g.placed && g.tpl.conditionSinceMs !== undefined;
+    const tpl = { ...g.tpl, conditionSinceMs: g.tpl.condition ? (keepClock ? g.tpl.conditionSinceMs : Date.now()) : undefined };
     if (!InventoryStore.addItem(tpl, g.qty)) {
       this.floatingHint('인벤토리 공간이 부족합니다');
       return;
     }
     GroundItemStore.take(uid);
     GameState.markDirty();
+    GameState.refreshCarryWeight();
     this.renderGroundItems();
     this.events.emit('inventory-changed');
     this.hud?.pushLog(`[획득] ${g.tpl.name}${g.qty > 1 ? ` ×${g.qty}` : ''}을(를) 집었습니다.`);
@@ -8232,10 +8263,14 @@ export class RegionFieldScene extends Phaser.Scene {
     if (GroundItemStore.countAt(this.region, c, r, this.groundMapKey) >= 8) {
       return { ok: false, message: '이 자리에 물건이 너무 많습니다 — 한 칸 옮겨서 놓으세요.' };
     }
-    if (!InventoryStore.removeQty(item.id, 1)) return { ok: false, message: '아이템이 없습니다.' };
-    GroundItemStore.drop(this.region, c, r, item, 1, true, this.groundMapKey);
+    // 324차 — 심부름 물건 · 이야기가 준 장비는 한 개씩(옛 규칙), 그 밖의 물건은 묶음째 내려놓는다(짐 덜기)
+    const n = item.subCategory === '심부름' || item.bound ? 1 : Math.max(1, item.qty);
+    const snapshot = { ...item };
+    if (!InventoryStore.removeQty(item.id, n)) return { ok: false, message: '아이템이 없습니다.' };
+    GroundItemStore.drop(this.region, c, r, snapshot, n, true, this.groundMapKey);
     playSfx('item_drop');
     GameState.markDirty();
+    GameState.refreshCarryWeight();
     this.renderGroundItems();
     this.events.emit('inventory-changed');
     this.hud?.pushLog(`[내려놓기] ${item.name}을(를) 바닥에 놓았습니다. [F]로 다시 회수할 수 있습니다.`);
@@ -8813,7 +8848,10 @@ export class RegionFieldScene extends Phaser.Scene {
     // 221차 — 타는 중에 다리를 다치면(골절) 그 자리에서 내린다
     if (GameState.isMounted && !GameState.canRideBike) {
       this.dismountBike();
-      this.floatingHint('다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자');
+      // 324차 — 타는 중에 짐이 40kg을 넘어도 그 자리에서 내린다
+      this.floatingHint(GameState.bikeBlockReason === 'overweight'
+        ? '짐이 무거워 자전거를 탈 수 없다 — 짐을 덜어야 한다'
+        : '다리를 다쳐 자전거를 탈 수 없다 — 부목을 대고 나을 때까지 걷자');
     }
     // 자전거 탑승 시 이동 속도 2배 (충돌/카메라 팔로우는 불변).
     // 심리스는 타일 32px라 같은 px/s면 타일 체감이 느려진다 → 1.4배 보정 (동서 횡단 ≈ 3분 유지)
@@ -8842,6 +8880,13 @@ export class RegionFieldScene extends Phaser.Scene {
     if (this.cursors.up.isDown) { vy = -speed; this.playerFacing = 'up'; }
     else if (this.cursors.down.isDown) { vy = speed; this.playerFacing = 'down'; }
     if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707; }
+    // 324차 — 과적 4단계(70kg 초과): 방향키를 눌러도 제자리다. 몸은 그쪽을 보고, 왜 못 가는지 일러 준다
+    if (speed <= 0 && GameState.encumbrance.immobile
+      && (this.cursors.left.isDown || this.cursors.right.isDown || this.cursors.up.isDown || this.cursors.down.isDown)
+      && this.time.now > this.overweightWarnAt) {
+      this.overweightWarnAt = this.time.now + 6000;
+      this.floatingHint(`짐이 너무 무겁다(${carryWeightText(GameState.carriedWeightG)}) — 내려놓아야 움직일 수 있다`);
+    }
     this.playerBody.setVelocity(vx, vy);
     const moving = vx !== 0 || vy !== 0;
     this.running = this.running && moving;
@@ -8871,8 +8916,17 @@ export class RegionFieldScene extends Phaser.Scene {
       }
       return 1;
     }
+    // 324차 — 과적: 2단계(40kg 초과)는 달리기 가산분이 줄고, 3단계(55kg 초과)부터는 달리지 못한다
+    const enc = GameState.encumbrance;
+    if (!enc.canRun) {
+      if (this.time.now > this.runGateWarnAt) {
+        this.runGateWarnAt = this.time.now + 12_000;
+        this.hud?.pushLog('[경고] 짐이 너무 무거워 달릴 수 없습니다');
+      }
+      return 1;
+    }
     this.running = true;
-    return v.runSpeedMult;
+    return 1 + (v.runSpeedMult - 1) * enc.runBonus;
   }
 
   private updateWalkTexture(moving: boolean): void {
@@ -9234,6 +9288,8 @@ export class RegionFieldScene extends Phaser.Scene {
   }
 
   private exitToWorldMap(): void {
+    // 324차 — 움직일 수 없는 짐(70kg 초과)으로는 다른 곳으로 가지 못한다
+    if (GameState.encumbrance.immobile) { this.floatingHint('짐이 너무 무거워 움직일 수 없다 — 짐을 덜어야 떠날 수 있다'); return; }
     playSfx('panel_open', { pitch: 0.7 });   // 지도 펼치기 — 출발 소리(travel)는 지도에서 행선지를 고를 때
     this.fadeOutThen(() => this.scene.start('WorldMapScene'), 280);
   }
@@ -9243,6 +9299,7 @@ export class RegionFieldScene extends Phaser.Scene {
     // 일시정지 메뉴(depth 1000)를 먼저 닫는다 — 안 닫으면 확인 팝업(950)이 메뉴 뒤에
     // 가려져 "아무 일도 안 일어나는" 것처럼 보였다 (QA 2026-08-05 스크린샷 확정).
     this.closePauseMenu();
+    if (GameState.encumbrance.immobile) { this.floatingHint('짐이 너무 무거워 움직일 수 없다 — 짐을 덜어야 집에 갈 수 있다'); return; }
     const dlg = new ConfirmDialog(
       this,
       '정말로 집으로 돌아가시겠습니까?',

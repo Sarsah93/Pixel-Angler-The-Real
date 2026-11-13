@@ -246,6 +246,8 @@ export { buildCephalopodStages, isCephalopodTreeReady } from './db-schema/Cephal
 export type { FatiguePhase, FatigueInput, FatigueTick } from './simulation/FishFatigueModel.js';
 export {
   FishFatigueModel, staminaMaxFor, STAMINA_BASE, DEFAULT_STAMINA_BASE, FATIGUE_PHASE_LABEL,
+  fightEscapeScale,   // 324차 — 탈출 확률의 체급 배수
+  fightSubdueBonusCap,   // 324차 — 대응만으로 채울 수 있는 제압도 상한
 } from './simulation/FishFatigueModel.js';
 
 // 파이트 모드 2D 횡 러닝 (측면하중 + heading/displacement — LinePhysics 1D 재사용 확장)
@@ -500,12 +502,14 @@ export type {
 } from './types/RodItem.js';
 export {
   ROD_SHOP, REEL_SHOP, ROD_SPEC_BY_ID, REEL_SPEC_BY_ID, rodSpecFor, reelSpecFor, getRodCatalogEntry, getReelCatalogEntry,
+  BIG_GAME_ROD_SHOP, BIG_GAME_REEL_SHOP, isBigGameGear,   // 324차 — 큰 고기용 장비
 } from './db-schema/RodCatalog.js';
 export {
   ROD_USE_LABEL, ROD_USE_CAST, PE_TO_NYLON_NO, rodLoadState, rodLoadCastK, rodCastDistanceMult, rodTipSnapChance,
   rodLineFit, reelFitsRod, rodFitsHole, rodSelfHookChance,
+  reelLineCapacityM, reelHoldsLine, rodDragFit, REEL_MIN_LINE_M,   // 324차 — 줄 · 릴 · 대 궁합
   // 210차 — 릴 드랙 · 기어비 → 파이팅
-  reelSpoolDiamCm, reelCmPerTurn, reelGearK, reelWindLoad, reelRetrieveMps, effectiveDragKg, reelDragBinds,
+  reelSpoolDiamCm, reelCmPerTurn, reelGearK, reelWindLoad, reelRetrieveMps, reelFloorK, effectiveDragKg, reelDragBinds,
 } from './simulation/RodFit.js';
 export type { ChumBall, ChumProbePos, ChumParcel, ChumDrift, ChumSyncTarget, ChumPathPrediction, ChumSyncOpts } from './simulation/ChumPhysics.js';
 export {
@@ -524,11 +528,11 @@ export type { BiteContext, BiteTickResult } from './simulation/BiteProbabilityEn
 export { BiteProbabilityEngine } from './simulation/BiteProbabilityEngine.js';
 export type {
   SwimLayer, BaitKey, HabitatTerrain, FightProfile, FishBodyForm,
-  FishMasterSpec, SpawnContext, SpawnedFish,
+  FishMasterSpec, FishSizeMode, SpawnContext, SpawnedFish,
 } from './simulation/FishSpawningOracle.js';
 export {
   ORACLE_FISH_DB, isClosedSeasonExempt, spawnFish, classifyLayer, getBaitAffinity, candidateCount, speciesBiteShare, speciesBiteReadiness,
-  standardWeightG, speciesStandardWeightG, conditionFactorFor, baitPrefOf, presenceBiteRate,
+  standardWeightG, speciesStandardWeightG, fishSizeModeFor, conditionFactorFor, baitPrefOf, presenceBiteRate,
 } from './simulation/FishSpawningOracle.js';
 // 289차 — 어종 존재 가중(바다 · 계절 · 수온 — D1 · D2 · D5 · D6)
 export type { SeaKey, PresenceContext, PresenceBreakdown } from './rules/SpeciesPresence.js';
@@ -595,7 +599,7 @@ export type { FightPattern, FightInput, FightEvent, FightStatus, FightingFishSpe
 export { FightingPhase } from './simulation/FightingPhase.js';
 export type { FightGroup, RarityTier, FishRarityInfo } from './simulation/FishRarity.js';
 export {
-  fightGroupOf, fightBodyFormOf, fishReferenceLengthCm, fishRarity, RARITY_STYLE, lineStrengthKg,
+  fightGroupOf, fightBurstMult, fightBodyFormOf, fishReferenceLengthCm, fishRarity, RARITY_STYLE, lineStrengthKg,
 } from './simulation/FishRarity.js';
 
 // 실측 연안 수심 프로필 (연안정보도 SHP → 거리별 수심)
@@ -1074,3 +1078,10 @@ export type { RegionalPlotOffer, RegionalPlotContract, PlotRentSettle } from './
 export type { GiftReaction, GiftKind, GiftTag, GiftItemView, NpcGiftPrefDef, GiftLog } from './types/Gift.js';
 export { NPC_GIFT_PREFS, giftPrefOf, giftHomeRegionOf, GIFT_PREF_NPC_COUNT } from './db-schema/NpcGiftPrefs.js';
 export { GIFT_AFFINITY, GIFT_DAILY_CAP, GIFT_REACTION_LABEL, GIFT_AGAIN_LINE, GIFT_GENERIC_LINES, giftReaction, giftLine, giftTitleGoals, canGiftToday, validateGiftPrefs } from './rules/Gifts.js';
+
+// 324차 — 가방 무게 · 과적 4단계
+export {
+  itemUnitWeightG, itemStackWeightG, carriedWeightG, encumbranceOf, ENCUMBRANCE_LABEL, carryWeightText, haulFeeWon,
+  weightFromNameG, lineDiameterMm, lineMassG, reelWeightG,
+  type CarryWeightItem, type Encumbrance, type EncumbranceStage,
+} from './rules/CarryWeight.js';

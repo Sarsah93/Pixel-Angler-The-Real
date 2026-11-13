@@ -1411,7 +1411,8 @@ export const FISH_DATABASE: FishSpecies[] = [
     //   · 30kg 미만 어린 고기(국제 관리 기준의 「소형어」) — 남해 · 제주
     //   · 1.5 ~ 2m · 100 ~ 150kg급 어른 고기 — 여름 동해 정치망(2025.7 영덕 1,300여 마리 130 ~ 150kg · 2026.6 주문진 170여 마리 100 ~ 140kg)
     //  국내 최대급 = 2025.2 영덕 314kg · 종 최대 = 3m · 450kg 남짓. 금지체장 · 금어기는 없다(어획 한도로 관리).
-    //  ⚠ 게임 스폰 분포(오라클 `meanCm` 110)는 그대로다 — 100kg급을 풀려면 채비 · 싸움 물리가 먼저다(워크로그 323 §6).
+    //  324 — 게임에서 낚이는 크기도 해역별로 갈랐다(오라클 `sizeBySea` — 제주 · 남해 · 서해 평균 80cm / 동해 · 울릉 평균 180cm).
+    //   큰 고기용 장비 · 체급 보정(`fightBurstMult`)과 한 묶음이다. 기준 평균(`meanCm` 110)은 희귀도 · 체급 보정의 기준으로 남는다.
     minLegalSizeCm: 0, avgSizeRangeCm: [60, 200], maxRecordCm: 300, avgWeightRangeG: [5000, 150000],
     sizeGroups: [
       { labelKo: '어린 고기 (남해 · 제주)', lengthCm: [50, 115], weightKg: [2, 30] },
@@ -1424,6 +1425,40 @@ export const FISH_DATABASE: FishSpecies[] = [
     peakSeasonMonths: [6, 7, 8, 9, 10], activeTidePhases: [6, 7, 8, 9, 10, 11],
     isNocturnal: false, nightBiteBonus: -30, rarity: 'rare', difficulty: 5, sashimiValuePerKg: 60000, swimmingLayer: 'surface',
     description: '바다에서 가장 센 물고기. 남해와 제주에는 30kg이 안 되는 어린 고기가, 여름 동해에는 몸길이 1.5 ~ 2m에 100kg이 넘는 큰 고기가 든다. 다 자라면 3m, 450kg에 이른다. 캐스팅 · 지깅으로 겨루며, 한 번 달리면 줄이 수백 미터 풀린다. 금지체장과 금어기는 없고 나라마다 어획 한도가 정해져 있다.',
+  },
+  // ── 324차 — 큰 회유어 셋(눈다랑어 · 황새치 · 청새치) ──
+  {
+    id: 'bigeye_tuna', nameKo: '눈다랑어', nameEn: 'Bigeye Tuna',
+    scientificName: 'Thunnus obesus', spriteKey: 'fish_bigeye_tuna',
+    minLegalSizeCm: 0, avgSizeRangeCm: [80, 130], maxRecordCm: 250, avgWeightRangeG: [12000, 50000], maxRecordKg: 210,
+    preferredDepthM: [30, 300], preferredTempC: [17, 26],
+    preferredBaits: ['artificial_lure', 'live_fish', 'squid', 'fish_strip'],
+    habitatSpotTypes: ['boat_fishing', 'overnight_boat'],
+    peakSeasonMonths: [7, 8, 9, 10], activeTidePhases: [6, 7, 8, 9, 10, 11],
+    isNocturnal: false, nightBiteBonus: 10, rarity: 'legendary', difficulty: 5, sashimiValuePerKg: 45000, swimmingLayer: 'mid',
+    description: '눈이 크고 몸이 통통한 다랑어. 참다랑어보다 깊은 물에 살며 낮에는 100m 아래에 머문다. 우리 바다에서는 여름부터 가을까지 제주 남쪽 먼바다에 드물게 든다. 붉은 살이 부드러워 횟감으로 친다.',
+  },
+  {
+    id: 'swordfish', nameKo: '황새치', nameEn: 'Swordfish',
+    scientificName: 'Xiphias gladius', spriteKey: 'fish_swordfish',
+    minLegalSizeCm: 0, avgSizeRangeCm: [180, 280], maxRecordCm: 455, avgWeightRangeG: [35000, 140000], maxRecordKg: 650,
+    preferredDepthM: [20, 600], preferredTempC: [15, 25],
+    preferredBaits: ['live_fish', 'squid', 'fish_strip', 'artificial_lure'],
+    habitatSpotTypes: ['boat_fishing', 'overnight_boat'],
+    peakSeasonMonths: [6, 7, 8, 9, 10], activeTidePhases: [6, 7, 8, 9, 10, 11],
+    isNocturnal: true, nightBiteBonus: 40, rarity: 'legendary', difficulty: 5, sashimiValuePerKg: 30000, swimmingLayer: 'mid',
+    description: '납작한 칼 같은 긴 부리를 가진 큰 고기. 낮에는 수백 미터 아래에 있다가 밤에 올라와 부리로 먹이를 쳐서 먹는다. 여름부터 가을까지 동해와 제주에 들며 3m가 넘는 것도 그물에 든다. 다 자라면 4.5m, 650kg에 이른다. 입이 물러 바늘이 잘 빠진다.',
+  },
+  {
+    id: 'striped_marlin', nameKo: '청새치', nameEn: 'Striped Marlin',
+    scientificName: 'Kajikia audax', spriteKey: 'fish_striped_marlin',
+    minLegalSizeCm: 0, avgSizeRangeCm: [220, 280], maxRecordCm: 420, avgWeightRangeG: [45000, 90000], maxRecordKg: 200,
+    preferredDepthM: [0, 150], preferredTempC: [20, 27],
+    preferredBaits: ['artificial_lure', 'live_fish', 'fish_strip'],
+    habitatSpotTypes: ['boat_fishing', 'overnight_boat'],
+    peakSeasonMonths: [7, 8, 9, 10], activeTidePhases: [6, 7, 8, 9, 10, 11],
+    isNocturnal: false, nightBiteBonus: -40, rarity: 'legendary', difficulty: 5, sashimiValuePerKg: 25000, swimmingLayer: 'surface',
+    description: '둥근 창 같은 부리와 옆구리의 푸른 가로줄. 따뜻한 물을 따라 여름부터 가을까지 제주와 남해, 동해 남부의 표층을 돈다. 배로 루어를 끄는 끌낚시로 노리며, 걸리면 수면 위로 연달아 뛰어올라 머리를 턴다.',
   },
   // ── 322차 — 청어과 셋 · 조기류 둘 · 바리류 넷(사용자 요청) ──
   {

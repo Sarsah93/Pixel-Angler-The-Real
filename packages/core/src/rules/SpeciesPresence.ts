@@ -103,6 +103,10 @@ export const SPECIES_SEA_WEIGHT: Readonly<Record<string, Readonly<Record<SeaKey,
   bulgyhead_wrasse: { east: 0.3, south: 0.6, west: 0.05, jeju: 1, ulleung: 0.9 },        // 혹돔 — 울릉 · 제주 암초
   red_tilefish: { east: 0.1, south: 0.4, west: 0.05, jeju: 1, ulleung: 0.2 },            // 옥돔 — 제주 깊은 바다
   bluefin_tuna: { east: 0.5, south: 0.7, west: 0.05, jeju: 1, ulleung: 0.9 },            // 참다랑어 — 동해 먼바다 · 제주 남쪽
+  // 324차 — 따뜻한 물을 타는 큰 회유어 셋(서해에는 거의 없다)
+  bigeye_tuna: { east: 0.05, south: 0.25, west: 0, jeju: 1, ulleung: 0.1 },              // 눈다랑어 — 제주 남쪽 먼바다
+  swordfish: { east: 0.7, south: 0.4, west: 0.02, jeju: 1, ulleung: 0.8 },               // 황새치 — 동해 · 제주
+  striped_marlin: { east: 0.5, south: 0.7, west: 0.02, jeju: 1, ulleung: 0.5 },          // 청새치 — 제주 · 남해 · 동해 남부
   // 322차 — 9종(국립수산과학원 어종 정보 · 해역별 어획 · 낚시 조황 근사)
   gizzard_shad: { east: 0.35, south: 1, west: 1, jeju: 0.2, ulleung: 0.03 },              // 전어 — 서해 · 남해 내만
   pacific_herring: { east: 1, south: 0.35, west: 0.3, jeju: 0.02, ulleung: 0.5 },         // 청어 — 겨울 동해
