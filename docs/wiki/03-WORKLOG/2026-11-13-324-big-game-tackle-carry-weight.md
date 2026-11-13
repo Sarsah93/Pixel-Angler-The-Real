@@ -173,6 +173,18 @@
 
 재현: dev 서버 → `node r324c.cjs`(판마다 `FirstPersonFishingScene`을 새로 띄우고 `enterFight` → `updateFighting(1/30)`를 직접 돈다 · `Math.random` 시드 고정).
 
+### 5-b. main 반영 · 120차 배포(같은 날 사용자 「main 반영 & 재배포까지 해줘」)
+
+| 대상 | 방법 | 결과 |
+|---|---|---|
+| main | 작업 브랜치로 빨리 감기 | `fdc35f7` → `5f5b45a`(323 · 324 네 커밋) |
+| 배포 | Actions 「테스트 배포」(ref `main` · 실행 49번째) | gh-pages `6860a70` → `75505f3` — `Deploy: 120차 테스트 빌드 (2026-11-13) — main@5f5b45a` |
+| 정적 파일 | gh-pages 트리 ↔ `packages/client-pc/public/` 바이트 대조 | 배포본 2,392 · 소스맵 0 · 같음 2,389 · 다름 0 · 빠짐 0 |
+| 기동 | gh-pages를 로컬 4173 하위 경로로 띄워 헤드리스 — scratchpad `deploy324.cjs` | 메뉴 기동 10.9초 · 4xx 0(바깥 1 = KAMIS 시세 스냅샷 — 키 대기) · pageerror 0 |
+| 번들 | 번들 글 검색 | 큰 장비 그림 키 · 새 어종 그림 3 · `secondWind` · `subdueRefStamina` · `shockDragRelief` · `sizeBySea` · 「움직일 수 없음」 · 「고기가 다시 힘을 씁니다」 · 「짐으로 치지 않는다」 · 「집으로 보내기」 모두 있음 |
+
+라이브 주소는 이 컨테이너에서 닿지 않아(프록시 403) 사용자 브라우저 확인이 남는다.
+
 ## 6. 잔여
 
 - **선상 낚시가 없다** — 스탠드업 · 트롤링대는 「던지지 않는 대」로 들어왔지만 지금은 갯바위 · 방파제에서 쓴다. 배 위 조법(트롤링 · 지깅 낙하)은 선상 낚시와 함께.
