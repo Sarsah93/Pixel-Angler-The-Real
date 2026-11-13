@@ -83,6 +83,31 @@ a{color:var(--sea)}
 .seg button[aria-pressed=true]{background:var(--buoy); color:#fff}
 .bar select{font:inherit; font-size:13px; padding:7px 9px; background:var(--raised); color:var(--ink);
   border:1px solid var(--rule); border-radius:4px; max-width:46vw}
+/* 325차 — 정렬 단추(검색 바 오른쪽 끝) · 펼침 패널. 단추는 정렬이 걸려 있으면 칠해지고 점이 붙는다 */
+.sortb{flex:0 0 auto; position:relative; width:38px; height:38px; display:grid; place-items:center; padding:0;
+  background:var(--raised); color:var(--ink2); border:1px solid var(--rule); border-radius:4px; cursor:pointer}
+.sortb:hover{background:var(--sea-soft)}
+.sortb:focus-visible{outline:2px solid var(--sea); outline-offset:1px}
+.sortb[aria-expanded=true]{border-color:var(--sea); color:var(--sea)}
+.sortb[data-on="1"]{background:var(--sea); color:#fff; border-color:var(--sea)}
+.sortb[data-on="1"]::after{content:''; position:absolute; top:-4px; right:-4px; width:9px; height:9px; border-radius:50%;
+  background:var(--buoy); border:2px solid var(--paper)}
+.sortp{position:absolute; top:calc(100% + 6px); right:0; z-index:21; width:min(330px,100%);
+  background:var(--card); border:1px solid var(--rule); border-radius:6px; box-shadow:var(--shadow);
+  padding:12px 12px 10px; transform-origin:top right; animation:sortp-in .14s ease-out}
+.sortp[hidden]{display:none}
+@keyframes sortp-in{from{opacity:0; transform:scale(.96) translateY(-4px)} to{opacity:1; transform:none}}
+@media (prefers-reduced-motion:reduce){ .sortp{animation:none} }
+.sortp h3{font-size:12px; font-weight:600; letter-spacing:.04em; color:var(--muted); margin:0 0 8px}
+.sortp .row{display:grid; grid-template-columns:4.8em minmax(0,1fr) minmax(0,1fr); gap:6px; align-items:center; padding-block:4px}
+.sortp .row.base{grid-template-columns:minmax(0,1fr)}
+.sortp .row > span{font-size:13px; color:var(--ink2)}
+.sortp button.opt{font:inherit; font-size:12.5px; padding:7px 6px; min-height:36px; border:1px solid var(--rule); border-radius:4px;
+  background:var(--raised); color:var(--ink); cursor:pointer; overflow-wrap:anywhere}
+.sortp button.opt:hover{background:var(--sea-soft)}
+.sortp button.opt:focus-visible{outline:2px solid var(--sea); outline-offset:1px}
+.sortp button.opt[aria-pressed=true]{background:var(--sea); color:#fff; border-color:var(--sea)}
+.sortp .hint{font-size:11.5px; color:var(--muted); margin:8px 0 0}
 
 /* ── 2단 ─────────────────────────────── */
 .cols{display:grid; grid-template-columns:302px minmax(0,1fr); gap:30px; margin-top:24px; align-items:start}
@@ -258,7 +283,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 .icard .body{padding:10px 12px 12px}
 .icard .nm{font-size:14px; font-weight:600; color:var(--ink); line-height:1.4; overflow-wrap:anywhere}
 .icard .mt{font-size:11.5px; color:var(--muted); margin-top:3px; overflow-wrap:anywhere}
-.icard .pr{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); margin-top:5px}
+.icard .pr{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass); margin-top:5px;
+  display:flex; flex-wrap:wrap; column-gap:10px}
+.icard .pr span{white-space:nowrap}
+.icard .pr .sv{color:var(--sea)}   /* 325차 — 지금 정렬 기준의 값(무게 · 크기 …) — 좁으면 통째로 다음 줄 */
 /* 315차 — 어종 손질 탭: 맨 위 어종 이름(어종 도감으로) · 작업마다 도마 그림(게임 손질 창에서 찍은 것) */
 .bview{margin-top:12px}
 .bk-sp{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; padding:12px 14px;
@@ -437,7 +465,12 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   </div>
   </div>
   <div id="tab-cat" class="hidden">
-    <div class="bar"><input type="search" id="cq" placeholder="이름·설명으로 찾기" aria-label="검색"></div>
+    <div class="bar"><input type="search" id="cq" placeholder="이름·설명으로 찾기" aria-label="검색">
+      <button type="button" class="sortb" id="csortb" aria-label="정렬" aria-haspopup="true" aria-expanded="false" aria-controls="csortp">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M3 5.5h14M5.5 10h9M8 14.5h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      </button>
+      <div class="sortp" id="csortp" role="group" aria-label="정렬" hidden></div>
+    </div>
     <div class="chips kind" id="kinds" role="group" aria-label="갈래"></div>
     <div class="chips" id="groups" role="group" aria-label="분류"></div>
     <div class="chips sub" id="subs" role="group" aria-label="세부 분류"></div>
@@ -1399,6 +1432,53 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   // ── 도감 탭 (169차 — 분류 버튼 · 썸네일 · 상세) ─────────────
   let tab = 'quests', cterm = '', group = '', sub = '', kind = '';   // 314차 — kind = 탭 안 윗단 갈래(농작물 › 작물 · 산나물)
   const nfw = n => nf(Math.round(n)) + '원';
+  // ── 325차 — 목록 정렬 ───────────────────────────
+  // 카드가 정렬 값(`sv` — 숫자)을 들고 온다. 패널에는 지금 목록에 값이 하나라도 있는 기준만 보인다(가나다는 언제나).
+  // 값이 없는 카드는 오름 · 내림 어느 쪽이든 맨 뒤다. 고른 기준에 딸린 값(`sd`)은 카드 값 줄에 함께 찍는다.
+  const SORTS = [
+    { id: 'name', label: '가나다', asc: 'ㄱ → ㅎ', desc: 'ㅎ → ㄱ' },
+    { id: 'price', label: '가격', asc: '싼 것부터', desc: '비싼 것부터' },
+    { id: 'weight', label: '무게', asc: '가벼운 것부터', desc: '무거운 것부터' },
+    { id: 'size', label: '크기', asc: '작은 것부터', desc: '큰 것부터' },
+    { id: 'time', label: '조리 시간', asc: '짧은 것부터', desc: '긴 것부터' },
+    { id: 'level', label: '필요 레벨', asc: '낮은 것부터', desc: '높은 것부터' },
+  ];
+  let csort = '', cdir = 1, sortAvail = [];
+  const koCmp = (() => {
+    try { return new Intl.Collator('ko', { numeric: true, sensitivity: 'base' }).compare; }
+    catch (_e) { return (a, b) => a.localeCompare(b); }
+  })();
+  /** 무게 표기 — 게임 상세보기 · 제원 줄과 같은 꼴(g · kg) */
+  const wtxt = g => g < 1000 ? Math.round(g) + 'g' : (g / 1000).toFixed(g >= 100000 ? 0 : 1) + 'kg';
+  const sortsOf = list => SORTS.filter(s => s.id === 'name' || list.some(c => c.sv && c.sv[s.id] != null));
+  function sortCards(list, key){
+    const at = new Map(list.map((c, i) => [c, i]));
+    const val = c => (c.sv && c.sv[key] != null) ? c.sv[key] : null;
+    return list.slice().sort((a, b) => {
+      if (key === 'name') return cdir * koCmp(a.name, b.name) || at.get(a) - at.get(b);
+      const x = val(a), y = val(b);
+      if (x == null || y == null) return (x == null) - (y == null) || at.get(a) - at.get(b);
+      return cdir * (x - y) || koCmp(a.name, b.name);
+    });
+  }
+  function sortPanelHtml(){
+    const on = sortAvail.some(s => s.id === csort) ? csort : '';
+    return '<h3>정렬</h3>' +
+      '<div class="row base"><button type="button" class="opt" data-sort="" aria-pressed="' + (!on) + '">기본 순서</button></div>' +
+      sortAvail.map(s => '<div class="row"><span>' + s.label + '</span>' +
+        '<button type="button" class="opt" data-sort="' + s.id + '" data-dir="1" aria-pressed="' + (on === s.id && cdir === 1) + '">' + s.asc + '</button>' +
+        '<button type="button" class="opt" data-sort="' + s.id + '" data-dir="-1" aria-pressed="' + (on === s.id && cdir === -1) + '">' + s.desc + '</button></div>').join('') +
+      (sortAvail.length > 1 ? '<p class="hint">값이 없는 것은 늘 맨 뒤에 둡니다.</p>' : '');
+  }
+  function closeSort(){
+    const p = document.getElementById('csortp'); if (!p || p.hidden) return;
+    p.hidden = true; document.getElementById('csortb').setAttribute('aria-expanded', 'false');
+  }
+  function openSort(){
+    const p = document.getElementById('csortp');
+    p.innerHTML = sortPanelHtml(); p.hidden = false;
+    document.getElementById('csortb').setAttribute('aria-expanded', 'true');
+  }
   // 264차 — 작은 그림은 `G.inl[파일명]`(data URI · 한 번만 실림)에서, 나머지는 img/ 파일에서
   const imgSrc = file => (G.inl && G.inl[file]) ? G.inl[file] : (String(file).startsWith('data:') ? file : 'img/' + file);
   const img = (file, cls) => file
@@ -1658,6 +1738,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     return {
       key: r.id, name: r.name, meta: r.familyLabel + ' · ' + r.cookware.join('·'),
       img: r.img, price: nfw(r.baseValue) + ' 기준',
+      sv: { price: r.baseValue || null, time: r.cookMin || null }, sd: { time: r.cookMin ? '약 ' + r.cookMin + '분' : '' },
       search: [r.name, r.nameEn, r.desc, r.shortDesc, r.familyLabel].join(' '),
       detail: () => dishDetail(r),
     };
@@ -1687,6 +1768,8 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     return {
       key: s.id, name: s.name, meta: s.subgroup + ' · ' + s.source, img: s.img,
       price: s.valuePerKg ? nfw(s.valuePerKg) + '/kg' : '',
+      sv: { price: s.valuePerKg || null, size: s.lenCm || null, weight: s.weightG || null },
+      sd: { size: s.lenCm ? '보통 ' + s.lenCm + 'cm까지' : '', weight: s.weightG ? '보통 ' + wtxt(s.weightG) + '까지' : '' },
       search: [s.name, s.nameEn, s.scientific, s.desc, s.subgroup, s.source].join(' '),
       detail: () => ({
         title: s.name, sub: s.scientific + (s.nameEn ? ' · ' + s.nameEn : ''),
@@ -1712,6 +1795,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     return {
       key: 'wild:' + w.id, name: w.name, meta: wildHowShort(w.how) + ' · ' + w.months, img: w.img,
       price: w.valuePerKg ? nfw(w.valuePerKg) + '/kg' : '',
+      sv: { price: w.valuePerKg || null },
       search: [w.name, w.nameEn, w.scientific, w.desc, w.howLabel, '산나물', w.cropName || ''].join(' '),
       detail: () => ({
         title: w.name, sub: w.scientific + (w.nameEn ? ' · ' + w.nameEn : ''),
@@ -1848,6 +1932,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     return {
       key: c.id, name: c.name, meta: c.catLabel + ' · ' + c.tierLabel + ' · ' + c.growMonths, img: c.img,
       price: nfw(c.price.base) + ' 기준',
+      sv: { price: c.price.base || null, level: c.level || null }, sd: { level: c.level ? '레벨 ' + c.level : '' },
       search: [c.name, c.nameEn, c.catLabel, c.tierLabel, c.care.join(' '), c.note, c.harvest.name, c.cultivation ? c.cultivation.process : ''].join(' '),
       detail: () => cropDetail(c),
     };
@@ -1855,6 +1940,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   function toSupplyCard(sp){
     return {
       key: 'sup_' + sp.id, name: sp.name, meta: '농자재 · ' + sp.kind.split(' ')[0] + ' · ' + sp.shop, img: sp.img, price: nfw(sp.price),
+      sv: { price: sp.price || null },
       search: [sp.name, sp.nameEn, sp.desc, sp.shop, sp.skill].join(' '),
       detail: () => ({
         title: sp.name, sub: sp.nameEn, lede: sp.desc, img: sp.img,
@@ -1911,6 +1997,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     return {
       key: i.id, name: i.name, meta: i.groupLabel + ' · ' + i.sub, img: i.img,
       price: i.price ? nfw(i.price) : '',
+      sv: { price: i.price || null, weight: i.weightG || null }, sd: { weight: i.weightG ? wtxt(i.weightG) : '' },
       search: [i.name, i.desc, i.groupLabel, i.sub, i.soldAt.join(' ')].join(' '),
       detail: () => ({
         title: i.name, sub: i.groupLabel + ' · ' + i.sub, lede: i.desc, img: i.img,
@@ -2098,8 +2185,10 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
 
     // 315차 — 카드 대신 한 장으로 그리는 탭(어종 손질)
     const gridEl = document.getElementById('grid');
+    const sortBtn = document.getElementById('csortb');
     if (def.render) {
-      cards = [];
+      cards = []; sortAvail = [];
+      sortBtn.hidden = true; closeSort();   // 325차 — 카드가 없는 탭에는 정렬이 없다
       gridEl.className = 'bview';
       gridEl.innerHTML = def.render();
       const c0 = ((G.butchery && G.butchery.cats) || []).find(x => x.id === group);
@@ -2109,13 +2198,25 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     gridEl.className = 'grid';
     cards = def.list();
     const t = cterm.toLowerCase();
-    const shown = t ? cards.filter(c => (c.search || c.name).toLowerCase().includes(t)) : cards;
-    document.getElementById('ccount').textContent = shown.length + ' / ' + cards.length + '건';
+    const found = t ? cards.filter(c => (c.search || c.name).toLowerCase().includes(t)) : cards;
+    // 325차 — 정렬. 이 목록에 없는 기준이 골라져 있으면(다른 탭에서 고른 것) 기본 순서로 보인다 — 고른 것은 잊지 않는다
+    sortAvail = sortsOf(cards);
+    const so = sortAvail.find(s => s.id === csort) || null;
+    const shown = so ? sortCards(found, so.id) : found;
+    sortBtn.hidden = false;
+    sortBtn.dataset.on = so ? '1' : '0';
+    sortBtn.setAttribute('aria-label', so ? '정렬 — ' + so.label + ' ' + (cdir === 1 ? so.asc : so.desc) : '정렬');
+    document.getElementById('ccount').textContent = shown.length + ' / ' + cards.length + '건' +
+      (so ? ' · ' + so.label + ' ' + (cdir === 1 ? so.asc : so.desc) : '');
+    const prOf = c => {
+      const sv = so && c.sd ? c.sd[so.id] : '';
+      return (c.price ? '<span>' + esc(c.price) + '</span>' : '') + (sv ? '<span class="sv">' + esc(sv) + '</span>' : '');
+    };
     document.getElementById('grid').innerHTML = shown.length ? shown.map((c, i) =>
       '<button class="icard" data-i="' + cards.indexOf(c) + '">' + thumb(c.img, c.name.slice(0, 1)) +
       '<div class="body"><div class="nm">' + esc(c.name) + '</div>' +
       '<div class="mt">' + esc(c.meta) + '</div>' +
-      (c.price ? '<div class="pr">' + esc(c.price) + '</div>' : '') + '</div></button>').join('')
+      (prOf(c) ? '<div class="pr">' + prOf(c) + '</div>' : '') + '</div></button>').join('')
       : '<p class="empty">찾는 항목이 없습니다.</p>';
   }
 
@@ -2143,6 +2244,7 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
   /** 240차 — 교차 링크: 탭을 바꾸고(분류 초기화) 그 키의 카드를 연다. 조행록은 go(id). */
   function setTab(next){
     tab = next; group = ''; sub = ''; cterm = ''; kind = '';
+    closeSort();
     const cq = document.getElementById('cq'); if (cq) cq.value = '';
     for (const x of document.querySelectorAll('#tabs button')) x.setAttribute('aria-pressed', String(x.dataset.tab === tab));
     document.getElementById('tab-quests').classList.toggle('hidden', tab !== 'quests');
@@ -2182,7 +2284,27 @@ footer.page code{font-family:'IBM Plex Mono',monospace; font-size:11.5px}
     if (e.target.id === 'sheet' || e.target.closest('#sheetx')) closeSheet();
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
+    if (e.key !== 'Escape') return;
+    // 325차 — 정렬 패널이 떠 있으면 그것부터 접는다
+    if (!document.getElementById('csortp').hidden) { closeSort(); document.getElementById('csortb').focus(); return; }
+    if (!document.getElementById('sheet').hidden) closeSheet();
+  });
+  // 325차 — 정렬 단추 · 패널
+  document.getElementById('csortb').addEventListener('click', () => {
+    document.getElementById('csortp').hidden ? openSort() : closeSort();
+  });
+  document.getElementById('csortp').addEventListener('click', e => {
+    const b = e.target.closest('[data-sort]'); if (!b) return;
+    csort = b.dataset.sort; cdir = Number(b.dataset.dir) || 1;
+    closeSort(); renderCat();
+    // 목록 중간까지 내려와 있었으면 새 순서의 첫 줄이 보이게 올린다
+    const top = document.getElementById('grid').getBoundingClientRect().top;
+    const need = document.getElementById('csortb').closest('.bar').getBoundingClientRect().bottom + 8;
+    if (top < need) window.scrollBy(0, top - need);
+    document.getElementById('csortb').focus({ preventScroll: true });
+  });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('csortp').hidden && !e.target.closest('#csortp, #csortb')) closeSort();
   });
   document.getElementById('grid').addEventListener('click', e => {
     // 315차 — 어종 손질 탭의 어종 이름(어종 도감 카드로)

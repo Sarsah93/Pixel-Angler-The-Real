@@ -316,6 +316,7 @@ for (const f of core.FISH_DATABASE) {
     desc: f.description ?? '',
     source: '낚시',
     valuePerKg: f.sashimiValuePerKg ?? 0,
+    lenCm: f.avgSizeRangeCm[1], weightG: f.avgWeightRangeG[1],   // 325차 — 위키 정렬(크기 · 무게) — 보통 크기의 큰 쪽
     rarity: RARITY_KO[f.rarity] ?? f.rarity,
     traits: [
       ['평균 체장', `${f.avgSizeRangeCm[0]}~${f.avgSizeRangeCm[1]} cm (최대 ${f.maxRecordCm} cm)`],
@@ -384,6 +385,7 @@ for (const s of core.SHORE_CREATURE_DATABASE) {
     desc: s.description ?? '',
     source: s.category === 'wild_green' ? '채집 (산자락 — 산나물)' : '채집 (해루질)',
     valuePerKg: s.marketValuePerKg ?? 0,
+    ...(s.size ? { lenCm: s.size.maxCm } : {}),   // 325차 — 위키 정렬(크기)
     rarity: '—',
     traits: [
       ['서식', s.habitatDesc ?? '—'],
@@ -416,6 +418,7 @@ for (const n of core.MARINE_NUISANCES) {
     desc: n.descKo ?? '',
     source: '과증식 구제',
     valuePerKg: n.cullPricePerKg ?? 0, rarity: '—',
+    lenCm: n.sizeRangeCm[1], weightG: Math.round(n.weightRangeKg[1] * 1000),   // 325차 — 위키 정렬
     traits: [
       ['서식', n.habitatKo ?? '—'],
       ['크기', `${n.sizeRangeCm[0]}~${n.sizeRangeCm[1]} cm · ${n.weightRangeKg[0]}~${n.weightRangeKg[1]} kg`],
@@ -488,6 +491,7 @@ function itemShelf(it) {
 }
 const items = itemCatalog.map((it) => ({
   id: it.id, name: it.name,
+  weightG: Math.round(itemWeightG(it.tpl ?? {}, it)),   // 325차 — 위키 정렬(무게순)에 쓰는 숫자
   group: it.category, groupLabel: ITEM_CATEGORY_KO[it.category] ?? it.category,
   shelf: itemShelf(it)[0], shelfGroup: itemShelf(it)[1],
   sub: it.subCategory || '기타',
@@ -511,6 +515,11 @@ const items = itemCatalog.map((it) => ({
 }
 
 /** 템플릿에 실린 제원을 사람이 읽는 줄로 (없는 필드는 싣지 않는다) */
+/** 324 · 325차 — 한 개 무게(g). 게임과 같은 함수(core `itemUnitWeightG`)로 센다 — 제원 줄과 위키 정렬이 같은 값을 쓴다 */
+function itemWeightG(t, it) {
+  return core.itemUnitWeightG({ ...t, id: it.id ?? '', name: it.name ?? '', category: it.category ?? '', subCategory: it.subCategory ?? '', qty: 1, basePrice: it.basePrice });
+}
+
 function itemSpec(t, it = {}) {
   const out = [];
   const push = (k, v) => { if (v !== undefined && v !== null && v !== '') out.push([k, String(v)]); };
@@ -558,7 +567,7 @@ function itemSpec(t, it = {}) {
   push('귀속', t.bound ? '판매·양도 불가' : undefined);
   // 324 — 무게(가방 무게 · 과적). 게임과 같은 함수(core `itemUnitWeightG`)로 센다
   {
-    const g = core.itemUnitWeightG({ ...t, id: it.id ?? '', name: it.name ?? '', category: it.category ?? '', subCategory: it.subCategory ?? '', qty: 1, basePrice: it.basePrice });
+    const g = itemWeightG(t, it);
     push('무게', g > 0 ? core.carryWeightText(g) : '짐으로 치지 않는다');   // 0 = 자전거(타고 다닌다)
   }
   return out;
