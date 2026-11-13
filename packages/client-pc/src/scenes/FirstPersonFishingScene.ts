@@ -3896,7 +3896,7 @@ export class FirstPersonFishingScene extends Phaser.Scene {
     const afterKg = GameState.carriedWeightG / 1000 + schoolKg;
     const afterEnc = encumbranceOf(afterKg);
     const loadLine = afterEnc.stage >= 2
-      ? `\n\n들고 가면 짐이 ${afterKg.toFixed(1)}kg — ${afterEnc.immobile ? '움직일 수 없다' : afterEnc.stage === 3 ? '매우 무겁다(달릴 수 없다)' : '무겁다(느려지고 자전거를 못 탄다)'}`
+      ? `\n\n들고 가면 짐이 ${afterKg.toFixed(1)}kg — ${afterEnc.immobile ? '움직일 수 없음' : afterEnc.stage === 3 ? '매우 무거움(달릴 수 없다)' : '무거움(느려지고 자전거를 못 탄다)'}`
       : '';
     const body = `${school.map(line).join('\n')}${extraLine}${loadLine}`;
     const hasCooler = InventoryStore.hasCooler();

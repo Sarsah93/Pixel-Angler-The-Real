@@ -52,7 +52,7 @@ import { qtyBadge, qtyWord } from './QtyLabel.js';
 const TABLE_MEAL_BONUS = 0.25;
 const TABS: InvCategory[] = ['gear', 'consumable', 'food', 'tackle', 'quest', 'etc'];
 
-/** 324차 — 과적 단계 색(가볍다 흰 · 무겁다 노랑 · 매우 무겁다 주황 · 움직일 수 없다 빨강) */
+/** 324차 — 과적 단계 색(가벼움 흰 · 무거움 노랑 · 매우 무거움 주황 · 움직일 수 없음 빨강) */
 export const ENCUMBRANCE_COLOR: Record<EncumbranceStage, string> = { 1: '#d0e8f5', 2: '#ffd257', 3: '#ff9a3c', 4: '#ff5a4a' };
 
 const PANEL_W = 440;

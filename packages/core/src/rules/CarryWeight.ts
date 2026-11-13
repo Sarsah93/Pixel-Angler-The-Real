@@ -274,12 +274,15 @@ export function encumbranceOf(totalKg: number): Encumbrance {
   };
 }
 
-/** 단계 이름 — 화면 표기 */
+/**
+ * 단계 이름 — 화면 표기. 다른 상태이상(골절 · 탈진)처럼 상태를 가리키는 이름꼴로 쓴다
+ * (사용자 지적 — 「짐이 움직일 수 없다」는 짐이 주어가 돼 틀린 말이다. 4단계는 「움직일 수 없음」).
+ */
 export const ENCUMBRANCE_LABEL: Record<EncumbranceStage, { ko: string; en: string }> = {
-  1: { ko: '가볍다', en: 'Light' },
-  2: { ko: '무겁다', en: 'Heavy' },
-  3: { ko: '매우 무겁다', en: 'Very heavy' },
-  4: { ko: '움직일 수 없다', en: 'Cannot move' },
+  1: { ko: '가벼움', en: 'Light' },
+  2: { ko: '무거움', en: 'Heavy' },
+  3: { ko: '매우 무거움', en: 'Very heavy' },
+  4: { ko: '움직일 수 없음', en: 'Cannot move' },
 };
 
 /** 무게 글 — 1kg 아래는 g, 그 위는 kg(소수 첫째 자리) */

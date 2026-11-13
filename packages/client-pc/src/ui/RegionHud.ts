@@ -40,7 +40,7 @@ import { StoryStore } from '../store/StoryStore.js';
 import { tideFlowStateAt, TIDE_FLOW_LABEL_KO, TIDE_FLOW_NOTE_KO, TIDE_FLOW_PROFILE, getBlueprint } from '@tra/core';
 import { ENCUMBRANCE_LABEL, carryWeightText, type EncumbranceStage } from '@tra/core';   // 324차 — 과적 칸
 
-/** 324차 — 과적 단계 칸 색(무겁다 노랑 · 매우 무겁다 주황 · 움직일 수 없다 빨강) */
+/** 324차 — 과적 단계 칸 색(무거움 노랑 · 매우 무거움 주황 · 움직일 수 없음 빨강) */
 const ENCUMBRANCE_TINT: Record<EncumbranceStage, number> = { 1: 0xd0e8f5, 2: 0xffd257, 3: 0xff9a3c, 4: 0xff5a4a };
 import { playSfx } from '../audio/SfxBank.js';
 
@@ -1143,7 +1143,8 @@ export class RegionHud extends Phaser.GameObjects.Container {
     const tipIcon = addPixelIcon(this.scene, 'it_backpack', padX + 9, padY + 9, 16);
     if (tipIcon) c.add(tipIcon);
     const nameX = tipIcon ? padX + 24 : padX;
-    const label = en ? ENCUMBRANCE_LABEL[enc.stage].en : enc.immobile ? '짐이 너무 무겁다' : `짐이 ${ENCUMBRANCE_LABEL[enc.stage].ko}`;
+    // 이름은 상태를 가리키는 말로 — 「짐 무거움」 · 「짐 매우 무거움」 · 「움직일 수 없음」(「짐이 움직일 수 없다」는 짐이 주어가 돼 틀린 말이다)
+    const label = en ? ENCUMBRANCE_LABEL[enc.stage].en : enc.immobile ? ENCUMBRANCE_LABEL[4].ko : `짐 ${ENCUMBRANCE_LABEL[enc.stage].ko}`;
     const name = this.scene.add.text(nameX, padY + 2, `${label} · ${carryWeightText(GameState.carriedWeightG)}`, {
       fontFamily: '"Noto Sans KR", sans-serif', fontSize: '12px', color: '#f2f8ff', fontStyle: 'bold',
     });
