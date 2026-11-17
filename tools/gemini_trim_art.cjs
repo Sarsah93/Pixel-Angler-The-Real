@@ -105,7 +105,7 @@ function headText(t) {
     + '둘째 그림은 손질할 어종의 온마리 그림이다.\n'
     + `둘째 그림의 어종 ${t.ko}의 머리만 잘라 낸 그림을 ${STYLE}로 그려라. 첫째 그림과 같은 구도 · 방향(옆에서 본 모습 · 주둥이 왼쪽 · 잘린 면 오른쪽)이다. `
     + `머리 모양 · 눈 · 입 · 색 · 무늬는 둘째 그림의 ${t.ko} 그대로다(첫째 그림의 어종을 따라 그리지 않는다): 몸 색은 ${t.skin}. ${t.headNote ?? ''} `
-    + '아가미뚜껑 바로 뒤에서 곧게 잘렸고 가슴지느러미가 붙어 있다. 오른쪽 잘린 면에 살과 붉은 아가미가 조금 보인다. '
+    + '아가미뚜껑 바로 뒤에서 곧게 잘렸고 가슴지느러미가 붙어 있다 — 머리와 아가미뚜껑까지만이고, 등지느러미가 시작되는 몸통은 그리지 않는다. 오른쪽 잘린 면에 살과 붉은 아가미가 조금 보인다. '
     + '머리 하나만 · 몸통 · 꼬리 · 도마 · 접시 · 그림자 · 글자 없음. 머리가 그림을 가득 채운다. 배경은 단색 흰색.';
 }
 function spineText(t) {
@@ -120,7 +120,9 @@ function spineText(t) {
     + '등뼈에서 위아래로 가시뼈가 가지런히 뻗으며 뼈 사이에 붉은 살이 조금 남아 있다(구도 · 방향 참고). 둘째 그림은 손질할 어종의 온마리 그림이다.\n'
     + `둘째 그림의 어종 ${t.ko}를 세장뜨기 하고 남은 척추뼈를 ${STYLE}로 그려라. 첫째 그림과 같은 구도 · 방향(옆에서 본 모습 · 머리 쪽 왼쪽 · 꼬리지느러미 오른쪽)이고 머리는 잘려 없다. `
     + `뼈의 길이와 높이 비율은 그 어종의 몸을 따른다(${t.shape}). 꼬리지느러미의 모양과 색은 둘째 그림의 ${t.ko} 그대로다(첫째 그림의 어종을 따라 그리지 않는다). ${t.spineNote ?? ''} `
-    + '등뼈는 뽀얀 흰색 마디가 줄지어 있고, 위아래 가시뼈 사이에 얇은 살이 남아 있다. 껍질 · 머리 · 내장 · 도마 · 접시 · 그림자 · 글자 없음. 뼈 하나만, 그림 가로 폭을 가득 채운다. 배경은 단색 흰색.';
+    + '등뼈는 뽀얀 흰색 마디가 줄지어 있고, 위아래 가시뼈 사이에 얇은 살이 남아 있다. '
+    + '살을 다 떠낸 뒤라 등뼈 마디와 위아래 가시뼈가 하나하나 또렷이 보인다 — 살덩이나 필렛처럼 그리지 않는다. '
+    + '껍질 · 머리 · 내장 · 도마 · 접시 · 그림자 · 글자 없음. 뼈 하나만, 그림 가로 폭을 가득 채운다. 배경은 단색 흰색.';
 }
 const aspectOf = (t, k) => (k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
 
@@ -343,11 +345,14 @@ function sheet(P) {
     for (const t of targets(P)) {
       const f = path.join(P.out, `${t.id}_${k}.png`);
       if (!fs.existsSync(f)) continue;
-      args.push('-label', `${t.ko}`, f);
+      args.push('-label', `${t.ko} ${t.id}`, f);
     }
     if (!args.length) continue;
     const dst = P.sheet.replace(/\.png$/, `_${k}.png`);
-    execFileSync('montage', [...args, '-font', 'Noto-Sans-CJK-KR', '-pointsize', '15', '-background', '#f4f1ea', '-tile', k === 'head' ? '7x' : '4x', '-geometry', k === 'head' ? '200x160+5+5' : '360x110+5+5', dst]);
+    // 한글 글꼴은 unifont뿐이다(컨테이너) — 없으면 montage 기본 글꼴(이름이 깨질 수 있다)
+    const FONT = '/usr/share/fonts/opentype/unifont/unifont.otf';
+    const font = fs.existsSync(FONT) ? ['-font', FONT] : [];
+    execFileSync('montage', [...args, ...font, '-pointsize', '16', '-background', '#f4f1ea', '-tile', k === 'head' ? '6x' : '4x', '-geometry', k === 'head' ? '210x170+5+5' : '380x120+5+5', dst]);
     console.log(dst);
   }
   fs.rmSync(tmp, { recursive: true, force: true });
