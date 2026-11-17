@@ -329,7 +329,8 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
 - 공통: 꼬리 칼집 = 그림의 꼬리 자루(`butcherTailLines`) · 핏줄 긁기 · 박피 ① · 갈빗대 = 확정 어종 평균을 군 키에(`tools/f9_share_common_lines.cjs` — dev 서버 필요).
 - 참돔 = 참돔 야간(`BUTCHERY_GUIDE_TWINS`) · 개체 그림(용치놀래기 수컷 · 돌돔 수컷)은 `speciesFrame`으로 옮김 · 잿방어 해체 선의 모양을 해체 10종에(`loinReferenceShape`).
 - 남은 확정(어종마다 잡는 단계만): 48종 중 다 된 13(돔류 9 전부 · 방어 · 고등어 · 조피볼락 · 황볼락) · 일부 3 · 아직 32.
-- 검증: core 723 / 723(새 `ButcheryFlow328` 58) · `r328d` 109장 · `r328e` 16 / 16 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개.
+- 검증: core 723 / 723(새 `ButcheryFlow328` 58) · `r328d` 109장 · `r328e` 16 / 16 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트 4개(위키 135 · 과업 81 · 라이브러리 80 · 순서도 71).
+- 배포: main `25c7e63` · gh-pages `c02ddce`(123차) · 배포본 점검 통과(정적 2,474 · `public/` 2,471개 같음 · 기동 11.1초 · 4xx 0 · pageerror 0).
   상세: [328차 워크로그](../docs/wiki/03-WORKLOG/2026-11-17-328-f9-shared-lines-pin-two-strokes.md).
 
 **이전 변경 (2026-11-17 327차 · 327(2)) — 손질한 머리 그림이 비던 것 · 어종별 머리 · 척추뼈 그림 82장(Gemini) · F9 확정 현황 · main 반영 · 122차 배포**
