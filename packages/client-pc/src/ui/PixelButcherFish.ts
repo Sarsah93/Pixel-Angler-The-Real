@@ -60,7 +60,12 @@ function stageSpr(key: string): PixelFishSprite | undefined {
   return FISH_STAGE_SPRITES[key] ?? FISH_VIEW_SPRITES[key];
 }
 
-const AB = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
+/** 스프라이트 행 문자 → 팔레트 번호(327 — 부산물 아이콘 굽기도 같은 표를 쓴다) */
+export const SPRITE_PALETTE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
+const AB = SPRITE_PALETTE_CHARS;
+/** 도마 위 생선 자리(가로 기준 · px) — 유도선 · 머리 절단선은 이 rect 정규화 좌표다(손질 창과 부산물 아이콘이 같은 값을 쓴다) */
+export const BUTCHER_FISH_W0 = 560;
+export const BUTCHER_FISH_H0 = 210;
 
 export interface PixelFishGeom { x: number; y: number; w: number; h: number; }
 
@@ -1088,7 +1093,7 @@ function drawFlatFish(
 }
 
 /** 팔레트 색 → 어종 틴트 블렌드 (k=0 원본 유지) */
-function tintColor(color: number, tint: number, k: number): number {
+export function tintColor(color: number, tint: number, k: number): number {
   if (k <= 0) return color;
   const r = ((color >> 16) & 0xff) * (1 - k) + ((tint >> 16) & 0xff) * k;
   const g = ((color >> 8) & 0xff) * (1 - k) + ((tint >> 8) & 0xff) * k;

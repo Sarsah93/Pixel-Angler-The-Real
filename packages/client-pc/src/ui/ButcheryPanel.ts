@@ -45,7 +45,8 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, type PixelFishState } from './PixelButcherFish.js';
+import { trimHeadIconKey, trimSpineIconKey, ensureTintedFillet } from './TrimPartIcons.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, BUTCHER_FISH_W0, BUTCHER_FISH_H0, type PixelFishState } from './PixelButcherFish.js';
 import { speciesFilletIconKey } from './FilletSpeciesIcons.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 import {
@@ -53,7 +54,6 @@ import {
   cephHasDragFrames,
 } from './CephalopodFish.js';
 import type { PixelFishSprite } from '../data/PixelFishSprites.js';
-import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
 
@@ -95,8 +95,8 @@ export class ButcheryPanel extends DraggablePanel {
   // 생선 렌더 영역 (패널 로컬) — 가로 배치 기준값
   private static readonly FISH_X0 = 56;
   private static readonly FISH_Y0 = 190;
-  private static readonly FISH_W0 = 560;
-  private static readonly FISH_H0 = 210;
+  private static readonly FISH_W0 = BUTCHER_FISH_W0;
+  private static readonly FISH_H0 = BUTCHER_FISH_H0;
   /**
    * 90° 회전 시 생선 축소율 — **도마는 가로 그대로 두고 생선만 세로로 돌린다**
    * (사용자 지시 2026-08-06 — 구 "도마 프레임 자체를 세로로 세우는" 방식 폐기).
@@ -1180,7 +1180,7 @@ export class ButcheryPanel extends DraggablePanel {
           break;
         case 'spine':
           // 315 — 장어 중골은 「뼈」(뼈튀김 · 육수) · 그림은 그 장어의 뼈 층
-          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} ${this.isEel ? '뼈' : '척추뼈'} ${wts.spineG}g`, icon: '', iconTexture: (this.isEel ? ensureEelTrimTexture(this.scene, speciesId, 'spine') : undefined) ?? `trim_spine_${fam}`, byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
+          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} ${this.isEel ? '뼈' : '척추뼈'} ${wts.spineG}g`, icon: '', iconTexture: (this.isEel ? ensureEelTrimTexture(this.scene, speciesId, 'spine') : undefined) ?? trimSpineIconKey(this.scene, speciesId), byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
           break;
         case 'rib':
           // 필렛 A/B 각각의 갈빗대 → **2개** (사용자 지시 2026-07-31)
@@ -4511,31 +4511,12 @@ export class ButcheryPanel extends DraggablePanel {
     return 'bream';
   }
 
-  /** 어종별 머리 아이콘 키 — 어종군 베이스 + 돔류는 색/무늬 변형 (참돔 붉게·돌돔 아가미 줄무늬) */
+  /**
+   * 어종별 머리 아이콘 키 — 327차: 어종 그림(Gemini) → 그 어종 도마 그림에서 머리 절단선대로 오려 낸 머리 → 어종군 사진(`TrimPartIcons`).
+   * 옛 판은 어종군 사진(감성돔 · 잿방어)에 색을 입혀 여기서 구웠다 — 다시 켜면 그 텍스처가 없어 머리 아이콘이 비었다.
+   */
   private trimHeadKey(speciesId: string): string {
-    const fam = this.trimFamily(speciesId);
-    const base = `trim_head_${fam}`;
-    if (fam === 'amberjack' && !BUTCHERY_NATIVE_ART_SPECIES.has(speciesId)) {
-      // 313 — 방어류 흐름의 다른 어종(농어 · 우럭 · 숭어 · 고등어 · 작은 생선) = 잿방어 머리를 어종 색으로
-      const key = `trimhead_${speciesId}`;
-      this.bakeTintedTrim(base, key, this.blendColor(0xffffff, getFishColors(speciesId).body, 0.45), false);
-      return this.scene.textures.exists(key) ? key : base;
-    }
-    if (fam !== 'bream') return base;   // 방어류 원본 3종/넙치류 = 실색 에셋 그대로
-    const HEAD_MULT: Record<string, { mult: number; stripes?: boolean }> = {
-      black_seabream: { mult: 0xffffff },                    // 감성돔 — 원본
-      red_seabream: { mult: 0xff7a55 },                      // 참돔 — 붉은 발색
-      night_seabream: { mult: 0xd76a52 },                    // 참돔 야간
-      stone_beakperch: { mult: 0xf2f2f2, stripes: true },    // 돌돔 — 감성돔 유사 + 아가미 줄무늬
-      spotted_knifejaw: { mult: 0xd8d8e2, stripes: true },   // 강담돔 — 유사 + 줄무늬
-      largescale_blackfish: { mult: 0x9fb2c0 },              // 벵에돔 — 차가운 회청
-      longtail_blackfish: { mult: 0xa6c2d8 },                // 긴꼬리벵에돔
-    };
-    const spec = HEAD_MULT[speciesId]
-      ?? { mult: this.blendColor(0xffffff, getFishColors(speciesId).body, 0.45) };
-    const key = speciesId === 'black_seabream' ? base : `trimhead_${speciesId}`;
-    this.bakeTintedTrim(base, key, spec.mult, spec.stripes ?? false);
-    return this.scene.textures.exists(key) ? key : base;
+    return trimHeadIconKey(this.scene, speciesId);
   }
 
   /** 어종별 순수 필렛 아이콘 키 — 어종군 로인 사진 (방어류 실색 / 돔류는 은은한 어종 색) */
@@ -4551,60 +4532,8 @@ export class ButcheryPanel extends DraggablePanel {
     const body = getFishColors(speciesId).body;
     // 313 — 방어류 흐름의 다른 어종은 잿방어 로인을 어종 색으로(돔류 키와 갈라 둔다 — 같은 색이라도 바탕이 다르다)
     const key = fam === 'amberjack' ? `trimfillet_aj_${body.toString(16)}` : `trimfillet_${body.toString(16)}`;
-    this.bakeTintedTrim(base, key, this.blendColor(0xffffff, body, 0.26), false);
-    return this.scene.textures.exists(key) ? key : base;
-  }
-
-  /**
-   * 실사 트리밍 에셋을 멀티플라이 틴트(+선택적 아가미 줄무늬)로 굽는다.
-   * 캔버스 텍스처(게임 레벨 TextureManager — 씬 재시작에도 유지)에 합성. 아이콘용 축소 렌더.
-   */
-  private bakeTintedTrim(baseKey: string, outKey: string, mult: number, stripes: boolean): void {
-    const tm = this.scene.textures;
-    if (tm.exists(outKey)) return;
-    if (!tm.exists(baseKey)) return;
-    const src = sourceImageOf(this.scene, baseKey) as HTMLImageElement | HTMLCanvasElement | null;
-    if (!src) return;
-    const sw = src.width, sh = src.height;
-    if (!sw || !sh) return;
-    const scale = 200 / Math.max(sw, sh);                    // 아이콘용 축소 (메모리 절약)
-    const w = Math.max(1, Math.round(sw * scale)), h = Math.max(1, Math.round(sh * scale));
-    const cv = tm.createCanvas(outKey, w, h);
-    if (!cv) return;
-    const ctx = canvasContextOf(cv);
-    if (!ctx) { destroyCanvasTexture(cv); return; }
-    const css = (c: number): string => `#${(c & 0xffffff).toString(16).padStart(6, '0')}`;
-    ctx.clearRect(0, 0, w, h);
-    ctx.globalCompositeOperation = 'source-over';
-    try { ctx.drawImage(src, 0, 0, w, h); }
-    catch { destroyCanvasTexture(cv); return; }
-    if ((mult & 0xffffff) !== 0xffffff) {
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = css(mult);
-      ctx.fillRect(0, 0, w, h);
-      ctx.globalCompositeOperation = 'destination-in';       // 원본 알파로 클립 (배경 투명 유지)
-      try { ctx.drawImage(src, 0, 0, w, h); }
-      catch { destroyCanvasTexture(cv); return; }
-    }
-    if (stripes) {
-      // 아가미쪽 세로 줄무늬 (머리는 좌향 — 아가미/뺨은 중앙~우중앙)
-      ctx.globalCompositeOperation = 'source-atop';          // 머리 위에만
-      ctx.fillStyle = 'rgba(22,24,30,0.5)';
-      const bw = w * 0.05;
-      for (const bx of [0.46, 0.58, 0.70]) ctx.fillRect(w * bx, 0, bw, h);
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    if (!refreshCanvasTexture(cv, `손질 아이콘 ${outKey}`)) destroyCanvasTexture(cv);
-  }
-
-  /** 색 블렌드 (a에 b를 t 비율로 섞음) */
-  private blendColor(a: number, b: number, t: number): number {
-    const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
-    const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-    const r = Math.round(ar + (br - ar) * t);
-    const gg = Math.round(ag + (bg - ag) * t);
-    const bl = Math.round(ab + (bb - ab) * t);
-    return (r << 16) | (gg << 8) | bl;
+    // 327차 — 굽기는 `TrimPartIcons`(키만으로 다시 구울 수 있다 — 다시 불러온 뒤에도 아이콘이 산다)
+    return ensureTintedFillet(this.scene, key) ? key : base;
   }
 
   /** 채움 진행 바 (비늘/내장 — 즉석 표시) — 고정 도마 rect 기준 */

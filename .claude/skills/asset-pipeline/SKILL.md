@@ -417,3 +417,27 @@ node tools/gemini_fillet_art.cjs --wiki-sheets                        # → tool
   - 작은 생선 5종은 `side`가 없다(잔뼈를 핀셋으로 뽑아 순수 필렛이 한 덩이 그대로 — 지아이뼈 단계도 순수 필렛).
   - Gemini로 그릴 때 `--kinds side`(구도 참고 = 사용자 원본 사진 · 화풍 = 그 어종 갈빗대 그림) — ⚠ 321 때는 크레딧 소진(402)으로 돌려 보지 못했다.
   - 위키 시트 칸은 공정 순서다: 갈빗대 붙은 → 갈빗대 뗀 한 면 → 껍질 붙은 → 순수(작은 생선은 한 면 칸 없음).
+
+## ⑪ 손질 부산물 그림 — 머리는 오려 낸다 · 어종별 머리 · 척추뼈는 Gemini (327차)
+
+머리 · 척추뼈 아이콘을 고르는 곳은 `ui/TrimPartIcons.ts` 하나다(손질 창 · 가방 아이콘이 같은 함수를 쓴다).
+
+- 머리 = 어종 그림(`trimpart_head_<어종>`) → 원래 사진(감성돔 · 잿방어 · 광어) → **그 어종 도마 그림에서 「머리 제거」 칼선 앞쪽을 오려 낸 것**(`trimhead_<어종>` · 그릴 때 굽는다) → 어종군 사진.
+- 척추뼈 = 어종 그림(`trimpart_spine_<어종>`) → 어종군 사진. 갈빗대뼈는 어종군 사진, 지아이뼈 · 껍질 · 내장은 그림 하나(어종과 상관없이 쌓인다).
+- 새 어종의 도마 그림(`gen_species_sprites`)을 구우면 머리는 저절로 생긴다 — 따로 할 일이 없다. 머리가 이상하면 그림이 아니라 **머리 칼선**(F9)을 본다.
+
+어종별 그림을 Gemini로 그릴 때(41종 × 머리 · 척추뼈 — 327 때는 크레딧 소진으로 0장):
+
+```bash
+NODE_USE_ENV_PROXY=1 node tools/gemini_trim_art.cjs --out <폴더> --dry                 # 프롬프트만
+NODE_USE_ENV_PROXY=1 node tools/gemini_trim_art.cjs --out <폴더> --jobs 4              # 생성(있는 것은 건너뜀 · --only a,b · --kinds head,spine · --tag v2 --force)
+node tools/gemini_trim_art.cjs --out <폴더> --sheet <시트.png>                         # 검수 시트
+node tools/gemini_trim_art.cjs --out <폴더> --install                                   # food assets/trimmings/species/<어종>_<종류>.png
+node tools/gemini_trim_art.cjs --bake                                                   # public/trimmings/sp/<종류>_<어종>.png(192px) + src/data/TrimPartArt.ts
+```
+
+- 참고 그림 = 어종군 머리 · 척추뼈 사진(구도 · 화풍) + 그 어종 원본 그림(색 · 생김새). 방향 = 머리는 주둥이 왼쪽 · 잘린 면 오른쪽 / 척추뼈는 머리 쪽 왼쪽 · 꼬리지느러미 오른쪽.
+- 어종 표는 `gemini_fillet_art.cjs`의 `SPECIES`를 그대로 쓰고, 넙치류 · 참치 · 새치는 이 도구의 `EXTRA`에 있다. 새 어종은 두 표 가운데 맞는 곳에 한 줄.
+- `--bake`가 `TrimPartArt.ts`를 다시 쓴다(손으로 고치지 않는다). 목록에 든 그림은 BootScene이 싣고, 그 순간부터 오려 낸 머리보다 먼저다.
+- 402(크레딧) · 403(키)이면 도구가 바로 멈춘다 — 다시 돌리면 뽑은 것은 건너뛴다.
+

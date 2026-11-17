@@ -17,6 +17,7 @@ import { fitFishTexture, resolveFishTexture } from '../data/FishTextures.js';
 import { ITEM_ART_BY_ID, ITEM_ART_BY_PREFIX, ITEM_ART_BY_PX } from '../data/ItemArtManifest.js';
 import { ITEM_IMAGE_BY_ID, ITEM_IMAGE_BY_PX, ITEM_CROP_PORTRAIT_ALIAS, ITEM_TEXTURE_ALIAS } from '../data/ItemImages.js';
 import { ensureTrimTexture } from './FilletSpeciesIcons.js';
+import { ensureTrimPartTexture, trimPartIconOverride } from './TrimPartIcons.js';
 
 /**
  * 구세이브·기존 카탈로그가 가진 픽셀 아이콘 키를 실제 투명 PNG 자산으로
@@ -47,6 +48,8 @@ export interface ItemIconLike {
   lengthCm?: number;
   /** 채비 아이콘 내부에 표시할 호수/부력 라벨용 이름 */
   name?: string;
+  /** 327차 — 손질 부산물 종류(머리 · 척추뼈는 저장된 키보다 「종류 + 어종」으로 그림을 고른다 — `TrimPartIcons`) */
+  byproductKind?: string;
 }
 
 /**
@@ -130,8 +133,13 @@ export function createItemIcon(
   sizePx: number,
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.Container {
   sizePx *= iconWeightScale(item);
+  // 327차 — 머리 · 척추뼈 부산물은 「종류 + 어종」으로 지금 쓸 그림을 고른다(옛 세이브의 키 → 어종 그림 · 오려 낸 머리)
+  const partKey = trimPartIconOverride(scene, item);
+  if (partKey) item = { ...item, iconTexture: partKey };
   // 316 — 굽는 텍스처(어종 필렛 `trimsp_*` · 장어 결과물 `trim_eel_*`)는 다시 불러온 뒤 처음 그릴 때 굽는다
+  //  327차 — 오려 낸 머리(`trimhead_*`)도
   ensureTrimTexture(scene, item.iconTexture);
+  ensureTrimPartTexture(scene, item.iconTexture);
   // 241차 작물 초상이 코드로 그린 그림보다 먼저다(사진 → 도트 · Gemini 변환본). 그다음 코드 그림 · 원래 텍스처 키
   //  255차 — 옛 그림 키가 작물 초상 별칭이면 그 초상 · 그다음 Gemini 아이템 그림 · 같은 음식 별칭
   const portrait = cropPortraitTexture(scene, item.iconTexture, sizePx) ?? cropPortraitTexture(scene, itemArtKeyOf(item), sizePx);

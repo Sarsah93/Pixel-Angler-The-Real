@@ -13,6 +13,7 @@ import { SHORE_CREATURE_DATABASE } from '@tra/core';
 import { FURNITURE_SALES } from '../data/ShopCatalog.js';
 import { ensureFurnitureIcon } from '../data/HomeFurniture.js';
 import Phaser from 'phaser';
+import { trimPartArtFiles } from '../ui/TrimPartIcons.js';
 import { GUIDES } from '../data/GuideContent.js';
 import { HELP_IMAGE_KEYS } from '../data/HelpContent.js';
 import { SASHIMI_GUIDE_TEXTURE, registerSashimiGuideFrames } from '../data/SashimiGuideFrames.js';
@@ -208,6 +209,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('trim_pin', 'trimmings/pin_bone.png');
     this.load.image('trim_guts', 'trimmings/pile_of_fish_guts.png');
     this.load.image('trim_skin', 'trimmings/fish_skin.png');
+    // 327차 — 어종별 머리 · 척추뼈 그림(Gemini — `TrimPartArt` 목록 · 없으면 그 어종 도마 그림에서 오려 낸 머리 · 어종군 사진)
+    for (const [key, file] of trimPartArtFiles()) this.load.image(key, file);
     // ── 넙치류(광어) 다섯장뜨기 부산물 (2026-08-05 — 사용자 에셋 12종 중 9종 사용) ──
     //  ⚠ 소스 파일명 오탈자 rib_bone_hailbut → 복사 시 rib_bone_halibut로 정정 /
     //    'inventory icon' 공백 파일명 → engawa_halibut_icon으로 정정.
