@@ -47,31 +47,46 @@ describe('322 — [확정] 좌표로 끝까지', () => {
   });
 
   it.each(SPECIES)('%s — 확정 선 그대로 그으면 완주한다', (sp) => {
-    const p = new ButcheryProcess(butcheryProfileFor(sp, 30), 1, { guideOverrides: BUTCHERY_GUIDE_OVERRIDES });
     const seen: string[] = [];
     const table = BUTCHERY_GUIDE_OVERRIDES[sp] ?? {};
-    for (let guard = 0; guard < 300 && !p.finished; guard++) {
-      const s = p.stage!;
-      seen.push(s.id);
-      p.orientation = s.orientation;
-      // 확정한 단계는 좌표가 표 그대로다(어종 확정 좌표는 옮기지 않는다)
-      const o = table[s.id];
-      if (o) {
-        if (o.guidePaths && o.guidePaths.length > 1) expect(s.cut!.guidePaths, `${sp} ${s.id}`).toEqual(o.guidePaths);
-        else if (o.guidePath) expect(s.cut!.guidePath, `${sp} ${s.id}`).toEqual(o.guidePath);
-        if (o.sweepPath) expect(s.sweepPath, `${sp} ${s.id}`).toEqual(o.sweepPath);
-        if (o.tapPoint) expect(s.tapPoint, `${sp} ${s.id}`).toEqual(o.tapPoint);
+    // 328 — 4덩어리 해체 단계를 확정한 어종(1m급 잿방어)은 해체 크기로도 돈다(삼장뜨기 크기에는 그 단계가 없다)
+    const sizes = Object.keys(table).some((id) => id.startsWith('loin_')) && isLoinBreakdown(sp, 105) ? [30, 105] : [30];
+    for (const cm of sizes) {
+      const p = new ButcheryProcess(butcheryProfileFor(sp, cm), 1, { guideOverrides: BUTCHERY_GUIDE_OVERRIDES });
+      for (let guard = 0; guard < 300 && !p.finished; guard++) {
+        const s = p.stage!;
+        seen.push(s.id);
+        p.orientation = s.orientation;
+        // 확정한 단계는 좌표가 표 그대로다(어종 확정 좌표는 옮기지 않는다)
+        const o = table[s.id];
+        if (o && (s.id === 'pin_a' || s.id === 'pin_b') && o.guidePath && s.cut?.ordered) {
+          // 328 — 지아이뼈 분리: 확정한 선(뼈 줄)을 위 · 아래 두 칼로 가른다 — 두 선의 가운데가 확정 선 · 끝점은 확정 선의 끝점
+          const [up, dn] = s.cut.guidePaths!;
+          expect(up.length, `${sp} ${s.id}`).toBe(o.guidePath.length);
+          o.guidePath.forEach((q, i) => {
+            expect(up[i].x, `${sp} ${s.id}`).toBe(q.x);
+            expect((up[i].y + dn[i].y) / 2, `${sp} ${s.id}`).toBeCloseTo(q.y, 2);
+            expect(up[i].y, `${sp} ${s.id}`).toBeLessThanOrEqual(dn[i].y);
+          });
+          expect(up[up.length - 1], `${sp} ${s.id}`).toEqual(o.guidePath[o.guidePath.length - 1]);
+          expect(dn[dn.length - 1], `${sp} ${s.id}`).toEqual(o.guidePath[o.guidePath.length - 1]);
+        } else if (o) {
+          if (o.guidePaths && o.guidePaths.length > 1) expect(s.cut!.guidePaths, `${sp} ${s.id}`).toEqual(o.guidePaths);
+          else if (o.guidePath) expect(s.cut!.guidePath, `${sp} ${s.id}`).toEqual(o.guidePath);
+          if (o.sweepPath) expect(s.sweepPath, `${sp} ${s.id}`).toEqual(o.sweepPath);
+          if (o.tapPoint) expect(s.tapPoint, `${sp} ${s.id}`).toEqual(o.tapPoint);
+        }
+        const k = s.primitive;
+        if (k === 'tap') p.submitTap(0);
+        else if (k === 'drag_fill' || k === 'scoop') p.submitFill(1);
+        else if (k === 'wash') p.submitWash();
+        else {
+          const left = s.cut!.guidePaths?.length ? s.cut!.guidePaths.filter((_, i) => !p.donePathIndices.has(i)) : [s.cut!.guidePath];
+          expect(p.submitCut(trace(left[0])).passed, `${sp} ${s.id}`).toBe(true);
+        }
       }
-      const k = s.primitive;
-      if (k === 'tap') p.submitTap(0);
-      else if (k === 'drag_fill' || k === 'scoop') p.submitFill(1);
-      else if (k === 'wash') p.submitWash();
-      else {
-        const left = s.cut!.guidePaths?.length ? s.cut!.guidePaths.filter((_, i) => !p.donePathIndices.has(i)) : [s.cut!.guidePath];
-        expect(p.submitCut(trace(left[0])).passed, `${sp} ${s.id}`).toBe(true);
-      }
+      expect(p.finished, `${sp} ${cm}cm — 지나온 단계 ${seen.slice(-4).join(' → ')}`).toBe(true);
     }
-    expect(p.finished, `${sp} — 지나온 단계 ${seen.slice(-4).join(' → ')}`).toBe(true);
     // 확정한 단계는 전부 이 어종 공정에 실제로 있다(없는 단계의 확정 = 죽은 좌표)
     for (const id of Object.keys(table)) expect(seen, `${sp} ${id}`).toContain(id);
   });

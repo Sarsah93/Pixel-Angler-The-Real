@@ -133,17 +133,69 @@ export function loinColumnsFor(sprites: ButcherSpriteSet, prep: PixelFishState):
 }
 
 /**
+ * 328 — **해체 측면 선의 모양**: 점마다 `[u, v]` — u = 몸통 열(`c0` ~ `c1 − 1`) 사이 비율 · v = 그 열 살 높이 비율(0 = 위 끝 · 1 = 아래 끝).
+ * 기준 어종(1m급 잿방어)에서 사용자가 확정한 선을 이 모양으로 바꿔(`loinShapeFromLines`) 다른 대형종의 몸통 열에 다시 놓는다(`loinSideGeometry`) —
+ * 사용자 지시 「등 푸른 대형종들 4덩어리 분리 작업 동일하게 … 전부 확정한 걸로 똑같이 적용」. 어종마다 몸 길이 · 높이 · 꼬리 자루 자리가 달라도 같은 자리를 지난다.
+ */
+export type LoinUV = readonly [number, number];
+export interface LoinGuideShape {
+  a?: Partial<Record<keyof LoinSideLines, LoinUV[]>>;
+  b?: Partial<Record<keyof LoinSideLines, LoinUV[]>>;
+  nakaochi?: LoinUV[];
+}
+/** 328 — 기준 어종에서 확정한 측면 선(도마 정규화) — 없는 선은 기본 모양을 쓴다 */
+export interface LoinConfirmedLines {
+  a?: Partial<LoinSideLines>;
+  b?: Partial<LoinSideLines>;
+  nakaochi?: CutPoint[];
+}
+
+/** 328 — 확정한 측면 선(도마 정규화) → 모양(u · v). 2면 · 중골 긁기는 좌우로 뒤집힌 그림 자리라 열을 뒤집어 잰다 */
+export function loinShapeFromLines(
+  sprites: ButcherSpriteSet, cols: LoinColumns, boardW: number, boardH: number, lines: LoinConfirmedLines,
+): LoinGuideShape {
+  const spr = sprites.whole;
+  const f = computeFishFrame(spr, { x: 0, y: 0, w: boardW, h: boardH });
+  const span = Math.max(1, cols.c1 - 1 - cols.c0);
+  const r4 = (v: number): number => Math.round(v * 1e4) / 1e4;
+  const uv = (p: CutPoint, mirror: boolean): LoinUV => {
+    const cx = (p.x * boardW - f.ox) / f.cell - 0.5;
+    const c = mirror ? spr.w - 1 - cx : cx;
+    const ci = Math.max(cols.c0, Math.min(cols.c1 - 1, Math.round(c)));
+    const H = cols.bot[ci] - cols.top[ci];
+    const row = (p.y * boardH - f.oy) / f.cell;
+    return [r4((c - cols.c0) / span), r4(H > 0 ? (row - cols.top[ci]) / H : 0.5)];
+  };
+  const conv = (l: CutPoint[] | undefined, mirror: boolean): LoinUV[] | undefined =>
+    l && l.length >= 2 ? l.map((p) => uv(p, mirror)) : undefined;
+  const sideOf = (l: Partial<LoinSideLines> | undefined, mirror: boolean): LoinGuideShape['a'] => ({
+    mid: conv(l?.mid, mirror), back: conv(l?.back, mirror), belly: conv(l?.belly, mirror),
+  });
+  return { a: sideOf(lines.a, false), b: sideOf(lines.b, true), nakaochi: conv(lines.nakaochi, true) };
+}
+
+/**
  * 해체 측면 유도선(도마 생선 틀 정규화) — 그림을 그리는 식(`computeFishFrame`)과 같은 자리.
  *  옆줄 = mid · 등 = 위 끝 + 높이 10% · 배 = 아래 끝 − 10% · 중골 긁기 = 2면 뼈대를 훑는 지그재그.
  *  2면(FLIP)은 그림이 좌우로 뒤집힌 자리(머리 오른쪽) — 칼은 늘 머리 쪽에서 꼬리 쪽으로.
+ *  328 — `shape`(기준 어종에서 확정한 선의 모양)가 있으면 그 선은 모양대로 이 어종의 몸통 열에 놓는다.
  */
-export function loinSideGeometry(sprites: ButcherSpriteSet, cols: LoinColumns, boardW: number, boardH: number): LoinSideGeometry {
+export function loinSideGeometry(
+  sprites: ButcherSpriteSet, cols: LoinColumns, boardW: number, boardH: number, shape?: LoinGuideShape,
+): LoinSideGeometry {
   const spr = sprites.whole;
   const f = computeFishFrame(spr, { x: 0, y: 0, w: boardW, h: boardH });
   const r4 = (v: number): number => Math.round(v * 1e4) / 1e4;
   const pt = (c: number, row: number, mirror: boolean): CutPoint => ({
     x: r4((f.ox + ((mirror ? spr.w - 1 - c : c) + 0.5) * f.cell) / boardW),
     y: r4((f.oy + row * f.cell) / boardH),
+  });
+  const span = Math.max(1, cols.c1 - 1 - cols.c0);
+  /** 모양(u · v) → 이 어종의 몸통 열 자리. 몸통 밖으로 나간 u는 가장 가까운 열의 높이를 빌린다 */
+  const place = (l: LoinUV[], mirror: boolean): CutPoint[] => l.map(([u, v]) => {
+    const c = cols.c0 + u * span;
+    const ci = Math.max(cols.c0, Math.min(cols.c1 - 1, Math.round(c)));
+    return pt(c, cols.top[ci] + (cols.bot[ci] - cols.top[ci]) * Math.max(-0.3, Math.min(1.3, v)), mirror);
   });
   const N = 7;
   const colAt = (k: number): number => Math.round(cols.c0 + (cols.c1 - 1 - cols.c0) * (k / (N - 1)));
@@ -155,14 +207,19 @@ export function loinSideGeometry(sprites: ButcherSpriteSet, cols: LoinColumns, b
       back.push(pt(c, cols.top[c] + H * 0.1, mirror));
       belly.push(pt(c, cols.bot[c] - H * 0.1, mirror));
     }
-    return { mid, back, belly };
+    const sh = mirror ? shape?.b : shape?.a;
+    return {
+      mid: sh?.mid ? place(sh.mid, mirror) : mid,
+      back: sh?.back ? place(sh.back, mirror) : back,
+      belly: sh?.belly ? place(sh.belly, mirror) : belly,
+    };
   };
   const nak: CutPoint[] = [];
   for (let k = 0; k < 8; k++) {
     const c = Math.round(cols.c0 + 1 + (cols.c1 - 2 - cols.c0) * (k / 7)), H = cols.bot[c] - cols.top[c];
     nak.push(pt(c, k % 2 === 0 ? cols.top[c] + H * 0.24 : cols.bot[c] - H * 0.24, true));
   }
-  return { a: lines(false), b: lines(true), nakaochi: nak };
+  return { a: lines(false), b: lines(true), nakaochi: shape?.nakaochi ? place(shape.nakaochi, true) : nak };
 }
 
 /** 한 면의 해체 진행(그 면의 옆줄 칼집 · 등살 · 뱃살을 뗐는가) */

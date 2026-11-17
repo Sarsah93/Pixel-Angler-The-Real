@@ -220,6 +220,7 @@ export {
 export type { ButcheryStageOptions, GuideNormRect, GuideFrameRemap, FilletGuideView, GuideColumnProfile } from './simulation/ButcheryProcess.js';
 export { applyGuideOverrides, isBodyGuideStage, butcheryGuideFamilyKey } from './simulation/ButcheryProcess.js';   // 315차 — F9 [확정]
 export { filletGuideView, stageGuideRemap, invertGuideRemap } from './simulation/ButcheryProcess.js';   // 316차 — 어종 필렛 그림 자리로 유도선 옮기기
+export { splitPinStrokes, butcheryGuideTwin, PIN_STROKE_SPREAD } from './simulation/ButcheryProcess.js';   // 328차 — 지아이뼈 위 · 아래 두 칼 · 같은 그림 어종 쌍
 export { BUTCHERY_GUIDE_OVERRIDES } from './db-schema/ButcheryGuideOverrides.js';
 export { buildEelStages, isEelButcherySpecies } from './db-schema/EelStages.js';   // 315차 — 장어류 손질
 export { EEL_GUIDE } from './db-schema/EelGuideGeometry.js';

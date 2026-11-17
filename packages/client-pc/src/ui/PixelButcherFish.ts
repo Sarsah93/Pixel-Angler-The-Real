@@ -23,7 +23,7 @@ import { SPECIES_WHOLE } from '../data/PixelFishSpecies.js';
 import { isStripelessMale } from '../data/FishTextures.js';
 import { FISH_STAGE_SPRITES } from '../data/PixelFishStages.js';
 import { FISH_VIEW_SPRITES } from '../data/PixelFishViews.js';
-import { FILLET_SPECIES_SPRITES, FILLET_SPECIES_ALIAS, FILLET_SIDE_PIN_LINE } from '../data/PixelFilletSpecies.js';
+import { FILLET_SPECIES_SPRITES, FILLET_SPECIES_ALIAS } from '../data/PixelFilletSpecies.js';
 
 /**
  * 316 — 어종 필렛 그림 종류(순수 · 껍질 붙은 · 갈빗대 붙은).
@@ -322,17 +322,98 @@ export function butcherFilletFrames(
 }
 
 /**
- * 321 — **지아이뼈 분리 선 = 한 면 필렛 그림의 혈합육(지아이뼈) 줄**(core `ButcheryStageOptions.pinLine` — 도마 정규화 · 필렛 A).
- * 그림에서 잰 줄(`FILLET_SIDE_PIN_LINE` — 그림 rect 정규화)을 도마가 그 그림을 그리는 rect(`computeFishFrame`)로 옮긴다.
- * 한 면 필렛 그림이 없는 어종(작은 생선 · 넙치류)은 undefined — 전처럼 어종군 기본선을 옮겨 쓴다.
+ * 321 · 328 — **지아이뼈 분리 선(뼈 줄) = 한 면 필렛 그림의 살 높이 한가운데**(core `ButcheryStageOptions.pinLine` — 도마 정규화 · 필렛 A).
+ * 321은 그림에서 잰 혈합육 줄(`FILLET_SIDE_PIN_LINE`)을 썼지만 어종마다 살 높이의 35 ~ 68% 사이를 오갔다(고등어는 머리 쪽 35% → 꼬리 쪽 68%).
+ * 사용자가 확정한 8종의 선은 어느 어종이나 살 높이 45 ~ 55%(평균 49%) · 그림 길이 6 ~ 95%를 지났다 —
+ * 「필렛을 수직 뷰에서 바라봤을 때 정 가운데 부분에 뼈가 있다」(328 사용자 지시). 그래서 열 실루엣의 한가운데를 따라간다.
+ * core가 이 줄을 위 · 아래 두 칼로 가른다(`splitPinStrokes`). 한 면 필렛 그림이 없는 어종(작은 생선 · 넙치류)은 undefined.
  */
 export function butcherPinLine(speciesId: string, boardW: number, boardH: number): Array<{ x: number; y: number }> | undefined {
   const spr = speciesFilletSprite(speciesId, 'side');
-  const line = FILLET_SIDE_PIN_LINE[FILLET_SPECIES_ALIAS[speciesId] ?? speciesId];
-  if (!spr || !line || line.length < 2) return undefined;
+  if (!spr) return undefined;
+  const f = computeFishFrame(spr, { x: 0, y: 0, w: boardW, h: boardH });
+  const cols = columnProfile(spr);
+  const n = cols.top.length, N = 9;
+  const us: number[] = [], vs: number[] = [];
+  for (let k = 0; k < N; k++) {
+    const u = PIN_LINE_U0 + (PIN_LINE_U1 - PIN_LINE_U0) * (k / (N - 1));
+    const i = Math.max(0, Math.min(n - 1, Math.floor(u * n)));
+    us.push(u);
+    vs.push(cols.top[i] + (cols.bot[i] - cols.top[i]) * PIN_LINE_V);
+  }
+  // 이웃 세 점 평균 — 가장자리 열의 울퉁불퉁한 윤곽이 선을 꺾지 않게(끝점은 두 점 평균)
+  const r = (v: number): number => Math.round(v * 1000) / 1000;
+  return us.map((u, k) => {
+    const a = vs[Math.max(0, k - 1)], b = vs[k], c = vs[Math.min(N - 1, k + 1)];
+    return { x: r((f.ox + u * f.dw) / boardW), y: r((f.oy + ((a + b + c) / 3) * f.dh) / boardH) };
+  });
+}
+/** 328 — 지아이뼈 줄이 지나는 자리(확정 8종 평균): 그림 길이의 6% ~ 95% · 살 높이의 49% */
+const PIN_LINE_U0 = 0.06, PIN_LINE_U1 = 0.95, PIN_LINE_V = 0.49;
+
+/**
+ * 328 — **꼬리 칼집 선 = 온마리 그림의 꼬리 자루**(core `ButcheryStageOptions.tailLines` — 도마 정규화).
+ * 꼬리 자루 = 몸 길이 50 ~ 90% 사이에서 열 높이가 가장 낮은 열(해체 `loinColumnsFor`의 `c1`과 같은 식).
+ * 사용자가 확정한 11종의 꼬리 칼집 x가 이 열과 평균 0.002(표준편차 0.014) 차이였다 — 옛 기본선(어종군 대표 그림 자리를 비례로 옮긴 것)은 0.05 넘게 벗어났다.
+ * 선은 꼬리 자루를 위아래로 조금 넘겨 긋는다(확정분 — 위 0.015 · 아래 0.02). 뒷면(`b`)은 좌우로 뒤집힌 그림 자리. 넙치류는 대상이 아니다.
+ */
+export function butcherTailLines(
+  speciesId: string, indiv: ButcherIndividual | undefined, boardW: number, boardH: number,
+): { a: Array<{ x: number; y: number }>; b: Array<{ x: number; y: number }> } | undefined {
+  const sprites = butcherSpritesFor(speciesId, indiv);
+  if (sprites.familyKey === 'halibut') return undefined;
+  const spr = sprites.whole;
+  const top: number[] = [], bot: number[] = [], h: number[] = [];
+  for (let c = 0; c < spr.w; c++) {
+    let t = -1, b = -1;
+    for (let y = 0; y < spr.h; y++) {
+      if (spr.rows[y][c] === '.') continue;
+      if (t < 0) t = y;
+      b = y;
+    }
+    top.push(t < 0 ? 0 : t); bot.push(t < 0 ? 0 : b + 1); h.push(t < 0 ? 0 : b + 1 - t);
+  }
+  const maxH = Math.max(1, ...h);
+  let c0 = h.findIndex((v) => v >= maxH * 0.3);
+  if (c0 < 0) c0 = 0;
+  let cEnd = spr.w - 1;
+  while (cEnd > c0 && h[cEnd] === 0) cEnd--;
+  const len = cEnd - c0;
+  if (len < 8) return undefined;
+  let c1 = Math.round(c0 + len * 0.8), best = Infinity;
+  for (let c = Math.round(c0 + len * 0.5); c <= Math.round(c0 + len * 0.9); c++) {
+    if (h[c] > 0 && h[c] < best) { best = h[c]; c1 = c; }
+  }
   const f = computeFishFrame(spr, { x: 0, y: 0, w: boardW, h: boardH });
   const r = (v: number): number => Math.round(v * 1000) / 1000;
-  return line.map(([x, y]) => ({ x: r((f.ox + x * f.dw) / boardW), y: r((f.oy + y * f.dh) / boardH) }));
+  let y0 = (f.oy + top[c1] * f.cell) / boardH - 0.015, y1 = (f.oy + bot[c1] * f.cell) / boardH + 0.02;
+  // 너무 짧은 선은 긋기 어렵다 — 가운데를 지키며 0.12까지 늘린다
+  if (y1 - y0 < 0.12) { const mid = (y0 + y1) / 2; y0 = mid - 0.06; y1 = mid + 0.06; }
+  const line = (c: number): Array<{ x: number; y: number }> => {
+    const x = r((f.ox + (c + 0.5) * f.cell) / boardW);
+    return [{ x, y: r(y0) }, { x, y: r(y1) }];
+  };
+  return { a: line(c1), b: line(spr.w - 1 - c1) };
+}
+
+/**
+ * 328 — **어종 확정 좌표를 잰 그림(기본 개체) → 이 개체의 그림** 대응(core `ButcheryStageOptions.speciesFrame`).
+ * 개체 조건으로 그림이 갈리는 어종(돌돔 30cm↑ 수컷 · 용치놀래기 수컷)은 그림 크기 · 놓이는 자리가 달라,
+ * 기본 그림 위에서 확정한 온마리 선을 그대로 쓰면 어긋난다(사용자 지시 — 「용치놀래기(암, 수)도 마찬가지」: 같은 선을 쓴다).
+ * 그림이 같으면 undefined.
+ */
+export function butcherVariantFrame(
+  speciesId: string, indiv: ButcherIndividual | undefined, boardW: number, boardH: number,
+): GuideFrameRemap | undefined {
+  const base = butcherSpritesFor(speciesId).whole, own = butcherSpritesFor(speciesId, indiv).whole;
+  if (base === own) return undefined;
+  const geom = { x: 0, y: 0, w: boardW, h: boardH };
+  const a = computeFishFrame(base, geom), b = computeFishFrame(own, geom);
+  if (a.ox === b.ox && a.oy === b.oy && a.dw === b.dw && a.dh === b.dh) return undefined;
+  const norm = (f: PixelFishFrame): { x: number; y: number; w: number; h: number } => ({
+    x: f.ox / boardW, y: f.oy / boardH, w: f.dw / boardW, h: f.dh / boardH,
+  });
+  return { from: norm(a), to: norm(b) };
 }
 
 /** 어종군 대표 온마리 — 유도선(core `GUIDE_COORDS` · `FLAT_GUIDE`)을 F9로 잰 기준 그림 */

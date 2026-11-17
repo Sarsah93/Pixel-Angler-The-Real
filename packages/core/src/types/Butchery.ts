@@ -73,6 +73,11 @@ export interface CutSpec {
    * 없으면 guidePath 단일 선 + strokesRequired(같은 선 반복) 방식.
    */
   guidePaths?: CutPoint[][];
+  /**
+   * 328 — **다중 유도선을 적힌 순서대로** 긋는다(지아이뼈 분리 — 첫 칼은 뼈 줄 위쪽 · 둘째 칼은 아래쪽 · 두 칼은 꼬리 쪽 끝에서 만난다).
+   * true면 아직 안 그은 선 가운데 **맨 앞 선 하나만** 판정한다(화면에도 그 선만 진하게). 없으면 순서 자유.
+   */
+  ordered?: boolean;
   /** 허용 이탈 (0~1 정규화 거리) */
   tolerance: number;
   /** 경로 커버율 임계 (0~1) — 미달 시 컷 실패(재시도) */

@@ -462,9 +462,10 @@ export const EN_RIG_COOKING: Record<string, string> = {
   '반대쪽 필렛도 같은 방식으로 갈빗대 판을 도려내세요': 'Pare the rib plate off the other fillet the same way.',
   '지아이뼈 분리 (필렛 A)': 'Pin-bone removal (fillet A)',
   '지아이뼈 분리 (필렛 B)': 'Pin-bone removal (fillet B)',
-  '가운데 지아이뼈 라인을 따라 세로로 2회 잘라 등살/지아이뼈/뱃살로 분리하세요':
-    'Make two lengthwise cuts along the pin-bone line to split it into loin, pin-bone strip and belly.',
-  '반대쪽 필렛도 지아이 라인을 2회 잘라 분리하세요': 'Cut the pin-bone line on the other fillet twice as well.',
+  '가운데 지아이뼈 줄을 사이에 두고 위쪽 한 번, 아래쪽 한 번 잘라 등살/지아이뼈/뱃살로 분리하세요':
+    'Cut once just above and once just below the pin-bone line to split it into loin, pin-bone strip and belly.',
+  '반대쪽 필렛도 지아이뼈 줄 위쪽 한 번, 아래쪽 한 번 잘라 분리하세요':
+    'Cut the other fillet the same way: once above the pin-bone line, once below.',
   '필렛 가장자리의 지느러미살(엔가와)과 살코기 경계를 칼로 갈라 분리하세요':
     'Cut along the border between the fin meat (engawa) and the flesh at the edge of the fillet to separate it.',
   '꼬리에서 머리 방향으로 지느러미(엔가와) 경계를 따라 칼길을 내세요 (칼날 위쪽)':

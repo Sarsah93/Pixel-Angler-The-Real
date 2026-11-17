@@ -29,12 +29,16 @@ import {
   isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE, stageGuideRemap, filletGuideView, invertGuideRemap,
   butcheryProfileFor, buildButcheryStages, applyGuideOverrides, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE,
   loinValueShare, loinSakuPieces, loinSakuCuts, loinBlockOfTask, loinBlockIndex, loinTrimBlockOf,
+  BUTCHERY_GUIDE_OVERRIDES,
 } from '@tra/core';
 import type { ButcheryGuideOverride, GuideFrameRemap, LoinPart, LoinSide, LoinStageOptions, ButcheryProfile } from '@tra/core';
 import {
-  drawLoinSide, drawLoinBlocks, loinColumnsFor, loinSideGeometry, ensureLoinTexture, loinIconKey,
-  type LoinColumns, type LoinSideState, type LoinBlocksState,
+  drawLoinSide, drawLoinBlocks, loinColumnsFor, loinSideGeometry, loinShapeFromLines, ensureLoinTexture, loinIconKey,
+  type LoinColumns, type LoinSideState, type LoinBlocksState, type LoinGuideShape,
 } from './LoinArt.js';
+
+/** 328 — 해체 측면 선의 기준 어종(사용자가 1m급 잿방어에서 확정한 선을 모든 해체 어종에 같은 모양으로 놓는다) */
+const LOIN_GUIDE_REFERENCE = 'greater_amberjack';
 import { devGuideOverrides, loadDevGuideOverrides, postDevGuideOverride } from './DevGuideCaptures.js';
 import { drawEelBoard, ensureEelTrimTexture, type EelBoardState } from './EelBoard.js';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
@@ -46,7 +50,7 @@ import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
 import { trimHeadIconKey, trimSpineIconKey, ensureTintedFillet } from './TrimPartIcons.js';
-import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, BUTCHER_FISH_W0, BUTCHER_FISH_H0, type PixelFishState } from './PixelButcherFish.js';
+import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, butcherTailLines, butcherVariantFrame, BUTCHER_FISH_W0, BUTCHER_FISH_H0, type PixelFishState } from './PixelButcherFish.js';
 import { speciesFilletIconKey } from './FilletSpeciesIcons.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
 import {
@@ -272,6 +276,8 @@ export class ButcheryPanel extends DraggablePanel {
   private guideSpeciesOk = false;
   /** 313 — 어종군 대표 그림 rect → 이 어종 그림 rect(측면 유도선 옮기기) · 315 [군 확정]이 거꾸로 옮길 때도 쓴다 */
   private guideFrame: GuideFrameRemap | undefined;
+  /** 328 — 어종 확정 좌표를 잰 그림(기본 개체) → 이 개체의 그림(돌돔 수컷 · 용치놀래기 수컷 — 같은 그림이면 없다) */
+  private speciesFrame: GuideFrameRemap | undefined;
   /** 316 — 필렛 뷰(갈빗대 · 지아이뼈 · 박피) 유도선을 어종 필렛 그림 자리로(core `filletFrames`) */
   private filletFrames: ReturnType<typeof butcherFilletFrames>;
   private sheetViewer?: Phaser.GameObjects.Container;
@@ -382,6 +388,10 @@ export class ButcheryPanel extends DraggablePanel {
     this.filletFrames = butcherFilletFrames(speciesId, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
     // 321 — 지아이뼈 분리 선은 그 어종 한 면 필렛 그림의 혈합육 줄(그림에서 잰 것 — F9 확정이 있으면 그것이 먼저)
     const pinLine = butcherPinLine(speciesId, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
+    // 328 — 꼬리 칼집 선은 그림의 꼬리 자루 · 개체 그림이 기본 그림과 다르면 어종 확정 좌표를 그 그림 자리로
+    const indiv = { lengthCm: source.lengthCm, sex: source.sex };
+    const tailLines = butcherTailLines(speciesId, indiv, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
+    this.speciesFrame = butcherVariantFrame(speciesId, indiv, ButcheryPanel.FISH_W0, ButcheryPanel.FISH_H0);
     // 317 — 손질 공정은 크기로도 갈린다(대방어급 · 참다랑어 = 4덩어리 해체 — `butcheryProfileFor`)
     const profile = butcheryProfileFor(speciesId, source.lengthCm);
     const loin = profile.tree === 'loin' ? this.buildLoinOptions(speciesId, profile, source) : undefined;
@@ -389,6 +399,8 @@ export class ButcheryPanel extends DraggablePanel {
       guideFrame: this.guideFrame,
       filletFrames: this.filletFrames,
       pinLine,
+      tailLines,
+      speciesFrame: this.speciesFrame,
       // 315 — dev F9 [확정] 좌표(이 판에서 확정한 것까지). 배포본은 core에 저장된 표만 쓴다
       guideOverrides: import.meta.env.DEV ? devGuideOverrides : undefined,
       loin,
@@ -2325,22 +2337,57 @@ export class ButcheryPanel extends DraggablePanel {
   private buildLoinOptions(speciesId: string, profile: ButcheryProfile, source: InvItem): LoinStageOptions {
     this.loinSeq = InventoryStore.nextCatchSeq();
     const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
-    const pre = applyGuideOverrides(buildButcheryStages(profile, { guideFrame: this.guideFrame }), speciesId, false,
-      this.guideFrame, import.meta.env.DEV ? devGuideOverrides : undefined, this.filletFrames);
     const sprites = butcherSpritesFor(speciesId, { lengthCm: source.lengthCm, sex: source.sex });
+    this.loinCols = this.loinBodyColumns(speciesId, profile, sprites, this.guideFrame, this.filletFrames, this.speciesFrame);
+    const side = loinSideGeometry(sprites, this.loinCols, W0, H0, this.loinReferenceShape());
+    const own = this.loinBlockOfItem(source);
+    this.loinSakuN = LOIN_BLOCKS.map((b) => loinSakuPieces(own >= 0 ? (source.weightG ?? 800) : this.loinBlockGrams(profile, source, b.part)));
+    return { side, sakuPieces: this.loinSakuN };
+  }
+
+  /** 317 — 해체 몸통 열: 머리 · 지느러미 [확정] 선대로 지운 몸통의 열마다 위 · 아래 끝(그림과 같은 표) */
+  private loinBodyColumns(
+    speciesId: string, profile: ButcheryProfile, sprites: ReturnType<typeof butcherSpritesFor>,
+    guideFrame: GuideFrameRemap | undefined, filletFrames: ReturnType<typeof butcherFilletFrames>, speciesFrame: GuideFrameRemap | undefined,
+  ): LoinColumns {
+    const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
+    const pre = applyGuideOverrides(buildButcheryStages(profile, { guideFrame }), speciesId, false,
+      guideFrame, import.meta.env.DEV ? devGuideOverrides : undefined, filletFrames, speciesFrame);
     const f = computeFishFrame(sprites.whole, { x: 0, y: 0, w: W0, h: H0 });
     const toFrame = (p: CutPoint): CutPoint => ({ x: (p.x * W0 - f.ox) / f.dw, y: (p.y * H0 - f.oy) / f.dh });
     const head = pre.find((st) => st.id === 'head_base')?.cut?.guidePath.map(toFrame);
     const fc = pre.find((st) => st.id === 'finectomy')?.cut;
     const fins = fc ? (fc.guidePaths?.length ? fc.guidePaths : [fc.guidePath]).map((l) => l.map(toFrame)) : undefined;
-    this.loinCols = loinColumnsFor(sprites, {
+    return loinColumnsFor(sprites, {
       orientation: 'BASE', headOff: true, headCutPath: head, finsOff: true, finCutPaths: fins,
       gutted: true, scaledSides: 2, hasScales: false, finished: false, currentPullsLeft: 0, anusRatio: profile.anusRatio,
     });
-    const side = loinSideGeometry(sprites, this.loinCols, W0, H0);
-    const own = this.loinBlockOfItem(source);
-    this.loinSakuN = LOIN_BLOCKS.map((b) => loinSakuPieces(own >= 0 ? (source.weightG ?? 800) : this.loinBlockGrams(profile, source, b.part)));
-    return { side, sakuPieces: this.loinSakuN };
+  }
+
+  /**
+   * 328 — **해체 측면 선의 모양 = 기준 어종(잿방어)에서 확정한 선**(사용자 지시 — 「내가 잿방어 1m 급을 손질했어서 … 4덩어리로 분리하는 작업도
+   *  가이드 확정했을텐데, 등 푸른 대형종들 4덩어리 분리 작업 동일하게 반영될테니 … 전부 확정한 걸로 똑같이 적용」).
+   * 기준 어종의 확정 선(옆줄 · 등 · 배 × 두 면 · 중골 긁기)을 그 어종의 몸통 열에서 「열 비율 · 살 높이 비율」로 바꾼다 —
+   * 확정 표가 바뀌면 다음에 여는 손질 창부터 따라온다(구운 표가 따로 없다). 확정한 선이 없으면 undefined(전처럼 열에서 굽는다).
+   * 이 어종 자체에 확정한 선이 있으면 그것이 먼저다(`applyGuideOverrides`).
+   */
+  private loinReferenceShape(): LoinGuideShape | undefined {
+    const ref = LOIN_GUIDE_REFERENCE;
+    const line = (id: string): CutPoint[] | undefined => {
+      const o = (import.meta.env.DEV ? devGuideOverrides[ref]?.[id] : undefined) ?? BUTCHERY_GUIDE_OVERRIDES[ref]?.[id];
+      const l = o?.guidePath ?? o?.guidePaths?.[0] ?? o?.sweepPath;
+      return l && l.length >= 2 ? l : undefined;
+    };
+    const sideOf = (s: LoinSide): Partial<Record<LoinPart | 'mid', CutPoint[]>> => ({
+      mid: line(`loin_${s}_mid`), back: line(`loin_${s}_back`), belly: line(`loin_${s}_belly`),
+    });
+    const lines = { a: sideOf('a'), b: sideOf('b'), nakaochi: line('loin_nakaochi') };
+    if (![lines.a.mid, lines.a.back, lines.a.belly, lines.b.mid, lines.b.back, lines.b.belly, lines.nakaochi].some(Boolean)) return undefined;
+    const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
+    const sprites = butcherSpritesFor(ref);
+    const cols = this.loinBodyColumns(ref, butcheryProfileFor(ref), sprites,
+      butcherGuideFrame(ref, undefined, W0, H0), butcherFilletFrames(ref, W0, H0), undefined);
+    return loinShapeFromLines(sprites, cols, W0, H0, lines);
   }
 
   /** 껍질 붙은 덩어리 아이템이면 그 덩어리 번호(0~3) — 아니면 -1 */
@@ -2738,7 +2785,10 @@ export class ButcheryPanel extends DraggablePanel {
         // 다중 유도선 (지느러미 등·뒷·가슴) — 완료선은 흐리게, 미완료선만 또렷하게.
         // dev 편집 중에는 **편집 대상 선만** 또렷하게(나머지는 흐리게) 해 작업 대상을 구분.
         const done = this.process.donePathIndices;
+        // 328 — 순서가 있는 선(지아이뼈 위 → 아래): 지금 그을 선만 또렷하게 · 다음 선은 가는 점선으로 자리만 보인다
+        const turn = stage.cut.ordered ? multi.findIndex((_, i) => !done.has(i)) : -1;
         multi.forEach((path, i) => {
+          if (!this.editMode && turn >= 0 && i > turn) { this.strokeUpcomingLine(g, path); return; }
           const faint = this.editMode ? i !== this.editLineIdx : done.has(i);
           this.strokeGuideLine(g, path, faint);
         });
@@ -2825,6 +2875,13 @@ export class ButcheryPanel extends DraggablePanel {
   }
 
   /** 절단 유도선 — 점선 경로 + 시작(초록 링)/끝(붉은 사각) 마커 + 방향 화살촉 */
+  /** 328 — 차례가 아직 안 온 유도선(순서 있는 다중 유도선) — 가는 점선만(시작 · 끝 표식 없음) */
+  private strokeUpcomingLine(g: Phaser.GameObjects.Graphics, path: CutPoint[]): void {
+    const pts = path.map((p) => this.toPanelPx(p));
+    g.lineStyle(1.5, 0xfff2c0, 0.7);
+    for (let i = 1; i < pts.length; i++) this.dashSeg(g, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+  }
+
   private strokeGuideLine(g: Phaser.GameObjects.Graphics, path: CutPoint[], done = false): void {
     const pts = path.map((p) => this.toPanelPx(p));
     if (pts.length < 2) return;
@@ -3399,7 +3456,9 @@ export class ButcheryPanel extends DraggablePanel {
     // 316 — 필렛 뷰(갈빗대 · 지아이뼈 · 박피)도 어종 그림 자리 ↔ 어종군 그림 자리(`filletFrames`)
     const familyFrame = scope === 'family' && (isBodyGuideStage(stage.id) || !!filletGuideView(stage.id));
     const fm = familyFrame ? stageGuideRemap(stage.id, { guideFrame: this.guideFrame, filletFrames: this.filletFrames }) : undefined;
-    const inv: GuideFrameRemap | undefined = fm ? invertGuideRemap(fm) : undefined;
+    // 328 — 개체 그림이 기본 그림과 다르면(돌돔 수컷 · 용치놀래기 수컷) 어종 확정의 온마리 선은 기본 그림 자리로 되옮겨 저장한다
+    const sf = scope === 'species' && this.speciesFrame && isBodyGuideStage(stage.id) ? this.speciesFrame : undefined;
+    const inv: GuideFrameRemap | undefined = fm ? invertGuideRemap(fm) : sf ? invertGuideRemap(sf) : undefined;
     const mv = (p: CutPoint): CutPoint => (inv ? remapGuidePoint(p, inv)
       : { x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000 });
     const ov: ButcheryGuideOverride = {};
@@ -4117,7 +4176,10 @@ export class ButcheryPanel extends DraggablePanel {
       if (ok) {
         // 반복/진행 표시 — 다중 유도선은 '남은 절단선 n / N곳'으로 표기 (지느러미 등·뒷·가슴)
         const nLines = stage.cut?.guidePaths?.length ?? 0;
-        if (primitiveInput(stage.primitive) === 'path' && nLines > 1) {
+        if (primitiveInput(stage.primitive) === 'path' && nLines > 1 && stage.cut?.ordered) {
+          // 328 — 순서가 있는 선(지아이뼈 위 → 아래)은 칼집 수로 적는다
+          mkText(sx, this.contentTop + 124, `남은 칼집: ${this.process.currentStrokesLeft}회`, 11, '#9fd0e4');
+        } else if (primitiveInput(stage.primitive) === 'path' && nLines > 1) {
           mkText(sx, this.contentTop + 124,
             `남은 절단선: ${this.process.currentStrokesLeft} / ${nLines}곳 (순서 자유)`, 11, '#9fd0e4');
         } else if (primitiveInput(stage.primitive) === 'path' && this.process.currentStrokesLeft > 1) {
@@ -4179,7 +4241,8 @@ export class ButcheryPanel extends DraggablePanel {
           11, rotOk ? '#7fa8c0' : '#ffd257', !rotOk);
       }
       if (filletView) {
-        mkText(sx, this.contentTop + 200, '필렛 뷰 — 뒤집기 없음 (살 위)', 10, '#607b8e');
+        // 328 — 회전 단추 둘째 줄(+200 ~ +234) 뒤에 깔려 있던 글을 「배치」 줄 아래로
+        mkText(sx, this.contentTop + 258, '필렛 뷰 — 뒤집기 없음 (살 위)', 10, '#607b8e');
       }
 
       // 버튼형 스테이지 — 세척/얼음물 + 두족류 `result`(결과 확인, 조작 없음 §0.5.4)

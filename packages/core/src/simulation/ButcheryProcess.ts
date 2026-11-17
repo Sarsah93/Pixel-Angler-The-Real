@@ -208,6 +208,7 @@ function cut(
     strokesRequired: opts.strokesRequired,
     strong: opts.strong,
     guidePaths: opts.guidePaths,
+    ordered: opts.ordered,
   };
 }
 
@@ -245,6 +246,17 @@ export interface ButcheryStageOptions {
    * F9 확정 좌표(어종 · 군)가 있으면 그것이 먼저다. 작은 생선(핀셋)은 넘기지 않는다.
    */
   pinLine?: CutPoint[];
+  /**
+   * 328 — **꼬리 칼집 선 = 그 어종 그림의 꼬리 자루(몸이 가장 가는 곳)**(도마 정규화 · `a` = 앞면 · `b` = 뒷면 — 좌우로 뒤집힌 그림 자리).
+   * client가 온마리 그림의 열 실루엣에서 잰다 — 사용자가 확정한 11종의 꼬리 칼집이 그 자리와 평균 0.002(표준편차 0.014) 차이였다.
+   * 있으면 어종군 기본선(대표 그림 자리를 비례로 옮긴 것)을 대신한다. 어종 실측(`SPECIES_GUIDE_COORDS`) · F9 확정 좌표가 있으면 그것이 먼저다.
+   */
+  tailLines?: { a: CutPoint[]; b: CutPoint[] };
+  /**
+   * 328 — **어종 확정 좌표를 잰 그림 → 이 개체의 그림** 대응. 개체 조건으로 그림이 갈리는 어종(돌돔 30cm↑ 수컷 · 용치놀래기 수컷)은
+   * 확정 좌표를 기본 그림(암컷 · 어린 개체) 자리에 저장하고, 다른 그림에서는 이 대응으로 옮겨 쓴다(온마리 그림 위 선만). 같은 그림이면 없다.
+   */
+  speciesFrame?: GuideFrameRemap;
   /**
    * 315 — dev F9 [확정] 좌표(dev 서버에서 받아 둔 것). 저장된 표(`BUTCHERY_GUIDE_OVERRIDES`)보다 먼저 쓴다.
    * 확정 직후 다시 연 손질 창에도 그 좌표가 보이게 하려는 것 — 배포본은 넘기지 않는다(저장된 표만).
@@ -395,23 +407,47 @@ export function butcheryGuideFamilyKey(speciesId: string, cephalopod: boolean): 
 }
 
 /**
+ * 328 — **같은 그림을 쓰는 어종 쌍**(사용자 지시 — 「참돔(야간)과 참돔(일반, 주간) 손질 가이드 선은 동일하게」).
+ * 도마 그림이 같은 어종이라 한쪽에서 확정한 좌표를 다른 쪽도 그대로 쓴다. 양쪽 다 확정했으면 단계마다 **나중에 확정한 쪽**이다.
+ */
+const BUTCHERY_GUIDE_TWINS: Readonly<Record<string, string>> = {
+  red_seabream: 'night_seabream', night_seabream: 'red_seabream',
+};
+/** 328 — 이 어종과 유도선을 함께 쓰는 어종(없으면 undefined) */
+export function butcheryGuideTwin(speciesId: string): string | undefined {
+  return BUTCHERY_GUIDE_TWINS[speciesId];
+}
+
+/**
  * 315 — 확정 좌표를 지은 스테이지에 끼운다. 찾는 순서: dev 받아 둔 어종 → 저장 어종 → dev 군 → 저장 군.
  * 좌표만 바꾼다(판정 옵션은 그대로) · 스테이지 · 컷 객체는 복사해 바꾼다(공용 스테이지 표를 건드리지 않는다).
+ * 328 — 같은 그림을 쓰는 쌍(`BUTCHERY_GUIDE_TWINS`)의 확정도 어종 확정으로 본다(단계마다 나중 것) ·
+ *  `speciesFrame`이 있으면 어종 확정의 온마리 선을 이 개체의 그림 자리로 옮긴다(돌돔 수컷 · 용치놀래기 수컷).
  */
 export function applyGuideOverrides(
   stages: ButcheryStage[], speciesId: string, cephalopod: boolean,
   m: GuideFrameRemap | undefined, live?: ButcheryGuideOverrideTable,
   filletFrames?: ButcheryStageOptions['filletFrames'],
+  speciesFrame?: GuideFrameRemap,
 ): ButcheryStage[] {
   const fam = butcheryGuideFamilyKey(speciesId, cephalopod);
-  const pick = (id: string): ButcheryGuideOverride | undefined =>
-    live?.[speciesId]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[speciesId]?.[id]
-    ?? (fam ? live?.[fam]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[fam]?.[id] : undefined);
+  const twin = BUTCHERY_GUIDE_TWINS[speciesId];
+  const own = (key: string, id: string): ButcheryGuideOverride | undefined =>
+    live?.[key]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[key]?.[id];
+  const pick = (id: string): ButcheryGuideOverride | undefined => {
+    const a = own(speciesId, id), b = twin ? own(twin, id) : undefined;
+    // 쌍 — 둘 다 있으면 나중에 확정한 쪽(시각이 같거나 없으면 제 것)
+    const sp = a && b ? ((b.at ?? '') > (a.at ?? '') ? b : a) : a ?? b;
+    return sp ?? (fam ? live?.[fam]?.[id] ?? BUTCHERY_GUIDE_OVERRIDES[fam]?.[id] : undefined);
+  };
   const out = stages.map((st) => {
     const o = pick(st.id);
     if (!o) return st;
     // 「군 전체 확정」(familyFrame) 좌표는 어종군 그림 자리 — 온마리 선 · 필렛 뷰(316)를 이 어종 그림 자리로 옮긴다
-    const fm = o.familyFrame ? stageGuideRemap(st.id, { guideFrame: m, filletFrames }) : undefined;
+    //  328 — 어종 확정의 온마리 선은 잰 그림(기본 개체) → 이 개체의 그림 자리로(`speciesFrame` — 같은 그림이면 없다)
+    const fm = o.familyFrame
+      ? stageGuideRemap(st.id, { guideFrame: m, filletFrames })
+      : (speciesFrame && BODY_GUIDE_STAGES.has(st.id) ? speciesFrame : undefined);
     const mv = fm
       ? (p: CutPoint): CutPoint => remapGuidePoint(p, fm)
       : (p: CutPoint): CutPoint => ({ x: p.x, y: p.y });
@@ -433,13 +469,52 @@ export function applyGuideOverrides(
     return next;
   });
   // 322 — 모비늘 **뒷면** 선을 따로 확정하지 않았으면 확정한 앞면 선의 좌우 대칭을 쓴다(앞면만 맞추면 뒷면이 따라온다)
-  if (pick('scute_base') && !pick('scute_flip')) {
-    const a = out.find((st) => st.id === 'scute_base')?.cut?.guidePath;
-    const bi = out.findIndex((st) => st.id === 'scute_flip');
-    const b = bi >= 0 ? out[bi] : undefined;
-    if (a && b?.cut) out[bi] = { ...b, cut: { ...b.cut, guidePath: mirrorPathX(a) } };
+  // 328 — 지아이뼈 분리 **필렛 B**도 같다(필렛 B는 필렛 A를 좌우로 뒤집은 그림이다)
+  for (const [a, b] of [['scute_base', 'scute_flip'], ['pin_a', 'pin_b']] as const) {
+    const oa = pick(a), ob = pick(b);
+    // 어종 확정한 A가 있고 B는 없거나 군 공통값뿐이면 A의 대칭이 먼저다(어종 확정이 군 값보다 가깝다)
+    if (!oa || (ob && !(oa.familyFrame !== true && ob.familyFrame === true))) continue;
+    const src = out.find((st) => st.id === a)?.cut;
+    const bi = out.findIndex((st) => st.id === b);
+    const dst = bi >= 0 ? out[bi] : undefined;
+    if (!src || !dst?.cut || primitiveInput(dst.primitive) !== 'path') continue;
+    const c: CutSpec = { ...dst.cut, guidePath: mirrorPathX(src.guidePath) };
+    if (src.guidePaths && src.guidePaths.length > 1) c.guidePaths = src.guidePaths.map(mirrorPathX);
+    else if (c.guidePaths) c.guidePaths = [c.guidePath];
+    out[bi] = { ...dst, cut: c };
   }
   return out;
+}
+
+/** 328 — 지아이뼈 분리 두 칼의 벌어짐(도마 세로 정규화 — 머리 쪽 끝에서 뼈 줄 위 · 아래로 이만큼) */
+export const PIN_STROKE_SPREAD = 0.032;
+
+/**
+ * 328 — **지아이뼈 분리 = 뼈 줄 위쪽 한 칼 · 아래쪽 한 칼**(사용자 지시 — 「처음 길은 살짝 위, 다음 길은 살짝 아래. 그렇지만 끝나는 점은 동일하게.
+ *  필렛을 수직 뷰에서 바라봤을 때 정 가운데 부분에 뼈가 있다고 생각하면 옆에서 잘랐을 때를 가정」).
+ * 옛 판은 같은 선을 두 번 그었다. 뼈 줄(가운데 선 — 기본값 · 군 공통값 · 어종 확정)을 받아 **위 선 → 아래 선** 두 유도선으로 가른다:
+ *  머리 쪽 끝에서 `spread`만큼 벌어지고 선을 따라가며 좁아져 **끝점(꼬리 쪽)에서 만난다**. 순서가 있는 다중 유도선(`ordered`)이다.
+ * 필렛 B는 좌우로 뒤집은 그림이라 선도 좌우 대칭이다 — 위 · 아래 차례는 같다.
+ * 확정 좌표가 이미 두 선(`guidePaths` 2개 — 편집기에서 두 선을 따로 맞춘 것)이면 가르지 않고 순서만 건다. 작은 생선 핀셋(문지르기)은 대상이 아니다.
+ */
+export function splitPinStrokes(stages: ButcheryStage[], spread: number = PIN_STROKE_SPREAD): ButcheryStage[] {
+  const r = (v: number): number => Math.round(v * 1000) / 1000;
+  return stages.map((st) => {
+    if ((st.id !== 'pin_a' && st.id !== 'pin_b') || !st.cut || primitiveInput(st.primitive) !== 'path') return st;
+    if (st.cut.guidePaths && st.cut.guidePaths.length > 1) {
+      return st.cut.ordered ? st : { ...st, cut: { ...st.cut, ordered: true } };
+    }
+    const mid = st.cut.guidePath;
+    if (mid.length < 2) return st;
+    // 선을 따라간 거리 비율(0 = 머리 쪽 시작 · 1 = 꼬리 쪽 끝) — 벌어짐은 끝으로 갈수록 0
+    const acc: number[] = [0];
+    for (let i = 1; i < mid.length; i++) acc.push(acc[i - 1] + Math.hypot(mid[i].x - mid[i - 1].x, mid[i].y - mid[i - 1].y));
+    const total = acc[acc.length - 1] || 1;
+    const side = (sign: number): CutPoint[] =>
+      mid.map((p, i) => ({ x: p.x, y: r(p.y + sign * spread * (1 - acc[i] / total)) }));
+    const upper = side(-1), lower = side(1);
+    return { ...st, cut: { ...st.cut, guidePath: upper, guidePaths: [upper, lower], ordered: true, strokesRequired: undefined } };
+  });
 }
 
 /** 어종군별 가이드 좌표 세트 (전부 dev F9 실측 — 도마 rect 정규화) */
@@ -549,7 +624,9 @@ const SPECIES_GUIDE_COORDS: Partial<Record<string, Partial<GuideCoordSet>>> = {
 };
 
 /** 어종군 세트 + 어종 실측 + 그림 자리 옮기기 → 이 어종의 측면 유도선 세트 */
-function resolveGuideSet(speciesId: string, m: GuideFrameRemap | undefined): GuideCoordSet {
+function resolveGuideSet(
+  speciesId: string, m: GuideFrameRemap | undefined, tail?: ButcheryStageOptions['tailLines'],
+): GuideCoordSet {
   const base = GUIDE_COORDS[butcheryArtFamily(speciesId) === 'amberjack' ? 'amberjack' : 'bream'];
   const own = SPECIES_GUIDE_COORDS[speciesId] ?? {};
   return {
@@ -562,8 +639,9 @@ function resolveGuideSet(speciesId: string, m: GuideFrameRemap | undefined): Gui
     finectomy: own.finectomy ?? [
       remapPath(base.finectomy[0], m), remapPath(base.finectomy[1], m), remapPath(base.finectomy[2], m),
     ],
-    tailA: own.tailA ?? remapPath(base.tailA, m),
-    tailB: own.tailB ?? remapPath(base.tailB, m),
+    // 328 — 꼬리 칼집: 어종 실측 → 그림의 꼬리 자루(client가 잰 선) → 어종군 기본선을 그림 자리로
+    tailA: own.tailA ?? (tail && tail.a.length >= 2 ? tail.a : remapPath(base.tailA, m)),
+    tailB: own.tailB ?? (tail && tail.b.length >= 2 ? tail.b : remapPath(base.tailB, m)),
     ...(() => {
       // 322 — 모비늘 선: 어종 실측 → 어종군 세트(없으면 방어류 세트)를 그림 자리로 · 뒷면은 앞면의 좌우 대칭
       const sb = own.scuteBase ?? remapPath(base.scuteBase ?? GUIDE_COORDS.amberjack.scuteBase ?? [], m);
@@ -860,7 +938,7 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   const stages: ButcheryStage[] = [];
   // 313 — 어종군은 core `butcheryArtFamily` 한 곳(301 고등어 · 전갱이 · 삼치는 그림은 잿방어인데 선은 돔류였다)
   //  + 어종 F9 실측 + 어종 그림 자리로 옮기기
-  const G = resolveGuideSet(profile.speciesId, opts?.guideFrame);
+  const G = resolveGuideSet(profile.speciesId, opts?.guideFrame, opts?.tailLines);
 
   // 1. 시메 — 눈 뒤 뇌 지점 탭 (활어→즉살, 선도 유지)
   stages.push({
@@ -1093,13 +1171,14 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   // 10. 필렛 손질 ② 지아이뼈 분리 — 세로 2회 절단 (머리쪽 가운데 → 꼬리쪽 일자)
   stages.push({
     id: 'pin_a', label: '지아이뼈 분리 (필렛 A)', orientation: 'FLESH_UP', primitive: 'guided_cut',
-    guide: '가운데 지아이뼈 라인을 따라 세로로 2회 잘라 등살/지아이뼈/뱃살로 분리하세요',
+    guide: '가운데 지아이뼈 줄을 사이에 두고 위쪽 한 번, 아래쪽 한 번 잘라 등살/지아이뼈/뱃살로 분리하세요',
     cut: cut('pin_a', 'FLESH_UP', [{ x: 0.16, y: 0.5 }, { x: 0.9, y: 0.5 }], { strokesRequired: 2, tolerance: 0.08 }),
   });
   stages.push({
     id: 'pin_b', label: '지아이뼈 분리 (필렛 B)', orientation: 'FLESH_UP', primitive: 'guided_cut',
-    guide: '반대쪽 필렛도 지아이 라인을 2회 잘라 분리하세요',
-    cut: cut('pin_b', 'FLESH_UP', [{ x: 0.16, y: 0.5 }, { x: 0.9, y: 0.5 }], { strokesRequired: 2, tolerance: 0.08 }),
+    guide: '반대쪽 필렛도 지아이뼈 줄 위쪽 한 번, 아래쪽 한 번 잘라 분리하세요',
+    // 328 — 필렛 B는 좌우로 뒤집어 그린다: 머리(오른쪽) → 꼬리(왼쪽). 두 칼이 만나는 끝점이 꼬리 쪽이 되게 선도 뒤집어 둔다
+    cut: cut('pin_b', 'FLESH_UP', [{ x: 0.84, y: 0.5 }, { x: 0.1, y: 0.5 }], { strokesRequired: 2, tolerance: 0.08 }),
   });
 
   // 11. 박피 — **2단계** (사용자 지시 2026-07-31): ① 꼬리 손잡이 칼집 ② 껍질 분리(경계 칼 → 당기기).
@@ -1260,7 +1339,10 @@ export class ButcheryProcess {
     this.cephalopod = !!ceph;
     this.stages = ceph ?? buildButcheryStages(profile, opts);
     // 315 — dev F9 [확정] 좌표(저장된 표 + dev 서버에서 받아 둔 것)를 좌표만 바꿔 끼운다
-    this.stages = applyGuideOverrides(this.stages, profile.speciesId, !!ceph, opts?.guideFrame, opts?.guideOverrides, opts?.filletFrames);
+    this.stages = applyGuideOverrides(
+      this.stages, profile.speciesId, !!ceph, opts?.guideFrame, opts?.guideOverrides, opts?.filletFrames, opts?.speciesFrame);
+    // 328 — 지아이뼈 분리는 뼈 줄 위 · 아래 두 칼(확정 좌표를 끼운 뒤에 가른다 — 확정한 선이 뼈 줄이다)
+    if (!ceph) this.stages = splitPinStrokes(this.stages);
     if (ceph) this.orientation = ceph[0].orientation;
     // 313 — 작은 생선 공정은 시메 · 방혈이 없다(공정에 없는 것은 「해당 없음」 — 등급을 깎지 않는다)
     //  315 — 장어류도 같다(송곳 고정은 즉살이 아니다 · 방혈 단계가 공정에 없다)
@@ -1340,11 +1422,15 @@ export class ButcheryProcess {
 
     if (multi) {
       // ── 다중 유도선 — 미완료 선 중 **가장 잘 맞는 것**으로 판정 (그은 순서 자유) ──
+      //  328 — 순서가 있는 선(`ordered` — 지아이뼈 위 → 아래)은 아직 안 그은 맨 앞 선 하나만 본다.
+      //  커버율이 같으면 덜 벗어난 선(가까이 붙은 두 선을 가른다)
       let best: CutEvalResult | null = null;
       for (let i = 0; i < multi.length; i++) {
         if (this.pathsDone.has(i)) continue;
         const r = evaluateCut(traced, { ...s.cut, guidePath: multi[i] });
-        if (!best || r.coverage > best.coverage) { best = r; matchedPath = i; }
+        if (!best || r.coverage > best.coverage
+          || (r.coverage === best.coverage && r.avgDeviationRatio < best.avgDeviationRatio)) { best = r; matchedPath = i; }
+        if (s.cut.ordered) break;
       }
       res = best ?? { coverage: 0, avgDeviationRatio: 9, quality: 0, passed: false };
     } else {

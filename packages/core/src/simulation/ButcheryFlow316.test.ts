@@ -8,6 +8,7 @@
  *  - 열 실루엣이 있으면 세로는 살 높이 비례(꼬리가 뾰족한 어종 필렛 — 박피 손잡이 · 당기기가 살 밖으로 나가지 않게) · 필렛 B는 실루엣을 뒤집는다
  */
 import { describe, it, expect } from 'vitest';
+import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js';
 import { ButcheryProcess, applyGuideOverrides, buildButcheryStages, filletGuideView, stageGuideRemap, remapGuidePoint, invertGuideRemap } from './ButcheryProcess.js';
 import type { GuideFrameRemap } from './ButcheryProcess.js';
 import { getButcheryProfile } from '../db-schema/ButcheryProfiles.js';
@@ -83,8 +84,27 @@ describe('316 — 필렛 뷰 유도선을 어종 필렛 그림 자리로', () =>
     // 어종 확정 좌표가 있으면 그것이 먼저다
     const line = [{ x: 0.25, y: 0.5 }, { x: 0.75, y: 0.5 }];
     const proc = new ButcheryProcess(p, 1, { filletFrames: { side: M }, pinLine: blood, guideOverrides: { horse_mackerel: { pin_a: { guidePath: line } } } });
-    expect(proc.stageList.find((s) => s.id === 'pin_a')!.cut!.guidePath).toEqual(line);
-    expect(proc.stageList.find((s) => s.id === 'pin_b')!.cut!.guidePath).toEqual(b.cut!.guidePath);
+    // 328 — 손질 과정은 뼈 줄(확정 선)을 위 · 아래 두 칼로 가른다: 시작점에서 벌어지고 끝점에서 만난다
+    const pa = proc.stageList.find((s) => s.id === 'pin_a')!.cut!;
+    expect(pa.ordered).toBe(true);
+    expect(pa.guidePaths).toEqual([
+      [{ x: 0.25, y: 0.468 }, { x: 0.75, y: 0.5 }],
+      [{ x: 0.25, y: 0.532 }, { x: 0.75, y: 0.5 }],
+    ]);
+    // 328 — 필렛 A만 확정하면 필렛 B는 그 좌우 대칭이다(그림에서 잰 줄보다 확정이 먼저)
+    expect(proc.stageList.find((s) => s.id === 'pin_b')!.cut!.guidePaths).toEqual([
+      [{ x: 0.75, y: 0.468 }, { x: 0.25, y: 0.5 }],
+      [{ x: 0.75, y: 0.532 }, { x: 0.25, y: 0.5 }],
+    ]);
+    // 확정이 없으면 그림에서 잰 줄이 뼈 줄이다 — 필렛 B는 좌우 대칭
+    const plainProc = new ButcheryProcess(p, 1, { filletFrames: { side: M }, pinLine: blood, guideOverrides: {} });
+    const mid = (c: { guidePaths?: Array<Array<{ x: number; y: number }>> }): Array<{ x: number; y: number }> =>
+      c.guidePaths![0].map((q, i) => ({ x: q.x, y: Math.round(((q.y + c.guidePaths![1][i].y) / 2) * 100) / 100 }));
+    const r2 = (l: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> => l.map((q) => ({ x: q.x, y: Math.round(q.y * 100) / 100 }));
+    if (!BUTCHERY_GUIDE_OVERRIDES.horse_mackerel?.pin_a) {
+      expect(mid(plainProc.stageList.find((s) => s.id === 'pin_a')!.cut!)).toEqual(r2(blood));
+      expect(mid(plainProc.stageList.find((s) => s.id === 'pin_b')!.cut!)).toEqual(r2(b.cut!.guidePath));
+    }
   });
 
   it('확정 좌표 — 군 좌표(familyFrame)는 필렛 뷰도 옮기고 어종 좌표는 그대로', () => {
@@ -99,7 +119,13 @@ describe('316 — 필렛 뷰 유도선을 어종 필렛 그림 자리로', () =>
     expect(own.find((s) => s.id === 'pin_a')!.cut!.guidePath).toEqual(line);
     // 손질 과정이 같은 식을 쓴다(생성자 → 확정 좌표까지)
     const proc = new ButcheryProcess(p, 1, { filletFrames: { side: M }, guideOverrides: { '@amberjack': { pin_a: { guidePath: line, familyFrame: true } } } });
-    expect(proc.stageList.find((s) => s.id === 'pin_a')!.cut!.guidePath).toEqual(line.map(move));
+    // 328 — 손질 과정은 옮긴 선(뼈 줄)을 위 · 아래 두 칼로 가른다 — 두 칼은 옮긴 선의 끝점에서 만난다
+    const moved = line.map(move);
+    const pa = proc.stageList.find((s) => s.id === 'pin_a')!.cut!;
+    expect(pa.guidePaths!.length).toBe(2);
+    for (const l of pa.guidePaths!) expect(l[l.length - 1]).toEqual(moved[moved.length - 1]);
+    expect((pa.guidePaths![0][0].y + pa.guidePaths![1][0].y) / 2).toBeCloseTo(moved[0].y, 2);
+    expect(pa.guidePaths![0][0].y).toBeLessThan(pa.guidePaths![1][0].y);
   });
 
   it('열 실루엣 — 세로는 살 높이 비례 · 필렛 B(rib_b · pin_b)는 실루엣을 뒤집고 · 거꾸로 옮기면 제자리', () => {
