@@ -816,7 +816,7 @@ export {
   CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_SCALE, CHAR_DIRS, CHAR_FRAMES,
   SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, HAIR_STYLES, MOUTH_STYLES, FACE_SHAPES,
   ramp, defaultAppearance, bareOutfit, starterOutfit,
-  renderCharCell, renderCharSheet, charCfgKey, makeCharConfig, pose,
+  renderCharCell, renderCharSheet, charCfgKey, makeCharConfig,
   PLAYER_CANON_AGE, playerAgeOf,   // 288차 — 주인공 나이
 } from './art/CharacterArt.js';
 // 152차 — 대화창 초상 전용 고밀도 얼굴 렌더러 (필드 스프라이트와 별도 격자)

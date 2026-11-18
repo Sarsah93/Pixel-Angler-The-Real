@@ -32,18 +32,19 @@ export interface DialogueStageHost {
   itemTexture?(itemId: string): string | undefined;
 }
 
-/** 입 높이 — 칸 위에서 행 수(머리 꼭대기 3행 · 눈 8행 · 입 12행 언저리) */
-const MOUTH_ROW = 12;
-/** 손 높이 — 칸 위에서 행 수 */
-const HAND_ROW = 20;
+/** 입 높이 — 칸 위에서 행 수(329차 도트 방식: 머리 꼭대기 3행 · 눈 10~11행 · 입 13행) */
+const MOUTH_ROW = 13;
+/** 손 높이 — 칸 위에서 행 수(329차: 옷단 · 손 21행) */
+const HAND_ROW = 21;
 const S = CHAR_SCALE;
 
 function mouthOf(a: StageActor): { x: number; y: number; dx: number; visible: boolean } {
   const d = a.dir();
   const top = a.obj.y - CHAR_CELL * S;
   const y = top + MOUTH_ROW * S;
-  if (d === 'left') return { x: a.obj.x - 4 * S, y, dx: -1, visible: true };
-  if (d === 'right') return { x: a.obj.x + 4 * S, y, dx: 1, visible: true };
+  // 329차 — 왼쪽 · 오른쪽은 30도 돌린 얼굴이라 입이 가운데에서 2~3칸만 치우친다(옛 옆얼굴은 4칸)
+  if (d === 'left') return { x: a.obj.x - 3 * S, y, dx: -1, visible: true };
+  if (d === 'right') return { x: a.obj.x + 3 * S, y, dx: 1, visible: true };
   if (d === 'up') return { x: a.obj.x, y, dx: 0, visible: false };
   return { x: a.obj.x + 1 * S, y, dx: 1, visible: true };
 }

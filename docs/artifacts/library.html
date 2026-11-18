@@ -101,21 +101,22 @@
   .rows{display:grid; grid-template-columns:repeat(auto-fill,minmax(324px,1fr));
     gap:0 22px; margin-top:2px}
   .row{border-bottom:1px solid var(--line2); padding:11px 0 11px 12px;
-    border-left:3px solid var(--todo); position:relative}
+    border-left:3px solid var(--todo); position:relative; min-width:0}
   .row.s-ok{border-left-color:var(--ok)}
   .row.s-part{border-left-color:var(--part)}
   .row.s-todo{border-left-color:var(--todo)}
   .row.s-todo .rname, .row.s-todo .rdesc{color:var(--mut)}
-  .rtop{display:flex; align-items:baseline; gap:8px}
-  .rname{font-size:14.5px; font-weight:600; letter-spacing:-.005em}
-  .rwhen{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint); white-space:nowrap}
+  .rtop{display:flex; align-items:baseline; gap:2px 8px; flex-wrap:wrap}
+  .rname{font-size:14.5px; font-weight:600; letter-spacing:-.005em; flex:0 0 auto; max-width:100%}
+  .rwhen{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint); min-width:0}
   .rstat{font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600;
     letter-spacing:.06em; margin-left:auto; white-space:nowrap}
   .s-ok .rstat{color:var(--ok)} .s-part .rstat{color:var(--part)} .s-todo .rstat{color:var(--todo)}
   .rdesc{font-size:13px; color:var(--mut); font-weight:300; margin-top:3px}
   .rfigs{display:flex; flex-wrap:wrap; gap:4px 5px; margin-top:7px}
   .rfigs span{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--mut);
-    background:var(--panel2); border:1px solid var(--line2); padding:2px 6px; white-space:nowrap}
+    background:var(--panel2); border:1px solid var(--line2); padding:2px 6px;
+    max-width:100%; overflow-wrap:anywhere}
   .rsrc{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--sea); margin-top:6px;
     word-break:break-word}
 
@@ -134,7 +135,7 @@
 
 <div class="wrap">
   <header class="mast">
-    <p class="eyebrow">Pixel Angler The Real · 328차 기준 · 2026-11-17</p>
+    <p class="eyebrow">Pixel Angler The Real · 329차 기준 · 2026-11-18</p>
     <h1>구현 라이브러리</h1>
     <p class="lede">2D 픽셀 퍼펙트 한국 해양 낚시 시뮬레이터 + 생활 경영 RPG.
       268차까지 실제로 코드에 서 있는 것만 12개 카테고리로 묶었다.
@@ -396,10 +397,11 @@ const DATA = [
 ]},
 
 { n:'캐릭터 · 아트', note:'아트 격자를 코드가 소유한다. 사진과 생성 그림은 어종 기준 도트로 굽는다.', items:[
-  { n:'캐릭터 아트 격자', s:'ok', d:'셀 32×32 아트 픽셀을 정수 2배로 올린다. 레이어는 pose() 앵커만 참조하므로 신규 장비는 함수 하나다.', f:['몸 26행 → 52px','레이어 14종','그레인 2px'], src:'CharacterArt' },
-  { n:'페이퍼돌 장비', s:'ok', d:'바닐라는 나체 + 언더웨어이고 상의·하의·신발은 전부 장착 아이템이다.', f:['걷기 4프레임','얼굴 2×3 눈 + 표정'], src:'CharacterArt · CharacterSprite' },
+  { n:'캐릭터 아트 격자', s:'ok', w:'329', d:'셀 32×32 아트 픽셀을 정수 2배로 올린다. 329 — 머리 모양과 모자는 한 글자가 한 칸인 지도로 그리고, 몸 · 옷 · 신발 · 든 것은 뼈대 위의 식으로 그린다. 몸 · 머리 · 든 것을 무리마다 따로 그린 뒤 무리 바깥에만 테두리를 두른다. 크기 · 머리끝 · 발 자리는 그대로라 세이브 · 착용 반영 · 인물 설정은 손대지 않았다.', f:['몸 26행 → 52px','머리 모양 8 · 모자 5 × 방향 3','그레인 2px'], src:'CharacterArt' },
+  { n:'필드 캐릭터는 도트 캐릭터로 찍는다', s:'ok', w:'329', d:'필드에 서는 사람(주인공 · 인물 45명 · 마을 사람 · 다른 접속자)의 그림 문법. 살은 다섯 단계로 칠하고 그늘은 붉은 쪽으로 간다. 눈은 두 줄 × 세 칸이고 반짝임은 두 눈 모두 같은 쪽이다. 얼굴 둘레에는 테두리를 두르지 않는다 — 머리카락과 그늘이 윤곽이 되고, 테두리는 옷 바깥에만 선다. 머리카락은 거의 한 색이고 앞머리 사이로 그늘진 이마가 비친다. 빛이 왼쪽 위에서 와 좌우가 같지 않다. 왼쪽 · 오른쪽을 볼 때는 옆얼굴이 아니라 30도쯤 돌린 얼굴이다(먼 눈 두 칸 · 가까운 눈 세 칸 · 가까운 쪽 귀). 머리는 키의 절반에 조금 못 미치고 정수리가 둥글다.', f:['머리 14 × 12칸 · 키의 46%','약 2.2등신','살 5단','눈 3 × 2칸','정수리 6 → 10 → 12 → 14칸','방향 = 정면 · 30도 얼굴 · 뒤'], src:'CharacterArt · CharacterSprite · DialogueStage' },
+  { n:'페이퍼돌 장비', s:'ok', d:'바닐라는 나체 + 언더웨어이고 상의·하의·신발은 전부 장착 아이템이다.', f:['걷기 4프레임','눈 두 줄 × 세 칸 + 입 모양'], src:'CharacterArt · CharacterSprite' },
   { n:'NPC 캐스트', s:'ok', w:'166', d:'성별·연령·역할만 표로 두고 나머지는 id 해시로 갈린다. 마을 사람도 같은 규칙으로 분화한다.', f:['고유 41 · 중복 0','마을 사람 120'], src:'CharacterCast' },
-  { n:'대화 초상', s:'ok', w:'152 · 155', d:'32×32 전용 격자 얼굴. 앞머리 · 눈 · 수염 · 모자가 필드 그림과 같은 문법이다. 267차부터 그림 초상이 있으면 그것이 먼저고 이것은 폴백이다.', f:['표정은 입 4종 고정'], src:'FacePortrait' },
+  { n:'대화 초상', s:'ok', w:'152 · 155', d:'32×32 전용 격자 얼굴. 앞머리 · 눈 · 수염 · 모자를 옛 필드 그림과 같은 문법으로 그린다. 267차부터 그림 초상이 있으면 그것이 먼저고 이것은 폴백이다. 329차에 필드 그림이 새 도트 방식으로 바뀌어 이쪽 문법을 맞추는 일이 남았다.', f:['표정은 입 4종 고정'], src:'FacePortrait' },
   { n:'그림 얼굴 초상', s:'ok', w:'267 · 268 · 269 · 270 · 271 · 271(2) · 283 · 312', d:'Gemini로 그린 흉상(192×192 · 셀 2px) 114장(얼굴형 판 48 포함)을 대화창 · 혼잣말 · 일지가 먼저 쓴다. 283차 — 일지의 스스로 정한 할 일(의뢰인 빈 글자)이 그림 얼굴을 건너뛰던 것을 고쳤다(`??` → `||`). 인물 42명은 캐스트 설정 + 특징 한 줄(정옥선 = 흰머리 장발 · 두건)로, 주인공은 성별 × 머리 모양 × 수염 24장 위에 머리색 · 피부 · 눈동자 · 수염 색을 입힌다. 270차 — 치환을 두 톤 칠하기(기준색 × a + 흰색 × b · 밝은 색은 여유만큼 압축)와 씨앗 경쟁 번짐(피부 · 머리 · 수염 씨앗에서 윤곽선을 벽 삼아 자리로 가른다)으로 다시 써 하얗게 뜨던 코끝 · 머리색이 되던 목 · 귀 · 코 그늘 · 눈 색이 되던 눈꺼풀을 고쳤다. 270(2) — 설치 배경 벗기기(테두리 BFS)가 못 닿은 머리 뒤 · 목 옆의 갇힌 흰 배경(23장 1,956px)을 설치 단계 fillWhitePockets로 투명하게, 눈썹은 머리색의 색조만 따르고 밝기는 원래 눈썹까지(흰 머리 → 짙은 잿빛). 271 — 케이스별 판 72장과 색 규칙 분류를 버리고 층으로: 민머리 기본 머리(성별 × 얼굴형 3) + 라벨 마스크(피부 · 눈썹 · 눈동자 · 입술) + 머리 모양 층 16 + 수염 층 3(얼굴형마다 — 271(2)). 원판은 앞 판을 같은 인물 앵커로 뽑아 차이로 층을 뜬다 — 픽셀의 주인이 데이터에 있어 색 조합이 바뀌어도 경계가 흔들리지 않는다. 312 — 층은 얹기만 해서 기본판을 지우지 못했다: 상투처럼 당겨 묶은 머리는 민머리보다 윤곽이 작아 그 바깥으로 정수리가 피부색 호로 비쳤고(사용자 리포트 — 흰 머리), 머리칼 사이 몇 칸은 두피가 살색 점으로 비쳤다. 합성이 머리 층을 머리에 맞춘다(`fitHairToHead`) — 머리칼 밖으로 4px 넘게 비어져 나온 정수리 · 머리칼에 붙은 살갗 주머니는 비우고, 머리칼에 갇힌 구멍은 머리칼로 메운다. 머리칼에 붙은 2px 두피 윤곽은 모든 머리 모양이 테두리로 써서 남긴다.', f:['인물 42 + 주인공 층 31(기본 머리 6 · 마스크 6 · 머리 모양 16 · 수염 3 — 271)','색 4(머리 · 피부 · 눈 · 수염) — 층 · 라벨 단위 두 톤 칠하기(271 · 48칸 × 색 몽타주 검수)','입 4 · 볼 홍조 = 입술 픽셀 코드 변형(269)','머리 층 맞추기 — 상투 6조합 비움 · 구멍 메움(312 · face_layers_qa leak)'], src:'FaceRecolor · FacePhoto · face_layers_qa.mjs' },
   { n:'캐릭터 만들기', s:'ok', d:'HUD 패널 3장에 2열 5섹션. 색은 숫자가 아니라 실제 견본을 눌러 고른다. 288 — 주인공 나이가 설정에 들어갔다(22세 · 미리보기 줄에 표시). 고르는 칸은 아직 없다. 300 — 무대 오른쪽 위에 얼굴 초상 미리보기(대화창 · 일지에 나올 층 합성 초상 · 옵션을 바꾸면 같이 바뀐다). 마우스를 올리면 원본 크기(192px)로 커진다. 317 — 초상의 티셔츠가 고른 상의 색을 따른다(맨몸이면 그대로).', f:['◀ ▶ 방향 회전','정지·걷기·달리기 프리뷰','얼굴 초상 미리보기 · 호버 확대','초상 상의 색 (317)'], src:'CharacterCreateScene · ensureFacePortrait · FaceRecolor.shirtRegion' },
   { n:'픽셀 아이콘', s:'ok', d:'생성기 → 아트 데이터 → 캔버스 굽기. 텍스트 약어 배지 대신 16×16 손그림이다. 286 — 16의 배수가 아닌 크기는 그 크기로 매끈하게 구운 판을 쓰고, 24px 이상에서 그린 그림이 있으면 그림(일지 보상 아이콘 6 · 퀘스트 물건 4 — Gemini)이 먼저다.', f:['아이콘 391','비정수 크기 매끈한 판 (286)','보상 아이콘 그림 6 (286)'], src:'gen_pixel_icons.py · PixelIconArt · PixelIcon · ItemImages' },
@@ -447,7 +449,7 @@ const DATA = [
 ];
 
 const HEAD = [
-  ['328','작업 차수'], ['11','게임 씬'], ['73','도감 어종'], ['86','작물'],
+  ['329','작업 차수'], ['11','게임 씬'], ['73','도감 어종'], ['86','작물'],
   ['191','스토리 퀘스트'], ['95','스킬 노드'], ['51','창 · 대화상자'], ['1021','아이템'],
 ];
 
