@@ -1,6 +1,7 @@
 /**
  * 329차 — 필드 캐릭터 도트 방식(글자 지도 · 좌표 계약 · 방향)
  * 329(2) — 몸 두 줄 키우기(발 30행 · 손 22행) · 왼쪽 · 오른쪽은 옆모습 · 아래로 걸을 때 고개 15도
+ * 329(3) — 눈동자는 바라보는 쪽(정면 = 흰 · 검 · 흰 / 옆모습 = 검 · 흰)
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -104,6 +105,30 @@ describe('329(2) 옆모습 · 걷기 고개', () => {
     for (let y = CHAR_HEAD_TOP; y <= 9; y++) { expect(span(l, y), `왼 ${y}`).toEqual(span(idle, y)); expect(span(r, y), `오 ${y}`).toEqual(span(idle, y)); }
     // 지나감 프레임(2 · 4)은 정면 그대로 — 한 칸 들썩일 뿐
     expect(pupils(renderCharCell('down', 2, cfg)).length).toBe(0);
+  });
+  it('329(3) 눈동자는 바라보는 쪽에 있다 — 정면은 눈 가운데 · 옆모습은 앞쪽', () => {
+    const PUPIL = 0x0d0d14;
+    const bright = (c: Uint8ClampedArray, x: number, y: number): boolean => { const v = rgb(c, x, y); return ((v >> 16) & 255) > 200 && ((v >> 8) & 255) > 200 && (v & 255) > 200; };
+    const front = renderCharCell('down', 0, cfg);
+    // 정면 — 두 눈 모두 [흰 · 검 · 흰] (상자 3~5열 · 8~10열 = 셀 12~14 · 17~19열 · 눈 윗줄 = 셀 10행)
+    for (const x0 of [12, 17]) {
+      expect(bright(front, x0, 10), `왼 흰자 ${x0}`).toBe(true);
+      expect(rgb(front, x0 + 1, 10)).toBe(PUPIL);
+      expect(bright(front, x0 + 2, 10), `오른 흰자 ${x0}`).toBe(true);
+      expect(rgb(front, x0, 11)).toBe(rgb(front, x0 + 2, 11));
+    }
+    // 두 눈은 얼굴 가운데(셀 15.5열)를 두고 좌우 대칭이다
+    for (let i = 0; i < 3; i++) for (const y of [10, 11]) expect(rgb(front, 12 + i, y)).toBe(rgb(front, 19 - i, y));
+    // 옆모습(왼쪽) — 검은자가 앞(셀 12열) · 흰자가 뒤(셀 13열) · 얼굴 앞선(셀 11열)은 눈이 아니다
+    const left = renderCharCell('left', 0, cfg);
+    expect(rgb(left, 12, 10)).toBe(PUPIL);
+    expect(bright(left, 13, 10)).toBe(true);
+    expect(bright(left, 11, 10)).toBe(false);
+    expect(rgb(left, 11, 10)).not.toBe(PUPIL);
+    // 오른쪽은 뒤집기 — 검은자가 오른쪽(셀 19열) · 흰자가 왼쪽(셀 18열)
+    const right = renderCharCell('right', 0, cfg);
+    expect(rgb(right, 19, 10)).toBe(PUPIL);
+    expect(bright(right, 18, 10)).toBe(true);
   });
   it('옆모습에서도 옷 · 모자 · 든 것 · 가방이 서로 다른 그림을 낸다', () => {
     const base = Buffer.from(renderCharCell('left', 0, cfgOf({ sex: 'm' })));

@@ -22,6 +22,11 @@
  *    **아래로 걷는 디딤 프레임에서 고개가 15도쯤 번갈아 돌아간다**(`leanHead` — 정면 머리의 안쪽을 한 칸 민다).
  *  - 방향 넷 = 정면(아래) · 옆모습(왼쪽 — 오른쪽은 좌우 뒤집기) · 뒤.
  *
+ * ## 329(3)차 — 눈동자는 바라보는 쪽 (사용자 지시 2026-11-19)
+ *  - 「검은자 부분이 바라보는 방향으로 보고있어야 하는데, 옆모습에서 검은자가 -z index 방향을 응시 … 곁눈질」 ·
+ *    「앞모습(정면)에서도 눈동자 위치가 가운데 쪽으로」 → 옛 눈은 어느 방향이든 [흰 · 검정 · 눈동자색]이라 흰자가 늘 왼쪽이었다.
+ *    정면 = [흰 · 검 · 흰] · 옆모습 = [검 · 흰](검은자가 앞). 15도 고개는 정면 눈을 한 칸 밀 뿐이라 따라온다.
+ *
  * ## 레이어 (아래 → 위)
  *   몸 무리(맨몸 → 속옷 → 하의 → 신발 → 상의 → 겉옷 → 장갑 → 가방) → 머리 무리(두개골 → 얼굴 → 머리카락 → 모자) → 든 것
  * 무리마다 바깥 테두리를 두르고 차례로 얹는다(`compose`). 새 장비 = 그리기 한 갈래 또는 글자 지도 한 벌.
@@ -206,7 +211,8 @@ export function starterOutfit(sex: CharSex = 'm'): CharOutfit {
 //
 // 참고 도트에서 읽어 낸 「찍는 방식」을 규칙으로 옮겼다.
 //  ① 살은 5단(a 밝음 → b → c 분홍 그늘 → d 앞머리 밑 → e 턱 밑) — 그늘이 회색이 아니라 붉은 쪽으로 물든다
-//  ② 눈은 두 줄 — 윗줄 [회백 · 검정 · 짙은 눈동자색] / 아랫줄 [흰 · 짙은 회남 · 눈동자색] · 반짝임은 두 눈 모두 같은 쪽
+//  ② 눈은 두 줄 — 검은자 한 열(윗칸 검정 · 아랫칸 눈동자색)과 흰자. **검은자는 바라보는 쪽**에 둔다(329(3)):
+//     정면 = [흰 · 검 · 흰](눈 가운데 · 두 눈 대칭) / 옆모습 = [검 · 흰](앞쪽). 흰자를 한쪽에만 몰면 곁눈질이 된다
 //  ③ 얼굴에는 테두리가 없다 — 머리카락과 그늘이 윤곽을 만든다(테두리는 옷 바깥 · 살 옆은 짙은 장밋빛)
 //  ④ 머리카락은 거의 한 색 — 앞머리 사이로 그늘진 이마가 비쳐 가닥이 된다 · 윤기는 몇 칸
 //  ⑤ 좌우가 같지 않다(빛이 왼쪽 위 — 오른쪽 볼 · 턱이 한 단 어둡다)
@@ -215,7 +221,7 @@ export function starterOutfit(sex: CharSex = 'm'): CharOutfit {
 // 머리 · 머리카락 · 모자는 **글자 지도**(한 글자 = 한 칸)로 손으로 찍고, 몸 · 옷은 정해진 뼈대 위에 식으로 그린다.
 // 좌표는 모두 「머리 상자」 기준이다 — 상자 (0,0) = 칸 (BX, BY) · 상자 14칸 × 28줄:
 //   줄 0~11 머리(정수리 ~ 턱) · 12 목 · 13~19 윗몸(19 = 옷단 · 손) · 19~21 골반 · 22~26 다리 · 27 발
-// 옆모습(왼쪽을 본다)은 같은 상자에 얼굴 앞선 = 2열 · 코끝 = 1열 · 눈 = 3~4열 · 귀 = 8~9열 · 몸통 = 5~9열.
+// 옆모습(왼쪽을 본다)은 같은 상자에 얼굴 앞선 = 2열 · 코끝 = 1열 · 눈 = 3~4열(검은자 3 · 흰자 4) · 귀 = 8~9열 · 몸통 = 4~9열.
 //
 // ⚠ 글자 지도의 한 줄은 폭이 모두 같아야 한다(`CharacterArt329.test.ts`가 본다).
 
@@ -488,16 +494,18 @@ function drawSkull(g: Layer, view: View, look: CharAppearance, s: SkinPal): void
 function drawFace(g: Layer, view: View, look: CharAppearance, s: SkinPal): void {
   if (view === 'back') return;
   const eyeC = pickOf(EYE_COLORS, look.eye);
-  const iris = mix(eyeC, 0xffffff, 0.14), irisTop = mix(eyeC, 0x0a0a12, 0.42);
-  const pupilTop = 0x0d0d14, pupilBot = mix(eyeC, 0x16161f, 0.72), whiteTop = 0xd5d8df, white = 0xf7f8fc;
+  // 눈 — 검은자(윗칸 검정 · 아랫칸 눈동자색) 한 열과 흰자. 검은자는 언제나 **바라보는 쪽**에 놓는다(329(3))
+  const iris = mix(eyeC, 0xffffff, 0.14);
+  const pupilTop = 0x0d0d14, whiteTop = 0xd5d8df, white = 0xf7f8fc;
   const hp = hairPal(look.hair);
   const bare = look.hairStyle === 'buzz' || look.hairStyle === 'topknot';
   const browC = mix(hp.K, s.d, 0.25);
   const [l10, r10, l11, r11] = JAW[view][look.faceShape ?? 'oval'];
   if (view === 'side') {
-    // 옆모습의 눈 — 정면 눈과 같은 짜임 [흰 · 검정 · 눈동자]을 얼굴 앞선(2열)부터 놓는다
-    g.put(2, 7, whiteTop, M_SKIN); g.put(3, 7, pupilTop, M_SKIN); g.put(4, 7, irisTop, M_SKIN);
-    g.put(2, 8, white, M_SKIN); g.put(3, 8, pupilBot, M_SKIN); g.put(4, 8, iris, M_SKIN);
+    // 옆모습의 눈 — [검은자 · 흰자]. 검은자가 앞(보는 쪽 · 3열)이고 흰자는 그 뒤(4열)다. 얼굴 앞선(2열)은 살로 둔다.
+    // (흰자를 앞에 두면 고개는 옆인데 눈만 화면 쪽을 흘겨보는 곁눈질이 된다 — 사용자 지적 2026-11-19)
+    g.put(3, 7, pupilTop, M_SKIN); g.put(4, 7, whiteTop, M_SKIN);
+    g.put(3, 8, iris, M_SKIN); g.put(4, 8, white, M_SKIN);
     if (bare && look.brow > 0.3) g.row(6, 3, 4, browC, M_SKIN);
     if (look.blush) { g.put(5, 9, s.blush, M_SKIN); g.put(6, 9, s.blush, M_SKIN); }
     const mouth = (): void => {
@@ -518,10 +526,10 @@ function drawFace(g: Layer, view: View, look: CharAppearance, s: SkinPal): void 
     }
     return;
   }
-  /** 눈 — 왼쪽 칸부터 [흰 · 검정 · 눈동자] */
+  /** 정면의 눈 — [흰자 · 검은자 · 흰자]. 검은자가 눈 한가운데라 앞을 똑바로 본다(두 눈이 좌우 대칭) */
   const eye = (x: number): void => {
-    g.put(x, 7, whiteTop, M_SKIN); g.put(x + 1, 7, pupilTop, M_SKIN); g.put(x + 2, 7, irisTop, M_SKIN);
-    g.put(x, 8, white, M_SKIN); g.put(x + 1, 8, pupilBot, M_SKIN); g.put(x + 2, 8, iris, M_SKIN);
+    g.put(x, 7, whiteTop, M_SKIN); g.put(x + 1, 7, pupilTop, M_SKIN); g.put(x + 2, 7, whiteTop, M_SKIN);
+    g.put(x, 8, white, M_SKIN); g.put(x + 1, 8, iris, M_SKIN); g.put(x + 2, 8, white, M_SKIN);
   };
   eye(3); eye(8);
   if (look.sex === 'f') { g.put(2, 7, pupilTop, M_SKIN); g.put(11, 7, pupilTop, M_SKIN); }     // 속눈썹 — 눈꼬리 한 칸
