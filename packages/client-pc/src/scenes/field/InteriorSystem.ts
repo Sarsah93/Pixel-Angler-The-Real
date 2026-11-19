@@ -18,7 +18,7 @@
 
 import Phaser from 'phaser';
 import {
-  CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_SCALE, TUNING, characterOf, type CharDir,
+  CHAR_CELL, CHAR_FOOT_Y, CHAR_HAND_Y, CHAR_SCALE, TUNING, characterOf, type CharDir,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../PhaserConfig.js';
 import { worldLabelStyle } from '../../ui/WorldLabel.js';
@@ -43,7 +43,7 @@ const FONT = '"Noto Sans KR", sans-serif';
 /** [F]가 닿는 거리 — 발밑에서 집기 footprint 가장자리까지(px) */
 const REACH_PX = 26;
 /** 앉은 자세 — 머리끝부터 엉덩이까지만 보인다 */
-const SEAT_ROWS = (CHAR_HEAD_TOP + 19) * CHAR_SCALE;
+const SEAT_ROWS = (CHAR_HAND_Y + 1) * CHAR_SCALE;
 /** 216차 — 사람에게 말이 닿는 거리(발 ↔ 발, px) */
 const TALK_PX = 46;
 /** 방 가로 위치 — 집과 같은 자리(198차 — 필드 HUD 상태 창을 피한 12px) */

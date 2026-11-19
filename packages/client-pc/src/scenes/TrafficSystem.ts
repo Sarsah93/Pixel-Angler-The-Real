@@ -27,8 +27,11 @@ import Phaser from 'phaser';
 import { mpRng, type RegionRoad, isUndrivableRoadClass } from '@tra/core';
 import { CAR_TOPDOWN_KEYS } from '../data/TilesetManifest.js';
 
-/** 주행 차량 배율 (150차) — 원본 22×29px */
-const CAR_SCALE = 1.82;
+/**
+ * 주행 차량 배율 (150차) — 원본 22×29px.
+ * 329(2) — 캐릭터 키가 52 → 56px로 자라 1.82(차 길이 52.8px)가 다시 캐릭터보다 짧아졌다 → 정수 2배(58px · R8).
+ */
+const CAR_SCALE = 2;
 /** 277차 — 캐릭터와 부딪힌 차의 정지 시간(초). 옛 180초는 사거리 한가운데 선 차가 3분 동안 길을 막았다 */
 const ACCIDENT_HALT_SEC = 20;
 /** 277차 — 다른 도로의 차를 앞에 두고 이만큼(초) 넘게 막히면 사라졌다 다시 나온다(교착 풀기) */
@@ -101,6 +104,7 @@ export class TrafficSystem {
       if (!scene.textures.exists(tex)) continue;
       // 크기(150차) — 구 1.3은 차 길이 29×1.3 = 37.7px로 **캐릭터(52px)보다 작아** 이질감이 났다.
       //   ×1.4 = 1.82 → 52.8px로 가장 작은 차가 캐릭터 세로를 넘어선다(사용자 지정 1.2~1.4배 밴드 상단).
+      //   329(2) — 캐릭터가 56px이 되어 2배(58px)로 올렸다.
       const sprite = scene.add.image(0, 0, tex).setOrigin(0.5, 0.5).setScale(CAR_SCALE).setVisible(false);
       const car: Car = { road: 0, dir: 1, seg: 0, t: 0, speed: 3 + this.rnd() * 2.5, sprite, px: 0, py: 0, ux: 0, uy: -1, fade: 0, waiting: false, halt: 0, lat: 0, latTarget: 0 };
       this.respawn(car);

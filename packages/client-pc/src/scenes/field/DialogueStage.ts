@@ -12,7 +12,7 @@
  * 무대가 없거나(다른 씬) 그 인물이 필드에 없으면 대화창이 몸짓 지문(괄호 글)을 대신 찍는다.
  */
 import Phaser from 'phaser';
-import { CHAR_CELL, CHAR_SCALE, talkActDef, type CharDir, type TalkActId } from '@tra/core';
+import { CHAR_CELL, CHAR_HAND_Y, CHAR_MOUTH_Y, CHAR_SCALE, talkActDef, type CharDir, type TalkActId } from '@tra/core';
 import { playSfx, type SfxName } from '../../audio/SfxBank.js';
 
 /** 무대 위 인물 — 필드의 실제 그림(주인공 · 스토리 인물) */
@@ -32,19 +32,19 @@ export interface DialogueStageHost {
   itemTexture?(itemId: string): string | undefined;
 }
 
-/** 입 높이 — 칸 위에서 행 수(329차 도트 방식: 머리 꼭대기 3행 · 눈 10~11행 · 입 13행) */
-const MOUTH_ROW = 13;
-/** 손 높이 — 칸 위에서 행 수(329차: 옷단 · 손 21행) */
-const HAND_ROW = 21;
+/** 입 높이 — 칸 위에서 행 수(329차 도트 방식: 머리 꼭대기 3행 · 눈 10~11행 · 입 13행 — core가 정한다) */
+const MOUTH_ROW = CHAR_MOUTH_Y;
+/** 손 높이 — 칸 위에서 행 수(329(2): 몸을 키워 옷단 · 손이 22행 — core가 정한다) */
+const HAND_ROW = CHAR_HAND_Y;
 const S = CHAR_SCALE;
 
 function mouthOf(a: StageActor): { x: number; y: number; dx: number; visible: boolean } {
   const d = a.dir();
   const top = a.obj.y - CHAR_CELL * S;
   const y = top + MOUTH_ROW * S;
-  // 329차 — 왼쪽 · 오른쪽은 30도 돌린 얼굴이라 입이 가운데에서 2~3칸만 치우친다(옛 옆얼굴은 4칸)
-  if (d === 'left') return { x: a.obj.x - 3 * S, y, dx: -1, visible: true };
-  if (d === 'right') return { x: a.obj.x + 3 * S, y, dx: 1, visible: true };
+  // 329(2) — 왼쪽 · 오른쪽은 옆모습이라 입이 얼굴 앞선(가운데에서 4칸)에 있다
+  if (d === 'left') return { x: a.obj.x - 4 * S, y, dx: -1, visible: true };
+  if (d === 'right') return { x: a.obj.x + 4 * S, y, dx: 1, visible: true };
   if (d === 'up') return { x: a.obj.x, y, dx: 0, visible: false };
   return { x: a.obj.x + 1 * S, y, dx: 1, visible: true };
 }

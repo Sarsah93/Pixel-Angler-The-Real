@@ -36,7 +36,7 @@ import { weatherSoundFrom } from '../audio/WeatherSound.js';
 import { wakeLine, offlineWakeLines } from '../data/WakeLines.js';
 import { settleDueConsignments } from '../store/ConsignSettle.js';
 import { playCoin, playUiClick } from '../audio/Sfx.js';
-import { CHAR_SCALE, CHAR_HEAD_TOP, TUNING, kstParts, sleepFraction, hometownFallbackReasonKo, characterOf, liveVisitBetween, MP_VISIT_REASON_KO, type CharDir } from '@tra/core';
+import { CHAR_SCALE, CHAR_HEAD_TOP, CHAR_HAND_Y, TUNING, kstParts, sleepFraction, hometownFallbackReasonKo, characterOf, liveVisitBetween, MP_VISIT_REASON_KO, type CharDir } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { GameState } from '../store/GameState.js';
 import { CraftingStore } from '../store/CraftingStore.js';
@@ -104,7 +104,7 @@ const FONT = '"Noto Sans KR", sans-serif';
 /** [F]가 닿는 거리 — 발밑에서 가구 footprint 가장자리까지(px). 바로 옆 칸에 서야 닿는다 */
 const REACH_PX = 26;
 /** 앉은 자세 — 머리끝부터 엉덩이까지만 보인다(다리는 가구가 가린다) */
-const SEAT_ROWS = (CHAR_HEAD_TOP + 19) * CHAR_SCALE;
+const SEAT_ROWS = (CHAR_HAND_Y + 1) * CHAR_SCALE;
 /** 소파 휴식 — 한 번에 풀리는 피로(최대치 대비 %) · 소파에서는 이 아래로는 안 풀린다(침대 몫) */
 const SOFA_REST_PCT = 35;
 const SOFA_REST_FLOOR_PCT = 35;

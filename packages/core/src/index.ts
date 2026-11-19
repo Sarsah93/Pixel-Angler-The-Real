@@ -813,7 +813,7 @@ export type {
   ShirtKind, PantsKind, ShoesKind, HatKind, OuterKind, HeldKind, FaceShape,
 } from './art/CharacterArt.js';
 export {
-  CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_SCALE, CHAR_DIRS, CHAR_FRAMES,
+  CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_HAND_Y, CHAR_MOUTH_Y, CHAR_SCALE, CHAR_DIRS, CHAR_FRAMES,
   SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, HAIR_STYLES, MOUTH_STYLES, FACE_SHAPES,
   ramp, defaultAppearance, bareOutfit, starterOutfit,
   renderCharCell, renderCharSheet, charCfgKey, makeCharConfig,
