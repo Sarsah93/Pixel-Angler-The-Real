@@ -11,16 +11,21 @@
  * 300차 — 무대 오른쪽 위에 **얼굴 초상 미리보기**(대화창 · 일지와 같은 층 합성 초상 `ensureFacePortrait(…, 'player')` — 96px).
  *   마우스를 올리면 192px(원본 크기)로 커져 눈 · 입 · 머리를 자세히 본다(사용자 지시 「초상화 미리보기 … 호버링하면 확대」). 옵션을 바꾸면 같이 바뀐다.
  *
+ * 330차 — 「눈동자 크기」 줄(작게 · 크게 — 사용자 지시 「캐릭터 만들기에서 눈동자 크기 '작게'와 '크게' 수정할 수 있도록」). 정면 눈에만 보인다.
+ *   미리보기 서는 자리를 발바닥 행(`CHAR_FOOT_Y`)에서 셈한다 — 329(2)에 몸이 두 줄 커진 뒤에도 옛 숫자(28행)로 놓아
+ *   발이 이름 줄을 덮었다(사용자 리포트 「발 부분이 이름없는 꾼과 겹쳐지고 있음」). 배율은 10 → 9(상투까지 무대 홈 안에 든다).
+ *
  * UI 문법은 HUD와 통일한다(`HudPanelStyle.paintHudPanel` / `paintHudSlot`).
  * 색 항목은 숫자(`3 / 10`)가 아니라 **실제 색 견본**을 깔고 직접 고르게 한다 —
  * 픽셀 팔레트는 이름이 없으므로 숫자로는 무엇을 고르는지 알 수 없다.
  */
 import Phaser from 'phaser';
 import {
-  CLOTH_COLORS, EYE_COLORS, FACE_SHAPES, HAIR_COLORS, MOUTH_STYLES, SKIN_TONES,
+  CHAR_CELL, CHAR_FOOT_Y,
+  CLOTH_COLORS, EYE_COLORS, FACE_SHAPES, HAIR_COLORS, MOUTH_STYLES, PUPIL_SIZES, SKIN_TONES,
   bareOutfit, defaultAppearance, starterOutfit,
   type CharAppearance, type CharConfig, type CharDir, type CharSex,
-  type FaceShape, type HairStyle, type MouthStyle,
+  type FaceShape, type HairStyle, type MouthStyle, type PupilSize,
   MP_PROGRESS_KO, validateCharacterName,
 } from '@tra/core';
 import { TextInput } from '../ui/TextInput.js';
@@ -33,7 +38,13 @@ import { clampTextWidth } from '../ui/TextFit.js';
 import { showLoadingThen } from '../ui/LoadingOverlay.js';
 
 const W = 1280, H = 720;
-const PREVIEW_SCALE = 10;
+/**
+ * 미리보기 배율 — 칸(32) 전체가 무대 홈(높이 336) 안에 들어야 한다(상투는 칸 맨 윗줄까지 쓴다).
+ * 329(2)에 키가 28줄이 되면서 10배(칸 320px + 이름 줄)는 홈을 넘는다 → 9배(칸 288px · 키 252px — 몸을 키우기 전 260px과 비슷하다).
+ */
+const PREVIEW_SCALE = 9;
+/** 미리보기 발바닥이 닿는 y(바닥 그림자 · 발판 줄) — 이름 줄(y 438)은 그 아래다 */
+const STAGE_FOOT_Y = 420;
 /** 300차 — 얼굴 초상 미리보기: 무대 안쪽 오른쪽 위 · 평소 96px(192 그림의 절반 — 셀 2px이 1px로 딱 떨어진다) · 올리면 192px */
 const FACE_SMALL = 96, FACE_BIG = 192, FACE_PAD = 10;
 const FACE_RIGHT = 56 + 398 - FACE_PAD, FACE_TOP = 126 + FACE_PAD;
@@ -76,6 +87,8 @@ const MOUTH_KO: Record<MouthStyle, string> = {
 const FACE_KO: Record<FaceShape, string> = {
   oval: '계란형', round: '둥근형', square: '사각형',
 };
+/** 330차 — 눈동자 크기(정면 눈 — 작게 = 한 열 · 크게 = 코 쪽으로 한 열 더) */
+const PUPIL_KO: Record<PupilSize, string> = { small: '작게', large: '크게' };
 const STYLE_KO: Record<HairStyle, string> = {
   short: '단발 컷', bob: '보브', pony: '포니테일', long: '긴 머리',
   buzz: '짧은 스포츠', curly: '곱슬', braid: '땋은 머리', topknot: '상투 번',
@@ -255,11 +268,12 @@ export class CharacterCreateScene extends Phaser.Scene {
 
     // 바닥 그림자 + 발판 라인
     g.fillStyle(0x000000, 0.35);
-    g.fillEllipse(255, 422, 140, 22);
+    g.fillEllipse(255, STAGE_FOOT_Y + 2, 140, 22);
     g.fillStyle(0x2c5878, 0.30);
-    g.fillRect(120, 421, 270, 1);
+    g.fillRect(120, STAGE_FOOT_Y + 1, 270, 1);
 
-    this.previewImg = this.add.image(255, 420 + (32 - 1 - 28) * PREVIEW_SCALE, '__DEFAULT').setOrigin(0.5, 1);
+    // 원점이 그림 아래 끝이라 발바닥 아래 남는 줄만큼 내려 놓는다 — 줄 수는 core 상수에서(몸 줄 수가 바뀌어도 발이 제자리에 선다)
+    this.previewImg = this.add.image(255, STAGE_FOOT_Y + (CHAR_CELL - 1 - CHAR_FOOT_Y) * PREVIEW_SCALE, '__DEFAULT').setOrigin(0.5, 1);
     // 300차 — 얼굴 초상 미리보기(오른쪽 위 · 올리면 두 배) — 틀은 그림 아래 층, 그림은 무대 캐릭터 위 층(커지면 캐릭터를 덮는다)
     this.faceG = this.add.graphics().setDepth(4);
     this.faceImg = this.add.image(FACE_RIGHT, FACE_TOP, '__DEFAULT').setOrigin(1, 0).setDepth(5)
@@ -438,7 +452,13 @@ export class CharacterCreateScene extends Phaser.Scene {
         prev: () => { this.look.faceShape = this.cycle(FACE_SHAPES, this.look.faceShape, -1); },
         next: () => { this.look.faceShape = this.cycle(FACE_SHAPES, this.look.faceShape, 1); },
       },
-      sw('eye', '눈동자', 0, EYE_COLORS, () => this.look.eye, (i) => { this.look.eye = i; }),
+      sw('eye', '눈동자 색', 0, EYE_COLORS, () => this.look.eye, (i) => { this.look.eye = i; }),
+      {
+        key: 'pupil', label: '눈동자 크기', kind: 'cycle', col: 0,
+        value: () => PUPIL_KO[this.look.pupil ?? 'small'],
+        prev: () => { this.look.pupil = this.cycle(PUPIL_SIZES, this.look.pupil ?? 'small', -1); },
+        next: () => { this.look.pupil = this.cycle(PUPIL_SIZES, this.look.pupil ?? 'small', 1); },
+      },
       {
         key: 'mouth', label: '입', kind: 'cycle', col: 0,
         value: () => MOUTH_KO[this.look.mouth],
@@ -652,6 +672,7 @@ export class CharacterCreateScene extends Phaser.Scene {
     this.look.hairStyle = this.styles()[r(this.styles().length)];
     this.look.faceShape = FACE_SHAPES[r(FACE_SHAPES.length)];
     this.look.eye = r(EYE_COLORS.length);
+    this.look.pupil = PUPIL_SIZES[r(PUPIL_SIZES.length)];
     this.look.mouth = MOUTH_STYLES[r(MOUTH_STYLES.length)];
     this.look.blush = Math.random() < 0.6;
     this.look.brow = Math.random() < 0.5 ? 0.2 : 0.8;

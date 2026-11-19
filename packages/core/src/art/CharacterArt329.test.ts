@@ -2,11 +2,12 @@
  * 329차 — 필드 캐릭터 도트 방식(글자 지도 · 좌표 계약 · 방향)
  * 329(2) — 몸 두 줄 키우기(발 30행 · 손 22행) · 왼쪽 · 오른쪽은 옆모습 · 아래로 걸을 때 고개 15도
  * 329(3) — 눈동자는 바라보는 쪽(정면 = 흰 · 검 · 흰 / 옆모습 = 검 · 흰)
+ * 330 — 눈동자 크기(크게 = 코 쪽 한 열이 눈동자 · 정면만)
  */
 import { describe, expect, it } from 'vitest';
 import {
-  CHAR_CELL, CHAR_DIRS, CHAR_FOOT_Y, CHAR_FRAMES, CHAR_HAND_Y, CHAR_HEAD_TOP, CHAR_MOUTH_Y, HAIR_STYLES,
-  charDotMapsForTest, makeCharConfig, renderCharCell, renderCharSheet, starterOutfit,
+  CHAR_CELL, CHAR_DIRS, CHAR_FOOT_Y, CHAR_FRAMES, CHAR_HAND_Y, CHAR_HEAD_TOP, CHAR_MOUTH_Y, HAIR_STYLES, PUPIL_SIZES,
+  charCfgKey, charDotMapsForTest, makeCharConfig, renderCharCell, renderCharSheet, starterOutfit,
   type CharConfig, type CharDir, type HatKind, type HeldKind, type OuterKind, type PantsKind, type ShirtKind, type ShoesKind,
 } from './CharacterArt.js';
 
@@ -129,6 +130,42 @@ describe('329(2) 옆모습 · 걷기 고개', () => {
     const right = renderCharCell('right', 0, cfg);
     expect(rgb(right, 19, 10)).toBe(PUPIL);
     expect(bright(right, 18, 10)).toBe(true);
+  });
+  it('330 눈동자 크기 — 크게는 코 쪽 한 열이 눈동자가 된다(정면만 · 없으면 작게)', () => {
+    const PUPIL = 0x0d0d14;
+    const bright = (c: Uint8ClampedArray, x: number, y: number): boolean => { const v = rgb(c, x, y); return ((v >> 16) & 255) > 200 && ((v >> 8) & 255) > 200 && (v & 255) > 200; };
+    const lum = (v: number): number => ((v >> 16) & 255) * 0.3 + ((v >> 8) & 255) * 0.59 + (v & 255) * 0.11;
+    for (const eye of [0, 2, 3]) {
+      const small = cfgOf({ sex: 'm', eye, pupil: 'small' }), large = cfgOf({ sex: 'm', eye, pupil: 'large' });
+      const f = renderCharCell('down', 0, large), fs = renderCharCell('down', 0, small);
+      // 왼눈(셀 12~14열) = [흰 · 검은자 · 눈동자] · 오른눈(17~19열) = 그 좌우 대칭 — 귀 쪽 한 열만 흰자
+      expect(bright(f, 12, 10)).toBe(true); expect(bright(f, 12, 11)).toBe(true);
+      expect(bright(f, 19, 10)).toBe(true); expect(bright(f, 19, 11)).toBe(true);
+      expect(rgb(f, 13, 10)).toBe(PUPIL); expect(rgb(f, 18, 10)).toBe(PUPIL);
+      for (const [nx, cx] of [[14, 13], [17, 18]] as const) {
+        expect(bright(f, nx, 10), `코 쪽 윗칸 ${nx}`).toBe(false);
+        expect(bright(f, nx, 11), `코 쪽 아랫칸 ${nx}`).toBe(false);
+        // 둘째 열은 검은자 열과 같은 색이 아니다 — 윗칸은 검정보다 밝고(눈동자색이 돈다) 아랫칸은 눈동자색보다 밝다
+        expect(rgb(f, nx, 10)).not.toBe(rgb(f, cx, 10));
+        expect(lum(rgb(f, nx, 10))).toBeGreaterThan(lum(PUPIL));
+        expect(lum(rgb(f, nx, 11))).toBeGreaterThan(lum(rgb(f, cx, 11)));
+        // 눈 밖은 그대로
+        expect(rgb(f, cx, 11)).toBe(rgb(fs, cx, 11));
+      }
+      for (let i = 0; i < 3; i++) for (const y of [10, 11]) expect(rgb(f, 12 + i, y)).toBe(rgb(f, 19 - i, y));
+      // 옆모습 · 뒤는 크기와 상관없이 같다
+      for (const dir of ['left', 'right', 'up'] as const) expect(Buffer.from(renderCharCell(dir, 0, large)).equals(Buffer.from(renderCharCell(dir, 0, small))), dir).toBe(true);
+      // 정면에서 달라지는 칸은 네 칸뿐이다(두 눈 × 두 줄)
+      let changed = 0; for (let i = 0; i < f.length; i += 4) if (f[i] !== fs[i] || f[i + 1] !== fs[i + 1] || f[i + 2] !== fs[i + 2] || f[i + 3] !== fs[i + 3]) changed++;
+      expect(changed).toBe(4);
+    }
+    // 값이 없는 옛 설정은 작게와 같은 그림 · 같은 캐시 키
+    const none = cfgOf({ sex: 'f' }); delete (none.look as { pupil?: string }).pupil;
+    const small = cfgOf({ sex: 'f', pupil: 'small' });
+    expect(Buffer.from(renderCharCell('down', 0, none)).equals(Buffer.from(renderCharCell('down', 0, small)))).toBe(true);
+    expect(charCfgKey(none)).toBe(charCfgKey(small));
+    expect(charCfgKey(cfgOf({ sex: 'f', pupil: 'large' }))).not.toBe(charCfgKey(small));
+    expect(PUPIL_SIZES).toEqual(['small', 'large']);
   });
   it('옆모습에서도 옷 · 모자 · 든 것 · 가방이 서로 다른 그림을 낸다', () => {
     const base = Buffer.from(renderCharCell('left', 0, cfgOf({ sex: 'm' })));

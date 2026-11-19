@@ -27,6 +27,12 @@
  *    「앞모습(정면)에서도 눈동자 위치가 가운데 쪽으로」 → 옛 눈은 어느 방향이든 [흰 · 검정 · 눈동자색]이라 흰자가 늘 왼쪽이었다.
  *    정면 = [흰 · 검 · 흰] · 옆모습 = [검 · 흰](검은자가 앞). 15도 고개는 정면 눈을 한 칸 밀 뿐이라 따라온다.
  *
+ * ## 330차 — 눈동자 크기 (사용자 지시 2026-11-19)
+ *  - 「눈동자가 한 줄(2칸)인 경우 … 눈동자가 두 줄(4칸, 코 쪽으로 4칸. 귀 쪽 방향의 두 칸은 흰자위)로도 할 수 있게 … 눈동자 크기 '작게'와 '크게'」 →
+ *    `CharAppearance.pupil` — 작게 = 검은자 한 열(329(3) 그대로) · 크게 = 검은자 열 + 코 쪽 한 열(귀 쪽 한 열만 흰자). **정면만**(옆모습은 그대로).
+ *  - 「같은 색으로 두 줄 적용하면 안될 것 같음」 → 둘째 열은 검은자 열과 같은 색조의 다른 명도다 — 윗칸 = 눈동자색이 도는 짙은 색 · 아랫칸 = 한 단 밝은 눈동자색.
+ *    검은자(검정 칸)는 작게일 때와 같은 자리(눈 가운데)에 있어 시선은 그대로 앞을 본다.
+ *
  * ## 레이어 (아래 → 위)
  *   몸 무리(맨몸 → 속옷 → 하의 → 신발 → 상의 → 겉옷 → 장갑 → 가방) → 머리 무리(두개골 → 얼굴 → 머리카락 → 모자) → 든 것
  * 무리마다 바깥 테두리를 두르고 차례로 얹는다(`compose`). 새 장비 = 그리기 한 갈래 또는 글자 지도 한 벌.
@@ -110,6 +116,14 @@ export type MouthStyle = (typeof MOUTH_STYLES)[number];
 export const FACE_SHAPES = ['oval', 'round', 'square'] as const;
 export type FaceShape = (typeof FACE_SHAPES)[number];
 
+/**
+ * 330차 — 눈동자 크기(정면 눈).
+ * small(작게) = 검은자 한 열 — [흰 · 검은자 · 흰] / large(크게) = 검은자 열 + 코 쪽 한 열 — [흰 · 검은자 · 눈동자](귀 쪽 한 열만 흰자).
+ * 옆모습 · 뒤는 크기와 상관없이 같다.
+ */
+export const PUPIL_SIZES = ['small', 'large'] as const;
+export type PupilSize = (typeof PUPIL_SIZES)[number];
+
 // ─────────────────────────────────────────────────────────────
 // 외형 · 복장 계약
 // ─────────────────────────────────────────────────────────────
@@ -125,6 +139,8 @@ export interface CharAppearance {
   faceShape: FaceShape;
   /** EYE_COLORS 인덱스 */
   eye: number;
+  /** 330차 — 눈동자 크기. 없으면(옛 세이브 · 인물 · 옛 판의 다른 접속자) 작게 */
+  pupil?: PupilSize;
   mouth: MouthStyle;
   /** 볼 홍조 */
   blush: boolean;
@@ -177,7 +193,7 @@ export function defaultAppearance(sex: CharSex = 'm'): CharAppearance {
   return {
     sex, skin: 1, hair: 0, hairStyle: sex === 'f' ? 'bob' : 'short',
     faceShape: 'oval',
-    eye: 0, mouth: 'smile', blush: true, brow: 0.5, beard: -1,
+    eye: 0, pupil: 'small', mouth: 'smile', blush: true, brow: 0.5, beard: -1,
   };
 }
 
@@ -213,6 +229,7 @@ export function starterOutfit(sex: CharSex = 'm'): CharOutfit {
 //  ① 살은 5단(a 밝음 → b → c 분홍 그늘 → d 앞머리 밑 → e 턱 밑) — 그늘이 회색이 아니라 붉은 쪽으로 물든다
 //  ② 눈은 두 줄 — 검은자 한 열(윗칸 검정 · 아랫칸 눈동자색)과 흰자. **검은자는 바라보는 쪽**에 둔다(329(3)):
 //     정면 = [흰 · 검 · 흰](눈 가운데 · 두 눈 대칭) / 옆모습 = [검 · 흰](앞쪽). 흰자를 한쪽에만 몰면 곁눈질이 된다
+//     눈동자 「크게」(330)는 정면에서 코 쪽 흰자 한 열을 눈동자 열로 바꾼다 — [흰 · 검 · 눈동자](윗칸 짙게 · 아랫칸 밝게 · 두 눈 대칭)
 //  ③ 얼굴에는 테두리가 없다 — 머리카락과 그늘이 윤곽을 만든다(테두리는 옷 바깥 · 살 옆은 짙은 장밋빛)
 //  ④ 머리카락은 거의 한 색 — 앞머리 사이로 그늘진 이마가 비쳐 가닥이 된다 · 윤기는 몇 칸
 //  ⑤ 좌우가 같지 않다(빛이 왼쪽 위 — 오른쪽 볼 · 턱이 한 단 어둡다)
@@ -290,6 +307,11 @@ function luma(c: Rgb): number {
 }
 function scaleRgb(c: Rgb, kr: number, kg: number, kb: number): Rgb {
   return (Math.round(((c >> 16) & 255) * kr) << 16) | (Math.round(((c >> 8) & 255) * kg) << 8) | Math.round((c & 255) * kb);
+}
+/** 채널마다 같은 k배(255에서 자른다) — 흰색을 섞는 것과 달리 채도를 지킨 채 밝아진다(330 — 큰 눈동자의 밝은 칸) */
+function brighten(c: Rgb, k: number): Rgb {
+  const f = (sh: number): number => Math.min(255, Math.round(((c >> sh) & 255) * k));
+  return (f(16) << 16) | (f(8) << 8) | f(0);
 }
 function pickOf<T>(arr: readonly T[], i: number): T {
   return arr[Math.max(0, Math.min(arr.length - 1, i | 0))];
@@ -526,12 +548,21 @@ function drawFace(g: Layer, view: View, look: CharAppearance, s: SkinPal): void 
     }
     return;
   }
-  /** 정면의 눈 — [흰자 · 검은자 · 흰자]. 검은자가 눈 한가운데라 앞을 똑바로 본다(두 눈이 좌우 대칭) */
-  const eye = (x: number): void => {
+  // 330 — 눈동자 「크게」의 둘째 열(코 쪽). 검은자 열과 같은 색을 한 열 더 깔면 눈이 아니라 네모 덩어리로 읽힌다(사용자 「같은 색으로 두 줄 적용하면 안될 것 같음」) —
+  //   같은 색조에서 명도만 달리한다: 윗칸 = 눈동자색이 도는 짙은 색 · 아랫칸 = 한 단 밝은 눈동자색(채도는 그대로 — 흰색을 섞으면 잿빛이 된다)
+  const big = look.pupil === 'large';
+  const irisDeep = mix(eyeC, pupilTop, 0.5);
+  const irisLit = mix(brighten(eyeC, 1.45), 0xffffff, 0.1);
+  /**
+   * 정면의 눈 — [흰자 · 검은자 · 흰자]. 검은자가 눈 한가운데라 앞을 똑바로 본다(두 눈이 좌우 대칭).
+   * `nose` = 코가 있는 쪽(+1 오른쪽 · −1 왼쪽) — 「크게」면 그쪽 흰자 한 열이 눈동자 열이 된다(귀 쪽 한 열만 흰자).
+   */
+  const eye = (x: number, nose: 1 | -1): void => {
     g.put(x, 7, whiteTop, M_SKIN); g.put(x + 1, 7, pupilTop, M_SKIN); g.put(x + 2, 7, whiteTop, M_SKIN);
     g.put(x, 8, white, M_SKIN); g.put(x + 1, 8, iris, M_SKIN); g.put(x + 2, 8, white, M_SKIN);
+    if (big) { g.put(x + 1 + nose, 7, irisDeep, M_SKIN); g.put(x + 1 + nose, 8, irisLit, M_SKIN); }
   };
-  eye(3); eye(8);
+  eye(3, 1); eye(8, -1);
   if (look.sex === 'f') { g.put(2, 7, pupilTop, M_SKIN); g.put(11, 7, pupilTop, M_SKIN); }     // 속눈썹 — 눈꼬리 한 칸
   if (bare && look.brow > 0.3) { g.row(6, 3, 4, browC, M_SKIN); g.row(6, 9, 10, browC, M_SKIN); }
   if (look.blush) { g.put(3, 9, s.blush, M_SKIN); g.put(10, 9, s.blush, M_SKIN); }
@@ -1163,7 +1194,7 @@ export function renderCharSheet(cfg: CharConfig): { w: number; h: number; data: 
 export function charCfgKey(cfg: CharConfig): string {
   const l = cfg.look; const o = cfg.outfit;
   return [
-    l.sex, l.skin, l.hair, l.hairStyle, l.faceShape, l.eye, l.mouth, l.blush ? 1 : 0, l.brow, l.beard,
+    l.sex, l.skin, l.hair, l.hairStyle, l.faceShape, l.eye, l.pupil ?? 'small', l.mouth, l.blush ? 1 : 0, l.brow, l.beard,
     o.shirt, o.shirtColor, o.pants, o.pantsColor, o.shoes, o.shoesColor,
     o.hat, o.hatColor, o.outer, o.outerColor, o.gloves ? 1 : 0, o.glovesColor,
     o.pack ? 1 : 0, o.packColor, o.held,

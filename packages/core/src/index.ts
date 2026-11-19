@@ -811,10 +811,11 @@ export type {
   CharDir, CharFrame, CharSex, HairStyle, MouthStyle,
   CharAppearance, CharOutfit, CharConfig,
   ShirtKind, PantsKind, ShoesKind, HatKind, OuterKind, HeldKind, FaceShape,
+  PupilSize,   // 330차 — 눈동자 크기
 } from './art/CharacterArt.js';
 export {
   CHAR_CELL, CHAR_FOOT_Y, CHAR_HEAD_TOP, CHAR_HAND_Y, CHAR_MOUTH_Y, CHAR_SCALE, CHAR_DIRS, CHAR_FRAMES,
-  SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, HAIR_STYLES, MOUTH_STYLES, FACE_SHAPES,
+  SKIN_TONES, HAIR_COLORS, EYE_COLORS, CLOTH_COLORS, HAIR_STYLES, MOUTH_STYLES, FACE_SHAPES, PUPIL_SIZES,
   ramp, defaultAppearance, bareOutfit, starterOutfit,
   renderCharCell, renderCharSheet, charCfgKey, makeCharConfig,
   PLAYER_CANON_AGE, playerAgeOf,   // 288차 — 주인공 나이

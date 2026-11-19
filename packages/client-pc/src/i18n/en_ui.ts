@@ -306,6 +306,7 @@ export const EN_UI: Record<string, string> = {
 
   // ── 179차 실렌더 스캔 보강 — 캐릭터 만들기 옵션값 ──
   '체형': 'Build', '피부': 'Skin', '얼굴': 'Face', '눈동자': 'Eyes', '입': 'Mouth',
+  '눈동자 색': 'Eye colour', '눈동자 크기': 'Pupil size', '작게': 'Small',   // 330차 — '크게'는 위(설정)에 있다
   '머리': 'Hair', '머리 색': 'Hair colour', '수염': 'Beard', '복장': 'Clothes',
   '기본 상의': 'Starting top', '기본 하의': 'Starting bottoms',
   '남성': 'Male', '여성': 'Female',
