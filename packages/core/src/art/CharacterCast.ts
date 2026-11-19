@@ -9,6 +9,10 @@
  * **id 해시로 결정적 분화**한다 — 38인이 전부 다르면서도 팔레트는 한 벌로 묶인다.
  * 손으로 바꾸고 싶은 인물은 `CAST_OVERRIDE`에 한 줄만 적으면 된다.
  *
+ * 331차 — 눈동자 크기(330의 `pupil`)를 인물에게도 준다(사용자 지시 「마을 인물들에게도 큰 눈동자 적용 … 왠만하면 초상화 느낌에 맞게」).
+ * 이야기 인물은 그림 얼굴 초상을 보고 정한 표(`CAST_LARGE_PUPIL` — 눈이 크고 둥글게 그려진 사람), 표에 없는 사람은 나이 + 해시 규칙이다.
+ * 새 특징을 **쓰지 않던 해시 자리**에서 뽑으므로 기존 인물의 다른 생김새(피부 · 머리 · 눈 색 · 옷)는 그대로다.
+ *
  * ⚠ 결정적(deterministic)이어야 한다 — 세이브에 외형을 저장하지 않고 id로 매번 재생성하므로,
  *   해시 규칙을 바꾸면 **기존 세이브의 NPC 얼굴이 전부 바뀐다**. 규칙 변경은 차수 기록 대상.
  */
@@ -16,7 +20,7 @@
 import {
   FACE_SHAPES,
   type CharAppearance, type CharConfig, type CharOutfit, type CharSex, type HairStyle,
-  type MouthStyle, HAIR_COLORS, CLOTH_COLORS, bareOutfit,
+  type MouthStyle, type PupilSize, HAIR_COLORS, CLOTH_COLORS, bareOutfit,
 } from './CharacterArt.js';
 
 export type CharAge = 'child' | 'teen' | 'young' | 'mid' | 'elder';
@@ -102,6 +106,34 @@ export const CAST_OVERRIDE: Record<string, Partial<CharAppearance> & { outfit?: 
   kang_haesol: { hairStyle: 'pony', hair: 0, outfit: { shirt: 'hoodie', shirtColor: 0x3d5a80, shoes: 'rubber', shoesColor: 0x4a4550 } },
 };
 
+/**
+ * 331차 — 눈동자가 큰 이야기 인물(23 / 45). 그림 얼굴 초상(`public/faces/<id>.png`)에서 눈이 크고 둥글게, 눈동자가 눈을 가득 채워 그려진 사람이다.
+ * 여기 없는 인물은 「작게」다 — 초상의 눈이 가늘거나(어르신 · 웃는 눈 · 반쯤 감은 눈) 날카로운 사람(도현수 · 채파도 · 모태조).
+ * 초상을 다시 그리면 이 표도 같이 본다. 한 사람만 바꾸려면 `CAST_OVERRIDE`에 `pupil`을 적어도 된다(그쪽이 이긴다).
+ */
+export const CAST_LARGE_PUPIL: ReadonlySet<string> = new Set([
+  // 아이 · 청소년
+  'tak_saebyeok', 'seok_dokgu', 'bae_nuri', 'ha_sua', 'mo_jinju', 'lee_suyeon', 'han_bom',
+  // 젊은이
+  'seo_harin', 'na_gibeom', 'baek_haneul', 'go_haena', 'chae_geumja', 'oh_serin', 'mara', 'yeon_taeo', 'ha_minji', 'yu_harang', 'kang_haesol',
+  // 중년
+  'jeong_umi', 'yu_ria', 'oh_sera', 'ha_nui', 'chae_surim',
+]);
+
+/**
+ * 331차 — 인물의 눈동자 크기.
+ * 이야기 인물 = 초상을 보고 정한 표. 표에 없는 사람(마을 사람 · 지나가는 사람 · 가게 점원 — 초상이 없다)은 초상에서 본 경향을 따른다:
+ * 아이 · 청소년은 크게, 젊은이는 셋 중 둘, 중년은 셋 중 하나, 어르신은 작게. 해시는 다른 특징이 쓰지 않는 자리(15)에서 읽는다.
+ */
+function pupilOf(npcId: string, age: CharAge, h: number): PupilSize {
+  if (CAST_TRAITS[npcId]) return CAST_LARGE_PUPIL.has(npcId) ? 'large' : 'small';
+  const r = (h >>> 15) % 3;
+  if (age === 'child' || age === 'teen') return 'large';
+  if (age === 'young') return r < 2 ? 'large' : 'small';
+  if (age === 'mid') return r === 0 ? 'large' : 'small';
+  return 'small';
+}
+
 // ── 결정적 해시 ─────────────────────────────────────────────
 function hash32(s: string): number {
   let h = 2166136261 >>> 0;
@@ -168,6 +200,7 @@ export function characterOf(npcId: string, fallback?: Partial<CastTrait>): CharC
     hairStyle: t.sex === 'f' ? pick(STYLE_F, h, 19) : pick(STYLE_M, h, 19),
     faceShape: pick(FACE_SHAPES, h, 27),
     eye: (h >>> 23) % 6,
+    pupil: pupilOf(npcId, t.age, h),
     mouth: pick(MOUTHS, h, 9),
     blush: t.age === 'child' || t.age === 'teen' || ((h >>> 3) & 1) === 1,
     brow: t.sex === 'm' ? 0.8 : 0.45,
