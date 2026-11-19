@@ -72,6 +72,8 @@
 | 초상 ↔ 필드 얼굴 | scratchpad `c331/fig16.png` — 인물 45명의 초상과 필드 얼굴을 나란히 · 마을 사람 48명 | 육안 · 사용자에게 전달 |
 | 게임 실렌더 | scratchpad `c331/ig.cjs` — 속초 필드(낮) · 대화창(정옥선 · 배누리) | 인물 그림 164 · pageerror 0 · 대화창 초상은 그림 얼굴 그대로 |
 | 빌드 | `npx pnpm run build` · 루트 `npx pnpm run typecheck` | 3/3 · 4/4 |
+| 124차 배포 | main `25c7e63` → `28d9962` 빨리 감기 → Actions 「테스트 배포」(실행 53번 · ref main) → gh-pages `ccfd060` | 성공 — 약 2분 |
+| 배포본 점검 | gh-pages 브랜치를 내려받아 하위 경로로 띄움(scratchpad `deploy331.cjs`) | 정적 2,474 · 소스맵 0 · `public/` 2,471개 바이트 같음(다름 0 · 빠짐 0) · 기동 9.6초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 번들에 「눈동자 크기」 · 큰 눈동자 인물 표 · 만들기 화면 ▶ → 크게 · 미리보기 아래 끝 429 < 이름 줄 438 |
 
 ## 6. 잔여
 
@@ -93,4 +95,4 @@
 - [x] `04-BACKLOG.md` DX 줄 · 대시보드 S23
 - [x] `.agents/AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 아티팩트(위키 카드 · 구현 라이브러리 · 남은 과업 설계) — 순서도는 「331차 기준」 줄만
-- [ ] main 반영 · 124차 배포 · 배포본 점검 → 배포 기록 커밋
+- [x] main 반영(`28d9962`) · 124차 배포(gh-pages `ccfd060`) · 배포본 점검 → 배포 기록은 다음 커밋
