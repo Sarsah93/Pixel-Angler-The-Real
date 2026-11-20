@@ -112,6 +112,8 @@
 | 가마살 그림 | scratchpad `kama332/sheet_kama.png` · 가방 실렌더 `r332/inv_kama.png` | 10장 육안(껍질 색 · 살빛 어종대로) · 가방 칸 10 |
 | 이탈 방어 | `r332/misc.cjs` — 타이틀 / 필드에서 키 26종 · 끌어다 놓기 · 오른쪽 클릭 · Ctrl+휠 · 옆 단추 · 진짜 키 입력(F5 · Ctrl+R · Alt+← · Backspace) · `history.back()` 두 번 | 타이틀: 새로고침 · 뒤로 안 막음 · 필드: 막음 · 글 칸 Backspace · Tab · 한/영 · F11 · F12 · 게임 키(E · Space · ESC · ←)는 그대로 · 다시 실림 0 · 뒤로 두 번 뒤에도 그 자리 · 확인 창 판정(진행 중 + 저장 안 함 = 띄움 · 자동화 = 안 띄움) |
 | 빌드 | `npx pnpm run build` · 루트 `npx pnpm run typecheck` | 3/3 · 4/4 |
+| 125차 배포 | main `28d9962` → `2705eb6` 빨리 감기 → Actions 「테스트 배포」(ref main) → gh-pages `e1804b3` | 성공 — 약 70초 |
+| 배포본 점검 | gh-pages 브랜치를 내려받아 하위 경로로 띄움(scratchpad `deploy332.cjs`) | 정적 2,484 · 소스맵 0 · `public/` 2,481개 바이트 같음(다름 0 · 빠짐 0) · 기동 10.5초 · 4xx 0(바깥 1 = KAMIS 스냅샷) · pageerror 0 · 가마살 그림 10(텍스처 실림) · 타이틀: F5 · Ctrl+R · 뒤로 안 막음 / 캐릭터 만들기: 막음(진짜 키 입력 · `history.back()` 뒤 다시 실림 0 · 안내 글) · 끌어다 놓기 · 오른쪽 클릭은 언제나 막음 |
 
 ## 6. 잔여
 
@@ -140,4 +142,4 @@
 - [x] `.agents/AGENTS.md` §9 · `IMPLEMENTATION_PLAN.md` · `CLAUDE.md`
 - [x] 스킬 `f9-guide-coords`(낡은 선 표 키 · 중골 긁기 · 그림 틀 바뀜) · `asset-pipeline`(가마살 종류)
 - [x] 아티팩트 4개(위키 카드 · 공정 시트 11장 · 구현 라이브러리 · 남은 과업 설계 · 순서도 「332차 기준」)
-- [ ] main 반영 · 125차 배포 · 배포본 점검 → 배포 기록은 다음 커밋
+- [x] main 반영(`2705eb6`) · 125차 배포(gh-pages `e1804b3`) · 배포본 점검 → 배포 기록은 다음 커밋
