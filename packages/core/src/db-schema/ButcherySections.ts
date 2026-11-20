@@ -14,7 +14,7 @@
  */
 
 import type { CephByproductId } from '../types/Butchery.js';
-import { BUTCHERY_PROFILES } from './ButcheryProfiles.js';
+import { BUTCHERY_PROFILES, yieldsKama } from './ButcheryProfiles.js';
 
 /** 섹션 완료 시 발생하는 부산물 종류 (클라이언트 팝업/지급 레저가 소비) */
 export type ButcherySectionYield =
@@ -559,11 +559,20 @@ export function loinBlockOfTask(taskId: string | undefined): { side: 'a' | 'b'; 
   return m ? { side: m[1] as 'a' | 'b', part: m[2] as 'back' | 'belly' } : null;
 }
 
+/**
+ * 332(2) — 가마살을 따로 내지 않는 해체 어종(큰 바리류 — `yieldsKama` 거짓)의 트리. 머리 작업의 이름 · 산출만 다르다.
+ */
+export const LOIN_SECTIONS_NO_KAMA: ButcherySectionDef[] = LOIN_SECTIONS.map((sec) => (sec.id !== 'sec_prep' ? sec : {
+  ...sec,
+  tasks: sec.tasks.map((t) => (t.id !== 't_head' ? t : { ...t, label: '머리 떼기', yields: ['head'] as ButcherySectionYield[] })),
+}));
+
 export function sectionsForSpecies(speciesId: string, bodyShape: 'round' | 'flat', tree?: string): ButcherySectionDef[] {
   const ceph = sectionsForCephalopod(speciesId);
   if (ceph) return ceph;
   // 317 — 해체는 크기로도 갈린다(대방어급) — 개체 프로필의 갈래(`butcheryProfileFor`)를 넘겨받는다
-  if (tree === 'loin' || BUTCHERY_PROFILES[speciesId]?.tree === 'loin') return LOIN_SECTIONS;
+  //  332(2) — 큰 바리류는 가마살을 따로 내지 않는다(머리 작업이 머리만 낸다)
+  if (tree === 'loin' || BUTCHERY_PROFILES[speciesId]?.tree === 'loin') return yieldsKama(speciesId) ? LOIN_SECTIONS : LOIN_SECTIONS_NO_KAMA;
   if (BUTCHERY_PROFILES[speciesId]?.tree === 'small') return SMALL_FISH_SECTIONS;   // 313
   if (BUTCHERY_PROFILES[speciesId]?.tree === 'eel') return EEL_SECTIONS;            // 315
   return sectionsForBodyShape(bodyShape);

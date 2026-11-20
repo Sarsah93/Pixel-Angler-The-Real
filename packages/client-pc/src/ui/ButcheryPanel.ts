@@ -29,7 +29,7 @@ import {
   isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE, stageGuideRemap, filletGuideView, invertGuideRemap,
   butcheryProfileFor, buildButcheryStages, applyGuideOverrides, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE,
   loinValueShare, loinSakuPieces, loinSakuCuts, loinBlockOfTask, loinBlockIndex, loinTrimBlockOf,
-  BUTCHERY_GUIDE_OVERRIDES, formatGramsKo,
+  BUTCHERY_GUIDE_OVERRIDES, formatGramsKo, yieldsKama,
 } from '@tra/core';
 import type { ButcheryGuideOverride, GuideFrameRemap, LoinPart, LoinSide, LoinStageOptions, ButcheryProfile } from '@tra/core';
 import {
@@ -49,7 +49,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { trimHeadIconKey, trimSpineIconKey, trimKamaIconKey, ensureTintedFillet } from './TrimPartIcons.js';
+import { trimHeadIconKey, trimSpineIconKey, trimKamaIconKey, trimFleshIconKey, ensureTintedFillet } from './TrimPartIcons.js';
 import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, butcherTailLines, butcherVariantFrame, BUTCHER_FISH_W0, BUTCHER_FISH_H0, type PixelFishState } from './PixelButcherFish.js';
 import { speciesFilletIconKey } from './FilletSpeciesIcons.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
@@ -1108,8 +1108,8 @@ export class ButcheryPanel extends DraggablePanel {
     // 필렛 분할 수 — round 2장 / flat(다섯장뜨기) 4장
     const nFillet = this.isEel ? 1 : this.process.profile.bodyShape === 'flat' || this.isLoin ? 4 : 2;   // 315 — 장어 = 펼친 포 한 장 · 317 해체 = 덩어리 넷
     return {
-      // 317 — 해체는 가마살(2.5% × 2)을 머리에서 따로 뗀다
-      headG: Math.round(w * (this.isLoin ? 0.09 : 0.12)), spineG: Math.round(w * 0.06), ribG: Math.round(w * 0.04),
+      // 317 — 해체는 가마살(2.5% × 2)을 머리에서 따로 뗀다 · 332(2) — 가마살을 내지 않는 큰 바리류는 머리에 붙어 나간다
+      headG: Math.round(w * (this.isLoin && yieldsKama(this.process.profile.speciesId) ? 0.09 : 0.12)), spineG: Math.round(w * 0.06), ribG: Math.round(w * 0.04),
       pinG: Math.round(w * 0.02), visceraG: Math.round(w * 0.08),
       filletG: Math.round((w * this.process.profile.baseYieldRate) / nFillet + w * 0.02),
       engawaG: Math.max(1, Math.round(w * 0.02)),   // 엔가와 (필렛 1장당 — 넙치류)
@@ -1319,7 +1319,7 @@ export class ButcheryPanel extends DraggablePanel {
         }
         case 'nakaochi': {
           const g = Math.max(1, Math.round((this.source.weightG ?? 800) * 0.03));
-          rows.push({ key: 'nakaochi', qty: 1, tpl: { ...base, id: `inv_nakaochi_${speciesId}_${seq}`, name: `${nameKo} 중골 살 ${formatGramsKo(g)}`, icon: '', iconTexture: this.loinIcon('nakaochi'), basePrice: Math.max(300, Math.round(this.marketPerG() * g * 0.9)), speciesId, weightG: g, originRegion: this.source.originRegion } });
+          rows.push({ key: 'nakaochi', qty: 1, tpl: { ...base, id: `inv_nakaochi_${speciesId}_${seq}`, name: `${nameKo} 중골 살 ${formatGramsKo(g)}`, icon: '', iconTexture: trimFleshIconKey(this.scene, speciesId, 'nakaochi') ?? this.loinIcon('nakaochi'), basePrice: Math.max(300, Math.round(this.marketPerG() * g * 0.9)), speciesId, weightG: g, originRegion: this.source.originRegion } });
           break;
         }
         case 'saku': {
@@ -1344,7 +1344,7 @@ export class ButcheryPanel extends DraggablePanel {
           const total = this.resumed ? (this.source.weightG ?? 800)
             : LOIN_BLOCKS.reduce((a, b) => a + this.loinBlockGrams(this.process.profile, this.source, b.part), 0);
           const g = Math.max(1, Math.round(total * LOIN_TRIM_SHARE.chiai));
-          rows.push({ key: 'chiai', qty: 1, tpl: { ...base, id: `inv_byp_chiai_${speciesId}_${seq}`, name: `${nameKo} 혈합육 ${formatGramsKo(g)}`, icon: '', iconTexture: this.loinIcon('chiai'), basePrice: Math.max(200, g * 3), speciesId, weightG: g } });
+          rows.push({ key: 'chiai', qty: 1, tpl: { ...base, id: `inv_byp_chiai_${speciesId}_${seq}`, name: `${nameKo} 혈합육 ${formatGramsKo(g)}`, icon: '', iconTexture: trimFleshIconKey(this.scene, speciesId, 'chiai') ?? this.loinIcon('chiai'), basePrice: Math.max(200, g * 3), speciesId, weightG: g } });
           break;
         }
         case 'loinSkin':

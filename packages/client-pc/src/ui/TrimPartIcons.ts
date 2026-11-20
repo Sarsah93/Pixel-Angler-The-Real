@@ -21,7 +21,8 @@ import {
   SPRITE_PALETTE_CHARS, BUTCHER_FISH_W0, BUTCHER_FISH_H0, type PixelFishState,
 } from './PixelButcherFish.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { TRIM_PART_ART, TRIM_PART_ALIAS, type TrimPartKind } from '../data/TrimPartArt.js';
+import { TRIM_PART_ART, TRIM_PART_ALIAS, TRIM_FLESH_OWNER, type TrimPartKind } from '../data/TrimPartArt.js';
+import { ensureLoinTexture } from './LoinArt.js';
 import { canvasContextOf, destroyCanvasTexture, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 
 /** 어종군 사진이 바로 그 어종인 것 — 오려 내지 않고 사진을 쓴다 */
@@ -35,7 +36,9 @@ const cutFailed = new Set<string>();
 
 /** 어종 그림 텍스처 키(부트에서 실은 것) — 없으면 undefined */
 export function trimPartArtKey(scene: Phaser.Scene, speciesId: string, kind: TrimPartKind): string | undefined {
-  const id = TRIM_PART_ALIAS[speciesId] ?? speciesId;
+  const own = TRIM_PART_ALIAS[speciesId] ?? speciesId;
+  // 332(2) — 중골 살 · 혈합육은 살색이 같은 어종끼리 한 그림을 같이 쓴다(그림 주인 `TRIM_FLESH_OWNER`)
+  const id = kind === 'nakaochi' || kind === 'chiai' ? TRIM_FLESH_OWNER[own] ?? own : own;
   if (!TRIM_PART_ART[id]?.includes(kind)) return undefined;
   const key = `${ART_PREFIX}${kind}_${id}`;
   return scene.textures.exists(key) ? key : undefined;
@@ -202,24 +205,36 @@ export function ensureTrimPartTexture(scene: Phaser.Scene, key: string | undefin
   return !!ensureCutHead(scene, key.slice(CUT_PREFIX.length), key);
 }
 
-/** 332 — 가마살 아이콘 키: 어종 그림(Gemini — 해체 어종 10종). 없으면 undefined(부르는 쪽이 캔버스 도형 `trimloin_kama_*`로) */
+/** 332 — 가마살 아이콘 키: 어종 그림(Gemini — 해체 어종 7종 · 332(2) 큰 바리류는 가마살을 내지 않는다). 없으면 undefined(부르는 쪽이 캔버스 도형 `trimloin_kama_*`로) */
 export function trimKamaIconKey(scene: Phaser.Scene, speciesId: string): string | undefined {
   return trimPartArtKey(scene, speciesId, 'kama');
+}
+
+/** 332(2) — 중골 살 · 혈합육 아이콘 키: 그 어종(또는 살색이 같은 그림 주인)의 그림. 없으면 undefined(캔버스 도형 `trimloin_*`로) */
+export function trimFleshIconKey(scene: Phaser.Scene, speciesId: string, kind: 'nakaochi' | 'chiai'): string | undefined {
+  return trimPartArtKey(scene, speciesId, kind);
 }
 
 /**
  * 아이콘 자리에서 — 머리 · 척추뼈 부산물이면 「종류 + 어종」으로 지금 쓸 그림 키를 다시 고른다(옛 세이브의 키를 새 그림으로).
  * 장어 · 해체 결과물처럼 제 굽는 그림이 있는 것(`trim_eel_*` · `trimloin_*`)과 다른 아이템은 건드리지 않는다(undefined).
  * 332 — 가마살(`trimloin_kama_<어종>` — 옛 캔버스 도형 키)은 그 어종 그림이 있으면 그 그림으로(옛 세이브의 가마살도 새 그림).
+ * 332(2) — 중골 살 · 혈합육도 같다. 저장된 그림 키(`trimpart_*`)의 그림이 이제 없으면(걷어 낸 바리류 가마살) 캔버스 도형으로 돌아간다.
  */
 export function trimPartIconOverride(
   scene: Phaser.Scene, item: { iconTexture?: string; speciesId?: string; byproductKind?: string },
 ): string | undefined {
-  const kama = /^trimloin_kama_(.+)$/.exec(item.iconTexture ?? '');
-  if (kama) return trimKamaIconKey(scene, kama[1]);
+  const cur = item.iconTexture ?? '';
+  const loin = /^(trimloin|trimpart)_(kama|nakaochi|chiai)_(.+)$/.exec(cur);
+  if (loin) {
+    const art = trimPartArtKey(scene, loin[3], loin[2] as TrimPartKind);
+    if (art) return art === cur ? undefined : art;
+    if (loin[1] === 'trimloin') return undefined;            // 그림이 없는 어종 — 저장된 도형 키 그대로(아이콘 자리가 굽는다)
+    const shape = `trimloin_${loin[2]}_${loin[3]}`;
+    return ensureLoinTexture(scene, shape) ? shape : undefined;
+  }
   const k = item.byproductKind;
   if ((k !== 'head' && k !== 'spine') || !item.speciesId) return undefined;
-  const cur = item.iconTexture ?? '';
   if (cur.startsWith('trim_eel_') || cur.startsWith('trimloin_')) return undefined;
   const key = k === 'head' ? trimHeadIconKey(scene, item.speciesId) : trimSpineIconKey(scene, item.speciesId);
   return scene.textures.exists(key) ? key : undefined;

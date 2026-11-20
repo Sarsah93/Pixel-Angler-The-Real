@@ -14,6 +14,10 @@
  *    kama  — 가마살(머리를 떼며 함께 나오는 아가미 뒤 턱밑살 — 가슴지느러미가 붙은 초승달 모양 한 덩이).
  *            사용자 리포트 「'가마살' 이미지가 픽셀아트가 아니라서 … 다시 전부 다 그려야」 — 그전에는 캔버스에 찍은 세모 도형(`trimloin_kama_*`)이었다.
  *            화풍 참고 = 그 어종 머리 그림(327(2)) + 온마리 그림. 구도 참고 사진이 없어 방향은 맞추지 않는다(그린 대로).
+ *  332(2) — 그림 둘 더(해체 어종 · `--kinds nakaochi,chiai`): 사용자 「중골 살 · 혈합육도 gemini로 그려줘」.
+ *    nakaochi — 중골 살(등뼈에서 숟가락으로 긁어 낸 살 무더기) · chiai — 혈합육(덩어리에서 도려낸 검붉은 띠).
+ *            살색이 같은 어종은 한 그림을 같이 쓴다(`FLESH` = 그림 주인 6 · `FLESH_OWNER` = 같이 쓰는 어종 4 → `TRIM_FLESH_OWNER`).
+ *    가마살은 큰 바리류 셋을 뺀 7종이다(사용자 결정 — 서더리로 쓴다).
  *  구도 · 화풍 참고 = 어종군 원본 사진(`food assets/trimmings/{bream,amberjack,halibut}`) + 그 어종 온마리 그림(`food assets/fish/`).
  *  갈빗대 · 지아이뼈 · 껍질 · 내장은 어종이 달라도 생김새가 같아 공용 그림 그대로 둔다(껍질 · 내장 · 지아이뼈는 아이템도 하나로 겹친다).
  *
@@ -43,10 +47,13 @@ const PUB = path.join(ROOT, 'packages', 'client-pc', 'public', 'trimmings', 'sp'
 const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'TrimPartArt.ts');
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-const KINDS = ['head', 'spine', 'kama'];
-/** 기본으로 뽑는 종류 — 가마살은 해체 어종만이라 `--kinds kama`로 따로 부른다 */
+const KINDS = ['head', 'spine', 'kama', 'nakaochi', 'chiai'];
+/** 기본으로 뽑는 종류 — 가마살 · 중골 살 · 혈합육은 해체 어종만이라 `--kinds`로 따로 부른다 */
 const DEFAULT_KINDS = ['head', 'spine'];
-/** 332 — 가마살을 내는 어종(4덩어리 해체 — core `isLoinBreakdown`) → 살 색(잘린 면) */
+/**
+ * 332 — 가마살을 내는 어종(core `LOIN_KAMA_SPECIES`) → 살 색(잘린 면).
+ *  332(2) — 큰 바리류(자바리 · 다금바리 · 능성어)는 가마살을 내지 않는다(사용자 결정 — 머리에 붙여 서더리로).
+ */
 const KAMA = {
   bluefin_tuna: '짙은 붉은 살에 흰 지방 결이 촘촘하다(뱃살 쪽은 분홍빛)',
   bigeye_tuna: '맑은 붉은 살',
@@ -55,10 +62,21 @@ const KAMA = {
   yellowtail: '분홍빛 살에 흰 지방 결, 껍질 쪽에 검붉은 혈합육 줄',
   amberjack: '분홍빛 살, 껍질 쪽에 검붉은 혈합육 줄',
   greater_amberjack: '옅은 분홍빛 살, 껍질 쪽에 검붉은 혈합육 줄',
-  longtooth_grouper: '단단한 흰 살',
-  sawedged_perch: '단단한 흰 살',
-  sevenband_grouper: '단단한 흰 살',
 };
+/**
+ * 332(2) — 중골 살 · 혈합육 그림의 주인 6(살색이 갈리는 만큼) → [중골 살 색, 혈합육 색].
+ *  나머지 해체 어종은 `FLESH_OWNER`의 주인 그림을 같이 쓴다(긁어 낸 살 · 도려낸 띠는 어종이 달라도 생김새가 같다 — 색만 다르다).
+ */
+const FLESH = {
+  bluefin_tuna: ['짙은 선홍색 · 검붉은 붉은 살, 군데군데 옅은 분홍빛 지방이 섞여 있다', '거의 검은빛이 도는 검붉은색(짙은 팥죽색)'],
+  bigeye_tuna: ['맑고 밝은 선홍색 붉은 살', '검붉은 적갈색'],
+  swordfish: ['옅은 살구색 · 분홍빛이 도는 크림색 살', '붉은 갈색'],
+  striped_marlin: ['주황빛이 도는 분홍색 살', '검붉은 갈색'],
+  yellowtail: ['옅은 분홍색 살에 흰 지방 결이 섞여 있다', '검붉은 적갈색'],
+  longtooth_grouper: ['반투명한 흰 살(아주 옅은 분홍 기)', '옅은 분홍 갈색'],
+};
+const FLESH_OWNER = { amberjack: 'yellowtail', greater_amberjack: 'yellowtail', sawedged_perch: 'longtooth_grouper', sevenband_grouper: 'longtooth_grouper' };
+const isFlesh = (k) => k === 'nakaochi' || k === 'chiai';
 
 /** 구도 · 화풍 참고(어종군 원본 사진) */
 const REF = {
@@ -151,9 +169,27 @@ function kamaText(t) {
     + `껍질 색은 둘째 그림의 ${t.ko} 그대로다(${t.skin}). 안쪽 잘린 면에는 살이 드러난다: ${KAMA[t.id]}. 잘린 면에 굽은 흰 뼈(쇄골) 단면이 조금 보인다. `
     + '가마살 한 덩이만 그린다 — 눈 · 입 · 머리 · 아가미 · 몸통 · 꼬리 · 도마 · 접시 · 그림자 · 글자 없음. 덩이가 그림을 가득 채운다. 배경은 단색 흰색.';
 }
-const aspectOf = (t, k) => (k === 'kama' ? '4:3' : k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
+function fleshText(t, k) {
+  const [meat, dark] = FLESH[t.id];
+  const head = '첫째 그림은 낚시 게임 손질 화면의 「잘라 낸 생선 머리」 그림이다(화풍 참고 — 진한 윤곽선 · 또렷한 도트). 둘째 그림은 그 어종의 온마리 그림이다(어떤 생선인지 참고).\n';
+  if (k === 'nakaochi') {
+    return head
+      + `${t.ko}의 「중골 살」 한 무더기를 ${STYLE}로 그려라. 첫째 그림과 같은 화풍이다. `
+      + '중골 살은 큰 생선을 해체하고 남은 등뼈에서 숟가락으로 긁어 낸 살이다(일본 요리의 「나카오치」): '
+      + '숟가락 자국대로 둥글게 말린 얇은 살점 여러 조각이 소복이 쌓인 낮은 무더기를 비스듬히 위에서 본 모습이다. 다진 고기처럼 곱지 않고, 살점 하나하나의 결이 보인다. '
+      + `살 색: ${meat}. 껍질 · 뼈는 없다 — 살만 있다. `
+      + '살 무더기 하나만 그린다 — 생선 · 머리 · 숟가락 · 그릇 · 접시 · 도마 · 그림자 · 글자 없음. 무더기가 그림을 가득 채운다. 배경은 단색 흰색.';
+  }
+  return head
+    + `${t.ko}의 「혈합육」 한 줄을 ${STYLE}로 그려라. 첫째 그림과 같은 화풍이다. `
+    + '혈합육은 생선 살 덩어리에서 칼로 도려낸 검붉은 살 띠다(일본 요리의 「치아이」 — 옆줄을 따라 붙은 피가 많은 살): '
+    + '길쭉하고 단면이 세모꼴인 살 띠 하나가 가로로 길게, 수평으로 반듯하게 놓인 모습이다(기울이지 않는다 — 왼쪽 끝과 오른쪽 끝의 높이가 같다). 가운데가 조금 도톰하고 양 끝이 가늘다. 칼로 자른 면이 매끈하고 살결이 길이 방향으로 나 있다. '
+    + `색: ${dark}. 한쪽 가장자리에 그 생선의 보통 살(${meat.split(',')[0].split('(')[0].trim()})이 가는 띠로 조금 붙어 있다. 껍질 · 뼈는 없다. `
+    + '살 띠 하나만 그린다 — 생선 · 머리 · 칼 · 그릇 · 접시 · 도마 · 그림자 · 글자 없음. 띠가 그림 가로 폭을 가득 채운다. 배경은 단색 흰색.';
+}
+const aspectOf = (t, k) => (k === 'chiai' ? '16:9' : k === 'nakaochi' ? '4:3' : k === 'kama' ? '4:3' : k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
 /** 그 종류를 그릴 어종인가 — 머리 · 뼈는 원래 어종(사진이 그 어종) 빼고 전부 · 가마살은 해체 어종만(잿방어 포함) */
-const wants = (id, t, k) => !t.alias && (k === 'kama' ? !!KAMA[id] : !t.native);
+const wants = (id, t, k) => !t.alias && (isFlesh(k) ? !!FLESH[id] : k === 'kama' ? !!KAMA[id] : !t.native);
 /** 가마살 화풍 참고 = 그 어종 머리 그림(없으면 어종군 머리 사진) */
 const kamaRef = (t) => { const f = path.join(DEST, `${t.id}_head.png`); return fs.existsSync(f) ? f : REF.head[t.fam]; };
 
@@ -229,9 +265,9 @@ async function genOne(t, k, P) {
   const out = path.join(P.out, `${t.id}_${k}${P.tag ? `_${P.tag}` : ''}.png`);
   if (fs.existsSync(out) && !P.force) return 'skip';
   const parts = [
-    k === 'kama' ? refPart(P.out, kamaRef(t), `ref_kama_${t.id}.png`) : refPart(P.out, REF[k][t.fam], `ref_${k}_${t.fam}.png`),
+    k === 'kama' || isFlesh(k) ? refPart(P.out, kamaRef(t), `ref_kama_${t.id}.png`) : refPart(P.out, REF[k][t.fam], `ref_${k}_${t.fam}.png`),
     refPart(P.out, path.join(FISH_SRC, t.fish), t.fish),
-    { text: k === 'head' ? headText(t) : k === 'kama' ? kamaText(t) : spineText(t) },
+    { text: k === 'head' ? headText(t) : k === 'kama' ? kamaText(t) : isFlesh(k) ? fleshText(t, k) : spineText(t) },
   ];
   const r = await callGemini(parts, P, out, aspectOf(t, k));
   log(P, { id: t.id, kind: k, tag: P.tag, ...r });
@@ -351,11 +387,11 @@ function bake() {
   const lines = [
     '/**',
     ' * @file TrimPartArt.ts',
-    ' * @description 327차 — 어종별 손질 부산물 그림 목록(머리 · 척추뼈 · 332 가마살). **자동 생성 — 손으로 고치지 않는다**(`node tools/gemini_trim_art.cjs --bake`).',
+    ' * @description 327차 — 어종별 손질 부산물 그림 목록(머리 · 척추뼈 · 332 가마살 · 332(2) 중골 살 · 혈합육). **자동 생성 — 손으로 고치지 않는다**(`node tools/gemini_trim_art.cjs --bake`).',
     ' *  그림은 `public/trimmings/sp/<종류>_<어종>.png`(긴 변 192px), 텍스처 키는 `trimpart_<종류>_<어종>`.',
     ' */',
     '',
-    "export type TrimPartKind = 'head' | 'spine' | 'kama';",
+    "export type TrimPartKind = 'head' | 'spine' | 'kama' | 'nakaochi' | 'chiai';",
     '',
     '/** 어종 → 그 어종 그림이 있는 부산물 종류 */',
     'export const TRIM_PART_ART: Readonly<Record<string, readonly TrimPartKind[]>> = {',
@@ -364,6 +400,9 @@ function bake() {
     '',
     '/** 같은 생물종(참돔 야간 = 참돔) — 그 어종 그림을 쓴다 */',
     `export const TRIM_PART_ALIAS: Readonly<Record<string, string>> = ${JSON.stringify(alias)};`,
+    '',
+    '/** 332(2) — 중골 살 · 혈합육 그림을 같이 쓰는 어종 → 그림 주인(살색이 같은 어종) */',
+    `export const TRIM_FLESH_OWNER: Readonly<Record<string, string>> = ${JSON.stringify(FLESH_OWNER)};`,
     '',
   ];
   fs.writeFileSync(OUT_TS, lines.join('\n'));
@@ -385,7 +424,7 @@ function sheet(P) {
     // 한글 글꼴은 unifont뿐이다(컨테이너) — 없으면 montage 기본 글꼴(이름이 깨질 수 있다)
     const FONT = '/usr/share/fonts/opentype/unifont/unifont.otf';
     const font = fs.existsSync(FONT) ? ['-font', FONT] : [];
-    execFileSync('montage', [...args, ...font, '-pointsize', '16', '-background', '#f4f1ea', '-tile', k === 'spine' ? '4x' : k === 'kama' ? '5x' : '6x', '-geometry', k === 'spine' ? '380x120+5+5' : '210x170+5+5', dst]);
+    execFileSync('montage', [...args, ...font, '-pointsize', '16', '-background', '#f4f1ea', '-tile', k === 'spine' ? '4x' : k === 'kama' ? '5x' : isFlesh(k) ? '3x' : '6x', '-geometry', k === 'spine' ? '380x120+5+5' : k === 'chiai' ? '320x180+5+5' : '210x170+5+5', dst]);
     console.log(dst);
   }
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -400,7 +439,11 @@ async function main() {
   const jobs = [];
   for (const t of targets(P)) for (const k of P.kinds) if (wants(t.id, t, k)) jobs.push([t, k]);
   console.log(`대상 ${targets(P).length}종 · 종류 ${P.kinds.join(',')} · 그림 ${jobs.length}장 · 모델 ${P.model} · 동시 ${P.jobs}`);
-  if (P.dry) { const t = targets(P)[0]; console.log(P.kinds.includes('kama') ? kamaText(t) : `${headText(t)}\n\n${spineText(t)}`); return; }
+  if (P.dry) {
+    const t = targets(P)[0];
+    console.log(P.kinds.some(isFlesh) ? P.kinds.filter(isFlesh).map((k) => fleshText(t, k)).join('\n\n') : P.kinds.includes('kama') ? kamaText(t) : `${headText(t)}\n\n${spineText(t)}`);
+    return;
+  }
   let next = 0, done = 0, stop = false;
   const worker = async () => {
     while (next < jobs.length && !stop) {

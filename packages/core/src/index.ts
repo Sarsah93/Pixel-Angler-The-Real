@@ -202,7 +202,7 @@ export {
   getButcheryFamily, BUTCHERY_FAMILY_NOTICE, BUTCHERY_IMPLEMENTED_SPECIES, canButcherSpecies,
   BUTCHERY_WIRED_SPECIES, BUTCHERY_ART_PENDING_SPECIES,
   butcheryArtFamily, BUTCHERY_NATIVE_ART_SPECIES,   // 313 — 도마 어종군 단일 출처
-  LOIN_BREAKDOWN_MIN_CM, isLoinBreakdown, butcheryProfileFor,   // 317 — 대방어급 · 참다랑어 = 4덩어리 해체
+  LOIN_BREAKDOWN_MIN_CM, isLoinBreakdown, butcheryProfileFor, LOIN_KAMA_SPECIES, yieldsKama,   // 317 — 대방어급 · 참다랑어 = 4덩어리 해체
 } from './db-schema/ButcheryProfiles.js';
 export type { ButcheryArtFamily } from './db-schema/ButcheryProfiles.js';
 export { KNIFE_SPECS, getBestKnife, isKnifeItem } from './db-schema/KnifeDatabase.js';
@@ -232,7 +232,7 @@ export {
   loinBlockLines, loinSakuCuts, loinSakuPieces, loinValueShare, isLoinStageId, loinTrimBlockOf,
 } from './db-schema/LoinStages.js';
 export type { LoinBlockDef, LoinBlockEdges, LoinStageOptions } from './db-schema/LoinStages.js';
-export { LOIN_SECTIONS, loinBlockOfTask } from './db-schema/ButcherySections.js';
+export { LOIN_SECTIONS, LOIN_SECTIONS_NO_KAMA, loinBlockOfTask } from './db-schema/ButcherySections.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
 export {

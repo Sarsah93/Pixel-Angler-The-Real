@@ -333,6 +333,17 @@ export const LOIN_BREAKDOWN_MIN_CM: Readonly<Record<string, number>> = {
   sevenband_grouper: 80,
 };
 
+/**
+ * 332(2) — **가마살을 따로 내는 해체 어종**(방어류 셋 · 다랑어류 둘 · 새치류 둘).
+ * 큰 바리류(자바리 · 다금바리 · 능성어)는 내지 않는다 — 사용자 결정 「가마살 없는 걸로 … 매운탕용 서더리로 쓰는 용도가 더 많아서」.
+ * 그 몫은 머리에 붙어 나간다(머리 무게 몫이 그만큼 크다).
+ */
+export const LOIN_KAMA_SPECIES: ReadonlySet<string> = new Set([
+  'yellowtail', 'amberjack', 'greater_amberjack', 'bluefin_tuna', 'bigeye_tuna', 'swordfish', 'striped_marlin',
+]);
+/** 332(2) — 이 어종은 해체할 때 가마살을 따로 내는가 */
+export function yieldsKama(speciesId: string): boolean { return LOIN_KAMA_SPECIES.has(speciesId); }
+
 /** 317 — 이 개체는 4덩어리 해체인가(참다랑어 · 대방어급) */
 export function isLoinBreakdown(speciesId: string, lengthCm?: number): boolean {
   if (BUTCHERY_PROFILES[speciesId]?.tree === 'loin') return true;
