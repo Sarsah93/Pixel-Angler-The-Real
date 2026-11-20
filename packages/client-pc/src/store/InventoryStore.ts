@@ -58,7 +58,7 @@ import { migrateCatchItemId, migrateSpeciesId, migrateForageName } from '../data
 import { SHOP_CATALOG, CARD_RIG_ENTRIES, lineWearMultOf, hookStrengthKgOf } from '../data/ShopCatalog.js';
 import { rigViewOf, isPackItem } from './RigParts.js';
 import { itemKeepReason } from './ItemKeepGuard.js';
-import { canonicalItemId } from './ItemIdAlias.js';
+import { canonicalItemId, upgradeButcheryWeightName } from './ItemIdAlias.js';
 
 /** 인벤토리 카테고리 탭 */
 export type InvCategory = 'gear' | 'consumable' | 'food' | 'tackle' | 'lure' | 'quest' | 'etc';
@@ -641,6 +641,7 @@ function seedDefOf(id: string): InvItem | undefined {
  * 별칭이 아니면 받은 것을 그대로 돌려준다. 세이브 로드와 `addItem`(상점 · 제작 · 거래 · 집 보관 · 바닥 줍기 전부)이 거친다.
  */
 export function canonicalizeItem<T extends { id: string }>(t: T): T {
+  t = upgradeButcheryWeightName(t);   // 332차 — 손질 산출물 이름의 옛 무게 표기(1,000g 넘는 것) → 「18.3kg(18,269g)」
   const id = canonicalItemId(t.id);
   if (id === t.id) return t;
   const sd = seedDefOf(itemBaseId(id));   // 282차 — 개체 id는 번호를 떼고 시드를 찾는다

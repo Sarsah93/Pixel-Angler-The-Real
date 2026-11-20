@@ -19,6 +19,14 @@ import { getCephalopodProfile } from '../db-schema/CephalopodProfiles.js';
 import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js';
 import type { CutPoint } from '../types/Butchery.js';
 
+/**
+ * 332 — **확정한 선이 없는 시험용 어종**(농어 공정 · 저장된 확정 표에 없는 id — 어종군은 표에 없는 id의 기본값인 돔류 `@bream`).
+ * 예전에는 농어를 「확정하지 않은 어종」으로 썼는데, 2026-11-20에 사용자가 농어를 확정하면서 그 가정이 깨졌다.
+ * 둥근 생선은 이제 모두 확정한 선이 있다 — 「확정 없음」을 보는 시험은 실제 어종에 기대지 않는다.
+ */
+const BLANK_ID = 'qa_unconfirmed_round';
+const BLANK = { ...getButcheryProfile('sea_bass'), speciesId: BLANK_ID };
+
 const trace = (path: readonly CutPoint[]): CutPoint[] => {
   const o: CutPoint[] = [];
   for (let i = 1; i < path.length; i++) {
@@ -33,7 +41,7 @@ const pinOf = (p: ButcheryProcess, id: 'pin_a' | 'pin_b') => p.stageList.find((s
 
 describe('328 — 지아이뼈 분리: 뼈 줄 위 · 아래 두 칼', () => {
   it('가운데 선을 위 선 → 아래 선으로 가른다 — 시작점에서 벌어지고 끝점에서 만난다', () => {
-    const p = new ButcheryProcess(getButcheryProfile('sea_bass'), 1, { guideOverrides: {} });
+    const p = new ButcheryProcess(BLANK, 1, { guideOverrides: {} });
     for (const id of ['pin_a', 'pin_b'] as const) {
       const c = pinOf(p, id);
       expect(c.ordered, id).toBe(true);
@@ -76,7 +84,7 @@ describe('328 — 지아이뼈 분리: 뼈 줄 위 · 아래 두 칼', () => {
   });
 
   it('순서가 있다 — 첫 칼은 위 선 · 둘째 칼은 아래 선 · 크게 벗어난 선은 실패', () => {
-    const p = new ButcheryProcess(getButcheryProfile('sea_bass'), 1, { guideOverrides: {} });
+    const p = new ButcheryProcess(BLANK, 1, { guideOverrides: {} });
     expect(p.jumpTo('pin_a')).toBe(true);
     p.orientation = p.stage!.orientation;
     const [up, dn] = p.stage!.cut!.guidePaths!;
@@ -95,15 +103,15 @@ describe('328 — 지아이뼈 분리: 뼈 줄 위 · 아래 두 칼', () => {
 
   it('확정한 선이 뼈 줄이다 — 필렛 A만 확정하면 필렛 B는 그 좌우 대칭', () => {
     const line: CutPoint[] = [{ x: 0.13, y: 0.5 }, { x: 0.5, y: 0.47 }, { x: 0.9, y: 0.51 }];
-    const p = new ButcheryProcess(getButcheryProfile('sea_bass'), 1, { guideOverrides: { sea_bass: { pin_a: { guidePath: line } } } });
+    const p = new ButcheryProcess(BLANK, 1, { guideOverrides: { [BLANK_ID]: { pin_a: { guidePath: line } } } });
     const a = pinOf(p, 'pin_a').guidePaths!, b = pinOf(p, 'pin_b').guidePaths!;
     expect(a[0][a[0].length - 1]).toEqual(line[2]);
     expect(b[0]).toEqual(mirror(a[0]));
     expect(b[1]).toEqual(mirror(a[1]));
     // 필렛 B도 확정하면 그 값이 뼈 줄
     const lb: CutPoint[] = [{ x: 0.86, y: 0.52 }, { x: 0.09, y: 0.55 }];
-    const q = new ButcheryProcess(getButcheryProfile('sea_bass'), 1, {
-      guideOverrides: { sea_bass: { pin_a: { guidePath: line }, pin_b: { guidePath: lb } } },
+    const q = new ButcheryProcess(BLANK, 1, {
+      guideOverrides: { [BLANK_ID]: { pin_a: { guidePath: line }, pin_b: { guidePath: lb } } },
     });
     expect(pinOf(q, 'pin_b').guidePaths![0][1]).toEqual(lb[1]);
     expect((pinOf(q, 'pin_b').guidePaths![0][0].y + pinOf(q, 'pin_b').guidePaths![1][0].y) / 2).toBeCloseTo(0.52, 3);
@@ -111,7 +119,7 @@ describe('328 — 지아이뼈 분리: 뼈 줄 위 · 아래 두 칼', () => {
 
   it('편집기에서 두 선을 따로 맞춰 확정하면(선 2개) 가르지 않고 순서만 건다', () => {
     const two: CutPoint[][] = [[{ x: 0.14, y: 0.44 }, { x: 0.9, y: 0.5 }], [{ x: 0.14, y: 0.56 }, { x: 0.9, y: 0.5 }]];
-    const p = new ButcheryProcess(getButcheryProfile('sea_bass'), 1, { guideOverrides: { sea_bass: { pin_a: { guidePaths: two } } } });
+    const p = new ButcheryProcess(BLANK, 1, { guideOverrides: { [BLANK_ID]: { pin_a: { guidePaths: two } } } });
     expect(pinOf(p, 'pin_a').guidePaths).toEqual(two);
     expect(pinOf(p, 'pin_a').ordered).toBe(true);
     expect(pinOf(p, 'pin_b').guidePaths).toEqual(two.map(mirror));
@@ -211,9 +219,11 @@ describe('328 — 비늘치기 뒤 단계의 군 공통값', () => {
     }
   });
 
-  it('확정하지 않은 어종(농어)은 공통값을 쓰고 확정한 어종(강담돔 — 기본선 그대로 확정)은 제 값을 쓴다', () => {
-    const fam = BUTCHERY_GUIDE_OVERRIDES['@amberjack']!;
-    const bass = new ButcheryProcess(getButcheryProfile('sea_bass'), 1);
+  it('확정하지 않은 어종(시험용 빈 어종)은 공통값을 쓰고 확정한 어종(강담돔 — 기본선 그대로 확정)은 제 값을 쓴다', () => {
+    expect(butcheryGuideFamilyKey(BLANK_ID, false)).toBe('@bream');
+    expect(BUTCHERY_GUIDE_OVERRIDES[BLANK_ID]).toBeUndefined();
+    const fam = BUTCHERY_GUIDE_OVERRIDES['@bream']!;
+    const bass = new ButcheryProcess(BLANK, 1);
     expect(bass.stageList.find((s) => s.id === 'vessel_scrub')!.sweepPath).toEqual(fam.vessel_scrub!.sweepPath);
     // 그림 틀을 넘기지 않으면 군 좌표 그대로다(틀이 있으면 그 어종 필렛 그림 자리로 옮겨진다)
     expect(bass.stageList.find((s) => s.id === 'rib_a')!.cut!.guidePath).toEqual(fam.rib_a!.guidePath);

@@ -10,6 +10,7 @@
  *  - **그림이 바뀌기 전에 그은 선은 버린다**(`STALE` 표) — 지아이뼈 분리(`pin_a` · `pin_b`)는 321차(2026-11-12 14:51Z)에
  *    그림이 「한 덩어리」에서 「갈빗대만 뗀 한 면 필렛」으로 바뀌었다. 그 전에 확정한 선은 다른 그림 위의 선이다.
  *    버린 것은 화면에 적는다(기록 `log.jsonl`에는 남긴다 — 무엇을 확정했는지는 지우지 않는다).
+ *    332 — 표의 키는 단계 id · 「<어종>.<단계>」 · 「<어종>.*」(그 어종 전부) 셋을 쓴다.
  *  - `log.jsonl`은 (시각 · 키 · 단계)가 같은 줄을 하나로 보고 시각 순으로 합친다.
  *
  *  --dry : 바꾸지 않고 무엇이 달라지는지만 적는다
@@ -28,6 +29,12 @@ const LOG = path.join(DIR, 'log.jsonl');
 const STALE = {
   pin_a: '2026-11-12T14:51:07.000Z',
   pin_b: '2026-11-12T14:51:07.000Z',
+  // 332 — 중골 긁기: 해체 그림의 척추가 곧은 뼈로 바뀌었다(그 전 선은 물결치던 뼈 위에서 그었다). 이제 기본 선이 2면 옆줄 선의 곧은 맞춤선(뼈 위)이다
+  loin_nakaochi: '2026-11-20T08:00:00.000Z',
+  // 332 — 새치류 온마리 그림을 키웠다(칸 3 → 4px · `boardFit`). 그 전 어종 확정은 작은 그림 자리의 좌표다
+  //  (저장소 정본의 황새치 4단계는 새 그림 자리로 옮겨 두었다 — 시각을 이 값으로 적어 옛 좌표가 다시 이기지 못한다)
+  'swordfish.*': '2026-11-20T08:00:00.000Z',
+  'striped_marlin.*': '2026-11-20T08:00:00.000Z',
 };
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -41,8 +48,9 @@ const readJson = (p) => (fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8'
 const mine = readJson(CAP);
 const theirs = readJson(args[0]);
 
-const isStale = (stageId, at) => {
-  const cut = STALE[stageId];
+/** 낡은 선인가 — 「<어종>.<단계>」 → 「<어종>.*」 → 「<단계>」 순으로 그림이 바뀐 시각을 찾는다 */
+const isStale = (key, stageId, at) => {
+  const cut = STALE[`${key}.${stageId}`] ?? STALE[`${key}.*`] ?? STALE[stageId];
   return !!cut && (typeof at !== 'string' || at < cut);
 };
 
@@ -50,7 +58,7 @@ let added = 0; let replaced = 0; let kept = 0; const dropped = [];
 // 저장소 정본에 이미 든 낡은 선도 함께 걷는다(받은 파일과 같은 규칙)
 for (const key of Object.keys(mine)) {
   for (const id of Object.keys(mine[key] ?? {})) {
-    if (isStale(id, mine[key][id]?.at)) { dropped.push(`${key}.${id} (정본)`); delete mine[key][id]; }
+    if (isStale(key, id, mine[key][id]?.at)) { dropped.push(`${key}.${id} (정본)`); delete mine[key][id]; }
   }
 }
 for (const key of Object.keys(theirs)) {
@@ -58,7 +66,7 @@ for (const key of Object.keys(theirs)) {
   const dst = (mine[key] = mine[key] ?? {});
   for (const id of Object.keys(src)) {
     const t = src[id];
-    if (isStale(id, t?.at)) { dropped.push(`${key}.${id}`); continue; }
+    if (isStale(key, id, t?.at)) { dropped.push(`${key}.${id}`); continue; }
     const m = dst[id];
     if (!m) { dst[id] = t; added++; continue; }
     const same = JSON.stringify({ ...m, at: 0 }) === JSON.stringify({ ...t, at: 0 });

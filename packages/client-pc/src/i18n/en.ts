@@ -132,6 +132,9 @@ const EN_BASE: Record<string, string> = {
   '낚싯대를 손에 착용하면 캐스팅할 수 있습니다 (E 장비창)': 'Equip a rod in your hand to cast (E Equipment)',
   '정말로 집으로 돌아가시겠습니까?': 'Return home now?', '저장 완료': 'Saved', '집 침대에서만 저장할 수 있습니다': 'You can only save at your bed at home',
   '저장되지 않은 진행이 있습니다 — 한 번 더 선택하면 이동합니다': 'Unsaved progress — select again to leave anyway',
+  // 332차 — 브라우저 쪽 이탈 방어(LeaveGuard)
+  '진행 중에는 새로고침이 막혀 있습니다 — 나갈 때는 ESC 메뉴를 쓰세요': 'Reload is blocked while a game is in progress — use the ESC menu to leave',
+  '진행 중에는 뒤로 가기가 막혀 있습니다 — 나갈 때는 ESC 메뉴를 쓰세요': 'Back is blocked while a game is in progress — use the ESC menu to leave',
   // 200차 — 지도 마커 정보 카드
   '미끼 · 채비 · 줄 · 잡은 고기 매입': 'Bait · rigs · line · buys your catch',
   '식재료 · 양념 · 조리도구 · 밑밥 · 쿨러': 'Groceries · seasoning · cookware · chum · coolers',
@@ -1436,10 +1439,11 @@ export const EN_RULES: Rule[] = [
   [/^(맑음|구름많음|흐림|비|진눈깨비|눈|소나기|안개) ([\d.\-]+°C)$/, (m, tr) => `${tr(m[1])} ${m[2]}`],
   // 런타임 조립 아이템명 (119차) — 캡처는 applyTemplate가 재번역한다
   [/^(.+) 내장 밑밥$/, '$1 innards chum'],
-  [/^(.+) 내장 (\d+)g$/, '$1 innards $2g'],
+  // 332차 — 손질 산출물 무게는 1,000g부터 「18.3kg(18,269g)」로 적힌다(둘 다 받는다)
+  [/^(.+) 내장 ((?:[\d.]+kg\()?[\d,]+g\)?)$/, '$1 innards $2'],
   [/^삶은 문어 (\d+)g$/, 'Boiled octopus $1g'],
   [/^지그헤드 (\d+)g$/, 'Jig head $1g'],
-  [/^(.+) 필렛 \((.+)\) (\d+)g$/, '$1 fillet ($2) $3g'],
+  [/^(.+) 필렛 \((.+)\) ((?:[\d.]+kg\()?[\d,]+g\)?)$/, '$1 fillet ($2) $3'],
   // 조립 문자열 (120차 ①) — 수치·코드가 끼어 규칙으로만 풀리는 것들
   // ⚠ 순서 주의 — **구체적인 것부터**. 뒤의 포괄 규칙이 앞에 오면 나머지 캡처가 원문으로 남는다.
   [/^평균 정확도 (\d+)%  ·  손질 스킬 \+(\d+) XP(.*)$/, (m, tr) => `Average accuracy ${m[1]}%  ·  Butchery +${m[2]} XP${tr(m[3])}`],

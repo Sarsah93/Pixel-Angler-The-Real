@@ -83,8 +83,11 @@ const SPECIES = [
   { id: 'bluefin_tuna',        sym: 'BLUEFIN_TUNA',        file: 'pacific_bluefin_tuna.png',  ko: '참다랑어',     mirror: false },
   // 324 — 큰 회유어 셋(4덩어리 해체 — 옆면은 제 그림)
   { id: 'bigeye_tuna',         sym: 'BIGEYE_TUNA',         file: 'bigeye_tuna.png',           ko: '눈다랑어',     mirror: false },
-  { id: 'swordfish',           sym: 'SWORDFISH',           file: 'swordfish.png',             ko: '황새치',       mirror: false },
-  { id: 'striped_marlin',      sym: 'STRIPED_MARLIN',      file: 'striped_marlin.png',        ko: '청새치',       mirror: false },
+  // 332 — 새치류는 긴 주둥이 · 높은 지느러미가 그림 칸을 먹어 몸이 참다랑어의 절반으로 보였다(사용자 리포트 「너무 작음 … 참다랑어와 같은 크기까지」).
+  //  `fit` = 도마 높이를 그만큼 넘겨도 된다(→ `boardFit`) — 1.03이면 칸이 3px → 4px(512 × 216 — 지느러미 끝이 위아래 3px씩 도마 틀을 넘는다).
+  //  주둥이를 뺀 몸길이가 참다랑어 그림 길이와 같아진다. ⚠ 값을 바꾸면 이 두 어종의 온마리 [확정] 선은 낡는다(`f9_merge_captures.cjs` STALE)
+  { id: 'swordfish',           sym: 'SWORDFISH',           file: 'swordfish.png',             ko: '황새치',       mirror: false, fit: 1.03 },
+  { id: 'striped_marlin',      sym: 'STRIPED_MARLIN',      file: 'striped_marlin.png',        ko: '청새치',       mirror: false, fit: 1.03 },
   // 322 — 9종(원본이 생기면 굽는다 — 없으면 건너뛴다. 구운 뒤 core `BUTCHERY_ART_PENDING_SPECIES`에서 뺀다)
   { id: 'gizzard_shad',        sym: 'GIZZARD_SHAD',        file: 'dotted_gizzard_shad.png',   ko: '전어',         mirror: false },
   { id: 'pacific_herring',     sym: 'PACIFIC_HERRING',     file: 'pacific_herring.png',       ko: '청어',         mirror: false },
@@ -237,7 +240,8 @@ function quantize(cells) {
   await browser.close();
 
   // ── TS 출력 ──
-  const fmt = (b) => `const ${b.sym}: PixelFishSprite = {\n  w: ${b.w}, h: ${b.h}, cellPx: ${Math.round(1536 / b.w)},\n`
+  const fitOf = (id) => SPECIES.find((x) => x.id === id)?.fit;
+  const fmt = (b) => `const ${b.sym}: PixelFishSprite = {\n  w: ${b.w}, h: ${b.h}, cellPx: ${Math.round(1536 / b.w)},${fitOf(b.id) ? ` boardFit: ${fitOf(b.id)},` : ''}\n`
     + `  palette: [${b.palette.map((p) => '0x' + p.toString(16).padStart(6, '0')).join(', ')}],\n`
     + `  rows: [\n${b.rows.map((r) => `    '${r}',`).join('\n')}\n  ],\n};\n`;
 

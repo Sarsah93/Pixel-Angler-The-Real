@@ -7,7 +7,7 @@
  *  아이템에는 그 키만 저장되고, 게임을 다시 켜면 텍스처가 없어 아이콘이 비었다(그 어종을 다시 손질할 때까지).
  *
  * 고르는 차례:
- *  ① 어종 그림(Gemini — `trimpart_<종류>_<어종>` · `TrimPartArt` 목록 · BootScene이 싣는다)
+ *  ① 어종 그림(Gemini — `trimpart_<종류>_<어종>` · `TrimPartArt` 목록 · BootScene이 싣는다 · 332 — 가마살 `kama`도 여기)
  *  ② 머리 = **그 어종 도마 그림에서 머리 절단선대로 오려 낸 것**(`trimhead_<어종>` — 도마에서 떨어져 나간 바로 그 조각.
  *     절단선은 손질 창과 같은 단계 좌표라 F9 확정을 그대로 따른다) · 어종군 사진의 원래 어종(감성돔 · 잿방어 · 광어)은 그 사진
  *  ③ 어종군 사진(`trim_head_<군>` · `trim_spine_<군>`)
@@ -202,13 +202,21 @@ export function ensureTrimPartTexture(scene: Phaser.Scene, key: string | undefin
   return !!ensureCutHead(scene, key.slice(CUT_PREFIX.length), key);
 }
 
+/** 332 — 가마살 아이콘 키: 어종 그림(Gemini — 해체 어종 10종). 없으면 undefined(부르는 쪽이 캔버스 도형 `trimloin_kama_*`로) */
+export function trimKamaIconKey(scene: Phaser.Scene, speciesId: string): string | undefined {
+  return trimPartArtKey(scene, speciesId, 'kama');
+}
+
 /**
  * 아이콘 자리에서 — 머리 · 척추뼈 부산물이면 「종류 + 어종」으로 지금 쓸 그림 키를 다시 고른다(옛 세이브의 키를 새 그림으로).
  * 장어 · 해체 결과물처럼 제 굽는 그림이 있는 것(`trim_eel_*` · `trimloin_*`)과 다른 아이템은 건드리지 않는다(undefined).
+ * 332 — 가마살(`trimloin_kama_<어종>` — 옛 캔버스 도형 키)은 그 어종 그림이 있으면 그 그림으로(옛 세이브의 가마살도 새 그림).
  */
 export function trimPartIconOverride(
   scene: Phaser.Scene, item: { iconTexture?: string; speciesId?: string; byproductKind?: string },
 ): string | undefined {
+  const kama = /^trimloin_kama_(.+)$/.exec(item.iconTexture ?? '');
+  if (kama) return trimKamaIconKey(scene, kama[1]);
   const k = item.byproductKind;
   if ((k !== 'head' && k !== 'spine') || !item.speciesId) return undefined;
   const cur = item.iconTexture ?? '';

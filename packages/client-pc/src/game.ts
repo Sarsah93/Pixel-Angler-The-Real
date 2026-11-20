@@ -32,6 +32,7 @@ import { initDevConsolePanel } from './dev/DevConsolePanel.js';
 import { installI18n } from './i18n/I18n.js';
 import { installTextQuality } from './ui/TextQuality.js';
 import { installGameCursor } from './ui/GameCursor.js';
+import { installLeaveGuard } from './LeaveGuard.js';
 import { applyColorAssist, cursorOptionsOf, loadSettings } from './scenes/SettingsScene.js';
 import { installUiClickSound } from './audio/UiClickHook.js';
 import { setGuideTipsEnabled } from './ui/GuideTour.js';
@@ -91,6 +92,8 @@ export function createGame(): Phaser.Game {
   const game = new Phaser.Game(config);
   holder[GAME_KEY] = game;
   installCrashGuards(game);
+  // 332차 — 진행 중인 판을 브라우저 쪽에서 벗어나게 하는 길(새로고침 키 · 뒤로 가기 · 끌어다 놓기 · 오른쪽 클릭 메뉴 …)을 막는다
+  installLeaveGuard(game);
   // 250차 — 게임 마우스 포인터(찌 화살 · 누를 수 있는 곳은 흰 테) · 251차 — 설정 「접근성」의 색 · 테 · 크기
   installGameCursor(game, cursorOptionsOf(loadSettings()));
   // 252차 — 누를 수 있는 곳(손 커서)을 누르면 딸깍

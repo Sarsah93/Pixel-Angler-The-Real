@@ -438,6 +438,8 @@ export { SeabedProfile } from './simulation/SeabedProfile.js';
 
 // Utils
 export { getApproxLunarDay, getLunarDayDisplay } from './utils/LunarCalendar.js';
+// 332 — 손질 산출물 무게 표기(1,000g 이상 = 「18.3kg(18,269g)」)
+export { formatGramsKo, upgradeWeightSuffix } from './utils/WeightFormat.js';
 export type { KstParts } from './utils/KstTime.js';
 export {
   toKstDate, kstParts, kstHour, kstYmd, isNightHour, isNightNow,

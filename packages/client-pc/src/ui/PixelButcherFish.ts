@@ -84,7 +84,8 @@ export type FishPoly = { x: number; y: number }[];
 
 /** 기준 스프라이트로 프레임 산출 — 스테이지가 바뀌어도 이 값은 불변 */
 export function computeFishFrame(ref: PixelFishSprite, geom: PixelFishGeom): PixelFishFrame {
-  const cell = Math.max(2, Math.floor(Math.min(geom.w / ref.w, geom.h / ref.h)));
+  // 332 — `boardFit`(새치류 1.03): 도마 높이를 조금 넘겨도 되는 그림은 칸을 한 단 키운다(몸이 지느러미 · 주둥이에 밀려 작아지지 않게)
+  const cell = Math.max(2, Math.floor(Math.min(geom.w / ref.w, (geom.h * (ref.boardFit ?? 1)) / ref.h)));
   const dw = ref.w * cell, dh = ref.h * cell;
   return {
     cell,

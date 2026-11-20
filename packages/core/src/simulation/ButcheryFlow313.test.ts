@@ -118,8 +118,10 @@ describe('313 — 손질 어종 확대 · 작은 생선 공정 · 어종 그림 
     expect(remapGuidePoint({ x: 0.9, y: 0.9 }, m)).toEqual({ x: 0.8, y: 0.7 });
     expect(remapGuidePoint({ x: 0.5, y: 0.5 }, undefined)).toEqual({ x: 0.5, y: 0.5 });
     // 측면 단계는 옮기고(시메 점 · 머리 선) 개복 뒤 전용 뷰 단계는 그대로(배따기 · 장뜨기)
-    const a = new ButcheryProcess(getButcheryProfile('sea_bass'), 1);
-    const b = new ButcheryProcess(getButcheryProfile('sea_bass'), 1, { guideFrame: m });
+    // 332 — 확정한 선이 없는 시험용 어종(농어 공정)으로 본다 — 어종 확정 좌표는 그림 틀로 옮기지 않는다(농어는 2026-11-20에 확정됐다)
+    const blank = { ...getButcheryProfile('sea_bass'), speciesId: 'qa_unconfirmed_round' };
+    const a = new ButcheryProcess(blank, 1);
+    const b = new ButcheryProcess(blank, 1, { guideFrame: m });
     const st = (p: ButcheryProcess, id: string) => p.stageList.find((s) => s.id === id)!;
     expect(st(b, 'ikejime').tapPoint).toEqual(remapGuidePoint(st(a, 'ikejime').tapPoint!, m));
     expect(st(b, 'head_base').cut!.guidePath).toEqual(st(a, 'head_base').cut!.guidePath.map((q) => remapGuidePoint(q, m)));

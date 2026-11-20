@@ -10,6 +10,7 @@
 
 import { refreshCondition, type InvItem } from './InventoryStore.js';
 import { migrateLegacyPackItem } from '../data/CropItems.js';
+import { upgradeButcheryWeightName } from './ItemIdAlias.js';
 
 export type FridgeSection = 'freezer' | 'fridge';
 
@@ -93,8 +94,9 @@ class FridgeStoreManager {
     this.fridge = new Array(FRIDGE_SLOTS).fill(null);
     if (!s) return;
     // 243차 — 242차까지 「한 팩」으로 거둔 수확물은 팩 id로(가방과 같은 이전)
-    (s.freezer ?? []).forEach((it, i) => { if (i < FREEZER_SLOTS) this.freezer[i] = it ? migrateLegacyPackItem({ ...it }) : null; });
-    (s.fridge ?? []).forEach((it, i) => { if (i < FRIDGE_SLOTS) this.fridge[i] = it ? migrateLegacyPackItem({ ...it }) : null; });
+    // 332차 — 손질 산출물 이름의 옛 무게 표기(1,000g 넘는 것)는 새 표기로(가방과 같다)
+    (s.freezer ?? []).forEach((it, i) => { if (i < FREEZER_SLOTS) this.freezer[i] = it ? upgradeButcheryWeightName(migrateLegacyPackItem({ ...it })) : null; });
+    (s.fridge ?? []).forEach((it, i) => { if (i < FRIDGE_SLOTS) this.fridge[i] = it ? upgradeButcheryWeightName(migrateLegacyPackItem({ ...it })) : null; });
   }
 
   resetAll(): void {

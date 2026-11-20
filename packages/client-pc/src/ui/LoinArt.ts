@@ -9,6 +9,13 @@
  *    덩어리를 떼어 낸 반쪽은 그 자리에 **뼈대**(척추 · 가시)를 그린다 — 반대편 살이 아직 있으면 그 살 위에, 없으면 도마가 비친다.
  *  - 다듬기(FLESH_UP): 덩어리 넷을 도마에 늘어놓은 뷰. 모양 · 자리는 core `LOIN_BLOCKS` · `loinBlockEdges`(유도선과 같은 식).
  *  - 결과물 아이콘(`trimloin_*`) · 사쿠 회썰기 그림(`sakuart_*`)은 캔버스로 굽는다 — 세이브에 남은 키는 `ensureLoinTexture`가 되살린다.
+ *
+ * 332차 — **척추는 곧고, 살은 그은 칼집대로 갈린다**(사용자 리포트 「뼈 모양이 일자가 아니라, 지렁이처럼 휘어있는 경우 … 일자뼈 모양으로」 ·
+ *  「옆줄칼집을 가운데로 맞춰놨을 때 … 그 경계점 기준으로 그림이 보여져야 하는데, 지금은 … 휘어진 뼈 기준으로 살이 분리된 그림」).
+ *  - 옛 그림은 열마다 「살 높이 48%」(`LoinColumns.mid`)를 척추 · 등/배 경계로 함께 썼다 — 몸 윤곽이 울퉁불퉁한 그림에서는 그 줄이 물결친다.
+ *  - 지금은 `loinAxis`가 둘을 가른다: **가르는 줄** `div` = 그 면에 실제로 그은 옆줄 칼집(유도선 · [확정] 선) · **척추** `spine` = 그 줄의 곧은 맞춤선.
+ *    등살 · 뱃살을 뗀 자리는 `div`에서 갈리고, 뼈대(척추 · 가시) · 드러난 살의 그늘 · 중골 살은 `spine`을 따른다.
+ *  - 기본 옆줄 선 · 중골 긁기 선도 곧다(`loinSideGeometry` — 중골 긁기 = 2면 옆줄 선의 곧은 맞춤선, 곧 2면에서 보이는 척추 위).
  */
 import Phaser from 'phaser';
 import {
@@ -141,16 +148,14 @@ export type LoinUV = readonly [number, number];
 export interface LoinGuideShape {
   a?: Partial<Record<keyof LoinSideLines, LoinUV[]>>;
   b?: Partial<Record<keyof LoinSideLines, LoinUV[]>>;
-  nakaochi?: LoinUV[];
 }
 /** 328 — 기준 어종에서 확정한 측면 선(도마 정규화) — 없는 선은 기본 모양을 쓴다 */
 export interface LoinConfirmedLines {
   a?: Partial<LoinSideLines>;
   b?: Partial<LoinSideLines>;
-  nakaochi?: CutPoint[];
 }
 
-/** 328 — 확정한 측면 선(도마 정규화) → 모양(u · v). 2면 · 중골 긁기는 좌우로 뒤집힌 그림 자리라 열을 뒤집어 잰다 */
+/** 328 — 확정한 측면 선(도마 정규화) → 모양(u · v). 2면은 좌우로 뒤집힌 그림 자리라 열을 뒤집어 잰다 */
 export function loinShapeFromLines(
   sprites: ButcherSpriteSet, cols: LoinColumns, boardW: number, boardH: number, lines: LoinConfirmedLines,
 ): LoinGuideShape {
@@ -171,12 +176,25 @@ export function loinShapeFromLines(
   const sideOf = (l: Partial<LoinSideLines> | undefined, mirror: boolean): LoinGuideShape['a'] => ({
     mid: conv(l?.mid, mirror), back: conv(l?.back, mirror), belly: conv(l?.belly, mirror),
   });
-  return { a: sideOf(lines.a, false), b: sideOf(lines.b, true), nakaochi: conv(lines.nakaochi, true) };
+  return { a: sideOf(lines.a, false), b: sideOf(lines.b, true) };
+}
+
+/** 332 — 곧은 선 맞춤(최소제곱): 점 (c, r)들을 r = a + b·c 로. 점이 하나뿐이거나 열이 한 곳에 몰려 있으면 수평선 */
+function fitLine(pts: readonly { c: number; r: number }[]): { a: number; b: number } {
+  const n = pts.length;
+  if (!n) return { a: 0, b: 0 };
+  let sc = 0, sr = 0;
+  for (const p of pts) { sc += p.c; sr += p.r; }
+  const mc = sc / n, mr = sr / n;
+  let num = 0, den = 0;
+  for (const p of pts) { num += (p.c - mc) * (p.r - mr); den += (p.c - mc) * (p.c - mc); }
+  const b = den > 1e-6 ? num / den : 0;
+  return { a: mr - b * mc, b };
 }
 
 /**
  * 해체 측면 유도선(도마 생선 틀 정규화) — 그림을 그리는 식(`computeFishFrame`)과 같은 자리.
- *  옆줄 = mid · 등 = 위 끝 + 높이 10% · 배 = 아래 끝 − 10% · 중골 긁기 = 2면 뼈대를 훑는 지그재그.
+ *  옆줄 = 몸통 가운데 높이의 곧은 맞춤선(332) · 등 = 위 끝 + 높이 10% · 배 = 아래 끝 − 10% · 중골 긁기 = 2면 옆줄 선의 곧은 맞춤선(332 — 척추 위).
  *  2면(FLIP)은 그림이 좌우로 뒤집힌 자리(머리 오른쪽) — 칼은 늘 머리 쪽에서 꼬리 쪽으로.
  *  328 — `shape`(기준 어종에서 확정한 선의 모양)가 있으면 그 선은 모양대로 이 어종의 몸통 열에 놓는다.
  */
@@ -199,27 +217,58 @@ export function loinSideGeometry(
   });
   const N = 7;
   const colAt = (k: number): number => Math.round(cols.c0 + (cols.c1 - 1 - cols.c0) * (k / (N - 1)));
+  /** 332 — 옆줄 선은 곧다: 모양(u · v)으로 놓은 점들(없으면 열마다 가운데 높이)의 곧은 맞춤선을 머리 쪽 ~ 꼬리 쪽 두 점으로 */
+  const straightMid = (sh: LoinUV[] | undefined, mirror: boolean): CutPoint[] => {
+    const src: { c: number; r: number }[] = [];
+    if (sh) {
+      for (const [u, v] of sh) {
+        const c = cols.c0 + u * span;
+        const ci = Math.max(cols.c0, Math.min(cols.c1 - 1, Math.round(c)));
+        src.push({ c, r: cols.top[ci] + (cols.bot[ci] - cols.top[ci]) * Math.max(-0.3, Math.min(1.3, v)) });
+      }
+    } else {
+      for (let c = cols.c0; c <= cols.c1 - 1; c++) src.push({ c, r: cols.mid[c] });
+    }
+    const ln = fitLine(src);
+    const cA = sh ? Math.min(...src.map((p) => p.c)) : cols.c0;
+    const cB = sh ? Math.max(...src.map((p) => p.c)) : cols.c1 - 1;
+    return [pt(cA, ln.a + ln.b * cA, mirror), pt(cB, ln.a + ln.b * cB, mirror)];
+  };
   const lines = (mirror: boolean): LoinSideLines => {
-    const mid: CutPoint[] = [], back: CutPoint[] = [], belly: CutPoint[] = [];
+    const back: CutPoint[] = [], belly: CutPoint[] = [];
     for (let k = 0; k < N; k++) {
       const c = colAt(k), H = cols.bot[c] - cols.top[c];
-      mid.push(pt(c, cols.mid[c], mirror));
       back.push(pt(c, cols.top[c] + H * 0.1, mirror));
       belly.push(pt(c, cols.bot[c] - H * 0.1, mirror));
     }
     const sh = mirror ? shape?.b : shape?.a;
     return {
-      mid: sh?.mid ? place(sh.mid, mirror) : mid,
+      mid: straightMid(sh?.mid, mirror),
       back: sh?.back ? place(sh.back, mirror) : back,
       belly: sh?.belly ? place(sh.belly, mirror) : belly,
     };
   };
-  const nak: CutPoint[] = [];
-  for (let k = 0; k < 8; k++) {
-    const c = Math.round(cols.c0 + 1 + (cols.c1 - 2 - cols.c0) * (k / 7)), H = cols.bot[c] - cols.top[c];
-    nak.push(pt(c, k % 2 === 0 ? cols.top[c] + H * 0.24 : cols.bot[c] - H * 0.24, true));
-  }
-  return { a: lines(false), b: lines(true), nakaochi: shape?.nakaochi ? place(shape.nakaochi, true) : nak };
+  const a = lines(false), b = lines(true);
+  return { a, b, nakaochi: loinNakaochiLine(b.mid, sprites, cols, boardW, boardH) };
+}
+
+/**
+ * 332 — **중골 긁기 선 = 2면에서 보이는 척추 위**: 2면 옆줄 선(도마 틀 정규화 — 그 어종에 [확정]한 선이 있으면 그 선)의 곧은 맞춤선을
+ * 몸통 열 안쪽(머리 쪽 한 칸 · 꼬리 쪽 두 칸 들임)에서 머리 → 꼬리 두 점으로. 그림의 척추(`loinAxis.spine`)와 같은 식이라 선과 뼈가 한 자리다.
+ */
+export function loinNakaochiLine(
+  bMid: readonly CutPoint[], sprites: ButcherSpriteSet, cols: LoinColumns, boardW: number, boardH: number,
+): CutPoint[] {
+  const spr = sprites.whole;
+  const f = computeFishFrame(spr, { x: 0, y: 0, w: boardW, h: boardH });
+  const r4 = (v: number): number => Math.round(v * 1e4) / 1e4;
+  const src = bMid.map((p) => ({ c: spr.w - 1 - ((p.x * boardW - f.ox) / f.cell - 0.5), r: (p.y * boardH - f.oy) / f.cell }));
+  const ln = fitLine(src.length ? src : [{ c: cols.c0, r: cols.mid[cols.c0] }]);
+  const at = (c: number): CutPoint => ({
+    x: r4((f.ox + (spr.w - 1 - c + 0.5) * f.cell) / boardW),
+    y: r4((f.oy + (ln.a + ln.b * c) * f.cell) / boardH),
+  });
+  return [at(cols.c0 + 1), at(Math.max(cols.c0 + 2, cols.c1 - 2))];
 }
 
 /** 한 면의 해체 진행(그 면의 옆줄 칼집 · 등살 · 뱃살을 뗐는가) */
@@ -231,15 +280,48 @@ export interface LoinSideState {
   b: LoinSideProgress;
   /** 중골 살 긁기 진행 0~1(1 = 끝) */
   nakaochi: number;
-  /** 지금 보이는 면의 옆줄 칼자국(도마 틀 정규화) — 그 면 덩어리가 아직 하나라도 붙어 있으면 */
+  /** 지금 보이는 면에 그은 옆줄 칼집(도마 틀 정규화) — 그 면의 옆줄 칼집을 끝냈으면. 332 — 등살 · 뱃살이 이 줄에서 갈리고 척추가 이 줄의 곧은 맞춤선이다 */
   midCut?: CutPoint[];
 }
 
-/** 뼈 칸인가 — 척추(옆줄 높이 띠) · 가시(척추에서 꼬리 쪽으로 비스듬히 뻗는 줄) */
-function boneAt(cols: LoinColumns, c: number, r: number, half: LoinPart): 0 | 1 | 2 {
-  const m = cols.mid[c], H = cols.bot[c] - cols.top[c];
+/**
+ * 332 — 해체 측면의 두 줄(스프라이트 행 · BASE 열 기준).
+ *  `div[c]` = 등살 · 뱃살을 가르는 행 — 그 면에 그은 옆줄 칼집(`cut` — 열 · 행 점들). 없으면 몸통 가운데 높이의 곧은 맞춤선.
+ *  `spine[c]` = 척추 — 언제나 곧다(가르는 줄의 곧은 맞춤선). `thick` = 척추 띠 반 두께(몸통에서 가장 높은 열 기준 — 열마다 달라지지 않는다).
+ */
+export interface LoinAxis { div: number[]; spine: number[]; thick: number }
+export function loinAxis(cols: LoinColumns, cut?: readonly { c: number; r: number }[]): LoinAxis {
+  const n = cols.top.length;
+  const body: { c: number; r: number }[] = [];
+  let maxH = 1;
+  for (let c = cols.c0; c <= cols.c1; c++) {
+    body.push({ c, r: cols.mid[c] });
+    maxH = Math.max(maxH, cols.bot[c] - cols.top[c]);
+  }
+  const pts = cut && cut.length >= 2 ? [...cut].sort((p, q) => p.c - q.c) : undefined;
+  const base = fitLine(body);
+  const div: number[] = new Array(n).fill(0);
+  for (let c = 0; c < n; c++) {
+    if (!pts) { div[c] = base.a + base.b * c; continue; }
+    // 꺾은선 보간 — 선 밖의 열은 끝 마디를 그대로 늘인다
+    let i = 0;
+    while (i < pts.length - 2 && c > pts[i + 1].c) i++;
+    const p = pts[i], q = pts[i + 1];
+    const t = Math.abs(q.c - p.c) > 1e-6 ? (c - p.c) / (q.c - p.c) : 0;
+    div[c] = p.r + (q.r - p.r) * t;
+  }
+  const fit: { c: number; r: number }[] = [];
+  for (let c = cols.c0; c <= cols.c1; c++) fit.push({ c, r: div[c] });
+  const ln = fitLine(fit);
+  const spine = div.map((_, c) => ln.a + ln.b * c);
+  return { div, spine, thick: Math.max(0.9, maxH * 0.04) };
+}
+
+/** 뼈 칸인가 — 척추(곧은 띠) · 가시(척추에서 꼬리 쪽으로 비스듬히 뻗는 줄) */
+function boneAt(cols: LoinColumns, ax: LoinAxis, c: number, r: number, half: LoinPart): 0 | 1 | 2 {
+  const m = ax.spine[c];
   const y = r + 0.5;
-  if (Math.abs(y - m) <= Math.max(0.9, H * 0.045)) return (c - cols.c0) % 3 === 0 ? 2 : 1;
+  if (Math.abs(y - m) <= ax.thick) return (c - cols.c0) % 3 === 0 ? 2 : 1;
   const d = half === 'back' ? m - y : y - m;
   const lim = half === 'back' ? (m - cols.top[c]) * 0.82 : (cols.bot[c] - m) * 0.74;
   if (d <= 0 || d > lim) return 0;
@@ -268,6 +350,11 @@ export function drawLoinSide(
   const L = loinLook(st.speciesId);
   const side = mirror ? st.b : st.a, other = mirror ? st.a : st.b;
   const cols = st.cols;
+  // 332 — 그 면에 그은 옆줄 칼집을 그림 열 · 행으로 옮겨 「가르는 줄」로, 그 곧은 맞춤선을 척추로
+  const ax = loinAxis(cols, st.midCut?.map((p) => {
+    const scx = (geom.x + p.x * geom.w - ox) / cell - 0.5;
+    return { c: mirror ? spr.w - 1 - scx : scx, r: (geom.y + p.y * geom.h - oy) / cell };
+  }));
   const pal = spr.palette;
   for (let r = 0; r < spr.h; r++) {
     const rowCols: (number | null)[] = new Array(spr.w).fill(null);
@@ -278,14 +365,14 @@ export function drawLoinSide(
       const sc = mirror ? spr.w - 1 - c : c;
       let col: number | null = pal[AB.indexOf(ch)] ?? 0;
       if (c >= cols.c0 && c <= cols.c1) {
-        const half: LoinPart = r + 0.5 < cols.mid[c] ? 'back' : 'belly';
+        const half: LoinPart = r + 0.5 < ax.div[c] ? 'back' : 'belly';
         if (side[half]) {
-          const bone = boneAt(cols, c, r, half);
+          const bone = boneAt(cols, ax, c, r, half);
           if (!other[half]) {
             // 반대편 살 위에 드러난 뼈대 — 살은 척추 가까이 짙고 바깥으로 밝다 · 결(근절) 줄무늬
             if (bone) col = bone === 2 ? L.boneDark : L.bone;
             else {
-              const m = cols.mid[c], edge = half === 'back' ? cols.top[c] : cols.bot[c];
+              const m = ax.spine[c], edge = half === 'back' ? cols.top[c] : cols.bot[c];
               const t = Math.min(1, Math.abs(r + 0.5 - m) / Math.max(1, Math.abs(edge - m)));
               const base = half === 'back' ? L.flesh : L.belly;
               col = t < 0.18 ? L.chiai : t < 0.35 ? L.fleshDark : base;
@@ -297,7 +384,7 @@ export function drawLoinSide(
             if (bone) col = bone === 2 ? L.boneDark : L.bone;
             else {
               const keep = (hash(c, r) % 100) / 100 < 0.55 * (1 - st.nakaochi);
-              const nearSpine = Math.abs(r + 0.5 - cols.mid[c]) < (cols.bot[c] - cols.top[c]) * 0.3;
+              const nearSpine = Math.abs(r + 0.5 - ax.spine[c]) < (cols.bot[c] - cols.top[c]) * 0.3;
               col = keep && nearSpine ? L.remnant : null;
             }
           }

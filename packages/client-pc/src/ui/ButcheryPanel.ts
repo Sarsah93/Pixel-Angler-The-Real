@@ -29,11 +29,11 @@ import {
   isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE, stageGuideRemap, filletGuideView, invertGuideRemap,
   butcheryProfileFor, buildButcheryStages, applyGuideOverrides, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE,
   loinValueShare, loinSakuPieces, loinSakuCuts, loinBlockOfTask, loinBlockIndex, loinTrimBlockOf,
-  BUTCHERY_GUIDE_OVERRIDES,
+  BUTCHERY_GUIDE_OVERRIDES, formatGramsKo,
 } from '@tra/core';
 import type { ButcheryGuideOverride, GuideFrameRemap, LoinPart, LoinSide, LoinStageOptions, ButcheryProfile } from '@tra/core';
 import {
-  drawLoinSide, drawLoinBlocks, loinColumnsFor, loinSideGeometry, loinShapeFromLines, ensureLoinTexture, loinIconKey,
+  drawLoinSide, drawLoinBlocks, loinColumnsFor, loinSideGeometry, loinShapeFromLines, loinNakaochiLine, ensureLoinTexture, loinIconKey,
   type LoinColumns, type LoinSideState, type LoinBlocksState, type LoinGuideShape,
 } from './LoinArt.js';
 
@@ -49,7 +49,7 @@ import { DraggablePanel, applyScreenFixed } from './DraggablePanel.js';
 import { GuideTour, maybeStartTour, type TourOptions } from './GuideTour.js';
 import { fitTextHeight, clampTextWidth } from './TextFit.js';
 import { getFishColors } from './FishTemplateRenderer.js';
-import { trimHeadIconKey, trimSpineIconKey, ensureTintedFillet } from './TrimPartIcons.js';
+import { trimHeadIconKey, trimSpineIconKey, trimKamaIconKey, ensureTintedFillet } from './TrimPartIcons.js';
 import { drawPixelButcherFish, butcherSpritesFor, computeFishFrame, butcherFamilyOf, butcherGuideFrame, butcherFilletFrames, butcherPinLine, butcherTailLines, butcherVariantFrame, BUTCHER_FISH_W0, BUTCHER_FISH_H0, type PixelFishState } from './PixelButcherFish.js';
 import { speciesFilletIconKey } from './FilletSpeciesIcons.js';
 import { SASHIMI_GUIDE_TEXTURE, guideFrameName, hasGuideFrames } from '../data/SashimiGuideFrames.js';
@@ -1167,7 +1167,7 @@ export class ButcheryPanel extends DraggablePanel {
             ...base,
             // 스택 가능한 폐기물(부리·연골 등)은 어종 무관 공유 id, 식용 부산물은 개체별 id
             id: def.stack > 1 ? `inv_ceph_${def.id}` : `inv_ceph_${def.id}_${speciesId}_${seq}`,
-            name: def.stack > 1 ? def.nameKo : `${nameKo} ${def.nameKo} ${g}g`,
+            name: def.stack > 1 ? def.nameKo : `${nameKo} ${def.nameKo} ${formatGramsKo(g)}`,
             icon: '', iconTexture: cephByproductIcon(def.id, speciesId),
             // ⚠ 'viscera'는 **내장류에만** — 전 부산물에 박으면 몸통살·통마리에 인벤 우클릭
             //   '만들기'(내장→밑밥 전환)가 떠서 메인 수율이 밑밥으로 갈리는 함정 (098차 정정)
@@ -1181,23 +1181,23 @@ export class ButcheryPanel extends DraggablePanel {
       }
       switch (y) {
         case 'head':
-          rows.push({ key: 'head', qty: 1, tpl: { ...base, id: `inv_byp_head_${speciesId}_${seq}`, name: `${nameKo} 머리 ${wts.headG}g`, icon: '', iconTexture: (this.isEel ? ensureEelTrimTexture(this.scene, speciesId, 'head') : undefined) ?? this.trimHeadKey(speciesId), byproductKind: 'head', basePrice: Math.max(200, wts.headG * 3), speciesId, weightG: wts.headG } });
+          rows.push({ key: 'head', qty: 1, tpl: { ...base, id: `inv_byp_head_${speciesId}_${seq}`, name: `${nameKo} 머리 ${formatGramsKo(wts.headG)}`, icon: '', iconTexture: (this.isEel ? ensureEelTrimTexture(this.scene, speciesId, 'head') : undefined) ?? this.trimHeadKey(speciesId), byproductKind: 'head', basePrice: Math.max(200, wts.headG * 3), speciesId, weightG: wts.headG } });
           break;
         case 'viscera':
           rows.push({ key: 'viscera', qty: 1, tpl: { ...base, id: 'inv_byp_guts', name: '생선 내장', icon: '', iconTexture: 'trim_guts', byproductKind: 'viscera', basePrice: 300, condProfile: 'viscera' } });
           break;
         case 'filletA':
         case 'filletB':
-          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`, icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'ribs') ?? 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
+          rows.push({ key: y, qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_filletribs_${speciesId}_${seq}_${y === 'filletA' ? 'a' : 'b'}`, name: `껍질과 갈빗대가 붙어있는 ${nameKo} 필렛 ${formatGramsKo(wts.filletG)}`, icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'ribs') ?? 'trim_fillet_ribs', basePrice: Math.max(1000, wts.filletG * 6), speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm } });
           break;
         case 'spine':
           // 315 — 장어 중골은 「뼈」(뼈튀김 · 육수) · 그림은 그 장어의 뼈 층
-          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} ${this.isEel ? '뼈' : '척추뼈'} ${wts.spineG}g`, icon: '', iconTexture: (this.isEel ? ensureEelTrimTexture(this.scene, speciesId, 'spine') : undefined) ?? trimSpineIconKey(this.scene, speciesId), byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
+          rows.push({ key: 'spine', qty: 1, tpl: { ...base, id: `inv_byp_spine_${speciesId}_${seq}`, name: `${nameKo} ${this.isEel ? '뼈' : '척추뼈'} ${formatGramsKo(wts.spineG)}`, icon: '', iconTexture: (this.isEel ? ensureEelTrimTexture(this.scene, speciesId, 'spine') : undefined) ?? trimSpineIconKey(this.scene, speciesId), byproductKind: 'spine', basePrice: Math.max(200, wts.spineG * 3), speciesId, weightG: wts.spineG } });
           break;
         case 'rib':
           // 필렛 A/B 각각의 갈빗대 → **2개** (사용자 지시 2026-07-31)
           // 재장착 = 필렛 1장 세션 → 갈빗대 1개 / 원물 통짜 = 2개
-          rows.push({ key: 'rib', qty: this.resumed ? 1 : 2, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${Math.max(1, Math.round(wts.ribG / 2))}g`, icon: '', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 2), speciesId, weightG: Math.max(1, Math.round(wts.ribG / 2)) } });
+          rows.push({ key: 'rib', qty: this.resumed ? 1 : 2, tpl: { ...base, id: `inv_byp_rib_${speciesId}_${seq}`, name: `${nameKo} 갈빗대뼈 ${formatGramsKo(Math.max(1, Math.round(wts.ribG / 2)))}`, icon: '', iconTexture: `trim_rib_${fam}`, byproductKind: 'rib', basePrice: Math.max(200, wts.ribG * 2), speciesId, weightG: Math.max(1, Math.round(wts.ribG / 2)) } });
           break;
         case 'pin':
           rows.push({ key: 'pin', qty: this.resumed ? 1 : 2, tpl: { ...base, id: 'inv_byp_pin', name: '생선 지아이뼈', icon: '', iconTexture: 'trim_pin', byproductKind: 'pin', basePrice: 200 } });
@@ -1224,7 +1224,7 @@ export class ButcheryPanel extends DraggablePanel {
             tpl: {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletskin_${speciesId}_${seq}`,
-              name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${sw}g`,
+              name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${formatGramsKo(sw)}`,
               icon: '', iconTexture: speciesFilletIconKey(this.scene, speciesId, 'skin') ?? `trim_fillet_skinonly_${fam}`,
               basePrice: price,
               speciesId, weightG: sw, lengthCm: this.source.lengthCm,
@@ -1253,7 +1253,7 @@ export class ButcheryPanel extends DraggablePanel {
             tpl: {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletengw_${speciesId}_${seq}_${n}`,
-              name: `껍질과 엔가와가 붙어있는 ${nameKo} 필렛 ${wts.filletG}g`,
+              name: `껍질과 엔가와가 붙어있는 ${nameKo} 필렛 ${formatGramsKo(wts.filletG)}`,
               icon: '', iconTexture: tex,
               basePrice: Math.max(1000, wts.filletG * 6),
               speciesId, weightG: wts.filletG, lengthCm: this.source.lengthCm,
@@ -1268,7 +1268,7 @@ export class ButcheryPanel extends DraggablePanel {
             tpl: {
               ...base, subCategory: '손질 필렛',
               id: `inv_engwskin_${speciesId}_${seq}_${InventoryStore.nextCatchSeq()}`,
-              name: `껍질이 붙어있는 ${nameKo} 엔가와 ${wts.engawaG}g`,
+              name: `껍질이 붙어있는 ${nameKo} 엔가와 ${formatGramsKo(wts.engawaG)}`,
               icon: '', iconTexture: 'trim_engawa_skin',
               basePrice: Math.max(400, wts.engawaG * 20),   // 엔가와 = 지느러미살 프리미엄
               speciesId, weightG: wts.engawaG, lengthCm: this.source.lengthCm,
@@ -1293,7 +1293,7 @@ export class ButcheryPanel extends DraggablePanel {
             tpl: {
               ...base, subCategory: '손질 필렛',
               id: `inv_filletskin_${speciesId}_${seq}`,
-              name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${fw}g`,
+              name: `껍질이 붙어있는 ${nameKo} 순살 필렛 ${formatGramsKo(fw)}`,
               icon: '', iconTexture: 'trim_fillet_skinonly_halibut',
               basePrice: price,
               speciesId, weightG: fw, lengthCm: this.source.lengthCm,
@@ -1305,7 +1305,7 @@ export class ButcheryPanel extends DraggablePanel {
         case 'kama': {
           // 가마살 — 머리를 떼며 함께 나오는 아가미 뒤 턱밑살(양쪽 둘 · 구이)
           const g = Math.max(1, Math.round((this.source.weightG ?? 800) * 0.025));
-          rows.push({ key: 'kama', qty: 2, tpl: { ...base, id: `inv_kama_${speciesId}_${seq}`, name: `${nameKo} 가마살 ${g.toLocaleString()}g`, icon: '', iconTexture: this.loinIcon('kama'), basePrice: Math.max(500, Math.round(this.marketPerG() * g * 1.1)), speciesId, weightG: g, originRegion: this.source.originRegion } });
+          rows.push({ key: 'kama', qty: 2, tpl: { ...base, id: `inv_kama_${speciesId}_${seq}`, name: `${nameKo} 가마살 ${formatGramsKo(g)}`, icon: '', iconTexture: trimKamaIconKey(this.scene, speciesId) ?? this.loinIcon('kama'), basePrice: Math.max(500, Math.round(this.marketPerG() * g * 1.1)), speciesId, weightG: g, originRegion: this.source.originRegion } });
           break;
         }
         case 'loinBlock': {
@@ -1314,12 +1314,12 @@ export class ButcheryPanel extends DraggablePanel {
           if (!blk) break;
           const g = this.loinBlockGrams(this.process.profile, this.source, blk.part);
           const price = Math.max(1000, Math.round(Math.max(1000, InventoryStore.getMarketValue(this.source)) * loinValueShare(speciesId, blk.part)));
-          rows.push({ key: 'loinBlock', qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: this.loinBlockItemId(blk.side, blk.part), name: `껍질 붙은 ${nameKo} ${blk.part === 'back' ? '등살' : '뱃살'} 덩어리 (${this.loinGradeNow()}) ${g.toLocaleString()}g`, icon: '', iconTexture: this.loinIcon(blk.part), basePrice: price, speciesId, weightG: g, lengthCm: this.source.lengthCm, originRegion: this.source.originRegion } });
+          rows.push({ key: 'loinBlock', qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: this.loinBlockItemId(blk.side, blk.part), name: `껍질 붙은 ${nameKo} ${blk.part === 'back' ? '등살' : '뱃살'} 덩어리 (${this.loinGradeNow()}) ${formatGramsKo(g)}`, icon: '', iconTexture: this.loinIcon(blk.part), basePrice: price, speciesId, weightG: g, lengthCm: this.source.lengthCm, originRegion: this.source.originRegion } });
           break;
         }
         case 'nakaochi': {
           const g = Math.max(1, Math.round((this.source.weightG ?? 800) * 0.03));
-          rows.push({ key: 'nakaochi', qty: 1, tpl: { ...base, id: `inv_nakaochi_${speciesId}_${seq}`, name: `${nameKo} 중골 살 ${g.toLocaleString()}g`, icon: '', iconTexture: this.loinIcon('nakaochi'), basePrice: Math.max(300, Math.round(this.marketPerG() * g * 0.9)), speciesId, weightG: g, originRegion: this.source.originRegion } });
+          rows.push({ key: 'nakaochi', qty: 1, tpl: { ...base, id: `inv_nakaochi_${speciesId}_${seq}`, name: `${nameKo} 중골 살 ${formatGramsKo(g)}`, icon: '', iconTexture: this.loinIcon('nakaochi'), basePrice: Math.max(300, Math.round(this.marketPerG() * g * 0.9)), speciesId, weightG: g, originRegion: this.source.originRegion } });
           break;
         }
         case 'saku': {
@@ -1335,7 +1335,7 @@ export class ButcheryPanel extends DraggablePanel {
           const sg = Math.max(1, Math.round(blockG * (1 - LOIN_TRIM_SHARE.chiai - LOIN_TRIM_SHARE.skin) / n));
           const grade = this.loinGradeNow();
           const gk = ({ 특: 's', 상: 'a', 중: 'b', 하: 'c' } as Record<string, string>)[grade] ?? 'b';
-          rows.push({ key: 'saku', qty: n, tpl: { ...base, subCategory: '손질 필렛', id: `inv_fillet_${speciesId}_${this.loinSeq}_saku_${b.part}_${gk}`, name: `${nameKo} ${b.part === 'back' ? '등살' : '뱃살'} 사쿠 (${grade}) ${sg.toLocaleString()}g`, icon: '', iconTexture: this.loinIcon(b.part === 'back' ? 'sakuback' : 'sakubelly'), basePrice: Math.max(300, Math.round(blockPrice / n)), speciesId, weightG: sg, lengthCm: this.source.lengthCm, originRegion: this.source.originRegion } });
+          rows.push({ key: 'saku', qty: n, tpl: { ...base, subCategory: '손질 필렛', id: `inv_fillet_${speciesId}_${this.loinSeq}_saku_${b.part}_${gk}`, name: `${nameKo} ${b.part === 'back' ? '등살' : '뱃살'} 사쿠 (${grade}) ${formatGramsKo(sg)}`, icon: '', iconTexture: this.loinIcon(b.part === 'back' ? 'sakuback' : 'sakubelly'), basePrice: Math.max(300, Math.round(blockPrice / n)), speciesId, weightG: sg, lengthCm: this.source.lengthCm, originRegion: this.source.originRegion } });
           this.pendingLoinBlockId = blockId;
           break;
         }
@@ -1344,7 +1344,7 @@ export class ButcheryPanel extends DraggablePanel {
           const total = this.resumed ? (this.source.weightG ?? 800)
             : LOIN_BLOCKS.reduce((a, b) => a + this.loinBlockGrams(this.process.profile, this.source, b.part), 0);
           const g = Math.max(1, Math.round(total * LOIN_TRIM_SHARE.chiai));
-          rows.push({ key: 'chiai', qty: 1, tpl: { ...base, id: `inv_byp_chiai_${speciesId}_${seq}`, name: `${nameKo} 혈합육 ${g.toLocaleString()}g`, icon: '', iconTexture: this.loinIcon('chiai'), basePrice: Math.max(200, g * 3), speciesId, weightG: g } });
+          rows.push({ key: 'chiai', qty: 1, tpl: { ...base, id: `inv_byp_chiai_${speciesId}_${seq}`, name: `${nameKo} 혈합육 ${formatGramsKo(g)}`, icon: '', iconTexture: this.loinIcon('chiai'), basePrice: Math.max(200, g * 3), speciesId, weightG: g } });
           break;
         }
         case 'loinSkin':
@@ -1375,7 +1375,7 @@ export class ButcheryPanel extends DraggablePanel {
       const item = InventoryStore.find(g.id);
       if (!item) continue;
       const w = Math.max(1, Math.round((item.weightG ?? 100) - (this.bypWeights().ribG / 2)));
-      item.name = `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`;
+      item.name = `껍질이 붙어있는 ${nameKo} 필렛 ${formatGramsKo(w)}`;
       // 321 — 갈빗대만 뗀 한 면 필렛(지아이뼈 분리 전)이다 — 한 덩어리 그림(`skin`)은 분리 뒤 `inv_filletskin_`의 것
       item.iconTexture = this.wholeSideFilletIcon(this.process.profile.speciesId);
       item.weightG = w;
@@ -1389,7 +1389,7 @@ export class ButcheryPanel extends DraggablePanel {
       const w = Math.max(1, Math.round((this.source.weightG ?? 100) - (this.bypWeights().ribG / 2)));
       const tpl = {
         id: `inv_filletpin_${speciesId}_${InventoryStore.nextCatchSeq()}`,
-        name: `껍질이 붙어있는 ${nameKo} 필렛 ${w}g`,
+        name: `껍질이 붙어있는 ${nameKo} 필렛 ${formatGramsKo(w)}`,
         icon: '', iconTexture: this.wholeSideFilletIcon(speciesId),
         category: 'food' as const, subCategory: '손질 필렛',
         basePrice: Math.max(500, Math.round(this.source.basePrice)),
@@ -2339,9 +2339,15 @@ export class ButcheryPanel extends DraggablePanel {
     const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
     const sprites = butcherSpritesFor(speciesId, { lengthCm: source.lengthCm, sex: source.sex });
     this.loinCols = this.loinBodyColumns(speciesId, profile, sprites, this.guideFrame, this.filletFrames, this.speciesFrame);
-    const side = loinSideGeometry(sprites, this.loinCols, W0, H0, this.loinReferenceShape());
+    let side = loinSideGeometry(sprites, this.loinCols, W0, H0, this.loinReferenceShape());
     const own = this.loinBlockOfItem(source);
     this.loinSakuN = LOIN_BLOCKS.map((b) => loinSakuPieces(own >= 0 ? (source.weightG ?? 800) : this.loinBlockGrams(profile, source, b.part)));
+    // 332 — 중골 긁기 선은 2면에서 보이는 척추 위다: 이 어종에 [확정]한 2면 옆줄 선까지 입힌 뒤 그 선의 곧은 맞춤선으로 다시 놓는다
+    //  (그림의 척추 `loinAxis.spine`과 같은 식 — 선과 뼈가 한 자리. 중골 긁기 선을 따로 [확정]하면 그것이 먼저다)
+    const pre = applyGuideOverrides(buildButcheryStages(profile, { guideFrame: this.guideFrame, loin: { side, sakuPieces: this.loinSakuN } }),
+      speciesId, false, this.guideFrame, import.meta.env.DEV ? devGuideOverrides : undefined, this.filletFrames, this.speciesFrame);
+    const bMid = pre.find((st) => st.id === 'loin_b_mid')?.cut?.guidePath;
+    if (bMid && bMid.length >= 2) side = { ...side, nakaochi: loinNakaochiLine(bMid, sprites, this.loinCols, W0, H0) };
     return { side, sakuPieces: this.loinSakuN };
   }
 
@@ -2367,7 +2373,9 @@ export class ButcheryPanel extends DraggablePanel {
   /**
    * 328 — **해체 측면 선의 모양 = 기준 어종(잿방어)에서 확정한 선**(사용자 지시 — 「내가 잿방어 1m 급을 손질했어서 … 4덩어리로 분리하는 작업도
    *  가이드 확정했을텐데, 등 푸른 대형종들 4덩어리 분리 작업 동일하게 반영될테니 … 전부 확정한 걸로 똑같이 적용」).
-   * 기준 어종의 확정 선(옆줄 · 등 · 배 × 두 면 · 중골 긁기)을 그 어종의 몸통 열에서 「열 비율 · 살 높이 비율」로 바꾼다 —
+   * 기준 어종의 확정 선(옆줄 · 등 · 배 × 두 면)을 그 어종의 몸통 열에서 「열 비율 · 살 높이 비율」로 바꾼다 —
+   * 332 — 옆줄 선은 놓은 뒤 곧게 편다 · 중골 긁기 선은 기준 어종 것을 옮기지 않고 2면 옆줄 선에서 낸다(`loinNakaochiLine`).
+   *
    * 확정 표가 바뀌면 다음에 여는 손질 창부터 따라온다(구운 표가 따로 없다). 확정한 선이 없으면 undefined(전처럼 열에서 굽는다).
    * 이 어종 자체에 확정한 선이 있으면 그것이 먼저다(`applyGuideOverrides`).
    */
@@ -2381,8 +2389,8 @@ export class ButcheryPanel extends DraggablePanel {
     const sideOf = (s: LoinSide): Partial<Record<LoinPart | 'mid', CutPoint[]>> => ({
       mid: line(`loin_${s}_mid`), back: line(`loin_${s}_back`), belly: line(`loin_${s}_belly`),
     });
-    const lines = { a: sideOf('a'), b: sideOf('b'), nakaochi: line('loin_nakaochi') };
-    if (![lines.a.mid, lines.a.back, lines.a.belly, lines.b.mid, lines.b.back, lines.b.belly, lines.nakaochi].some(Boolean)) return undefined;
+    const lines = { a: sideOf('a'), b: sideOf('b') };
+    if (![lines.a.mid, lines.a.back, lines.a.belly, lines.b.mid, lines.b.back, lines.b.belly].some(Boolean)) return undefined;
     const W0 = ButcheryPanel.FISH_W0, H0 = ButcheryPanel.FISH_H0;
     const sprites = butcherSpritesFor(ref);
     const cols = this.loinBodyColumns(ref, butcheryProfileFor(ref), sprites,
@@ -4698,9 +4706,9 @@ export class ButcheryPanel extends DraggablePanel {
     if (!ceph && !loin) InventoryStore.addItem({
       id: engawaSrc ? `inv_engawa_${speciesId}_${seq}` : eel ? `inv_eelfillet_${speciesId}_${seq}` : `inv_fillet_${speciesId}_${seq}`, originRegion: this.source.originRegion,
       name: engawaSrc
-        ? `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${outWeight}g`
-        : eel ? `손질한 ${nameKo} (${yieldRes.grade}) ${outWeight}g`
-        : `${nameKo} 순수 필렛 (${yieldRes.grade}) ${outWeight}g`,
+        ? `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${formatGramsKo(outWeight)}`
+        : eel ? `손질한 ${nameKo} (${yieldRes.grade}) ${formatGramsKo(outWeight)}`
+        : `${nameKo} 순수 필렛 (${yieldRes.grade}) ${formatGramsKo(outWeight)}`,
       icon: '', iconTexture: engawaSrc ? 'trim_engawa_icon'
         : (eel ? ensureEelTrimTexture(this.scene, speciesId, 'fillet') : undefined) ?? this.trimFilletKey(speciesId),
       category: 'food', subCategory: engawaSrc ? '엔가와' : '손질 필렛',
@@ -4717,7 +4725,7 @@ export class ButcheryPanel extends DraggablePanel {
       const engW = Math.max(1, Math.round((this.source.weightG ?? 800) * 0.02 * 0.88));
       InventoryStore.addItem({
         id: `inv_engawa_${speciesId}_${seq}`,
-        name: `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${engW}g`,
+        name: `${nameKo} 순수 엔가와 (${yieldRes.grade}) ${formatGramsKo(engW)}`,
         icon: '', iconTexture: 'trim_engawa_icon',
         category: 'food', subCategory: '엔가와',
         basePrice: Math.max(400, engW * 25),
@@ -4778,7 +4786,7 @@ export class ButcheryPanel extends DraggablePanel {
         : `${nameKo} ${engawaSrc ? '순수 엔가와' : eel ? '손질한 포' : '순수 필렛'} x${outCount} (장당 ${perFillet.toLocaleString()}원)`
         + (flat && !single ? ' · 순수 엔가와 x4' : ''),
       `부산물: 각 단계 팝업에서 보관 선택분 지급${skinNote}`,
-      `수율 ${yieldRes.yieldMassG}g · ${loin ? `사쿠 ${this.loinSakuGranted}토막` : `슬라이스 ${yieldRes.sliceCount}점`} · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
+      `수율 ${formatGramsKo(yieldRes.yieldMassG)} · ${loin ? `사쿠 ${this.loinSakuGranted}토막` : `슬라이스 ${yieldRes.sliceCount}점`} · 컷 정확도 ${(r.avgCutQuality * 100).toFixed(0)}%`,
       `칼: ${knifeName}${loin && single ? '' : ` · 시메 ${r.ikejimeDone ? 'O' : 'X'} · 방혈 ${r.bledDone ? 'O' : 'X'}`} · 손질 스킬 Lv.${lv.level}${lv.leveledUp ? ' (레벨업!)' : ` (+${xpGain} XP)`}`,
       this.grantFailed.length
         ? `인벤토리 칸 부족 — ${this.grantFailed.length}종 미지급 (${this.grantFailed.slice(0, 2).join(', ')}…)`

@@ -108,17 +108,19 @@ describe('316 — 필렛 뷰 유도선을 어종 필렛 그림 자리로', () =>
   });
 
   it('확정 좌표 — 군 좌표(familyFrame)는 필렛 뷰도 옮기고 어종 좌표는 그대로', () => {
-    const p = getButcheryProfile('sea_bass');
+    // 332 — 저장된 확정 표에 없는 시험용 어종(농어 공정 · 군은 표에 없는 id의 기본값 `@bream`) — 농어는 2026-11-20에 확정돼 「확정 없음」 가정이 깨졌다
+    const BLANK_ID = 'qa_unconfirmed_round';
+    const p = { ...getButcheryProfile('sea_bass'), speciesId: BLANK_ID };
     const stages = buildButcheryStages(p, { filletFrames: { side: M } });
     const line = [{ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 }];
-    const fam = applyGuideOverrides(stages, 'sea_bass', false, undefined,
-      { '@amberjack': { pin_a: { guidePath: line, familyFrame: true } } }, { side: M });
+    const fam = applyGuideOverrides(stages, BLANK_ID, false, undefined,
+      { '@bream': { pin_a: { guidePath: line, familyFrame: true } } }, { side: M });
     expect(fam.find((s) => s.id === 'pin_a')!.cut!.guidePath).toEqual(line.map(move));
-    const own = applyGuideOverrides(stages, 'sea_bass', false, undefined,
-      { sea_bass: { pin_a: { guidePath: line } } }, { side: M });
+    const own = applyGuideOverrides(stages, BLANK_ID, false, undefined,
+      { [BLANK_ID]: { pin_a: { guidePath: line } } }, { side: M });
     expect(own.find((s) => s.id === 'pin_a')!.cut!.guidePath).toEqual(line);
     // 손질 과정이 같은 식을 쓴다(생성자 → 확정 좌표까지)
-    const proc = new ButcheryProcess(p, 1, { filletFrames: { side: M }, guideOverrides: { '@amberjack': { pin_a: { guidePath: line, familyFrame: true } } } });
+    const proc = new ButcheryProcess(p, 1, { filletFrames: { side: M }, guideOverrides: { '@bream': { pin_a: { guidePath: line, familyFrame: true } } } });
     // 328 — 손질 과정은 옮긴 선(뼈 줄)을 위 · 아래 두 칼로 가른다 — 두 칼은 옮긴 선의 끝점에서 만난다
     const moved = line.map(move);
     const pa = proc.stageList.find((s) => s.id === 'pin_a')!.cut!;

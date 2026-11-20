@@ -12,6 +12,15 @@
         padding: 0;
         box-sizing: border-box;
       }
+      /*
+       * 332차 — 화면을 당겨서 새로고침 · 가장자리 쓸기로 뒤로 가기(터치 화면 · 터치패드)를 끈다.
+       * 글자 긁기 · 캔버스 그림 끌어 내기도 끈다(끌다 놓으면 새 탭 · 이동) — 글 칸은 그대로 긁힌다.
+       * 키 · 단추 쪽 길은 src/LeaveGuard.ts가 막는다.
+       */
+      html, body { overscroll-behavior: none; }
+      body { -webkit-user-select: none; user-select: none; }
+      input, textarea { -webkit-user-select: text; user-select: text; }
+      canvas { touch-action: none; -webkit-user-drag: none; }
       body {
         background: #0a0e14;
         overflow: hidden;

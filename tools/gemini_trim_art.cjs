@@ -10,6 +10,10 @@
  *  그림 둘(어종마다):
  *    head  — 아가미뚜껑 뒤에서 잘라 낸 머리 · 옆에서 본 모습 · **주둥이 왼쪽**(넙치류는 위에서 본 모습 — 광어 머리 사진과 같은 구도)
  *    spine — 세장뜨기 하고 남은 척추뼈(중골) · **머리 쪽 왼쪽 · 꼬리지느러미 오른쪽**(넙치류는 다섯장뜨기 하고 남은 뼈 — 위에서 본 모습)
+ *  332차 — 그림 하나 더(4덩어리 해체 어종 10종만 · `--kinds kama`):
+ *    kama  — 가마살(머리를 떼며 함께 나오는 아가미 뒤 턱밑살 — 가슴지느러미가 붙은 초승달 모양 한 덩이).
+ *            사용자 리포트 「'가마살' 이미지가 픽셀아트가 아니라서 … 다시 전부 다 그려야」 — 그전에는 캔버스에 찍은 세모 도형(`trimloin_kama_*`)이었다.
+ *            화풍 참고 = 그 어종 머리 그림(327(2)) + 온마리 그림. 구도 참고 사진이 없어 방향은 맞추지 않는다(그린 대로).
  *  구도 · 화풍 참고 = 어종군 원본 사진(`food assets/trimmings/{bream,amberjack,halibut}`) + 그 어종 온마리 그림(`food assets/fish/`).
  *  갈빗대 · 지아이뼈 · 껍질 · 내장은 어종이 달라도 생김새가 같아 공용 그림 그대로 둔다(껍질 · 내장 · 지아이뼈는 아이템도 하나로 겹친다).
  *
@@ -39,7 +43,22 @@ const PUB = path.join(ROOT, 'packages', 'client-pc', 'public', 'trimmings', 'sp'
 const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'TrimPartArt.ts');
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-const KINDS = ['head', 'spine'];
+const KINDS = ['head', 'spine', 'kama'];
+/** 기본으로 뽑는 종류 — 가마살은 해체 어종만이라 `--kinds kama`로 따로 부른다 */
+const DEFAULT_KINDS = ['head', 'spine'];
+/** 332 — 가마살을 내는 어종(4덩어리 해체 — core `isLoinBreakdown`) → 살 색(잘린 면) */
+const KAMA = {
+  bluefin_tuna: '짙은 붉은 살에 흰 지방 결이 촘촘하다(뱃살 쪽은 분홍빛)',
+  bigeye_tuna: '맑은 붉은 살',
+  swordfish: '옅은 분홍빛이 도는 크림색 살',
+  striped_marlin: '주황빛이 도는 분홍 살',
+  yellowtail: '분홍빛 살에 흰 지방 결, 껍질 쪽에 검붉은 혈합육 줄',
+  amberjack: '분홍빛 살, 껍질 쪽에 검붉은 혈합육 줄',
+  greater_amberjack: '옅은 분홍빛 살, 껍질 쪽에 검붉은 혈합육 줄',
+  longtooth_grouper: '단단한 흰 살',
+  sawedged_perch: '단단한 흰 살',
+  sevenband_grouper: '단단한 흰 살',
+};
 
 /** 구도 · 화풍 참고(어종군 원본 사진) */
 const REF = {
@@ -124,11 +143,23 @@ function spineText(t) {
     + '살을 다 떠낸 뒤라 등뼈 마디와 위아래 가시뼈가 하나하나 또렷이 보인다 — 살덩이나 필렛처럼 그리지 않는다. '
     + '껍질 · 머리 · 내장 · 도마 · 접시 · 그림자 · 글자 없음. 뼈 하나만, 그림 가로 폭을 가득 채운다. 배경은 단색 흰색.';
 }
-const aspectOf = (t, k) => (k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
+function kamaText(t) {
+  return '첫째 그림은 낚시 게임 손질 화면의 「잘라 낸 생선 머리」 그림이다(화풍 · 색 참고). 둘째 그림은 그 어종의 온마리 그림이다.\n'
+    + `둘째 그림의 어종 ${t.ko}의 「가마살」 한 덩이를 ${STYLE}로 그려라. 첫째 그림과 같은 화풍(진한 윤곽선 · 또렷한 도트)이다. `
+    + '가마살은 머리를 떼어 낼 때 아가미뚜껑 바로 뒤에서 함께 잘라 내는 목덜미 · 턱밑살(생선구이 집의 「가마구이」 부위)이다: '
+    + '초승달 · 부메랑처럼 굽은 두툼한 살덩이이고, 굽은 바깥쪽은 껍질로 덮여 있으며 가슴지느러미 하나가 붙어 있다. '
+    + `껍질 색은 둘째 그림의 ${t.ko} 그대로다(${t.skin}). 안쪽 잘린 면에는 살이 드러난다: ${KAMA[t.id]}. 잘린 면에 굽은 흰 뼈(쇄골) 단면이 조금 보인다. `
+    + '가마살 한 덩이만 그린다 — 눈 · 입 · 머리 · 아가미 · 몸통 · 꼬리 · 도마 · 접시 · 그림자 · 글자 없음. 덩이가 그림을 가득 채운다. 배경은 단색 흰색.';
+}
+const aspectOf = (t, k) => (k === 'kama' ? '4:3' : k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
+/** 그 종류를 그릴 어종인가 — 머리 · 뼈는 원래 어종(사진이 그 어종) 빼고 전부 · 가마살은 해체 어종만(잿방어 포함) */
+const wants = (id, t, k) => !t.alias && (k === 'kama' ? !!KAMA[id] : !t.native);
+/** 가마살 화풍 참고 = 그 어종 머리 그림(없으면 어종군 머리 사진) */
+const kamaRef = (t) => { const f = path.join(DEST, `${t.id}_head.png`); return fs.existsSync(f) ? f : REF.head[t.fam]; };
 
 // ── 공용 ──
 function parseArgs(argv) {
-  const P = { out: '', only: null, kinds: KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, force: false, dry: false, install: false, bake: false, sheet: '', tag: '' };
+  const P = { out: '', only: null, kinds: DEFAULT_KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, force: false, dry: false, install: false, bake: false, sheet: '', tag: '' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -189,7 +220,7 @@ async function callGemini(parts, P, outFile, aspect) {
 
 function targets(P) {
   return Object.entries(SPECIES)
-    .filter(([id, t]) => !t.alias && !t.native && (!P.only || P.only.has(id)))
+    .filter(([id, t]) => P.kinds.some((k) => wants(id, t, k)) && (!P.only || P.only.has(id)))
     .map(([id, t]) => ({ id, ...t }));
 }
 function log(P, rec) { fs.appendFileSync(path.join(P.out, '_log.jsonl'), JSON.stringify({ ...rec, at: new Date().toISOString() }) + '\n'); }
@@ -198,9 +229,9 @@ async function genOne(t, k, P) {
   const out = path.join(P.out, `${t.id}_${k}${P.tag ? `_${P.tag}` : ''}.png`);
   if (fs.existsSync(out) && !P.force) return 'skip';
   const parts = [
-    refPart(P.out, REF[k][t.fam], `ref_${k}_${t.fam}.png`),
+    k === 'kama' ? refPart(P.out, kamaRef(t), `ref_kama_${t.id}.png`) : refPart(P.out, REF[k][t.fam], `ref_${k}_${t.fam}.png`),
     refPart(P.out, path.join(FISH_SRC, t.fish), t.fish),
-    { text: k === 'head' ? headText(t) : spineText(t) },
+    { text: k === 'head' ? headText(t) : k === 'kama' ? kamaText(t) : spineText(t) },
   ];
   const r = await callGemini(parts, P, out, aspectOf(t, k));
   log(P, { id: t.id, kind: k, tag: P.tag, ...r });
@@ -264,10 +295,11 @@ async function install(P) {
   const { encode } = require('./lib_png.cjs');
   fs.mkdirSync(DEST, { recursive: true });
   const refMask = {};
-  for (const k of KINDS) for (const f of Object.keys(REF[k])) refMask[`${k}_${f}`] = normMask(await silhouette(REF[k][f]));
+  for (const k of Object.keys(REF)) for (const f of Object.keys(REF[k])) refMask[`${k}_${f}`] = normMask(await silhouette(REF[k][f]));
   let n = 0;
   for (const t of targets({ ...P, kinds: KINDS })) {
     for (const k of P.kinds) {
+      if (!wants(t.id, t, k)) continue;
       const src = path.join(P.out, `${t.id}_${k}.png`);
       if (!fs.existsSync(src)) continue;
       const dst = path.join(DEST, `${t.id}_${k}.png`);
@@ -275,9 +307,10 @@ async function install(P) {
       const s = await silhouette(src);
       const pf = peelFringe(s.data, s.w, s.h);
       // 방향 — 구도 참고와 같은 쪽(머리 = 주둥이 왼쪽 / 뼈 = 꼬리 오른쪽): 뒤집은 쪽이 참고와 더 닮았으면 뒤집는다
+      //  가마살은 구도 참고 사진이 없다 — 그린 방향 그대로 둔다
       const rm = refMask[`${k}_${t.fam}`];
-      const a = iou(normMask(s), rm), b = iou(normMask(s, 64, 48, true), rm);
-      const flip = b > a + 0.04;
+      const a = rm ? iou(normMask(s), rm) : 0, b = rm ? iou(normMask(s, 64, 48, true), rm) : 0;
+      const flip = !!rm && b > a + 0.04;
       const { x0, y0, x1, y1 } = s.bbox;
       const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
       const crop = Buffer.alloc(bw * bh * 4);
@@ -303,8 +336,8 @@ function bake() {
   const have = {};
   let n = 0, bytes = 0;
   for (const [id, t] of Object.entries(SPECIES)) {
-    if (t.alias || t.native) continue;
     for (const k of KINDS) {
+      if (!wants(id, t, k)) continue;
       const src = path.join(DEST, `${id}_${k}.png`);
       if (!fs.existsSync(src)) continue;
       const dst = path.join(PUB, `${k}_${id}.png`);
@@ -318,11 +351,11 @@ function bake() {
   const lines = [
     '/**',
     ' * @file TrimPartArt.ts',
-    ' * @description 327차 — 어종별 손질 부산물 그림 목록(머리 · 척추뼈). **자동 생성 — 손으로 고치지 않는다**(`node tools/gemini_trim_art.cjs --bake`).',
+    ' * @description 327차 — 어종별 손질 부산물 그림 목록(머리 · 척추뼈 · 332 가마살). **자동 생성 — 손으로 고치지 않는다**(`node tools/gemini_trim_art.cjs --bake`).',
     ' *  그림은 `public/trimmings/sp/<종류>_<어종>.png`(긴 변 192px), 텍스처 키는 `trimpart_<종류>_<어종>`.',
     ' */',
     '',
-    "export type TrimPartKind = 'head' | 'spine';",
+    "export type TrimPartKind = 'head' | 'spine' | 'kama';",
     '',
     '/** 어종 → 그 어종 그림이 있는 부산물 종류 */',
     'export const TRIM_PART_ART: Readonly<Record<string, readonly TrimPartKind[]>> = {',
@@ -343,8 +376,8 @@ function sheet(P) {
   for (const k of P.kinds) {
     const args = [];
     for (const t of targets(P)) {
-      const f = path.join(P.out, `${t.id}_${k}.png`);
-      if (!fs.existsSync(f)) continue;
+      const f = path.join(P.out, `${t.id}_${k}${P.tag ? `_${P.tag}` : ''}.png`);
+      if (!wants(t.id, t, k) || !fs.existsSync(f)) continue;
       args.push('-label', `${t.ko} ${t.id}`, f);
     }
     if (!args.length) continue;
@@ -352,7 +385,7 @@ function sheet(P) {
     // 한글 글꼴은 unifont뿐이다(컨테이너) — 없으면 montage 기본 글꼴(이름이 깨질 수 있다)
     const FONT = '/usr/share/fonts/opentype/unifont/unifont.otf';
     const font = fs.existsSync(FONT) ? ['-font', FONT] : [];
-    execFileSync('montage', [...args, ...font, '-pointsize', '16', '-background', '#f4f1ea', '-tile', k === 'head' ? '6x' : '4x', '-geometry', k === 'head' ? '210x170+5+5' : '380x120+5+5', dst]);
+    execFileSync('montage', [...args, ...font, '-pointsize', '16', '-background', '#f4f1ea', '-tile', k === 'spine' ? '4x' : k === 'kama' ? '5x' : '6x', '-geometry', k === 'spine' ? '380x120+5+5' : '210x170+5+5', dst]);
     console.log(dst);
   }
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -365,9 +398,9 @@ async function main() {
   if (P.install) { await install(P); return; }
   if (P.sheet) { sheet(P); return; }
   const jobs = [];
-  for (const t of targets(P)) for (const k of P.kinds) jobs.push([t, k]);
+  for (const t of targets(P)) for (const k of P.kinds) if (wants(t.id, t, k)) jobs.push([t, k]);
   console.log(`대상 ${targets(P).length}종 · 종류 ${P.kinds.join(',')} · 그림 ${jobs.length}장 · 모델 ${P.model} · 동시 ${P.jobs}`);
-  if (P.dry) { const t = targets(P)[0]; console.log(headText(t), '\n\n', spineText(t)); return; }
+  if (P.dry) { const t = targets(P)[0]; console.log(P.kinds.includes('kama') ? kamaText(t) : `${headText(t)}\n\n${spineText(t)}`); return; }
   let next = 0, done = 0, stop = false;
   const worker = async () => {
     while (next < jobs.length && !stop) {

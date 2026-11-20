@@ -19,6 +19,11 @@ export interface PixelFishSprite {
   palette: number[];
   /** 행 문자열 — '.'=투명, 'a'부터 palette 인덱스 */
   rows: string[];
+  /**
+   * 332 — 도마 높이를 이만큼 넘겨도 된다(없으면 1 — 도마 틀 안). 새치류(1.03): 긴 주둥이 · 높은 지느러미 때문에 몸이 작게 보여
+   * 칸을 한 단 키운다(`computeFishFrame`) — 지느러미 끝이 도마 틀을 위아래로 조금 넘는다(도마 판에는 여백 40px이 있다).
+   */
+  boardFit?: number;
 }
 
 /** 온마리 (머리+지느러미 — 선-3 추출) */
