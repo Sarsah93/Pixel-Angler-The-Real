@@ -16,7 +16,7 @@ import Phaser from 'phaser';
 import {
   evaluateCut, CutPoint, SASHIMI_MODES, SashimiMode, SashimiModeSpec, buildSashimiCutPaths,
   sashimiGradeFromQuality, getBestKnife, FISH_DATABASE, ENGAWA_CUTS, ENGAWA_PIECES,
-  SASHIMI_CUT_OVERRIDES, cephByproductIcon, GRADE_XP_MULT,
+  SASHIMI_CUT_OVERRIDES, cephByproductIcon, GRADE_XP_MULT, kamaPieceCount,
 } from '@tra/core';
 import { GAME_WIDTH, GAME_HEIGHT } from '../PhaserConfig.js';
 import { cv } from './ColorAssist.js';
@@ -31,7 +31,8 @@ import { butcherFamilyOf } from './PixelButcherFish.js';
 import { canvasContextOf, refreshCanvasTexture, sourceImageOf } from './CanvasTextureGuard.js';
 import { playSfx } from '../audio/SfxBank.js';
 import { worldLabelStyle, WORLD_LABEL_WARN } from './WorldLabel.js';
-import { ensureLoinTexture, sakuArtKey, SAKU_TOP_PROFILE, SAKU_SIDE_PROFILE } from './LoinArt.js';
+import { ensureLoinTexture, sakuArtKey, SAKU_TOP_PROFILE, SAKU_SIDE_PROFILE, loinIconKey } from './LoinArt.js';
+import { trimKamaMeatIconKey, trimKamaIconKey } from './TrimPartIcons.js';
 
 const PANEL_W = 1080;
 const PANEL_H = 620;
@@ -56,6 +57,12 @@ export class SashimiPanel extends DraggablePanel {
    * 혈합육 · 껍질을 뗀 반듯한 살 덩어리라 필렛 그림이 아니라 사쿠 그림(`LoinArt` — 캔버스로 굽는다) · 반듯한 프로필이다.
    */
   private readonly saku: 'back' | 'belly' | null;
+  /**
+   * 333 — 횟감 가마살(가마살 덩이에서 도려낸 뱃살 — `inv_fillet_<어종>_<번호>_kama_<등급>`).
+   * 사용자 설명 「가마살 부분 한 쪽 당 2~3점씩」 — 덩이 그림을 탑뷰로 놓고 한두 번 저민다(점 수는 무게로 — core `kamaPieceCount`).
+   */
+  private readonly kama: boolean;
+  private readonly kamaPieces: number;
   /** 뷰 — 일반 = 탑뷰(위에서 본 필렛) / 고급 = 측면 뷰 (사용자 정정 2026-08-03) */
   private readonly view: 'top' | 'side';
   /**
@@ -159,9 +166,11 @@ export class SashimiPanel extends DraggablePanel {
     this.fam = butcherFamilyOf(source.speciesId ?? '');
     // 316 — 어종 필렛 그림(Gemini)이 실려 있으면 그 탑뷰 · 측면 · 프로필(여는 쪽이 `ensureSashimiSpeciesArt`로 싣는다)
     this.saku = (/_saku_(back|belly)(?:_[a-z])?$/.exec(source.id)?.[1] as 'back' | 'belly' | undefined) ?? null;
+    this.kama = !cephKind && source.id.startsWith('inv_fillet_') && /_kama(?:_[a-z])?$/.test(source.id);
+    this.kamaPieces = kamaPieceCount(source.weightG ?? 60);
     {
       const sp = sashimiSpeciesOf(source.speciesId);
-      this.spArt = !this.saku && sp && scene.textures.exists(sashimiSpeciesTex(sp, 'top')) && scene.textures.exists(sashimiSpeciesTex(sp, 'side'))
+      this.spArt = !this.saku && !this.kama && sp && scene.textures.exists(sashimiSpeciesTex(sp, 'top')) && scene.textures.exists(sashimiSpeciesTex(sp, 'side'))
         ? sp : undefined;
     }
     this.ceph = cephKind;
@@ -174,9 +183,10 @@ export class SashimiPanel extends DraggablePanel {
           : this.ceph === 'octoWhole' ? 3 : this.ceph === 'octoLeg' ? 7 : 1,
         tolerance: Math.max(spec.tolerance, 0.1), minCoverage: Math.min(spec.minCoverage, 0.55),
       }
-      : this.engawa ? { ...spec, cuts: ENGAWA_CUTS } : spec;
+      : this.engawa ? { ...spec, cuts: ENGAWA_CUTS }
+        : this.kama ? { ...spec, cuts: this.kamaPieces - 1 } : spec;
     // 일반 = 탑뷰(y plane 정면 — 위에서 본 필렛) / 고급 = 측면(z plane 정면) — 사용자 정정 2026-08-03
-    this.view = this.engawa || this.ceph ? 'top' : mode === 'advanced' ? 'side' : 'top';
+    this.view = this.engawa || this.ceph || this.kama ? 'top' : mode === 'advanced' ? 'side' : 'top';
     this.texKey = this.ceph === 'octoWhole' ? 'trim_octo_boiled'          // 삶은 문어 실사 (098차)
       : this.ceph === 'octoLeg' ? 'trim_octo_boiled_leg'                  // 삶은 문어 다리 실사
       : this.ceph
@@ -184,6 +194,7 @@ export class SashimiPanel extends DraggablePanel {
           this.ceph === 'mantle' ? 'ceph_mantle_fillet' : this.ceph === 'fin' ? 'ceph_fin_meat' : 'ceph_arms',
           source.speciesId) ?? 'trim_ceph_mantle_squid')
         : this.engawa ? 'trim_engawa'
+          : this.kama ? this.kamaTex()
           : this.saku ? this.sakuTex(this.view)
           : this.spArt ? sashimiSpeciesTex(this.spArt, this.view) : SASHIMI_FILLET_TEX[this.view][this.fam];
 
@@ -198,7 +209,7 @@ export class SashimiPanel extends DraggablePanel {
     const profAll = this.filletProfile;
     const frW = 640;
     let aspect: number;
-    if (this.engawa || this.ceph) {
+    if (this.engawa || this.ceph || this.kama) {
       const src = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
       const texAspect = src.width && src.height ? src.width / src.height : 512 / 74;
       // 날개살 = 좌우 날개 2장 병렬 배치 → 표시 rect 종횡비는 (2장 + 간격) 기준
@@ -206,9 +217,15 @@ export class SashimiPanel extends DraggablePanel {
     } else {
       aspect = this.view === 'top' ? profAll.top.aspect : 384 / 120;
     }
-    const frH = Math.min(300, Math.round(frW / aspect));
+    let frH = Math.min(300, Math.round(frW / aspect));
     // 두족류 — 높이 캡에 걸리면 폭을 줄여 원본 비율 유지 (몸통살 사진이 왜곡되지 않게)
-    const frW2 = this.ceph ? Math.min(frW, Math.round(frH * aspect)) : frW;
+    let frW2 = this.ceph ? Math.min(frW, Math.round(frH * aspect)) : frW;
+    if (this.kama) {
+      // 333 — 가마살 그림은 도트 그림이다 — 정수 배(칸이 고르게)로만 키운다
+      const src = this.scene.textures.get(this.texKey).getSourceImage() as { width: number; height: number };
+      const k = Math.max(1, Math.floor(Math.min(frW / (src.width || 192), 300 / (src.height || 144))));
+      frW2 = (src.width || 192) * k; frH = (src.height || 144) * k;
+    }
     this.fr = { x: 70 + Math.round((frW - frW2) / 2), y: 300 - Math.round(frH / 2), w: frW2, h: frH };
 
     // ── 두족류 — 고정 배치 컷 (윤곽 콜백 불필요. F9 오버라이드는 아래 공통 경로가 적용) ──
@@ -294,6 +311,13 @@ export class SashimiPanel extends DraggablePanel {
       botAt = () => 0.86;
       meatH = () => 0.72;
       minMeat = 0.1;
+    } else if (this.kama) {
+      // 333 — 가마살 덩이 그림의 실루엣(열마다 불투명 위 · 아래 끝)을 재서 살 위에만 유도선을 놓는다
+      const edges = this.alphaEdges(this.texKey);
+      topAt = (u) => interp(edges.top, u);
+      botAt = (u) => interp(edges.bot, u);
+      meatH = (u) => botAt(u) - topAt(u);
+      minMeat = 0.28;
     } else if (this.view === 'top') {
       // 탑뷰 — 유도선이 필렛 폭(상·하 윤곽 사이)을 가로지른다
       const tp = profAll.top;
@@ -354,7 +378,8 @@ export class SashimiPanel extends DraggablePanel {
 
   /** 오버라이드 키 — 레이아웃 결정 인자(두족류 부위 / 엔가와 여부 / 어종군×모드) 단위 */
   private overrideKey(): string {
-    return this.ceph ? `ceph_${this.ceph}` : this.engawa ? 'engawa' : this.saku ? `saku_${this.mode}` : `${this.spArt ?? this.fam}_${this.mode}`;
+    return this.ceph ? `ceph_${this.ceph}` : this.engawa ? 'engawa' : this.kama ? `kama_${this.kamaPieces}`
+      : this.saku ? `saku_${this.mode}` : `${this.spArt ?? this.fam}_${this.mode}`;
   }
 
   /** 316 — 필렛 실루엣 프로필(어종 그림이면 어종 것 · 아니면 어종군) · 317 사쿠는 반듯한 덩어리 */
@@ -368,6 +393,42 @@ export class SashimiPanel extends DraggablePanel {
     const key = sakuArtKey(view, this.saku ?? 'back', this.source.speciesId ?? 'bluefin_tuna');
     ensureLoinTexture(this.scene, key);
     return key;
+  }
+
+  /** 333 — 횟감 가마살 그림 키(그 어종 · 살빛이 같은 그림 주인 → 가마살 덩이 그림 → 캔버스 도형) */
+  private kamaTex(): string {
+    const sp = this.source.speciesId ?? 'yellowtail';
+    const art = trimKamaMeatIconKey(this.scene, sp) ?? trimKamaIconKey(this.scene, sp);
+    if (art) return art;
+    const shape = loinIconKey('kama', sp);
+    ensureLoinTexture(this.scene, shape);
+    return shape;
+  }
+
+  /** 333 — 그림의 열마다 불투명한 위 · 아래 끝(0 ~ 1 · 48열). 못 재면 반듯한 띠 */
+  private alphaEdges(key: string): { top: number[]; bot: number[] } {
+    const N = 48;
+    const flat = { top: new Array<number>(N).fill(0.14), bot: new Array<number>(N).fill(0.86) };
+    try {
+      const src = sourceImageOf(this.scene, key) as HTMLImageElement | HTMLCanvasElement | null;
+      if (!src || !src.width || !src.height) return flat;
+      const cvs = document.createElement('canvas');
+      cvs.width = src.width; cvs.height = src.height;
+      const ctx = cvs.getContext('2d');
+      if (!ctx) return flat;
+      ctx.drawImage(src, 0, 0);
+      const d = ctx.getImageData(0, 0, src.width, src.height).data;
+      const top: number[] = [], bot: number[] = [];
+      for (let i = 0; i < N; i++) {
+        const x = Math.min(src.width - 1, Math.floor(((i + 0.5) / N) * src.width));
+        let t = -1, b = -1;
+        for (let y = 0; y < src.height; y++) if (d[(y * src.width + x) * 4 + 3] > 40) { if (t < 0) t = y; b = y; }
+        // 빈 열은 살이 없는 것으로(위 = 아래 = 가운데)
+        top.push(t < 0 ? 0.5 : t / src.height + 0.02);
+        bot.push(b < 0 ? 0.5 : (b + 1) / src.height - 0.02);
+      }
+      return { top, bot };
+    } catch { return flat; }
   }
 
   /** ESC 위임 진입점 (UtilizationPanel.onEscIntercept → 여기) */
@@ -444,6 +505,8 @@ export class SashimiPanel extends DraggablePanel {
         : this.ceph === 'octoLeg' ? '컷: 사선 7회 — 다리 결을 따라 얇게 썰어 숙회 8점을 냅니다'
         : this.engawa
           ? `컷: 총 ${spec.cuts}회 — 짧은 지느러미살 스트립을 3등분합니다`
+        : this.kama
+          ? `컷: 총 ${spec.cuts}회 — 가마살 뱃살을 ${this.kamaPieces}점으로 저밉니다`
           : `컷 방향: ${this.mode === 'advanced' ? '사선 (소기즈쿠리) — 옆에서 본 뷰' : '세로 (히라즈쿠리) — 위에서 본 뷰'}`,
       '',
       this.ceph ? '노란 유도선 순서대로 드래그해 썰어냅니다.' : '머리쪽(오른쪽)부터 왼쪽으로,',
@@ -1046,7 +1109,7 @@ export class SashimiPanel extends DraggablePanel {
     //  엔가와 = 2컷 → **3조각** / 몸통살 = 11컷 → **22점**(양 덩어리 관통) / 날개살 = 2컷 → **4점**
     const pieceCount = this.ceph === 'mantle' ? 22 : this.ceph === 'fin' ? 4
       : this.ceph === 'octoLeg' ? 8
-      : this.engawa ? ENGAWA_PIECES : spec.cuts;
+      : this.engawa ? ENGAWA_PIECES : this.kama ? this.kamaPieces : spec.cuts;
     const perPieceG = Math.max(1, Math.round(weightG / pieceCount));
     const pieceValue = Math.max(100, Math.round((this.source.basePrice || 2000) * (mult / 1.5) / pieceCount * spec.priceMult));
     const xp = Math.round((this.engawa ? 6 : this.ceph === 'fin' ? 8 : this.ceph === 'mantle' ? 12 : 10) + avg * 20 + (this.mode === 'advanced' ? 8 : 0));
@@ -1059,10 +1122,10 @@ export class SashimiPanel extends DraggablePanel {
     //  아이콘 = 엔가와는 실사 스트립 / 두족류는 부위 실사 / 필렛은 탑뷰 슬라이스(sashimi_piece_{fam})
     //  문어 숙회(098차)는 전용 실사('문어 숙회 한점') — 이름도 사용자 지정 명칭 그대로.
     const partLbl = this.ceph === 'mantle' ? '몸통살 ' : this.ceph === 'fin' ? '날개살 '
-      : this.engawa ? '엔가와 ' : this.saku === 'back' ? '등살 ' : this.saku === 'belly' ? '뱃살 ' : '';
+      : this.engawa ? '엔가와 ' : this.kama ? '가마살 ' : this.saku === 'back' ? '등살 ' : this.saku === 'belly' ? '뱃살 ' : '';
     const seq = InventoryStore.nextCatchSeq();
     const grantedId = `inv_sashimi_cut_${this.mode === 'advanced' ? 'adv_' : ''}`
-      + `${this.ceph ? `ceph_${this.ceph}_` : this.engawa ? 'engw_' : ''}${speciesId}_${seq}`;
+      + `${this.ceph ? `ceph_${this.ceph}_` : this.engawa ? 'engw_' : this.kama ? 'kama_' : ''}${speciesId}_${seq}`;
     const octoLeg = this.ceph === 'octoLeg';
     const grantedName = octoLeg
       ? `문어 숙회 한 점 (${grade}) ${perPieceG}g`
@@ -1073,6 +1136,7 @@ export class SashimiPanel extends DraggablePanel {
       icon: '',
       iconTexture: octoLeg ? 'sashimi_piece_octopus'
         : this.ceph ? this.texKey : this.engawa ? 'trim_engawa'
+          : this.kama ? this.texKey
           : this.saku ? this.sakuTex('piece')
           : this.spArt && this.scene.textures.exists(sashimiSpeciesTex(this.spArt, 'piece'))
             ? sashimiSpeciesTex(this.spArt, 'piece') : `sashimi_piece_${this.fam}`,
@@ -1086,7 +1150,7 @@ export class SashimiPanel extends DraggablePanel {
     }, pieceCount);
     this.grantedPieceId = grantedId;
     // 날개살·삶은 문어 다리·사쿠(317 — 한 칸에 토막 여럿)는 공유 스택 — 1개만 소모 (몸통살/필렛은 개체 아이템 통째)
-    if (this.ceph === 'fin' || octoLeg || this.saku) InventoryStore.removeQty(this.source.id, 1);
+    if (this.ceph === 'fin' || octoLeg || this.saku || this.kama) InventoryStore.removeQty(this.source.id, 1);   // 333 — 횟감 가마살도 양쪽 둘이 한 칸
     else InventoryStore.removeItem(this.source.id, false);
 
     this.buildResultOverlay(`${spec.label} 완료!`, [

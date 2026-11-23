@@ -92,6 +92,25 @@ const TW = 300, TH = 170;   // 시트 한 칸(도마 600 × 340을 절반으로)
       const buf = await page.screenshot({ clip: info.clip });
       shots.push(buf.toString('base64'));
       steps.push({ sec: t.sec, task: t.task, stage: st.label, guide: st.guide });
+      // 333 — 「머리 · 가마 떼기」 작업은 머리따기 뒤에 「가마살 떼기」가 이어진다(떼어 낸 머리 뷰) — 그 단계도 한 칸 찍는다
+      const extra = await page.evaluate(({ id }) => {
+        const bp = globalThis.__bp;
+        const task = bp.section?.tasks.find((x) => x.id === id);
+        if (!task || !task.stageIds.includes('kama_a') || !bp.process.stageList.some((x) => x.id === 'kama_a')) return null;
+        for (const sid of task.stageIds) { if (sid === 'kama_a') break; bp.doneStages.add(sid); }
+        bp.syncDerivedFromDone?.();
+        bp.process.jumpTo('kama_a');
+        const s = bp.process.stage;
+        bp.process.orientation = s.orientation; bp.renderedOrientation = s.orientation;
+        bp.activeTaskId = id; bp.awaitingSelect = false;
+        bp.refresh();
+        return { label: s.label, guide: s.guide };
+      }, t);
+      if (extra) {
+        await page.waitForTimeout(450);
+        shots.push((await page.screenshot({ clip: info.clip })).toString('base64'));
+        steps.push({ sec: t.sec, task: t.task, stage: extra.label, guide: extra.guide });
+      }
     }
     // 시트 굽기 — 브라우저 캔버스로 절반 크기(부드럽게) · 세로로 잇기
     const png = await page.evaluate(async ({ shots, TW, TH }) => {

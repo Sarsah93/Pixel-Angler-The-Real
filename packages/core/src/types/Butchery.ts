@@ -369,6 +369,33 @@ export function primitiveInput(p: ButcheryPrimitive): PrimitiveInputKind {
 }
 
 /** 손질 스테이지 정의 (FSM 노드) */
+/**
+ * 333 — **가마살 한 면의 기하**(도마 정규화 — 그 면을 볼 때의 화면 좌표: 1면 = 머리 왼쪽 · 2면 = 머리 오른쪽).
+ * 가마살 = 아가미 선(방혈 칼이 지나간 자리)과 머리따기 사선 사이의 배 쪽 세모 덩이. `KamaStages.ts`가 굽는다.
+ */
+export interface KamaSideGeometry {
+  /** 떼는 칼길 — 위 끝 가로 칼집(사선 → 아가미 선 위 끝) → 아가미 선을 따라 배까지 */
+  cut: CutPoint[];
+  /** 덩이 다각형(닫힘 — 몸 밖까지 넉넉히) — 칼길 + 배 아래 바깥 + 머리따기 사선 */
+  poly: CutPoint[];
+  /** 도려내는 선(덩이 안 · 원래 자리) — 가슴지느러미 아래를 아가미 선 쪽에서 사선 쪽으로 */
+  carve: CutPoint[];
+  /** 덩이의 가운데(원래 자리) — 덩이 뷰로 옮길 때의 기준점 */
+  center: CutPoint;
+  /** 덩이 상자의 반 너비 · 반 높이(원래 자리 — 덩이 뷰 배율을 고를 때 쓴다) */
+  half: CutPoint;
+  /** 이 기하를 구울 때 쓴 가슴지느러미 밑동 선(1면에만 적는다 — 지느러미 단계에서 뺀 뒤에도 다시 굽게) */
+  pectoral?: CutPoint[];
+}
+export interface KamaGeometry {
+  a: KamaSideGeometry;
+  b: KamaSideGeometry;
+  /** 덩이 뷰 배율(원래 자리 → 「가마살 도려내기」 뷰) */
+  viewScale: number;
+  /** 고를 수 있는 배율(큰 것부터 — client가 그림 칸이 정수 px로 떨어지는 값들을 넘긴다). 선이 바뀌면 여기서 다시 고른다 */
+  viewScales?: number[];
+}
+
 export interface ButcheryStage {
   id: string;
   label: string;
@@ -420,6 +447,12 @@ export interface ButcheryStage {
    * 미지정이면 0(가로 배치) 요구.
    */
   rotationRequired?: BoardRotation;
+
+  /**
+   * 333 — 가마살 단계(`kama_a` · `kama_b` · `ktrim_1` · `ktrim_2`)가 쓰는 기하. 확정 좌표를 끼운 뒤의 방혈 호 · 머리따기 사선에서 구운 것 —
+   * client 렌더러가 같은 다각형으로 덩이를 그린다(그림과 선이 한 식).
+   */
+  kamaGeometry?: KamaGeometry;
 }
 
 /** 도마 회전 (도) — 0 = 가로(머리 왼쪽) / 90 = 세로(머리 위·꼬리 아래) */

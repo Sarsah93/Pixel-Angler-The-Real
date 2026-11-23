@@ -166,6 +166,7 @@ export type {
   BoardRotation, ButcheryGuideProfile, ButcheryProductId, ButcheryProgress, ButcheryYieldPopup, ButcheryStackable,
   PrimitiveInputKind, ButcheryGuideOverride, ButcheryGuideOverrideTable, EelGuideSet,
   LoinPart, LoinSide, LoinSideLines, LoinSideGeometry,   // 317차 — 4덩어리 해체
+  KamaGeometry, KamaSideGeometry,   // 333차 — 가마살 기하
 } from './types/Butchery.js';
 export { ORIENTATION_LABEL, ROTATION_LABEL, canStack, primitiveInput } from './types/Butchery.js';
 // 두족류 손질 (CEPHALOPOD_BUTCHERY_SPEC v3.1) — 뷰 유니온 2종 + 프로필 4종 + 가이드 좌표
@@ -233,6 +234,13 @@ export {
 } from './db-schema/LoinStages.js';
 export type { LoinBlockDef, LoinBlockEdges, LoinStageOptions } from './db-schema/LoinStages.js';
 export { LOIN_SECTIONS, LOIN_SECTIONS_NO_KAMA, loinBlockOfTask } from './db-schema/ButcherySections.js';
+// 333 — 가마살 공정(가마살 떼기 · 도려내기 — 기하 · 단계)
+export {
+  BUTCHER_BOARD_ASPECT, KAMA_VIEW_SCALE_DEFAULT, KAMA_BLOCK_SLOTS, KAMA_MEAT_SHARE, KAMA_THREE_PIECE_MIN_G,
+  pathXAtY, pectoralLineOf, kamaHeadLine, kamaSideGeometry, kamaGeometry, kamaBlockPoint, kamaCarveView,
+  buildKamaCutStages, buildKamaTrimStages, isKamaStageId, kamaTrimSideOf, kamaPieceCount,
+  pickKamaViewScale,
+} from './db-schema/KamaStages.js';
 // 자유 손질 섹션/작업 정의 (달성도 기반 — 2026-07-30 자유 손질 개편)
 export type { ButcheryTaskDef, ButcherySectionDef, ButcherySectionYield } from './db-schema/ButcherySections.js';
 export {

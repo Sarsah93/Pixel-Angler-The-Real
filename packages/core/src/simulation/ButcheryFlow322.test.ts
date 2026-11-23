@@ -25,6 +25,8 @@ import { fightGroupOf } from './FishRarity.js';
 import { sectionsForSpecies, resolveButcherySections } from '../db-schema/ButcherySections.js';
 import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js';
 import type { CutPoint } from '../types/Butchery.js';
+import { yieldsKama } from '../db-schema/ButcheryProfiles.js';
+import { pectoralLineOf } from '../db-schema/KamaStages.js';
 
 const trace = (path: readonly CutPoint[]): CutPoint[] => {
   const o: CutPoint[] = [];
@@ -71,7 +73,10 @@ describe('322 — [확정] 좌표로 끝까지', () => {
           expect(up[up.length - 1], `${sp} ${s.id}`).toEqual(o.guidePath[o.guidePath.length - 1]);
           expect(dn[dn.length - 1], `${sp} ${s.id}`).toEqual(o.guidePath[o.guidePath.length - 1]);
         } else if (o) {
-          if (o.guidePaths && o.guidePaths.length > 1) expect(s.cut!.guidePaths, `${sp} ${s.id}`).toEqual(o.guidePaths);
+          // 333 — 가마살 어종의 지느러미 단계는 확정한 세 선에서 가슴지느러미 밑동 선을 뺀 두 선이다(가마살과 함께 나간다)
+          const pect = s.id === 'finectomy' && yieldsKama(sp) ? pectoralLineOf(o.guidePaths ?? []) : undefined;
+          if (pect && o.guidePaths) expect(s.cut!.guidePaths, `${sp} ${s.id}`).toEqual(o.guidePaths.filter((l) => JSON.stringify(l) !== JSON.stringify(pect)));
+          else if (o.guidePaths && o.guidePaths.length > 1) expect(s.cut!.guidePaths, `${sp} ${s.id}`).toEqual(o.guidePaths);
           else if (o.guidePath) expect(s.cut!.guidePath, `${sp} ${s.id}`).toEqual(o.guidePath);
           if (o.sweepPath) expect(s.sweepPath, `${sp} ${s.id}`).toEqual(o.sweepPath);
           if (o.tapPoint) expect(s.tapPoint, `${sp} ${s.id}`).toEqual(o.tapPoint);

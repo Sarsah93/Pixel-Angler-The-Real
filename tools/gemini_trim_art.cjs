@@ -47,7 +47,7 @@ const PUB = path.join(ROOT, 'packages', 'client-pc', 'public', 'trimmings', 'sp'
 const OUT_TS = path.join(ROOT, 'packages', 'client-pc', 'src', 'data', 'TrimPartArt.ts');
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-const KINDS = ['head', 'spine', 'kama', 'nakaochi', 'chiai'];
+const KINDS = ['head', 'spine', 'kama', 'nakaochi', 'chiai', 'kamasaku'];
 /** 기본으로 뽑는 종류 — 가마살 · 중골 살 · 혈합육은 해체 어종만이라 `--kinds`로 따로 부른다 */
 const DEFAULT_KINDS = ['head', 'spine'];
 /**
@@ -76,7 +76,17 @@ const FLESH = {
   longtooth_grouper: ['반투명한 흰 살(아주 옅은 분홍 기)', '옅은 분홍 갈색'],
 };
 const FLESH_OWNER = { amberjack: 'yellowtail', greater_amberjack: 'yellowtail', sawedged_perch: 'longtooth_grouper', sevenband_grouper: 'longtooth_grouper' };
-const isFlesh = (k) => k === 'nakaochi' || k === 'chiai';
+const isFlesh = (k) => k === 'nakaochi' || k === 'chiai' || k === 'kamasaku';
+/**
+ * 333 — 가마살 덩이의 생김새 갈래(사용자가 준 실제 사진 셋에서 읽은 것 — 사진은 저장소에 넣지 않는다 · `--kref <폴더>`로 구도 참고만).
+ *  amberjack = 가슴지느러미 · 배지느러미가 붙은 세모 덩이 / tuna = 지느러미 뗀 구멍이 남은 길쭉한 띠 / bill = 지느러미 밑동만 남은 두툼한 세모 덩이
+ */
+const KAMA_FORM = {
+  yellowtail: 'amberjack', amberjack: 'amberjack', greater_amberjack: 'amberjack',
+  bluefin_tuna: 'tuna', bigeye_tuna: 'tuna', swordfish: 'bill', striped_marlin: 'bill',
+};
+/** 구도 참고 사진 파일 이름(`--kref` 폴더 안) — 없으면 글만으로 그린다(332처럼 몸통 토막이 나올 수 있다 — 경고) */
+const KAMA_REF_FILE = { amberjack: 'kama_amberjack.png', tuna: 'kama_tuna.png', bill: 'kama_tuna.png' };
 
 /** 구도 · 화풍 참고(어종군 원본 사진) */
 const REF = {
@@ -161,17 +171,57 @@ function spineText(t) {
     + '살을 다 떠낸 뒤라 등뼈 마디와 위아래 가시뼈가 하나하나 또렷이 보인다 — 살덩이나 필렛처럼 그리지 않는다. '
     + '껍질 · 머리 · 내장 · 도마 · 접시 · 그림자 · 글자 없음. 뼈 하나만, 그림 가로 폭을 가득 채운다. 배경은 단색 흰색.';
 }
-function kamaText(t) {
-  return '첫째 그림은 낚시 게임 손질 화면의 「잘라 낸 생선 머리」 그림이다(화풍 · 색 참고). 둘째 그림은 그 어종의 온마리 그림이다.\n'
-    + `둘째 그림의 어종 ${t.ko}의 「가마살」 한 덩이를 ${STYLE}로 그려라. 첫째 그림과 같은 화풍(진한 윤곽선 · 또렷한 도트)이다. `
-    + '가마살은 머리를 떼어 낼 때 아가미뚜껑 바로 뒤에서 함께 잘라 내는 목덜미 · 턱밑살(생선구이 집의 「가마구이」 부위)이다: '
-    + '초승달 · 부메랑처럼 굽은 두툼한 살덩이이고, 굽은 바깥쪽은 껍질로 덮여 있으며 가슴지느러미 하나가 붙어 있다. '
-    + `껍질 색은 둘째 그림의 ${t.ko} 그대로다(${t.skin}). 안쪽 잘린 면에는 살이 드러난다: ${KAMA[t.id]}. 잘린 면에 굽은 흰 뼈(쇄골) 단면이 조금 보인다. `
-    + '가마살 한 덩이만 그린다 — 눈 · 입 · 머리 · 아가미 · 몸통 · 꼬리 · 도마 · 접시 · 그림자 · 글자 없음. 덩이가 그림을 가득 채운다. 배경은 단색 흰색.';
+const KAMA_NOT = '가마살은 생선 몸통을 가로로 썬 토막이 아니다. 아가미 구멍 바로 뒤(아가미뚜껑 뒤 가장자리)와 머리를 떼는 사선 사이에서 떼어 낸, 배 쪽의 덩이다'
+  + '(생선구이 집의 「가마구이」 부위). 한쪽 옆구리에서 한 덩이가 나온다. 척추뼈의 둥근 단면 · 몸통의 둥근 단면 · 내장은 보이지 않는다. '
+  + '덩이는 원통 토막이 아니라 옆구리 살이 붙은 납작하고 두툼한 판이다 — 껍질 면이 그림의 대부분을 차지하고, 잘린 면은 가장자리를 따라 좁은 띠로만 보인다. '
+  + '살 단면에 나이테 같은 둥근 동심원 무늬를 그리지 않는다. ';
+const KAMA_END = '한 덩이만 그린다 — 눈 · 입 · 아가미뚜껑 · 머리 · 몸통 · 꼬리 · 도마 · 접시 · 그림자 · 글자 없음. 덩이가 그림을 가득 채운다. 배경은 단색 흰색.';
+function kamaText(t, hasPhoto) {
+  const form = KAMA_FORM[t.id];
+  const refs = hasPhoto
+    ? (form === 'tuna'
+      ? '첫째 그림은 다랑어 가마살 한 덩이를 껍질 쪽이 보이게 놓은 실제 사진이다(생김새 · 구도 참고 — 이 덩이의 모양을 따른다). '
+      : form === 'bill'
+        ? '첫째 그림은 다랑어 가마살 한 덩이를 껍질 쪽이 보이게 놓은 실제 사진이다(큰 생선의 가마살이 어떤 덩이인지 참고 — 납작하고 두툼한 판 · 한 변이 오목하게 파였다 · 겉은 거의 다 껍질). '
+        : '첫째 그림은 방어 가마살 두 덩이를 껍질 쪽이 보이게 놓은 실제 사진이다(생김새 · 구도 참고 — 그 가운데 한 덩이를 그린다 · 두 덩이를 다 그리지 않는다). ')
+      + '둘째 그림은 낚시 게임 손질 화면의 「잘라 낸 생선 머리」 그림이다(화풍 참고 — 진한 윤곽선 · 또렷한 도트). 셋째 그림은 그 어종의 온마리 그림이다(껍질 색 참고).\n'
+    : '첫째 그림은 낚시 게임 손질 화면의 「잘라 낸 생선 머리」 그림이다(화풍 · 색 참고). 둘째 그림은 그 어종의 온마리 그림이다.\n';
+  const head = refs + `${t.ko}의 「가마살」 한 덩이를 ${STYLE}로 그려라. 껍질 쪽이 보이는 모습이다. ` + KAMA_NOT;
+  if (form === 'tuna') {
+    return head
+      + '모양: 가로로 길쭉하고 두툼한 띠 모양 덩이다(가로가 세로의 두 배쯤). 위쪽 긴 변은 아가미 구멍 자리라 가운데가 안으로 오목하게 파였다. '
+      + '아래쪽 긴 변과 양 끝은 칼로 곧게 잘린 면이고, 잘린 면을 따라 살이 가는 띠로 드러난다. '
+      + `껍질: 은빛 · 회청색이고 긁힌 자국처럼 은백색 얼룩이 있으며, 한쪽 끝은 등 쪽에 가까워 더 짙은 남색이다(${t.skin}). 비늘은 아주 잘아 매끈해 보인다. `
+      + '가슴지느러미는 떼어 내 없다 — 오른쪽 끝 가까이에 지느러미가 붙어 있던 자리가 흰 물렁뼈의 둥근 구멍으로 남아 있다. '
+      + `잘린 면의 살 색: ${KAMA[t.id]}. ` + KAMA_END;
+  }
+  if (form === 'bill') {
+    return head
+      + '모양: 첫째 그림의 덩이보다 짧고 세모꼴에 가까운 판이다 — 왼쪽이 넓고 오른쪽 아래로 가며 좁아진다. 위쪽 변(앞변)은 아가미 구멍 자리라 안으로 오목하게 파였고, '
+      + '나머지 두 변은 칼로 곧게 잘린 면이다. '
+      + `잘린 면은 가장자리의 좁은 띠로만 보인다: ${KAMA[t.id]}. `
+      + `껍질: 비늘이 없이 매끈하다 — 위쪽은 짙고 아래쪽(배)은 옅다(${t.skin}). `
+      + '가슴지느러미는 밑동만 짧게 남기고 잘랐다 — 낫 모양의 딱딱한 지느러미 밑동이 덩이 가운데에 조금 남아 있다. 배지느러미는 없다. '
+      + KAMA_END;
+  }
+  return head
+    + '모양: 세모꼴 덩이다. 왼쪽 변(앞변)은 아가미 구멍 자리라 안으로 오목하게 파였고, 그 가장자리를 따라 붉은 살이 가는 테두리로만 드러난다(넓은 단면이 아니다). '
+    + '오른쪽 변(뒷변)은 칼로 곧게 잘린 면이고, 아랫변은 배 가운데 선이다. '
+    + `껍질: 위쪽 3분의 1쯤은 등 쪽의 짙은 색, 그 아래는 배 쪽의 은백색이다(${t.skin}). `
+    + '가슴지느러미 하나가 덩이 가운데에서 오른쪽(꼬리 쪽)으로 뻗어 있다. 오른쪽 아래 모서리에 작은 배지느러미가 붙어 있다. '
+    + `잘린 면의 살 색: ${KAMA[t.id]}. ` + KAMA_END;
 }
 function fleshText(t, k) {
   const [meat, dark] = FLESH[t.id];
   const head = '첫째 그림은 낚시 게임 손질 화면의 「잘라 낸 생선 머리」 그림이다(화풍 참고 — 진한 윤곽선 · 또렷한 도트). 둘째 그림은 그 어종의 온마리 그림이다(어떤 생선인지 참고).\n';
+  if (k === 'kamasaku') {
+    return head
+      + `${t.ko}의 「가마살 횟감」 한 조각을 ${STYLE}로 그려라. 첫째 그림과 같은 화풍이다. `
+      + '가마살(아가미 뒤에서 떼어 낸 세모 덩이)에서 가슴지느러미 아래쪽, 내장을 감싸던 뱃살 부분만 도려내고 껍질과 뼈를 떼어 낸 횟감이다: '
+      + '손바닥만 한 세모난 살 조각 하나가 비스듬히 위에서 본 모습으로 놓여 있다. 도톰하고, 가장자리는 칼로 반듯하게 잘렸다. '
+      + `지방이 많은 뱃살이라 흰 지방 결이 살결을 따라 촘촘히 지나간다. 살 색: ${meat}. 껍질 · 뼈 · 지느러미는 없다 — 살만 있다. `
+      + '살 조각 하나만 그린다 — 생선 · 머리 · 칼 · 그릇 · 접시 · 도마 · 그림자 · 글자 없음. 조각이 그림을 가득 채운다. 배경은 단색 흰색.';
+  }
   if (k === 'nakaochi') {
     return head
       + `${t.ko}의 「중골 살」 한 무더기를 ${STYLE}로 그려라. 첫째 그림과 같은 화풍이다. `
@@ -187,15 +237,15 @@ function fleshText(t, k) {
     + `색: ${dark}. 한쪽 가장자리에 그 생선의 보통 살(${meat.split(',')[0].split('(')[0].trim()})이 가는 띠로 조금 붙어 있다. 껍질 · 뼈는 없다. `
     + '살 띠 하나만 그린다 — 생선 · 머리 · 칼 · 그릇 · 접시 · 도마 · 그림자 · 글자 없음. 띠가 그림 가로 폭을 가득 채운다. 배경은 단색 흰색.';
 }
-const aspectOf = (t, k) => (k === 'chiai' ? '16:9' : k === 'nakaochi' ? '4:3' : k === 'kama' ? '4:3' : k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
+const aspectOf = (t, k) => (k === 'chiai' ? '16:9' : k === 'nakaochi' || k === 'kamasaku' ? '4:3' : k === 'kama' ? (KAMA_FORM[t.id] === 'tuna' ? '16:9' : '4:3') : k === 'spine' ? (t.fam === 'halibut' ? '16:9' : '21:9') : t.wideHead ? '16:9' : t.fam === 'halibut' ? '1:1' : '4:3');
 /** 그 종류를 그릴 어종인가 — 머리 · 뼈는 원래 어종(사진이 그 어종) 빼고 전부 · 가마살은 해체 어종만(잿방어 포함) */
-const wants = (id, t, k) => !t.alias && (isFlesh(k) ? !!FLESH[id] : k === 'kama' ? !!KAMA[id] : !t.native);
+const wants = (id, t, k) => !t.alias && (k === 'kamasaku' ? !!FLESH[id] && !!KAMA[id] : isFlesh(k) ? !!FLESH[id] : k === 'kama' ? !!KAMA[id] : !t.native);
 /** 가마살 화풍 참고 = 그 어종 머리 그림(없으면 어종군 머리 사진) */
 const kamaRef = (t) => { const f = path.join(DEST, `${t.id}_head.png`); return fs.existsSync(f) ? f : REF.head[t.fam]; };
 
 // ── 공용 ──
 function parseArgs(argv) {
-  const P = { out: '', only: null, kinds: DEFAULT_KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, force: false, dry: false, install: false, bake: false, sheet: '', tag: '' };
+  const P = { out: '', only: null, kinds: DEFAULT_KINDS, model: 'gemini-nano-banana-2.1', jobs: 4, force: false, dry: false, install: false, bake: false, sheet: '', tag: '', kref: '' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -210,6 +260,7 @@ function parseArgs(argv) {
     else if (a === '--bake') P.bake = true;
     else if (a === '--sheet') P.sheet = v();
     else if (a === '--tag') P.tag = v();
+    else if (a === '--kref') P.kref = v();
   }
   if (!P.out && !P.bake) { console.error('--out <폴더>가 필요하다'); process.exit(1); }
   return P;
@@ -264,10 +315,15 @@ function log(P, rec) { fs.appendFileSync(path.join(P.out, '_log.jsonl'), JSON.st
 async function genOne(t, k, P) {
   const out = path.join(P.out, `${t.id}_${k}${P.tag ? `_${P.tag}` : ''}.png`);
   if (fs.existsSync(out) && !P.force) return 'skip';
+  // 333 — 가마살은 사용자가 준 실제 사진을 구도 참고로 맨 앞에(`--kref` — 저장소에 없다). 없으면 글만으로(경고)
+  const kphoto = k === 'kama' && P.kref ? path.join(P.kref, KAMA_REF_FILE[KAMA_FORM[t.id]] ?? '') : '';
+  const hasPhoto = !!kphoto && fs.existsSync(kphoto) && fs.statSync(kphoto).isFile();
+  if (k === 'kama' && !hasPhoto) console.warn(`[경고] ${t.id} 가마살 — 구도 참고 사진 없음(--kref). 몸통 토막처럼 나올 수 있다`);
   const parts = [
+    ...(hasPhoto ? [refPart(P.out, kphoto, `kref_${KAMA_FORM[t.id]}_${path.basename(kphoto)}`)] : []),
     k === 'kama' || isFlesh(k) ? refPart(P.out, kamaRef(t), `ref_kama_${t.id}.png`) : refPart(P.out, REF[k][t.fam], `ref_${k}_${t.fam}.png`),
     refPart(P.out, path.join(FISH_SRC, t.fish), t.fish),
-    { text: k === 'head' ? headText(t) : k === 'kama' ? kamaText(t) : isFlesh(k) ? fleshText(t, k) : spineText(t) },
+    { text: k === 'head' ? headText(t) : k === 'kama' ? kamaText(t, hasPhoto) : isFlesh(k) ? fleshText(t, k) : spineText(t) },
   ];
   const r = await callGemini(parts, P, out, aspectOf(t, k));
   log(P, { id: t.id, kind: k, tag: P.tag, ...r });
@@ -391,7 +447,7 @@ function bake() {
     ' *  그림은 `public/trimmings/sp/<종류>_<어종>.png`(긴 변 192px), 텍스처 키는 `trimpart_<종류>_<어종>`.',
     ' */',
     '',
-    "export type TrimPartKind = 'head' | 'spine' | 'kama' | 'nakaochi' | 'chiai';",
+    "export type TrimPartKind = 'head' | 'spine' | 'kama' | 'nakaochi' | 'chiai' | 'kamasaku';",
     '',
     '/** 어종 → 그 어종 그림이 있는 부산물 종류 */',
     'export const TRIM_PART_ART: Readonly<Record<string, readonly TrimPartKind[]>> = {',
@@ -441,7 +497,7 @@ async function main() {
   console.log(`대상 ${targets(P).length}종 · 종류 ${P.kinds.join(',')} · 그림 ${jobs.length}장 · 모델 ${P.model} · 동시 ${P.jobs}`);
   if (P.dry) {
     const t = targets(P)[0];
-    console.log(P.kinds.some(isFlesh) ? P.kinds.filter(isFlesh).map((k) => fleshText(t, k)).join('\n\n') : P.kinds.includes('kama') ? kamaText(t) : `${headText(t)}\n\n${spineText(t)}`);
+    console.log(P.kinds.some(isFlesh) ? P.kinds.filter(isFlesh).map((k) => fleshText(t, k)).join('\n\n') : P.kinds.includes('kama') ? kamaText(t, !!P.kref) : `${headText(t)}\n\n${spineText(t)}`);
     return;
   }
   let next = 0, done = 0, stop = false;

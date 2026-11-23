@@ -1314,9 +1314,14 @@ export class UtilizationPanel extends DraggablePanel {
     return item.subCategory === '손질 필렛' && item.id.startsWith('inv_loinskin_');
   }
 
+  /** 333 — 껍질 붙은 가마살 덩이(방어류 · 다랑어류 · 새치류) — 도마에 올리면 **가마살 도려내기부터**(덩이 하나) */
+  private isKamaBlock(item: InvItem): boolean {
+    return ButcheryPanel.isKamaBlock(item);
+  }
+
   /** 도마 재장착 가능한 중간 산출물 → 시작 섹션 */
   private resumeSectionOf(item: InvItem): string | undefined {
-    if (this.isLoinBlock(item)) return 'sec_loin_trim';
+    if (this.isLoinBlock(item) || this.isKamaBlock(item)) return 'sec_loin_trim';
     if (this.isRibFillet(item)) return 'sec_rib';
     if (this.isPinFillet(item)) return 'sec_pin';
     if (this.isEngwFillet(item)) return 'sec_engawa';
@@ -2182,6 +2187,7 @@ export class UtilizationPanel extends DraggablePanel {
           : this.isPinFillet(selItem) ? '지아이뼈 분리부터 이어서 손질'
           : this.isEngwFillet(selItem) ? '엔가와 분리부터 이어서 손질'
           : this.isLoinBlock(selItem) ? '혈합육 · 껍질 · 사쿠 나누기부터 이어서 손질'
+          : this.isKamaBlock(selItem) ? '가슴지느러미 아래 뱃살을 도려내 횟감 가마살로'
           : '박피부터 이어서 손질')
         : selFam === 'finfish' || selFam === 'cephalopod'
           ? '도마에 올려 손질할 수 있다'

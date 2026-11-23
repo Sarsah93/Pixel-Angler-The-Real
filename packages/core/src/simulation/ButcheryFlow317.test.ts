@@ -46,10 +46,14 @@ describe('317 — 4덩어리 해체 갈래', () => {
     expect(front).toEqual(['ikejime', 'bleed_cut', 'bleed_ice', 'scale_base', 'scale_flip', 'scale_wash',
       'head_base', 'head_flip', 'finectomy', 'gut_open', 'gut_scoop', 'vessel_scrub', 'gut_wash']);
     for (const gone of ['tail_grip', 'fillet_0_score', 'rib_a', 'pin_a', 'peel_pull']) expect(ids).not.toContain(gone);
-    expect(ids.slice(front.length)).toEqual([
+    // 333 — 가마살 어종(방어)은 머리따기 바로 뒤에 「가마살 떼기」 두 칼 · 맨 끝에 「가마살 도려내기」 둘이 붙는다
+    expect(ids.filter((id) => !LOIN_FRONT_STAGE_IDS.has(id))).toEqual([
+      'kama_a', 'kama_b',
       'loin_a_mid', 'loin_a_back', 'loin_a_belly', 'loin_b_mid', 'loin_b_back', 'loin_b_belly', 'loin_nakaochi',
       ...[1, 2, 3, 4].flatMap((k) => [`trim_${k}_chiai`, `trim_${k}_skin`, `trim_${k}_saku`]),
+      'ktrim_1', 'ktrim_2',
     ]);
+    expect(ids.indexOf('kama_a')).toBe(ids.indexOf('head_flip') + 1);
     // 참다랑어 — 비늘치기 없음(섹션 트리에서도 빠진다)
     const tuna = buildButcheryStages(getButcheryProfile('bluefin_tuna')).map((s) => s.id);
     expect(tuna).not.toContain('scale_base');

@@ -4,16 +4,16 @@
  *  그림은 `public/trimmings/sp/<종류>_<어종>.png`(긴 변 192px), 텍스처 키는 `trimpart_<종류>_<어종>`.
  */
 
-export type TrimPartKind = 'head' | 'spine' | 'kama' | 'nakaochi' | 'chiai';
+export type TrimPartKind = 'head' | 'spine' | 'kama' | 'nakaochi' | 'chiai' | 'kamasaku';
 
 /** 어종 → 그 어종 그림이 있는 부산물 종류 */
 export const TRIM_PART_ART: Readonly<Record<string, readonly TrimPartKind[]>> = {
   amberjack: ['head', 'spine', 'kama'],
   anchovy: ['head', 'spine'],
-  bigeye_tuna: ['head', 'spine', 'kama', 'nakaochi', 'chiai'],
+  bigeye_tuna: ['head', 'spine', 'kama', 'nakaochi', 'chiai', 'kamasaku'],
   black_rockfish: ['head', 'spine'],
   blue_rockfish: ['head', 'spine'],
-  bluefin_tuna: ['head', 'spine', 'kama', 'nakaochi', 'chiai'],
+  bluefin_tuna: ['head', 'spine', 'kama', 'nakaochi', 'chiai', 'kamasaku'],
   chub_mackerel: ['head', 'spine'],
   flounder: ['head', 'spine'],
   frog_flounder: ['head', 'spine'],
@@ -41,15 +41,15 @@ export const TRIM_PART_ART: Readonly<Record<string, readonly TrimPartKind[]>> = 
   spotted_knifejaw: ['head', 'spine'],
   starry_flounder: ['head', 'spine'],
   stone_beakperch: ['head', 'spine'],
-  striped_marlin: ['head', 'spine', 'kama', 'nakaochi', 'chiai'],
+  striped_marlin: ['head', 'spine', 'kama', 'nakaochi', 'chiai', 'kamasaku'],
   striped_mullet: ['head', 'spine'],
   surfperch: ['head', 'spine'],
-  swordfish: ['head', 'spine', 'kama', 'nakaochi', 'chiai'],
+  swordfish: ['head', 'spine', 'kama', 'nakaochi', 'chiai', 'kamasaku'],
   tonguefish: ['head', 'spine'],
   white_croaker: ['head', 'spine'],
   yellow_croaker: ['head', 'spine'],
   yellowfin_goby: ['head', 'spine'],
-  yellowtail: ['head', 'spine', 'kama', 'nakaochi', 'chiai'],
+  yellowtail: ['head', 'spine', 'kama', 'nakaochi', 'chiai', 'kamasaku'],
 };
 
 /** 같은 생물종(참돔 야간 = 참돔) — 그 어종 그림을 쓴다 */

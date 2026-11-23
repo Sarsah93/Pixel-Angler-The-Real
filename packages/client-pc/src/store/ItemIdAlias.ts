@@ -9,7 +9,7 @@
  *    `inv_jighead`는 0g으로 계산되고 있었다.
  * 옛 id는 세이브 로드(`InventoryStore.deserialize`) · 아이템 추가(`addItem`) · 상점 즐겨찾기 · 도감 기록에서 정본으로 바뀐다.
  */
-import { upgradeWeightSuffix } from '@tra/core';
+import { upgradeWeightSuffix, LOIN_KAMA_SPECIES } from '@tra/core';
 
 /** 332 — 손질 창이 만드는 산출물 id(머리 · 뼈 · 껍질 · 필렛 · 엔가와 · 손질한 통마리 · 가마살 · 중골 살 · 덩어리) */
 const BUTCHERY_PRODUCT_ID = /^inv_(byp|fillet|filletribs|filletskin|filletpin|filletengw|engawa|engwskin|dressed|kama|nakaochi|loinskin)_/;
@@ -21,8 +21,19 @@ const BUTCHERY_PRODUCT_ID = /^inv_(byp|fillet|filletribs|filletskin|filletpin|fi
 export function upgradeButcheryWeightName<T extends { id: string }>(t: T): T {
   const name = (t as { name?: unknown }).name;
   if (typeof name !== 'string' || !BUTCHERY_PRODUCT_ID.test(t.id)) return t;
-  const next = upgradeWeightSuffix(name);
+  const next = upgradeKamaBlockName(t.id, upgradeWeightSuffix(name));
   return next === name ? t : { ...t, name: next };
+}
+
+/**
+ * 333 — 옛 「<어종> 가마살 …g」(머리와 함께 떼던 가마살 — `inv_kama_<어종>_<번호>`)은 지금의 **껍질 붙은 가마살 덩이**다.
+ * 이름 앞에 「껍질 붙은」을 붙인다(가마살을 내는 일곱 어종만 — 옛 큰 바리류 가마살은 그대로). 도마에 올리면 횟감 가마살로 도려낼 수 있다.
+ * 횟감 가마살(`inv_fillet_…_kama_<등급>`)은 id가 달라 건드리지 않는다.
+ */
+function upgradeKamaBlockName(id: string, name: string): string {
+  const m = /^inv_kama_(.+)_\d+$/.exec(id);
+  if (!m || !LOIN_KAMA_SPECIES.has(m[1]) || name.startsWith('껍질 붙은 ')) return name;
+  return `껍질 붙은 ${name}`;
 }
 
 export const ITEM_ID_ALIAS: Readonly<Record<string, string>> = {

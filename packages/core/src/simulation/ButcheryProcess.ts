@@ -24,7 +24,10 @@ import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js
 import { buildCephalopodStages } from '../db-schema/CephalopodStages.js';
 import { buildEelStages } from '../db-schema/EelStages.js';
 import { buildLoinTailStages, defaultLoinSideGeometry, LOIN_FRONT_STAGE_IDS, type LoinStageOptions } from '../db-schema/LoinStages.js';
-import { butcheryArtFamily, BUTCHERY_PROFILES } from '../db-schema/ButcheryProfiles.js';
+import {
+  buildKamaCutStages, buildKamaTrimStages, kamaCarveView, kamaGeometry, kamaHeadLine, pathXAtY, pectoralLineOf, KAMA_VIEW_SCALE_DEFAULT,
+} from '../db-schema/KamaStages.js';
+import { butcheryArtFamily, BUTCHERY_PROFILES, yieldsKama } from '../db-schema/ButcheryProfiles.js';
 import { TUNING } from '../config/tuning.js';
 
 /** 0~1 등 범위 클램프 */
@@ -267,6 +270,11 @@ export interface ButcheryStageOptions {
    * 덩어리마다 사쿠 수(`sakuPieces`)는 덩어리 무게에서 정한다. 없으면 잿방어 대표 그림 근사 · 사쿠 3.
    */
   loin?: LoinStageOptions;
+  /**
+   * 333 — 「가마살 도려내기」 덩이 뷰 배율(client가 그림 칸에 맞는 값을 넘긴다 — 칸이 정수 px로 떨어지게). 없으면 기본값.
+   * 여러 값(큰 것부터)을 넘기면 두 덩이가 도마에 드는 가장 큰 값을 고른다(`pickKamaViewScale`).
+   */
+  kamaViewScale?: number | readonly number[];
 }
 
 /** 313 — 도마 정규화(0~1) rect */
@@ -331,6 +339,7 @@ const remapPath = (path: CutPoint[], m: GuideFrameRemap | undefined): CutPoint[]
  */
 const BODY_GUIDE_STAGES: ReadonlySet<string> = new Set([
   'ikejime', 'bleed_cut', 'scale_base', 'scale_flip', 'scute_base', 'scute_flip', 'head_base', 'head_flip', 'finectomy', 'tail_grip', 'tail_grip_b',
+  'kama_a', 'kama_b',   // 333 — 가마살 떼기도 온마리 그림(떼어 낸 머리) 위의 선이다
   'flat_head_scut', 'flat_belly_center', 'flat_back_center',
   ...(['belly', 'back'] as const).flatMap((sd) => (['up', 'dn'] as const).flatMap((h) =>
     ['score', 'sep1', 'sep2'].map((k) => `flat_${sd}_${h}_${k}`))),
@@ -482,6 +491,71 @@ export function applyGuideOverrides(
     if (src.guidePaths && src.guidePaths.length > 1) c.guidePaths = src.guidePaths.map(mirrorPathX);
     else if (c.guidePaths) c.guidePaths = [c.guidePath];
     out[bi] = { ...dst, cut: c };
+  }
+  // 333 — 가마살 단계는 확정 좌표를 끼운 뒤의 방혈 호 · 머리따기 사선에서 다시 굽는다(가마살 단계 자체를 확정했으면 그 값)
+  return finalizeKamaStages(out, speciesId, (id) => !!pick(id));
+}
+
+/** 두 꺾은선이 같은 선인가(점 수 · 좌표) */
+function samePath(a: readonly CutPoint[], b: readonly CutPoint[]): boolean {
+  return a.length === b.length && a.every((p, i) => Math.abs(p.x - b[i].x) < 1e-6 && Math.abs(p.y - b[i].y) < 1e-6);
+}
+
+/**
+ * 333 — **가마살 어종의 마무리**(확정 좌표를 끼운 뒤):
+ *  ① 지느러미 단계에서 가슴지느러미 밑동 선을 뺀다(확정 표가 세 선을 도로 끼웠을 수 있다 — 가슴지느러미는 가마살과 함께 나간다)
+ *  ② 가마살 단계가 있으면(해체 크기) 지금의 방혈 호 · 머리따기 사선 · 가슴지느러미 선에서 기하를 다시 굽고,
+ *     확정하지 않은 가마살 단계의 선을 그 기하로 바꾼다. 가마살 떼기 선을 확정했으면 덩이 다각형이 그 선을 따른다.
+ * 가마살 어종이 아니면 그대로 돌려준다.
+ */
+function finalizeKamaStages(stages: ButcheryStage[], speciesId: string, has: (id: string) => boolean): ButcheryStage[] {
+  if (!yieldsKama(speciesId)) return stages;
+  const out = [...stages];
+  const at = (id: string): number => out.findIndex((st) => st.id === id);
+  const prevGeo = out.find((st) => st.kamaGeometry)?.kamaGeometry;
+  // ① 가슴지느러미 선
+  let pectoral = prevGeo?.a.pectoral;
+  const fi = at('finectomy');
+  const fc = fi >= 0 ? out[fi].cut : undefined;
+  if (fc) {
+    const lines = fc.guidePaths?.length ? fc.guidePaths : [fc.guidePath];
+    const found = pectoralLineOf(lines);
+    if (found && lines.length > 1) {
+      pectoral = found;
+      const rest = lines.filter((l) => !samePath(l, found));
+      out[fi] = {
+        ...out[fi], label: '지느러미 제거 (등·뒷)',
+        guide: '등·뒷 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (2곳 — 순서 자유)',
+        cut: { ...fc, guidePath: rest[0], guidePaths: rest.length > 1 ? rest : undefined },
+      };
+    }
+  }
+  // ② 가마살 단계
+  const ka = at('kama_a'), kb = at('kama_b');
+  const arc = out[at('bleed_cut')]?.cut?.guidePath, hA = out[at('head_base')]?.cut?.guidePath, hB = out[at('head_flip')]?.cut?.guidePath;
+  if (ka < 0 || kb < 0 || !prevGeo || !arc || !hA || !hB || arc.length < 2) return out;
+  const geo = kamaGeometry(arc, hA, hB, pectoral, prevGeo.viewScales ?? prevGeo.viewScale);
+  geo.a.pectoral = pectoral;
+  // 가마살 떼기 선을 확정했으면 덩이 다각형은 그 선을 따른다(몸 밖 점 둘은 기하의 것 그대로)
+  for (const [sd, i, head] of [['a', ka, hA], ['b', kb, hB]] as const) {
+    const own = has(out[i].id) ? out[i].cut?.guidePath : undefined;
+    if (own && own.length >= 2) {
+      const g = geo[sd], tail = g.poly.slice(g.cut.length);
+      const yOut = tail[tail.length - 1]?.y ?? 1.35;
+      geo[sd] = { ...g, cut: own.map((q) => ({ x: q.x, y: q.y })), poly: [...own.map((q) => ({ x: q.x, y: q.y })), tail[0] ?? own[own.length - 1], { x: pathXAtY(head, yOut), y: yOut }] };
+    } else if (out[i].cut) {
+      out[i] = { ...out[i], cut: { ...out[i].cut!, guidePath: geo[sd].cut } };
+    }
+  }
+  (['a', 'b'] as const).forEach((sd, k) => {
+    const i = at(`ktrim_${k + 1}`);
+    if (i < 0 || !out[i].cut) return;
+    // 도려내는 선을 확정했으면 그 값(덩이 뷰 좌표) — 원래 자리의 선은 기하 기본값 그대로 둔다
+    if (!has(out[i].id)) out[i] = { ...out[i], cut: { ...out[i].cut!, guidePath: kamaCarveView(geo, sd) } };
+  });
+  for (const id of ['kama_a', 'kama_b', 'ktrim_1', 'ktrim_2']) {
+    const i = at(id);
+    if (i >= 0) out[i] = { ...out[i], kamaGeometry: geo };
   }
   return out;
 }
@@ -999,26 +1073,36 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
   }
 
   // 4. 머리따기 — 아가미 사선 양면 → 분리
+  //  333 — 가마살 어종(방어류 · 다랑어류 · 새치류)은 사선이 가슴지느러미 **뒤**를 지난다(사용자 확인 — 가마살은 가슴지느러미가 붙은 채
+  //  머리와 함께 떨어진다). 기본값을 그 어종의 가슴지느러미 밑동 선 뒤로 눕힌다 — F9 [확정] 좌표가 있으면 그것이 먼저다.
+  const kamaSp = yieldsKama(profile.speciesId);
+  const pectoral = kamaSp ? pectoralLineOf(G.finectomy) : undefined;
+  const headBase = kamaSp ? kamaHeadLine(G.headBase, pectoral, true) : G.headBase;
+  const headFlip = kamaSp ? kamaHeadLine(G.headFlip, pectoral?.map((q) => ({ x: 1 - q.x, y: q.y })), false) : G.headFlip;
   stages.push({
     id: 'head_base', label: '머리따기 (앞면 사선)', orientation: 'BASE', primitive: 'guided_cut',
-    guide: '아가미 뒤에서 가슴지느러미 쪽으로 사선을 넣으세요',
-    cut: cut('head_base', 'BASE', G.headBase),
+    guide: kamaSp ? '목덜미에서 가슴지느러미 바로 뒤를 지나 배지느러미 뒤 배까지 사선을 넣으세요' : '아가미 뒤에서 가슴지느러미 쪽으로 사선을 넣으세요',
+    cut: cut('head_base', 'BASE', headBase),
   });
   stages.push({
     id: 'head_flip', label: '머리따기 (뒷면 사선 → 분리)', orientation: 'FLIP', primitive: 'guided_cut',
     guide: '뒤집어 같은 사선을 맞추면 머리가 분리됩니다',
-    cut: cut('head_flip', 'FLIP', G.headFlip, { strong: true }),
+    cut: cut('head_flip', 'FLIP', headFlip, { strong: true }),
   });
 
   // 4b. 지느러미 제거 (선-5 — 등·뒷지느러미 양옆 칼집 → 뽑기. 픽셀 가이드 선행부 신설)
   // 지느러미 제거 — **다중 유도선 3개**(등 / 뒷(배) / 가슴). 순서 자유, 각 1회씩.
   //  좌표는 dev 곡선 편집기(F9)로 실측 조정 예정 — 현재는 실루엣 근사 기본값.
+  //  333 — 가마살 어종은 가슴지느러미가 가마살과 함께 나간다 — 등 · 뒷지느러미 두 선만 긋는다(`finalizeKamaStages`가 확정 표의 세 선에서도 뺀다)
+  const finLines: CutPoint[][] = kamaSp && pectoral ? G.finectomy.filter((l) => !samePath(l, pectoral)) : G.finectomy;
   stages.push({
-    id: 'finectomy', label: '지느러미 제거 (등·뒷·가슴)', orientation: 'BASE', primitive: 'guided_cut',
-    guide: '등·뒷·가슴 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (3곳 — 순서 자유)',
+    id: 'finectomy', label: finLines.length < 3 ? '지느러미 제거 (등·뒷)' : '지느러미 제거 (등·뒷·가슴)', orientation: 'BASE', primitive: 'guided_cut',
+    guide: finLines.length < 3
+      ? '등·뒷 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (2곳 — 순서 자유)'
+      : '등·뒷·가슴 지느러미 밑동을 따라 각각 칼집을 넣어 뽑으세요 (3곳 — 순서 자유)',
     // dev 곡선 편집기(F9) 실측 좌표 — 돔류 (2026-07-31 사용자 재실측: 원형 틀 고정 프레임 기준)
-    cut: cut('finectomy', 'BASE', G.finectomy[0], {
-      tolerance: 0.09, minCoverage: 0.5, guidePaths: G.finectomy,
+    cut: cut('finectomy', 'BASE', finLines[0], {
+      tolerance: 0.09, minCoverage: 0.5, guidePaths: finLines,
     }),
   });
 
@@ -1222,7 +1306,16 @@ export function buildButcheryStages(profile: ButcheryProfile, opts?: ButcherySta
       const mv = (l: typeof d.a): typeof d.a => ({ mid: remapPath(l.mid, m), back: remapPath(l.back, m), belly: remapPath(l.belly, m) });
       side = m ? { a: mv(d.a), b: mv(d.b), nakaochi: remapPath(d.nakaochi, m) } : d;
     }
-    return [...front, ...buildLoinTailStages({ side, sakuPieces: opts?.loin?.sakuPieces })];
+    const tail = buildLoinTailStages({ side, sakuPieces: opts?.loin?.sakuPieces });
+    // 333 — 가마살 어종: 머리따기 뒤에 「가마살 떼기」 두 칼 · 다듬기 구간에 「가마살 도려내기」 둘(덩이 뷰)
+    if (kamaSp) {
+      const geo = kamaGeometry(G.bleed, headBase, headFlip, pectoral, opts?.kamaViewScale ?? KAMA_VIEW_SCALE_DEFAULT);
+      geo.a.pectoral = pectoral;
+      const at = front.findIndex((st) => st.id === 'head_flip');
+      const withKama = at >= 0 ? [...front.slice(0, at + 1), ...buildKamaCutStages(geo), ...front.slice(at + 1)] : front;
+      return [...withKama, ...tail, ...buildKamaTrimStages(geo)];
+    }
+    return [...front, ...tail];
   }
   // 316 — 어종 필렛 그림이 있으면 갈빗대 · 지아이뼈 · 박피 선을 그 그림 자리로(작은 생선 핀셋 스윕도 같은 뷰)
   // 321 — 지아이뼈 분리 선은 한 면 필렛 그림의 혈합육 줄(`pinLine` — 작은 생선 핀셋은 대상이 아니다)

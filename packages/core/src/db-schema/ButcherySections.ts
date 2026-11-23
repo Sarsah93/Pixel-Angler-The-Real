@@ -33,7 +33,8 @@ export type ButcherySectionYield =
   | 'engawaSkin'      // 껍질이 붙어있는 엔가와 1장 (엔가와 분리 작업마다 — 총 4장)
   | 'flatSkinFillet'  // 엔가와 제거된 껍질 필렛 ×4 (엔가와 섹션 완료 — 기존 flatFillet 대체)
   // ── 317 4덩어리 해체(참다랑어 · 대방어급) ──
-  | 'kama'            // 가마살 ×2 (머리를 떼며 함께 — 아가미 뒤 턱밑살)
+  | 'kama'            // 껍질 붙은 가마살 ×2 (333 — 「가마살 떼기」 두 칼로 떼어 낸 세모 덩이 · 구이감)
+  | 'kamaMeat'        // 가마살 횟감 1 (333 — 덩이에서 가슴지느러미 아래 뱃살만 도려낸 것 · 그 덩이를 대신한다)
   | 'loinBlock'       // 껍질 붙은 덩어리 1개 (등살 · 뱃살 떼기 작업마다 — 면 · 부위는 작업 id로)
   | 'nakaochi'        // 중골 살(뼈 사이 살)
   | 'saku'            // 사쿠 n개 (덩어리 다듬기 작업마다 — 그 덩어리를 대신한다)
@@ -511,7 +512,8 @@ export const LOIN_SECTIONS: ButcherySectionDef[] = [
   {
     id: 'sec_prep', label: '밑손질 (자유 순서)', anyOrder: true,
     tasks: [
-      { id: 't_head', label: '머리 · 가마 떼기', stageIds: ['head_base', 'head_flip'], yields: ['head', 'kama'] },
+      // 333 — 머리따기 두 사선 뒤에 「가마살 떼기」 두 칼(떼어 낸 머리에서 — 한 칼에 덩이 하나). 가마살을 내지 않는 어종은 그 단계가 없다
+      { id: 't_head', label: '머리 · 가마 떼기', stageIds: ['head_base', 'head_flip', 'kama_a', 'kama_b'], yields: ['head', 'kama'] },
       { id: 't_fins', label: '지느러미 제거', stageIds: ['finectomy'] },
       { id: 't_descale', label: '비늘치기', stageIds: ['scale_base', 'scale_flip', 'scale_wash'] },
       // 322 — 전갱이류(`hasScutes`)만 — 공정에 단계가 없는 어종은 `resolveButcherySections`가 이 작업을 뺀다
@@ -548,7 +550,10 @@ export const LOIN_SECTIONS: ButcherySectionDef[] = [
       label: ['등살 (1면)', '뱃살 (1면)', '등살 (2면)', '뱃살 (2면)'][k - 1],
       stageIds: [`trim_${k}_chiai`, `trim_${k}_skin`, `trim_${k}_saku`],
       yields: ['saku'] as ButcherySectionYield[],
-    })),
+    })).concat([1, 2].map((k) => ({
+      // 333 — 가마살 도려내기(덩이마다 — 가슴지느러미 아래 뱃살만 · 횟감 하나). 가마살을 내지 않는 어종은 단계가 없어 빠진다
+      id: `t_ktrim_${k}`, label: `가마살 (${k}면)`, stageIds: [`ktrim_${k}`], yields: ['kamaMeat'] as ButcherySectionYield[],
+    }))),
     yields: ['chiai', 'loinSkin'],
   },
 ];

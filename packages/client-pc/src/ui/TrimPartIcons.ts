@@ -37,8 +37,8 @@ const cutFailed = new Set<string>();
 /** 어종 그림 텍스처 키(부트에서 실은 것) — 없으면 undefined */
 export function trimPartArtKey(scene: Phaser.Scene, speciesId: string, kind: TrimPartKind): string | undefined {
   const own = TRIM_PART_ALIAS[speciesId] ?? speciesId;
-  // 332(2) — 중골 살 · 혈합육은 살색이 같은 어종끼리 한 그림을 같이 쓴다(그림 주인 `TRIM_FLESH_OWNER`)
-  const id = kind === 'nakaochi' || kind === 'chiai' ? TRIM_FLESH_OWNER[own] ?? own : own;
+  // 332(2) — 중골 살 · 혈합육은 살색이 같은 어종끼리 한 그림을 같이 쓴다(그림 주인 `TRIM_FLESH_OWNER`) · 333 횟감 가마살도 같다
+  const id = kind === 'nakaochi' || kind === 'chiai' || kind === 'kamasaku' ? TRIM_FLESH_OWNER[own] ?? own : own;
   if (!TRIM_PART_ART[id]?.includes(kind)) return undefined;
   const key = `${ART_PREFIX}${kind}_${id}`;
   return scene.textures.exists(key) ? key : undefined;
@@ -208,6 +208,11 @@ export function ensureTrimPartTexture(scene: Phaser.Scene, key: string | undefin
 /** 332 — 가마살 아이콘 키: 어종 그림(Gemini — 해체 어종 7종 · 332(2) 큰 바리류는 가마살을 내지 않는다). 없으면 undefined(부르는 쪽이 캔버스 도형 `trimloin_kama_*`로) */
 export function trimKamaIconKey(scene: Phaser.Scene, speciesId: string): string | undefined {
   return trimPartArtKey(scene, speciesId, 'kama');
+}
+
+/** 333 — 횟감 가마살(덩이에서 도려낸 뱃살) 아이콘 · 회썰기 그림 키: 그 어종(또는 살색이 같은 그림 주인)의 그림. 없으면 undefined */
+export function trimKamaMeatIconKey(scene: Phaser.Scene, speciesId: string): string | undefined {
+  return trimPartArtKey(scene, speciesId, 'kamasaku');
 }
 
 /** 332(2) — 중골 살 · 혈합육 아이콘 키: 그 어종(또는 살색이 같은 그림 주인)의 그림. 없으면 undefined(캔버스 도형 `trimloin_*`로) */

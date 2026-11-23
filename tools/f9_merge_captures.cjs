@@ -26,6 +26,7 @@ const CAP = path.join(DIR, 'captures.json');
 const LOG = path.join(DIR, 'log.jsonl');
 
 /** 단계 id → 이 시각 전에 확정한 좌표는 낡았다(그 뷰의 그림이 그때 바뀌었다) */
+const KAMA_HEAD_AT = '2026-11-20T09:56:50.950Z';
 const STALE = {
   pin_a: '2026-11-12T14:51:07.000Z',
   pin_b: '2026-11-12T14:51:07.000Z',
@@ -35,6 +36,15 @@ const STALE = {
   //  (저장소 정본의 황새치 4단계는 새 그림 자리로 옮겨 두었다 — 시각을 이 값으로 적어 옛 좌표가 다시 이기지 못한다)
   'swordfish.*': '2026-11-20T08:00:00.000Z',
   'striped_marlin.*': '2026-11-20T08:00:00.000Z',
+  // 333 — 가마살 어종의 머리따기 사선은 가슴지느러미 **뒤**를 지난다(사용자 확인 — 가마살은 지느러미가 붙은 채 머리와 함께 떨어진다).
+  //  그 전에 그은 사선은 지느러미 앞을 지나는 옛 규칙의 선이다 — 저장소 정본은 `f9_kama_head_lines.cjs`로 옮겨 두었다(이 시각)
+  'yellowtail.head_base': KAMA_HEAD_AT, 'yellowtail.head_flip': KAMA_HEAD_AT,
+  'amberjack.head_base': KAMA_HEAD_AT, 'amberjack.head_flip': KAMA_HEAD_AT,
+  'greater_amberjack.head_base': KAMA_HEAD_AT, 'greater_amberjack.head_flip': KAMA_HEAD_AT,
+  'bluefin_tuna.head_base': KAMA_HEAD_AT, 'bluefin_tuna.head_flip': KAMA_HEAD_AT,
+  'bigeye_tuna.head_base': KAMA_HEAD_AT, 'bigeye_tuna.head_flip': KAMA_HEAD_AT,
+  'swordfish.head_base': KAMA_HEAD_AT, 'swordfish.head_flip': KAMA_HEAD_AT,
+  'striped_marlin.head_base': KAMA_HEAD_AT, 'striped_marlin.head_flip': KAMA_HEAD_AT,
 };
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
