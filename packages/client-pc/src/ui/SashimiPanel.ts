@@ -59,7 +59,8 @@ export class SashimiPanel extends DraggablePanel {
   private readonly saku: 'back' | 'belly' | null;
   /**
    * 333 — 횟감 가마살(가마살 덩이에서 도려낸 뱃살 — `inv_fillet_<어종>_<번호>_kama_<등급>`).
-   * 사용자 설명 「가마살 부분 한 쪽 당 2~3점씩」 — 덩이 그림을 탑뷰로 놓고 한두 번 저민다(점 수는 무게로 — core `kamaPieceCount`).
+   * 사용자 설명 「가마살 부분 한 쪽 당 2~3점씩」 — 덩이 그림을 탑뷰로 놓고 저민다(점 수는 무게로 — core `kamaPieceCount`).
+   * 333(2) — 큰 개체는 점 수가 는다(한 덩이 최대 12점 · 그보다 큰 뱃살은 도려낼 때 횟감 여러 덩이로 나뉜다).
    */
   private readonly kama: boolean;
   private readonly kamaPieces: number;

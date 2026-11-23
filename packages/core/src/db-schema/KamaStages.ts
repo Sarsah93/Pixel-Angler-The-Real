@@ -217,10 +217,27 @@ export function kamaTrimSideOf(id: string | undefined): 'a' | 'b' | null {
   return id === 'ktrim_1' ? 'a' : id === 'ktrim_2' ? 'b' : null;
 }
 
-/** 횟감 가마살의 몫(가마살 덩이 무게 중 — 가슴지느러미 아래 뱃살) · 한 면에서 나오는 점 수(2 ~ 3) */
+/** 횟감 가마살의 몫(가마살 덩이 무게 중 — 가슴지느러미 아래 뱃살) */
 export const KAMA_MEAT_SHARE = 0.4;
-/** 횟감 한 조각이 이 무게(g) 이상이면 3점, 아니면 2점 */
+/** 횟감 한 덩이가 이 무게(g) 이상이면 3점, 아니면 2점(사용자 설명 「한 쪽 당 2~3점」 — 보통 크기의 방어) */
 export const KAMA_THREE_PIECE_MIN_G = 45;
+/**
+ * 333(2) — 큰 개체는 점 수를 늘린다(사용자 결정 「큰 개체는 가마살 점 수를 늘려줘」).
+ * 옛 규칙은 2 ~ 3점으로 묶여 있어 참다랑어 180cm의 한 점이 250g쯤이었다.
+ *  - 한 점 기준 무게 `KAMA_PIECE_TARGET_G`: 횟감이 이 무게의 세 점 반을 넘기면 넷째 점부터 는다(대방어 12kg까지는 세 점 그대로).
+ *  - 회썰기 한 번의 점 수 상한 `KAMA_PIECE_MAX`: 그림 한 장 위에서 칼집이 읽히는 한도.
+ *  - 그보다 큰 뱃살은 도려낼 때 횟감 여러 덩이로 나눈다(`kamaMeatUnits` — 한쪽에 최대 `KAMA_MEAT_UNITS_MAX`덩이).
+ */
+export const KAMA_PIECE_TARGET_G = 35;
+export const KAMA_PIECE_MAX = 12;
+export const KAMA_MEAT_UNITS_MAX = 4;
+/** 횟감 한 덩이(g) → 회썰기 점 수(2 ~ `KAMA_PIECE_MAX`) */
 export function kamaPieceCount(meatG: number): number {
-  return meatG >= KAMA_THREE_PIECE_MIN_G ? 3 : 2;
+  if (!(meatG >= KAMA_THREE_PIECE_MIN_G)) return 2;
+  return Math.max(3, Math.min(KAMA_PIECE_MAX, Math.round(meatG / KAMA_PIECE_TARGET_G)));
+}
+/** 덩이 하나에서 도려낸 뱃살(g) → 횟감 덩이 수(1 ~ `KAMA_MEAT_UNITS_MAX`) — 한 덩이가 회썰기 한 번에 맞게 */
+export function kamaMeatUnits(meatG: number): number {
+  const perUnit = KAMA_PIECE_TARGET_G * KAMA_PIECE_MAX;
+  return Math.max(1, Math.min(KAMA_MEAT_UNITS_MAX, Math.ceil(Math.max(0, meatG) / perUnit)));
 }

@@ -236,7 +236,7 @@ export type { LoinBlockDef, LoinBlockEdges, LoinStageOptions } from './db-schema
 export { LOIN_SECTIONS, LOIN_SECTIONS_NO_KAMA, loinBlockOfTask } from './db-schema/ButcherySections.js';
 // 333 — 가마살 공정(가마살 떼기 · 도려내기 — 기하 · 단계)
 export {
-  BUTCHER_BOARD_ASPECT, KAMA_VIEW_SCALE_DEFAULT, KAMA_BLOCK_SLOTS, KAMA_MEAT_SHARE, KAMA_THREE_PIECE_MIN_G,
+  BUTCHER_BOARD_ASPECT, KAMA_VIEW_SCALE_DEFAULT, KAMA_BLOCK_SLOTS, KAMA_MEAT_SHARE, KAMA_THREE_PIECE_MIN_G, KAMA_PIECE_TARGET_G, KAMA_PIECE_MAX, KAMA_MEAT_UNITS_MAX, kamaMeatUnits,
   pathXAtY, pectoralLineOf, kamaHeadLine, kamaSideGeometry, kamaGeometry, kamaBlockPoint, kamaCarveView,
   buildKamaCutStages, buildKamaTrimStages, isKamaStageId, kamaTrimSideOf, kamaPieceCount,
   pickKamaViewScale,

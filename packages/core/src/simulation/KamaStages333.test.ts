@@ -9,8 +9,8 @@ import { butcheryProfileFor, getButcheryProfile, LOIN_KAMA_SPECIES } from '../db
 import { BUTCHERY_GUIDE_OVERRIDES } from '../db-schema/ButcheryGuideOverrides.js';
 import { sectionsForSpecies, resolveButcherySections } from '../db-schema/ButcherySections.js';
 import {
-  kamaGeometry, kamaHeadLine, kamaBlockPoint, kamaCarveView, kamaPieceCount, pathXAtY, pectoralLineOf, isKamaStageId, kamaTrimSideOf,
-  KAMA_BLOCK_SLOTS, KAMA_THREE_PIECE_MIN_G,
+  kamaGeometry, kamaHeadLine, kamaBlockPoint, kamaCarveView, kamaPieceCount, kamaMeatUnits, pathXAtY, pectoralLineOf, isKamaStageId, kamaTrimSideOf,
+  KAMA_BLOCK_SLOTS, KAMA_THREE_PIECE_MIN_G, KAMA_MEAT_SHARE, KAMA_PIECE_TARGET_G, KAMA_PIECE_MAX, KAMA_MEAT_UNITS_MAX,
 } from '../db-schema/KamaStages.js';
 import type { CutPoint } from '../types/Butchery.js';
 
@@ -107,10 +107,38 @@ describe('333 가마살 기하', () => {
     expect(v[2].y - v[0].y).toBeCloseTo((c[2].y - c[0].y) * 1.5, 3);
   });
 
-  it('횟감은 한 면에 두세 점', () => {
+  it('횟감은 한 면에 두세 점 — 보통 크기(대방어 12kg까지)', () => {
     expect(kamaPieceCount(KAMA_THREE_PIECE_MIN_G - 1)).toBe(2);
     expect(kamaPieceCount(KAMA_THREE_PIECE_MIN_G)).toBe(3);
-    expect(kamaPieceCount(900)).toBe(3);
+    // 덩이 = 원물의 2.5% · 횟감 = 덩이의 40% → 원물 12kg = 횟감 120g
+    expect(kamaPieceCount(12000 * 0.025 * KAMA_MEAT_SHARE)).toBe(3);
+    expect(kamaMeatUnits(12000 * 0.025 * KAMA_MEAT_SHARE)).toBe(1);
+  });
+
+  it('333(2) 큰 개체는 점 수가 는다 — 한 점은 기준 무게 언저리 · 회썰기 한 번은 상한까지 · 넘치면 횟감 여러 덩이', () => {
+    // 점 수는 무게를 따라 줄지 않고 는다
+    let prev = 0;
+    for (let g = 10; g <= KAMA_PIECE_TARGET_G * KAMA_PIECE_MAX; g += 5) {
+      const n = kamaPieceCount(g);
+      expect(n).toBeGreaterThanOrEqual(prev);
+      expect(n).toBeLessThanOrEqual(KAMA_PIECE_MAX);
+      prev = n;
+    }
+    expect(kamaPieceCount(200)).toBe(6);      // 원물 20kg
+    expect(kamaPieceCount(100000)).toBe(KAMA_PIECE_MAX);
+    // 원물 무게별 — 한쪽 점 수와 한 점 무게
+    for (const [fishKg, wantUnits] of [[20, 1], [50, 2], [100, 3], [150, 4], [300, 4]] as const) {
+      const meatG = fishKg * 1000 * 0.025 * KAMA_MEAT_SHARE;
+      const units = kamaMeatUnits(meatG);
+      expect(units).toBe(wantUnits);
+      const perUnit = meatG / units;
+      const pieceG = perUnit / kamaPieceCount(perUnit);
+      expect(pieceG).toBeGreaterThan(20);
+      // 덩이 수 상한에 걸리기 전에는 한 점이 기준 무게 언저리다(옛 규칙 = 참다랑어 100kg에서 한 점 333g)
+      if (units < KAMA_MEAT_UNITS_MAX) expect(pieceG).toBeLessThan(KAMA_PIECE_TARGET_G * 1.2);
+      else expect(pieceG).toBeLessThan(KAMA_PIECE_TARGET_G * 2);
+    }
+    expect(kamaMeatUnits(0)).toBe(1);
   });
 });
 

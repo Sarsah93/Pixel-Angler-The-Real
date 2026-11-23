@@ -29,7 +29,7 @@ import {
   isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE, stageGuideRemap, filletGuideView, invertGuideRemap,
   butcheryProfileFor, buildButcheryStages, applyGuideOverrides, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE,
   loinValueShare, loinSakuPieces, loinSakuCuts, loinBlockOfTask, loinBlockIndex, loinTrimBlockOf,
-  BUTCHERY_GUIDE_OVERRIDES, formatGramsKo, yieldsKama, kamaTrimSideOf, KAMA_MEAT_SHARE, KAMA_BLOCK_SLOTS, pectoralLineOf,
+  BUTCHERY_GUIDE_OVERRIDES, formatGramsKo, yieldsKama, kamaTrimSideOf, KAMA_MEAT_SHARE, kamaMeatUnits, KAMA_BLOCK_SLOTS, pectoralLineOf,
 } from '@tra/core';
 import type { ButcheryGuideOverride, GuideFrameRemap, LoinPart, LoinSide, LoinStageOptions, ButcheryProfile, KamaGeometry } from '@tra/core';
 import {
@@ -1334,10 +1334,13 @@ export class ButcheryPanel extends DraggablePanel {
           const blk = InventoryStore.find(blockId);
           const blockG = blk?.weightG ?? Math.max(1, Math.round((this.source.weightG ?? 800) * 0.025));
           const blockPrice = blk?.basePrice ?? Math.max(500, Math.round(this.marketPerG() * blockG * 1.1));
-          const g = Math.max(1, Math.round(blockG * KAMA_MEAT_SHARE));
+          // 333(2) — 큰 개체의 뱃살은 횟감 여러 덩이로 나눈다(한 덩이가 회썰기 한 번 — 최대 12점 — 에 맞게 · 값도 나눈다)
+          const meatG = Math.max(1, Math.round(blockG * KAMA_MEAT_SHARE));
+          const units = kamaMeatUnits(meatG);
+          const g = Math.max(1, Math.round(meatG / units));
           const grade = this.loinGradeNow();
           const gk = ({ 특: 's', 상: 'a', 중: 'b', 하: 'c' } as Record<string, string>)[grade] ?? 'b';
-          rows.push({ key: 'kamaMeat', qty: 1, tpl: { ...base, subCategory: '손질 필렛', id: `inv_fillet_${speciesId}_${this.loinSeq}_kama_${gk}`, name: `${nameKo} 가마살 (${grade}) ${formatGramsKo(g)}`, icon: '', iconTexture: trimKamaMeatIconKey(this.scene, speciesId) ?? trimKamaIconKey(this.scene, speciesId) ?? this.loinIcon('kama'), basePrice: Math.max(300, Math.round(blockPrice)), speciesId, weightG: g, lengthCm: this.source.lengthCm ?? blk?.lengthCm, originRegion: this.source.originRegion } });
+          rows.push({ key: 'kamaMeat', qty: units, tpl: { ...base, subCategory: '손질 필렛', id: `inv_fillet_${speciesId}_${this.loinSeq}_kama_${gk}`, name: `${nameKo} 가마살 (${grade}) ${formatGramsKo(g)}`, icon: '', iconTexture: trimKamaMeatIconKey(this.scene, speciesId) ?? trimKamaIconKey(this.scene, speciesId) ?? this.loinIcon('kama'), basePrice: Math.max(300, Math.round(blockPrice / units)), speciesId, weightG: g, lengthCm: this.source.lengthCm ?? blk?.lengthCm, originRegion: this.source.originRegion } });
           this.pendingKamaBlockId = blockId;
           break;
         }
@@ -1601,7 +1604,7 @@ export class ButcheryPanel extends DraggablePanel {
         const log = this.grantedLog.find((g) => g.id === id);
         if (log) { log.qty -= 1; if (log.qty <= 0) this.grantedLog = this.grantedLog.filter((g) => g !== log); }
       }
-      if (kept.some((r) => r.key === 'kamaMeat')) this.kamaMeatGranted += 1;
+      this.kamaMeatGranted += kept.filter((r) => r.key === 'kamaMeat').reduce((n, r) => n + r.qty, 0);   // 333(2) — 큰 개체는 한 칼에 횟감 여러 덩이
       if (this.checkpoint === 'none') this.checkpoint = 'fillets';
       this.scene.events.emit('inventory-changed');
     }
