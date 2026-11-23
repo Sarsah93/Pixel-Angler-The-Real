@@ -283,6 +283,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
 - 배포: main `4e120df` · gh-pages `1c2f1bc`(126차 — 332(2) · 333 포함) · 배포본 점검 통과(정적 2,498 · `public/` 2,495개 같음 · 기동 9.7초 · 4xx 0 · pageerror 0).
 - **333(2)**(2026-11-23 — 사용자 「큰 개체는 가마살 점 수를 늘려줘」): 횟감 한 덩이의 점 수 = 무게 ÷ 35g(45g 미만 2점 · 3 ~ 12점 `kamaPieceCount`) · 뱃살이 420g을 넘으면 도려낼 때 횟감 여러 덩이(`kamaMeatUnits` 1 ~ 4).
   대방어 12kg까지는 2 ~ 3점 그대로 · 참다랑어 200cm = 한쪽 3덩이 × 10점(한 점 347g → 35g). core 779 / 779 · 실마우스 네 흐름 pageerror 0 · 아티팩트(위키 144 · 과업 90 · 라이브러리 89).
+  배포: main `ce790c7` · gh-pages `6af01e0`(127차) · 배포본 점검 통과(정적 2,498 · `public/` 2,495개 같음 · 기동 9.6초 · 4xx 0 · pageerror 0).
   상세: [워크로그 333(2)](../docs/wiki/03-WORKLOG/2026-11-23-333b-kama-piece-count.md)
 - 상세: [워크로그 333](../docs/wiki/03-WORKLOG/2026-11-22-333-kama-process.md)
 
