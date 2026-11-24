@@ -351,6 +351,7 @@ npx pnpm --filter @tra/client-pc run typecheck → ✅ 0 오류
   ⚠ 사쿠 개수를 도마 토막 수(`loinSakuN`)로 되돌리지 않는다 · 127차까지 받아 둔 큰 사쿠는 그대로다(옮기지 않았다).
   검증 core 779 / 779 · 실마우스 세 흐름(참다랑어 200 · 방어 100 · 잿방어 130) pageerror 0 · 빌드 3/3 · 루트 typecheck 4/4 · 아티팩트(위키 145 · 과업 91 · 라이브러리 90 · 순서도 76 그대로).
   상세: [333(3) 워크로그](../docs/wiki/03-WORKLOG/2026-11-24-333c-saku-units-by-weight.md).
+  배포: main `7d7eb8e` · gh-pages `fcf6c4c`(128차 — 333(3) 포함) · 배포본 점검 통과(정적 2,498 · `public/` 2,495개 같음 · 기동 8.5초 · 4xx 0 · pageerror 0).
 - 남은 것: 다시 확정(사선 · 가마살 선 · 해체 선 끝) · 청새치(확정 0).
   상세: [333차 워크로그](../docs/wiki/03-WORKLOG/2026-11-22-333-kama-process.md).
 

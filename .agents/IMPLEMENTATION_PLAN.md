@@ -287,6 +287,7 @@ Phase 9:   Tauri v2 통합 & Steam 패키징                    ⬜ 대기
   상세: [워크로그 333(2)](../docs/wiki/03-WORKLOG/2026-11-23-333b-kama-piece-count.md)
 - **333(3)**(2026-11-24 — 사용자 「사쿠도 가마살처럼 무게로 점 수 늘려줘」): 가방에 들어오는 사쿠 개수 = `max(도마 토막 수, 다듬은 살 ÷ 400g)`(core `loinSakuUnits` — 상한 없음) · 도마 나누기 선(2 ~ 5)과 회썰기 점 수(14 · 16)는 그대로.
   방어 100cm는 그대로(428g × 4) · 잿방어 130cm = 382g × 10(한 점 55g → 27g) · 참다랑어 200cm = 401g × 39(한 점 223g → 29g · 한 마리 144토막). core 779 / 779 · 실마우스 세 흐름 pageerror 0 · 아티팩트(위키 145 · 과업 91 · 라이브러리 90).
+  배포: main `7d7eb8e` · gh-pages `fcf6c4c`(128차) · 배포본 점검 통과(정적 2,498 · `public/` 2,495개 같음 · 기동 8.5초 · 4xx 0 · pageerror 0).
   상세: [워크로그 333(3)](../docs/wiki/03-WORKLOG/2026-11-24-333c-saku-units-by-weight.md)
 - 상세: [워크로그 333](../docs/wiki/03-WORKLOG/2026-11-22-333-kama-process.md)
 
