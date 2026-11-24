@@ -7,7 +7,7 @@ import { ButcheryProcess, buildButcheryStages } from './ButcheryProcess.js';
 import { butcheryProfileFor, isLoinBreakdown, canButcherSpecies, LOIN_BREAKDOWN_MIN_CM, getButcheryProfile } from '../db-schema/ButcheryProfiles.js';
 import { sectionsForSpecies, resolveButcherySections, LOIN_SECTIONS, WHOLE_FISH_SECTIONS, loinBlockOfTask } from '../db-schema/ButcherySections.js';
 import {
-  LOIN_BLOCKS, LOIN_FRONT_STAGE_IDS, loinBlockEdges, loinBlockLines, loinSakuPieces, defaultLoinSideGeometry, mirrorLoinLines,
+  LOIN_BLOCKS, LOIN_FRONT_STAGE_IDS, loinBlockEdges, loinBlockLines, loinSakuPieces, loinSakuUnits, defaultLoinSideGeometry, mirrorLoinLines,
   loinValueShare, loinTrimBlockOf,
 } from '../db-schema/LoinStages.js';
 import type { CutPoint } from '../types/Butchery.js';
@@ -100,6 +100,19 @@ describe('317 — 4덩어리 해체 갈래', () => {
     expect(loinSakuPieces(500)).toBe(2);
     expect(loinSakuPieces(1400)).toBe(3);
     expect(loinSakuPieces(9000)).toBe(5);
+    // 333(3) — 가방에 들어오는 사쿠 개수는 무게로: 작은 덩어리는 토막 수 그대로 · 큰 덩어리는 사쿠 하나가 400g 언저리
+    expect(loinSakuUnits(500)).toBe(2);
+    expect(loinSakuUnits(1400)).toBe(3);
+    expect(loinSakuUnits(2200)).toBe(5);
+    for (const blockG of [3400, 9000, 18000, 35000]) {
+      const n = loinSakuUnits(blockG);
+      expect(n).toBeGreaterThan(5);
+      const sakuG = blockG * 0.87 / n;
+      expect(sakuG).toBeGreaterThan(360);
+      expect(sakuG).toBeLessThan(440);
+      expect(loinSakuPieces(blockG)).toBe(5);   // 도마의 나누기 선은 그대로
+    }
+    expect(loinSakuUnits(18000)).toBe(39);      // 참다랑어 200cm 등살 덩어리(18kg) — 옛 5토막 × 3.1kg → 39토막 × 402g
     const st = buildButcheryStages(butcheryProfileFor('bluefin_tuna', 110), { loin: { sakuPieces: [5, 2, 3, 4] } });
     const saku = (k: number) => st.find((s) => s.id === `trim_${k}_saku`)!.cut!;
     expect(saku(1).guidePaths?.length).toBe(4);

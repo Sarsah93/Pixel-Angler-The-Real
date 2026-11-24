@@ -28,7 +28,7 @@ import {
   GRADE_XP_MULT, BUTCHERY_NATIVE_ART_SPECIES,
   isBodyGuideStage, butcheryGuideFamilyKey, remapGuidePoint, EEL_GUIDE, stageGuideRemap, filletGuideView, invertGuideRemap,
   butcheryProfileFor, buildButcheryStages, applyGuideOverrides, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE,
-  loinValueShare, loinSakuPieces, loinSakuCuts, loinBlockOfTask, loinBlockIndex, loinTrimBlockOf,
+  loinValueShare, loinSakuPieces, loinSakuUnits, loinSakuCuts, loinBlockOfTask, loinBlockIndex, loinTrimBlockOf,
   BUTCHERY_GUIDE_OVERRIDES, formatGramsKo, yieldsKama, kamaTrimSideOf, KAMA_MEAT_SHARE, kamaMeatUnits, KAMA_BLOCK_SLOTS, pectoralLineOf,
 } from '@tra/core';
 import type { ButcheryGuideOverride, GuideFrameRemap, LoinPart, LoinSide, LoinStageOptions, ButcheryProfile, KamaGeometry } from '@tra/core';
@@ -1359,7 +1359,7 @@ export class ButcheryPanel extends DraggablePanel {
           break;
         }
         case 'saku': {
-          // 다듬은 덩어리 → 사쿠 n개(혈합육 · 껍질 뺀 살을 나눈다 · 값은 덩어리 값을 나눈다). 덩어리 아이템은 팝업 확정 때 뺀다
+          // 다듬은 덩어리 → 사쿠 n개(혈합육 · 껍질 뺀 살을 무게로 나눈다 · 값은 덩어리 값을 나눈다). 덩어리 아이템은 팝업 확정 때 뺀다
           const k = Number(/^t_trim_(\d)$/.exec(taskId ?? '')?.[1] ?? 0) - 1;
           const b = LOIN_BLOCKS[k];
           if (!b) break;
@@ -1367,7 +1367,8 @@ export class ButcheryPanel extends DraggablePanel {
           const blk = InventoryStore.find(blockId);
           const blockG = blk?.weightG ?? this.loinBlockGrams(this.process.profile, this.source, b.part);
           const blockPrice = blk?.basePrice ?? Math.round(Math.max(1000, InventoryStore.getMarketValue(this.source)) * loinValueShare(speciesId, b.part));
-          const n = this.loinSakuN[k] ?? 3;
+          // 333(3) — 사쿠 개수는 무게로(큰 개체는 사쿠 하나가 400g 언저리 — 도마의 나누기 선 수 `loinSakuN`과 따로다)
+          const n = loinSakuUnits(blockG);
           const sg = Math.max(1, Math.round(blockG * (1 - LOIN_TRIM_SHARE.chiai - LOIN_TRIM_SHARE.skin) / n));
           const grade = this.loinGradeNow();
           const gk = ({ 특: 's', 상: 'a', 중: 'b', 하: 'c' } as Record<string, string>)[grade] ?? 'b';

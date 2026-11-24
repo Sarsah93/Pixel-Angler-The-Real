@@ -230,7 +230,7 @@ export { EEL_SECTIONS } from './db-schema/ButcherySections.js';
 export {
   LOIN_FRONT_STAGE_IDS, LOIN_BLOCKS, LOIN_MASS_SHARE, LOIN_TRIM_SHARE, LOIN_SAKU_TARGET_G,
   buildLoinTailStages, defaultLoinSideGeometry, mirrorLoinLines, loinBlockIndex, loinBlockEdges, loinBlockPoint,
-  loinBlockLines, loinSakuCuts, loinSakuPieces, loinValueShare, isLoinStageId, loinTrimBlockOf,
+  loinBlockLines, loinSakuCuts, loinSakuPieces, loinSakuUnits, loinValueShare, isLoinStageId, loinTrimBlockOf,
 } from './db-schema/LoinStages.js';
 export type { LoinBlockDef, LoinBlockEdges, LoinStageOptions } from './db-schema/LoinStages.js';
 export { LOIN_SECTIONS, LOIN_SECTIONS_NO_KAMA, loinBlockOfTask } from './db-schema/ButcherySections.js';

@@ -150,10 +150,20 @@ export function loinValueShare(speciesId: string, part: LoinPart): number {
 export const LOIN_TRIM_SHARE = { chiai: 0.06, skin: 0.07 } as const;
 /** 사쿠 하나 목표 무게(g) — 회썰기 한 번(14 ~ 16점)에 알맞은 덩어리 */
 export const LOIN_SAKU_TARGET_G = 400;
-/** 덩어리 무게(g) → 사쿠 수(2 ~ 5 — 줄이 너무 많지 않게 상한) */
+/** 덩어리 무게(g) → 도마에서 나누는 토막 수(2 ~ 5 — 나누기 선이 너무 많지 않게 상한). 가방에 들어오는 사쿠 개수는 `loinSakuUnits` */
 export function loinSakuPieces(blockG: number): number {
   const trimmed = Math.max(1, blockG) * (1 - LOIN_TRIM_SHARE.chiai - LOIN_TRIM_SHARE.skin);
   return Math.max(2, Math.min(5, Math.round(trimmed / LOIN_SAKU_TARGET_G)));
+}
+/**
+ * 333(3) — 덩어리 무게(g) → 가방에 들어오는 **사쿠 개수**(사용자 결정 「사쿠도 가마살처럼 무게로 점 수 늘려줘」).
+ * 옛 규칙은 도마의 토막 수(2 ~ 5)가 곧 사쿠 개수라, 큰 개체는 사쿠 하나가 수 kg이었다(참다랑어 200cm = 2.7 ~ 3.1kg — 회 한 점 190 ~ 220g).
+ * 사쿠 하나가 목표 무게(`LOIN_SAKU_TARGET_G`) 언저리가 되게 개수를 무게로 정한다 — 회썰기 한 번(14 ~ 16점)의 한 점이 25 ~ 30g쯤.
+ * 도마에서 긋는 나누기 선은 그대로 2 ~ 5토막(`loinSakuPieces`)이고, 큰 덩어리는 토막마다 사쿠가 여럿 나온다. 작은 덩어리(토막 수 이하)는 옛 규칙과 같다.
+ */
+export function loinSakuUnits(blockG: number): number {
+  const trimmed = Math.max(1, blockG) * (1 - LOIN_TRIM_SHARE.chiai - LOIN_TRIM_SHARE.skin);
+  return Math.max(loinSakuPieces(blockG), Math.round(trimmed / LOIN_SAKU_TARGET_G));
 }
 
 // ────────────────────────────────────────────────────────────
